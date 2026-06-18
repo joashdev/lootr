@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Security Model — Personal Finance App</title>
+<style>
+  :root {
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    --bg: #fafafa;
+    --surface: #ffffff;
+    --border: #e2e4e8;
+    --text: #1b1b1f;
+    --text-secondary: #63666e;
+    --accent: #2563eb;
+    --accent-light: #eff6ff;
+    --green: #059669;
+    --green-light: #ecfdf5;
+    --orange: #d97706;
+    --orange-light: #fffbeb;
+    --red: #dc2626;
+    --red-light: #fef2f2;
+    --code-bg: #1e1e2e;
+    --code-text: #cdd6f4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.6; }
+  .wrapper { max-width: 1000px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 28px; font-weight: 700; margin-bottom: 4px; letter-spacing: -0.5px; }
+  h1 + p { color: var(--text-secondary); font-size: 15px; margin-bottom: 32px; }
+  h2 { font-size: 21px; font-weight: 600; margin-top: 40px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 17px; font-weight: 600; margin-top: 28px; margin-bottom: 8px; }
+  h4 { font-size: 14px; font-weight: 600; margin-top: 20px; margin-bottom: 6px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+  p, li { font-size: 15px; }
+  p { margin-bottom: 12px; }
+  ul, ol { margin: 8px 0 16px 20px; }
+  li { margin-bottom: 4px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  strong { font-weight: 600; }
+  code { font-family: var(--mono); font-size: 13px; background: #f2f4f7; padding: 2px 6px; border-radius: 4px; }
+
+  .toc { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-bottom: 32px; }
+  .toc h3 { margin: 0 0 10px; font-size: 15px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); }
+  .toc ul { margin: 0; list-style: none; columns: 2; column-gap: 24px; }
+  .toc li { margin-bottom: 4px; font-size: 14px; }
+  .toc a { color: var(--text); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 12px 0 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  thead { background: #f2f4f7; border-bottom: 1px solid var(--border); }
+  th { font-weight: 600; text-align: left; padding: 10px 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); }
+  td { padding: 9px 12px; border-top: 1px solid var(--border); vertical-align: top; }
+  tr:first-child td { border-top: none; }
+  td:first-child { font-family: var(--mono); font-size: 13px; }
+
+  pre { background: var(--code-bg); color: var(--code-text); border-radius: 8px; padding: 16px 20px; font-family: var(--mono); font-size: 13px; line-height: 1.6; overflow-x: auto; margin: 12px 0 20px; }
+  pre code { background: none; padding: 0; font-size: 13px; color: inherit; }
+
+  .callout { background: var(--accent-light); border-left: 3px solid var(--accent); border-radius: 6px; padding: 12px 16px; margin: 12px 0 20px; font-size: 14px; }
+  .callout-green { background: var(--green-light); border-left-color: var(--green); }
+  .callout-orange { background: var(--orange-light); border-left-color: var(--orange); }
+  .callout-red { background: var(--red-light); border-left-color: var(--red); }
+
+  .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
+  .badge-blue { background: #dbeafe; color: #1d4ed8; }
+  .badge-green { background: #dcfce7; color: #15803d; }
+  .badge-red { background: #fee2e2; color: #b91c1c; }
+  .badge-orange { background: #fef3c7; color: #b45309; }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+  .diagram { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; font-family: var(--mono); font-size: 12px; line-height: 1.7; overflow-x: auto; margin: 12px 0 20px; white-space: pre; }
+
+  @media (max-width: 768px) {
+    .toc ul { columns: 1; }
+    .wrapper { padding: 20px 16px 60px; }
+    table { font-size: 13px; }
+    td, th { padding: 7px 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+<h1>Security Model</h1>
+<p>Personal Finance App — data at rest, in transit, auth boundaries, and permission enforcement.<br>References: <code>product-strategy.md</code> (privacy-first), <code>api-contracts.md</code> (JWT, OTP), <code>sync-engine.md</code> (auth gates), <code>navigation-arch.md</code> (household UX), <code>database-schema.md</code> (local-only tables), <code>state-management.md</code> (auth provider), <code>solutions-arch.md</code> (§10.5).</p>
+
+<div class="toc">
+<h3>Contents</h3>
+<ul>
+  <li><a href="#s1">1. Overview</a></li>
+  <li><a href="#s2">2. Server Security</a></li>
+  <li><a href="#s3">3. Transport Security</a></li>
+  <li><a href="#s4">4. Data at Rest</a></li>
+  <li><a href="#s5">5. App Gate</a></li>
+  <li><a href="#s6">6. Device Security</a></li>
+  <li><a href="#s7">7. Household Permissions</a></li>
+  <li><a href="#s8">8. Privacy Boundaries</a></li>
+  <li><a href="#s9">9. Data Deletion</a></li>
+  <li><a href="#s10">10. Audit Trail & Observability</a></li>
+  <li><a href="#s11">11. Threat Model</a></li>
+  <li><a href="#s12">12. V1 Scope Note</a></li>
+  <li><a href="#s13">13. Summary</a></li>
+</ul>
+</div>
+
+<!-- 1. OVERVIEW -->
+<h2 id="s1">1. Overview</h2>
+<p>The security model uses <strong>defense-in-depth</strong> across five layers:</p>
+<div class="diagram">┌─────────────────────────────────────────────────────────────────────┐
+│  LAYER 5 — SERVER                                                    │
+│  PostgreSQL · OTP-only (no passwords) · rate limits · RBAC           │
+│  ┌─────────────────────────────────────────────────────────────────┐ │
+│  │  LAYER 4 — TRANSPORT                                             │ │
+│  │  TLS 1.2+ · Bearer JWT · HTTPS only · no bank credentials         │ │
+│  │  ┌─────────────────────────────────────────────────────────────┐ │ │
+│  │  │  LAYER 3 — DATA AT REST                                      │ │ │
+│  │  │  SQLCipher AES-256 · encryption key in platform keystore     │ │ │
+│  │  │  Soft deletes (never physically destroyed without purge)     │ │ │
+│  │  │  ┌─────────────────────────────────────────────────────────┐ │ │ │
+│  │  │  │  LAYER 2 — APP GATE                                      │ │ │ │
+│  │  │  │  Biometric lock · optional PIN fallback · auto-lock      │ │ │ │
+│  │  │  │  Flutter secure storage for tokens                       │ │ │ │
+│  │  │  │  ┌─────────────────────────────────────────────────────┐ │ │ │ │
+│  │  │  │  │  LAYER 1 — DEVICE                                    │ │ │ │ │
+│  │  │  │  │  Face ID / Fingerprint · Secure Enclave / TEE        │ │ │ │ │
+│  │  │  │  │  Keychain (iOS) / Keystore (Android)                │ │ │ │ │
+│  │  │  │  └─────────────────────────────────────────────────────┘ │ │ │ │
+│  │  │  └─────────────────────────────────────────────────────────┘ │ │ │
+│  │  └─────────────────────────────────────────────────────────────┘ │ │
+│  └─────────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────┘</div>
+<div class="callout"><strong>Core principle:</strong> No bank credentials or tokens are ever stored. The app does not integrate with financial institutions. All financial data is user-entered or OCR-extracted.</div>
+
+<!-- 2. SERVER -->
+<h2 id="s2">2. Server Security</h2>
+<h3>2.1 Authentication</h3>
+<ul>
+  <li><strong>No passwords stored.</strong> Email OTP only. No password hashes exist on the server.</li>
+  <li>OTP: 6-digit, valid 5 minutes (<code>expires_in: 300</code>).</li>
+  <li>JWT access token: 15 min TTL. Refresh token: 30 day TTL (rotated).</li>
+</ul>
+
+<h3>2.2 Rate limiting</h3>
+<table>
+  <thead><tr><th>Endpoint</th><th>Limit</th><th>Window</th></tr></thead>
+  <tbody>
+    <tr><td><code>/auth/request-otp</code></td><td>3 per email, 5 per IP</td><td>1 minute</td></tr>
+    <tr><td><code>/auth/verify-otp</code></td><td>5 per email</td><td>1 minute</td></tr>
+    <tr><td><code>/auth/refresh</code></td><td>10 per user</td><td>1 minute</td></tr>
+    <tr><td><code>/sync/push</code> & <code>/sync/pull</code></td><td>30 per user</td><td>1 minute</td></tr>
+    <tr><td><code>/uploads</code></td><td>10 per user</td><td>1 minute</td></tr>
+    <tr><td>All other</td><td>100 per user</td><td>1 minute</td></tr>
+  </tbody>
+</table>
+
+<h3>2.3 Household permission enforcement</h3>
+<table>
+  <thead><tr><th>Role</th><th>Server enforcement</th><th>Client (UI) enforcement</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Owner</strong></td><td>Full CRUD on all household data</td><td>All buttons visible</td></tr>
+    <tr><td><strong>Member</strong></td><td>CRUD on own + shared; read-only on others'</td><td>Edit/delete hidden on others' rows</td></tr>
+    <tr><td><strong>Viewer</strong></td><td>Read-only on all</td><td>Add island hidden, all edit buttons hidden</td></tr>
+  </tbody>
+</table>
+<div class="callout callout-green"><strong>Server is authoritative.</strong> If the UI fails to hide a button, the API rejects the mutation with <code>403 FORBIDDEN</code>. The UI hiding is a UX optimization, not a security boundary.</div>
+
+<h3>2.4 File upload security</h3>
+<ul>
+  <li>Max file size: 10 MB. Allowed: <code>image/jpeg</code>, <code>image/png</code>, <code>image/webp</code>, <code>application/pdf</code>.</li>
+  <li>Signed URLs, authenticated access only. No public endpoints.</li>
+  <li>Retention: 90 days (configurable). Files private to uploading user unless household-shared.</li>
+</ul>
+
+<h3>2.5 TLS</h3>
+<ul>
+  <li>Minimum TLS 1.2. TLS 1.3 preferred.</li>
+  <li>HTTPS only. API base URL via environment variable.</li>
+</ul>
+
+<!-- 3. TRANSPORT -->
+<h2 id="s3">3. Transport Security</h2>
+
+<h3>3.1 JWT tokens</h3>
+<table>
+  <thead><tr><th>Token</th><th>TTL</th><th>Storage</th><th>Rotation</th></tr></thead>
+  <tbody>
+    <tr><td>Access token</td><td>15 minutes</td><td><code>flutter_secure_storage</code></td><td>Re-issued on refresh</td></tr>
+    <tr><td>Refresh token</td><td>30 days</td><td><code>flutter_secure_storage</code></td><td>Rotated on every refresh</td></tr>
+  </tbody>
+</table>
+
+<h3>3.2 Token refresh race condition</h3>
+<div class="diagram">Request 1 → 401 → acquire refresh lock → POST /auth/refresh → new tokens → release lock → retry
+Request 2 → 401 → acquire refresh lock (WAIT) → tokens already refreshed → use new token → retry
+Request 3 → 401 → acquire refresh lock (WAIT) → tokens already refreshed → use new token → retry</div>
+<p>Only one refresh HTTP call is made. Waiting callers use the resulting tokens.</p>
+
+<h3>3.3 What crosses the wire</h3>
+<table>
+  <thead><tr><th>Data</th><th>Crosses wire?</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td>12 syncable entity rows</td><td><span class="badge badge-green">Yes</span> (V2 only)</td><td>All syncable tables</td></tr>
+    <tr><td><code>sync_status</code>, <code>last_synced_at</code></td><td><span class="badge badge-red">No</span></td><td>Client-side only</td></tr>
+    <tr><td><code>account_balance_snapshots</code></td><td><span class="badge badge-red">No</span></td><td>Local-only</td></tr>
+    <tr><td><code>notifications</code></td><td><span class="badge badge-red">No</span></td><td>Local-only</td></tr>
+    <tr><td><code>ai_processing_logs</code></td><td><span class="badge badge-red">No</span></td><td>Local-only</td></tr>
+    <tr><td><code>sync_metadata</code></td><td><span class="badge badge-red">No</span></td><td>Local-only</td></tr>
+    <tr><td>Bank credentials</td><td><span class="badge badge-red">Never</span></td><td>App doesn't collect them</td></tr>
+  </tbody>
+</table>
+
+<!-- 4. DATA AT REST -->
+<h2 id="s4">4. Data at Rest</h2>
+
+<h3>4.1 SQLCipher encryption</h3>
+<table>
+  <thead><tr><th>Component</th><th>Package</th></tr></thead>
+  <tbody>
+    <tr><td>Database engine</td><td><code>sqlite3_flutter_libs</code> (with SQLCipher support)</td></tr>
+    <tr><td>ORM</td><td><code>drift</code></td></tr>
+    <tr><td>Build</td><td><code>drift_dev</code></td></tr>
+    <tr><td>Encryption</td><td>SQLCipher AES-256-CBC</td></tr>
+  </tbody>
+</table>
+<p>Drift supports custom SQLite implementations. The <code>sqlite3_flutter_libs</code> package includes SQLCipher builds for iOS and Android.</p>
+
+<h3>4.2 Encryption key management</h3>
+<div class="diagram">App launch
+  │
+  ├─ Read DB encryption key from iOS Keychain / Android Keystore
+  │
+  ├─ Found? ──▶ use key to decrypt SQLCipher DB
+  │
+  └─ Not found?
+       ├─ First launch?
+       │   └─ Generate random 256-bit key
+       │   └─ Store in Keychain/Keystore (biometry-protected)
+       │   └─ Create encrypted DB with new key
+       │
+       └─ Key lost? (uninstall/reinstall, new device)
+           └─ DB is gone — no recovery
+           └─ Server data (if V2 synced) is pulled fresh</div>
+<ul>
+  <li>DB encryption key <strong>never leaves the device keychain</strong>.</li>
+  <li>iOS: <code>kSecAttrAccessibleWhenUnlockedThisDeviceOnly</code>.</li>
+  <li>Android: <code>AndroidKeyStore</code> provider, TEE-backed.</li>
+  <li>Key is NOT derived from biometrics/passwords — it's a random key generated on first launch.</li>
+</ul>
+
+<h3>4.3 Soft delete retention</h3>
+<table>
+  <thead><tr><th>Stage</th><th>Retention</th></tr></thead>
+  <tbody>
+    <tr><td>Active</td><td><code>deleted_at IS NULL</code></td></tr>
+    <tr><td>Soft-deleted</td><td>Hidden from queries; pushed to server</td></tr>
+    <tr><td>Purged</td><td>Physically deleted 30 days after <code>deleted_at</code> AND <code>sync_status = 'synced'</code></td></tr>
+  </tbody>
+</table>
+
+<h3>4.4 Encryption coverage</h3>
+<table>
+  <thead><tr><th>Data</th><th>Encrypted?</th></tr></thead>
+  <tbody>
+    <tr><td>All 15 SQLite tables</td><td><span class="badge badge-green">Yes</span> — entire DB file</td></tr>
+    <tr><td><code>flutter_secure_storage</code> values</td><td><span class="badge badge-green">Yes</span> — platform-native</td></tr>
+    <tr><td>Temp files (receipt previews)</td><td>No — cleared on session end</td></tr>
+    <tr><td>Logs</td><td>No — local only</td></tr>
+  </tbody>
+</table>
+
+<!-- 5. APP GATE -->
+<h2 id="s5">5. App Gate</h2>
+
+<h3>5.1 Biometric lock</h3>
+<table>
+  <thead><tr><th>Platform</th><th>Technology</th><th>Package</th></tr></thead>
+  <tbody>
+    <tr><td>iOS</td><td>Face ID / Touch ID via LocalAuthentication</td><td><code>local_auth</code></td></tr>
+    <tr><td>Android</td><td>Fingerprint / Face via BiometricManager</td><td><code>local_auth</code></td></tr>
+  </tbody>
+</table>
+<div class="diagram">App enters background
+  │
+  ▼
+Timer starts (configurable: immediately / 1 min / 5 min / 15 min)
+  │
+  ▼
+Timer expires? ── No ──▶ App stays unlocked
+  │
+  ▼  Yes
+App lock state: LOCKED
+  │
+  ▼
+App returns to foreground
+  │
+  ▼
+Biometric prompt (Face ID / Fingerprint)
+  │
+  ├─ Success ──▶ App unlocks
+  │
+  └─ Fail ──▶ Retry (up to 3 attempts)
+         └─ 3rd fail ──▶ Fallback to app PIN
+                ├─ Correct PIN ──▶ App unlocks
+                └─ Wrong PIN ──▶ App stays locked</div>
+<table>
+  <thead><tr><th>Setting</th><th>Options</th><th>Default</th></tr></thead>
+  <tbody>
+    <tr><td>Biometric lock</td><td>On / Off</td><td>Off (V1)</td></tr>
+    <tr><td>Auto-lock timer</td><td>Immediately / 1 min / 5 min / 15 min / Never</td><td>15 min</td></tr>
+    <tr><td>App PIN</td><td>Optional fallback; 4-6 digits</td><td>Not set by default</td></tr>
+  </tbody>
+</table>
+<div class="callout callout-orange">V1: Biometric lock is greyed out / "Coming soon" in Settings. UI and provider exist but toggle is disabled. Can be enabled in a V1.x update without schema changes.</div>
+
+<h3>5.2 Flutter secure storage</h3>
+<table>
+  <thead><tr><th>Value</th><th>Storage</th><th>Key</th></tr></thead>
+  <tbody>
+    <tr><td>Access token (JWT)</td><td><code>flutter_secure_storage</code></td><td><code>access_token</code></td></tr>
+    <tr><td>Refresh token</td><td><code>flutter_secure_storage</code></td><td><code>refresh_token</code></td></tr>
+    <tr><td>App PIN hash</td><td><code>flutter_secure_storage</code></td><td><code>app_pin_hash</code> (SHA-256)</td></tr>
+    <tr><td>Biometric lock enabled</td><td>SharedPreferences</td><td>(not sensitive)</td></tr>
+  </tbody>
+</table>
+<p><code>flutter_secure_storage</code> uses iOS Keychain and Android EncryptedSharedPreferences/Keystore.</p>
+
+<h3>5.3 Auth provider</h3>
+<pre><code>enum AuthState { localOnly, authenticated }
+
+class AuthNotifier extends StateNotifier&lt;AuthState&gt; {
+  Future&lt;void&gt; login(String accessToken, String refreshToken) async {
+    await _secureStorage.write('access_token', accessToken);
+    await _secureStorage.write('refresh_token', refreshToken);
+    state = AuthState.authenticated;
+  }
+
+  Future&lt;void&gt; logout() async {
+    await _secureStorage.delete('access_token');
+    await _secureStorage.delete('refresh_token');
+    state = AuthState.localOnly;  // app still works
+  }
+
+  Future&lt;String?&gt; getAccessToken() async {
+    final token = await _secureStorage.read('access_token');
+    if (token == null) return null;
+    if (_isExpired(token)) return await _refresh();
+    return token;
+  }
+}</code></pre>
+
+<!-- 6. DEVICE -->
+<h2 id="s6">6. Device Security</h2>
+<table>
+  <thead><tr><th>Platform</th><th>Storage</th><th>Protection</th></tr></thead>
+  <tbody>
+    <tr><td>iOS</td><td>Keychain</td><td><code>kSecAttrAccessibleWhenUnlockedThisDeviceOnly</code> — not in iCloud backups</td></tr>
+    <tr><td>Android</td><td>Keystore + EncryptedSharedPreferences</td><td><code>AndroidKeyStore</code>; TEE-backed on supported hardware</td></tr>
+  </tbody>
+</table>
+<ul>
+  <li>Both platforms ensure secure storage values are inaccessible when device is locked.</li>
+  <li>iOS Secure Enclave (iPhone 5s+): biometric data stays entirely within the enclave.</li>
+  <li>Android TEE: biometric templates in hardware-backed keystore.</li>
+  <li>No root/jailbreak detection in V1 (complexity tradeoff).</li>
+</ul>
+
+<!-- 7. HOUSEHOLD PERMISSIONS -->
+<h2 id="s7">7. Household Permission Model</h2>
+<table>
+  <thead><tr><th>Role</th><th>Create</th><th>Read</th><th>Update</th><th>Delete</th><th>Add island</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Owner</strong></td><td><span class="badge badge-green">Everything</span></td><td><span class="badge badge-green">Everything</span></td><td><span class="badge badge-green">Everything</span></td><td><span class="badge badge-green">Everything</span></td><td>Yes</td></tr>
+    <tr><td><strong>Member</strong></td><td>Own + shared</td><td><span class="badge badge-green">Everything</span></td><td>Own + shared</td><td>Own only</td><td>Yes</td></tr>
+    <tr><td><strong>Viewer</strong></td><td>Nothing</td><td><span class="badge badge-green">Everything</span></td><td>Nothing</td><td>Nothing</td><td><span class="badge badge-red">No</span></td></tr>
+  </tbody>
+</table>
+
+<h3>Ownership indicators</h3>
+<table>
+  <thead><tr><th>Label</th><th>Meaning</th><th>Color</th></tr></thead>
+  <tbody>
+    <tr><td>Mine</td><td>Owned by current user</td><td>Blue</td></tr>
+    <tr><td>Theirs</td><td>Owned by another member</td><td>Slate</td></tr>
+    <tr><td>Ours</td><td>Shared (<code>household_id</code> set)</td><td>Emerald</td></tr>
+  </tbody>
+</table>
+
+<h3>Viewer exfiltration (V2 hardening)</h3>
+<ul>
+  <li>V1: Viewer role is a UX trust model, not a DRM system.</li>
+  <li>V2: Disable CSV export for viewer, hide receipt uploads, app watermark with viewer's email on sensitive screens.</li>
+</ul>
+
+<!-- 8. PRIVACY BOUNDARIES -->
+<h2 id="s8">8. Privacy Boundaries</h2>
+<table>
+  <thead><tr><th>Classification</th><th>Tables / Data</th><th>Behavior</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Local-only</strong></td><td><code>account_balance_snapshots</code>, <code>notifications</code>, <code>ai_processing_logs</code>, <code>sync_metadata</code></td><td>Never leaves device</td></tr>
+    <tr><td><strong>Client-side metadata</strong></td><td><code>sync_status</code>, <code>last_synced_at</code> on every syncable row</td><td>Stripped from push payloads</td></tr>
+    <tr><td><strong>Syncable</strong></td><td>12 syncable tables (full rows minus metadata)</td><td>Pushed/pulled only after V2 auth</td></tr>
+    <tr><td><strong>Never collected</strong></td><td>Bank credentials, bank tokens, SSN</td><td>App has no fields for these</td></tr>
+  </tbody>
+</table>
+
+<h3>What the server knows (V2)</h3>
+<ul>
+  <li>User email + profile metadata</li>
+  <li>12 syncable entity rows</li>
+  <li>Household membership graph</li>
+  <li>Uploaded receipt images (90-day retention)</li>
+</ul>
+
+<h3>What the server never sees</h3>
+<ul>
+  <li>Raw AI extraction payloads</li>
+  <li>Sync bookkeeping metadata</li>
+  <li>Notification scheduling data</li>
+  <li>Any passwords (OTP-only, no password hashes)</li>
+</ul>
+
+<!-- 9. DATA DELETION -->
+<h2 id="s9">9. Data Deletion &amp; Account Lifecycle</h2>
+<div class="diagram">User taps "Delete account & reset data"
+  │
+  ▼
+Confirmation: "This will permanently delete all your data everywhere."
+  │
+  ├─ Cancel ──▶ No action
+  │
+  └─ Confirm:
+       ├─ V2: POST /auth/logout (invalidate tokens)
+       ├─ V2: POST /sync/reset (delete server data)
+       ├─ Local: DROP all tables, recreate empty DB
+       ├─ Clear flutter_secure_storage
+       └─ Restart app → onboarding fresh</div>
+<ul>
+  <li>Household data contributed by deleted user <strong>stays</strong> for other members.</li>
+  <li>Only personal rows are removed. Creator references are nullified on shared rows.</li>
+  <li>Local-only users (no auth) can reset from Settings — drops local DB, restarts app.</li>
+</ul>
+
+<!-- 10. AUDIT TRAIL -->
+<h2 id="s10">10. Audit Trail &amp; Observability</h2>
+<table>
+  <thead><tr><th>Table</th><th>Purpose</th><th>Data</th></tr></thead>
+  <tbody>
+    <tr><td><code>ai_processing_logs</code></td><td>AI extraction audit</td><td>Model used, raw output, confidence</td></tr>
+    <tr><td><code>sync_metadata</code></td><td>Sync health</td><td>last_synced_at, last_status, failed_count</td></tr>
+    <tr><td><code>deleted_at</code> (all syncable)</td><td>Soft delete trail</td><td>No financial data silently destroyed</td></tr>
+  </tbody>
+</table>
+
+<!-- 11. THREAT MODEL -->
+<h2 id="s11">11. Threat Model (V1)</h2>
+<table>
+  <thead><tr><th>Threat</th><th>Risk</th><th>Mitigation</th></tr></thead>
+  <tbody>
+    <tr><td>Physical device access (unlocked)</td><td><span class="badge badge-red">High</span></td><td>Biometric lock (V1.x), auto-lock timer</td></tr>
+    <tr><td>Physical device access (locked)</td><td><span class="badge badge-green">Low</span></td><td>SQLCipher encrypts DB; key in platform keystore</td></tr>
+    <tr><td>Network MITM</td><td><span class="badge badge-green">Low</span></td><td>TLS 1.2+, certificate validation</td></tr>
+    <tr><td>Malicious app on same device</td><td><span class="badge badge-green">Low</span></td><td>Platform sandboxing; SQLCipher</td></tr>
+    <tr><td>Rooted/jailbroken device</td><td><span class="badge badge-orange">Medium</span></td><td>Not mitigated in V1</td></tr>
+    <tr><td>Server compromise</td><td><span class="badge badge-green">Low</span></td><td>Server stores only syncable rows; stateless</td></tr>
+    <tr><td>Accidental CSV data exposure</td><td><span class="badge badge-orange">Medium</span></td><td>CSV export is user-initiated; no auto-export</td></tr>
+    <tr><td>JWT token theft</td><td><span class="badge badge-green">Low</span></td><td>Platform-native encrypted storage; short TTLs</td></tr>
+  </tbody>
+</table>
+
+<!-- 12. V1 SCOPE -->
+<h2 id="s12">12. V1 Scope Note</h2>
+<div class="callout callout-orange">
+  <ul>
+    <li><strong>Auth is disabled.</strong> No email OTP, no JWT, no tokens. Auth provider stays in <code>AuthState.localOnly</code>.</li>
+    <li><strong>Sync is inert.</strong> Engine built but never runs (no auth → no push/pull).</li>
+    <li><strong>Biometric lock is greyed out.</strong> UI exists, toggle disabled.</li>
+    <li><strong>Data stays on device.</strong> No data leaves local SQLite DB.</li>
+  </ul>
+  <p style="margin-top:8px;">All infrastructure is complete — flipping the switch requires only enabling the auth and biometric toggles. No schema changes or rewrite needed.</p>
+</div>
+
+<!-- 13. SUMMARY -->
+<h2 id="s13">13. Summary</h2>
+<table>
+  <thead><tr><th>Concern</th><th>Implementation</th></tr></thead>
+  <tbody>
+    <tr><td>Data at rest (local DB)</td><td>SQLCipher AES-256 via <code>sqlite3_flutter_libs</code>; key in Keychain/Keystore</td></tr>
+    <tr><td>Data at rest (server)</td><td>PostgreSQL; V2 auth required; server never sees client metadata</td></tr>
+    <tr><td>Data in transit</td><td>TLS 1.2+; Bearer JWT (access 15min, refresh 30d rotated)</td></tr>
+    <tr><td>Device security</td><td>Biometric lock (<code>local_auth</code>); app PIN fallback; auto-lock timer</td></tr>
+    <tr><td>Secure token storage</td><td><code>flutter_secure_storage</code> (Keychain / EncryptedSharedPreferences)</td></tr>
+    <tr><td>Household permissions</td><td>Owner/Member/Viewer; enforced server-side (403); UI-hidden for UX</td></tr>
+    <tr><td>Privacy boundaries</td><td>4 tables local-only; <code>sync_status</code> + <code>last_synced_at</code> never sent</td></tr>
+    <tr><td>Audit trail</td><td><code>ai_processing_logs</code>, <code>sync_metadata</code>, <code>deleted_at</code> soft deletes</td></tr>
+    <tr><td>Data deletion</td><td>Account delete wipes local DB + server data; household contributions preserved</td></tr>
+    <tr><td>V1 stance</td><td>Auth disabled, sync inert, biometric greyed out — all infrastructure exists behind toggles</td></tr>
+  </tbody>
+</table>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Navigation &amp; Routing — Personal Finance App</title>
+<style>
+  :root {
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    --bg: #fafafa;
+    --surface: #ffffff;
+    --border: #e2e4e8;
+    --text: #1b1b1f;
+    --text-secondary: #63666e;
+    --accent: #2563eb;
+    --accent-light: #eff6ff;
+    --green: #059669;
+    --green-light: #ecfdf5;
+    --orange: #d97706;
+    --orange-light: #fffbeb;
+    --red: #dc2626;
+    --red-light: #fef2f2;
+    --code-bg: #1e1e2e;
+    --code-text: #cdd6f4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.6; }
+  .wrapper { max-width: 1000px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 28px; font-weight: 700; margin-bottom: 4px; letter-spacing: -0.5px; }
+  h1 + p { color: var(--text-secondary); font-size: 15px; margin-bottom: 32px; }
+  h2 { font-size: 21px; font-weight: 600; margin-top: 40px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 17px; font-weight: 600; margin-top: 28px; margin-bottom: 8px; }
+  h4 { font-size: 14px; font-weight: 600; margin-top: 20px; margin-bottom: 6px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+  p, li { font-size: 15px; }
+  p { margin-bottom: 12px; }
+  ul, ol { margin: 8px 0 16px 20px; }
+  li { margin-bottom: 4px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  strong { font-weight: 600; }
+  code { font-family: var(--mono); font-size: 13px; background: #f2f4f7; padding: 2px 6px; border-radius: 4px; }
+
+  .toc { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-bottom: 32px; }
+  .toc h3 { margin: 0 0 10px; font-size: 15px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); }
+  .toc ul { margin: 0; list-style: none; columns: 2; column-gap: 24px; }
+  .toc li { margin-bottom: 4px; font-size: 14px; }
+  .toc a { color: var(--text); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 12px 0 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  thead { background: #f2f4f7; border-bottom: 1px solid var(--border); }
+  th { font-weight: 600; text-align: left; padding: 10px 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); }
+  td { padding: 9px 12px; border-top: 1px solid var(--border); vertical-align: top; }
+  tr:first-child td { border-top: none; }
+  td:first-child { font-family: var(--mono); font-size: 13px; }
+  td:nth-child(2) { font-size: 13px; }
+
+  pre { background: var(--code-bg); color: var(--code-text); border-radius: 8px; padding: 16px 20px; font-family: var(--mono); font-size: 13px; line-height: 1.6; overflow-x: auto; margin: 12px 0 20px; }
+  pre code { background: none; padding: 0; font-size: 13px; color: inherit; }
+
+  .callout { background: var(--accent-light); border-left: 3px solid var(--accent); border-radius: 6px; padding: 12px 16px; margin: 12px 0 20px; font-size: 14px; }
+  .callout-green { background: var(--green-light); border-left-color: var(--green); }
+  .callout-orange { background: var(--orange-light); border-left-color: var(--orange); }
+  .callout-red { background: var(--red-light); border-left-color: var(--red); }
+
+  .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
+  .badge-blue { background: #dbeafe; color: #1d4ed8; }
+  .badge-green { background: #dcfce7; color: #15803d; }
+  .badge-red { background: #fee2e2; color: #b91c1c; }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+  @media (max-width: 768px) {
+    .toc ul { columns: 1; }
+    .wrapper { padding: 24px 16px 60px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+<h1>Navigation &amp; Routing — Personal Finance App</h1>
+<p>Screen tree, navigation structure, modal flows, and route definitions for the Flutter app.</p>
+<p>References: <code>product-strategy.md</code> (features, UX principles), <code>domain-model.md</code> (dashboard layout, transaction screen structure), <code>database-schema.md</code> (entities), <code>sync-engine.md</code> (sync status UI).</p>
+
+<div class="toc">
+  <h3>Table of Contents</h3>
+  <ul>
+    <li><a href="#s1">1. Design Principles</a></li>
+    <li><a href="#s2">2. Navigation Structure Overview</a></li>
+    <li><a href="#s3">3. Tab 1: Dashboard (Home)</a></li>
+    <li><a href="#s4">4. Tab 2: Transactions</a></li>
+    <li><a href="#s5">5. Tab 3: Budgets</a></li>
+    <li><a href="#s6">6. Tab 4: More</a></li>
+    <li><a href="#s7">7. Modal Flows &amp; Sheets</a></li>
+    <li><a href="#s8">8. Deep Link Mappings</a></li>
+    <li><a href="#s9">9. Navigation Patterns</a></li>
+    <li><a href="#s10">10. Route Definitions</a></li>
+    <li><a href="#s11">11. Complete Screen Inventory</a></li>
+    <li><a href="#s12">12. Top Bar Behavior</a></li>
+    <li><a href="#s13">13. Sync Status UI</a></li>
+    <li><a href="#s14">14. Household UX</a></li>
+    <li><a href="#s15">15. Empty States &amp; Demo Data</a></li>
+    <li><a href="#s16">16. Industry References</a></li>
+    <li><a href="#s17">17. Responsive &amp; Accessibility</a></li>
+  </ul>
+</div>
+
+<hr>
+
+<h2 id="s1">1. Design Principles</h2>
+
+<table>
+<thead><tr><th>Principle</th><th>Rationale</th></tr></thead>
+<tbody>
+<tr><td><strong>4 tabs + rightmost Add island</strong></td><td>Dashboard, Transactions, Budgets, More — plus Add as a separate elevated island at the rightmost with accent background. Add is always one tap away.</td></tr>
+<tr><td><strong>Dashboard is home</strong></td><td>First thing users see. One headline number + glanceable cards, never a blank screen.</td></tr>
+<tr><td><strong>More tab as hub</strong></td><td>Secondary features (accounts, debts, goals, reports, settings) grouped logically. Prevents tab bar clutter.</td></tr>
+<tr><td><strong>Sheets for creation, pages for detail</strong></td><td>Create/edit flows use bottom sheets (quick, dismissible). Detail views use pushed pages (full context).</td></tr>
+<tr><td><strong>No more than 3 taps to any feature</strong></td><td>From dashboard, any screen reachable in ≤3 taps.</td></tr>
+<tr><td><strong>Calm, not gamified</strong></td><td>No badges, streaks, or guilt indicators in navigation. Notifications are informational, not engagement-bait.</td></tr>
+<tr><td><strong>Save-first, correction-friendly</strong></td><td>No review queue. Transactions save immediately. Undo snackbar (5s) on every save.</td></tr>
+<tr><td><strong>Empty states are actionable</strong></td><td>Every empty screen shows an illustration, a one-sentence explanation, and a primary CTA. Optional demo data for exploration.</td></tr>
+<tr><td><strong>Semantic color-only feedback</strong></td><td>Green = on track, amber = warning, red = overspent. No exclamation text or guilt language.</td></tr>
+</tbody>
+</table>
+
+<hr>
+
+<h2 id="s2">2. Navigation Structure Overview</h2>
+
+<pre>
+┌──────────────────────────────────────────────────────────────┐
+│                 APP SHELL                                     │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │         Top Bar (contextual)                         │    │
+│  │  [← back]   Title    [sync icon] [⋮]                │    │
+│  ├─────────────────────────────────────────────────────┤    │
+│  │                                                     │    │
+│  │           Active Tab Content                        │    │
+│  │           (scrollable)                              │    │
+│  │                                                     │    │
+│  ├─────────────────────────────────────────────────────┤    │
+│  │ [Dash] [Trans] [Budgets] [More]       ┌───────┐    │    │
+│  │                                       │  +    │    │    │
+│  │                                       └───────┘    │    │
+│  │                                    Add island       │    │
+│  │                                  (accent bg)        │    │
+│  └─────────────────────────────────────────────────────┘    │
+└──────────────────────────────────────────────────────────────┘
+</pre>
+
+<h3>Bottom Tab Bar</h3>
+
+<table>
+<thead><tr><th>#</th><th>Tab</th><th>Icon</th><th>Label</th><th>Behavior</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Dashboard</td><td>home</td><td>Home</td><td>Tap → Dashboard tab</td></tr>
+<tr><td>2</td><td>Transactions</td><td>list</td><td>Transactions</td><td>Tap → Transactions tab</td></tr>
+<tr><td>3</td><td>Budgets</td><td>chart</td><td>Budgets</td><td>Tap → Budgets tab</td></tr>
+<tr><td>4</td><td>More</td><td>grid</td><td>More</td><td>Tap → More tab</td></tr>
+</tbody>
+</table>
+
+<h3>Add Island (rightmost)</h3>
+
+<table>
+<thead><tr><th>Element</th><th>Icon</th><th>Behavior</th></tr></thead>
+<tbody>
+<tr><td><strong>Add button</strong></td><td><strong>plus</strong></td><td><strong>Tap → Quick Actions Bottom Sheet</strong></td></tr>
+</tbody>
+</table>
+
+<p>The <strong>Add island</strong> sits at the rightmost of the tab bar, visually separated from the 4 tabs. It has an <strong>accent color background</strong>, is <strong>elevated</strong>, and uses a <strong>larger icon</strong>. It does not represent a page — tapping it opens the <strong>Quick Actions Bottom Sheet</strong> without changing the active tab. The previously active tab remains selected.</p>
+
+<p>Tab state (scroll position, filter state) is preserved when switching tabs via Riverpod providers scoped per tab.</p>
+
+<h3>Add Island → Quick Actions Bottom Sheet</h3>
+
+<p>Tapping the Add island opens a <strong>Quick Actions Bottom Sheet</strong>:</p>
+
+<pre>
+┌─────────────────────────────┐
+│        Add Transaction      │
+│                             │
+│  ┌───────────────────────┐  │
+│  │ mcdo 250 gcash    🎤  │  │  ← NL input with mic toggle
+│  └───────────────────────┘  │
+│                             │
+│  ┌─────────┐ ┌─────────┐   │
+│  │ Manual  │ │  Scan   │   │
+│  └─────────┘ └─────────┘   │
+└─────────────────────────────┘
+</pre>
+
+<table>
+<thead><tr><th>Action</th><th>Icon</th><th>Behavior</th></tr></thead>
+<tbody>
+<tr><td><strong>Quick Add (NL)</strong></td><td>keyboard</td><td>Primary input field. Type natural language → parse → preview card → confirm → save. Tap 🎤 to toggle voice input mode. Sheet stays open for rapid entry.</td></tr>
+<tr><td><strong>Manual</strong></td><td>pencil</td><td>Opens full transaction form sheet (all fields). Save → close sheet → undo snackbar.</td></tr>
+<tr><td><strong>Scan</strong></td><td>camera</td><td>Opens full-screen camera → capture → OCR processing → autofill form sheet → adjust → save.</td></tr>
+</tbody>
+</table>
+
+<p><strong>Mic toggle</strong>: Inside the Quick Add input field, a 🎤 microphone icon toggles between text and voice input. In voice mode, tapping the field starts listening → transcribe → parse → preview → confirm → save.</p>
+
+<div class="callout">
+<strong>Undo snackbar</strong>: After every save, a bottom snackbar appears: "Transaction saved · UNDO". Tapping undo reverts the save (deletes the record, restores previous balances). Auto-dismisses after 5 seconds.
+</div>
+
+<hr>
+
+<h2 id="s3">3. Tab 1: Dashboard (Home)</h2>
+
+<p>The glanceable summary screen. Vertically scannable, emotionally calm. Inspired by PocketGuard's "In My Pocket" and Monarch's widget cards.</p>
+
+<h3>Layout (top to bottom)</h3>
+
+<table>
+<thead><tr><th>#</th><th>Section</th><th>Tap target</th><th>Source</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Greeting + date</td><td>—</td><td>product-strategy.md</td></tr>
+<tr><td>2</td><td><strong>Safe-to-Spend hero card</strong> — one large number showing available cash after budgets &amp; bills</td><td>—</td><td>Research: PocketGuard "In My Pocket"</td></tr>
+<tr><td>3</td><td>Net worth sparkline card (mini line chart, 30 days)</td><td>→ Reports: Net worth detail</td><td>domain-model.md §688</td></tr>
+<tr><td>4</td><td>Account summary cards (horizontal scroll, 3–4 visible)</td><td>→ Account detail</td><td>domain-model.md §689</td></tr>
+<tr><td>5</td><td>Income vs expense strip (current month, horizontal bar)</td><td>→ Reports: Income vs expense</td><td>domain-model.md §690</td></tr>
+<tr><td>6</td><td>Budget progress rings/cards (top 3–4 overspent or closest to limit)</td><td>→ Budgets tab</td><td>domain-model.md §691</td></tr>
+<tr><td>7</td><td>Spending by category donut chart (current month)</td><td>→ Reports: Spending by category</td><td>Research: Copilot/Monarch</td></tr>
+<tr><td>8</td><td>Recent transactions (last 5, with "See all" link)</td><td>→ Transactions tab</td><td>domain-model.md §692</td></tr>
+<tr><td>9</td><td>Upcoming recurring / bills (next 7 days)</td><td>→ Recurring list</td><td>Research: Monarch bill calendar</td></tr>
+<tr><td>10</td><td>Insights / AI section (future, collapsible)</td><td>→ Insights detail</td><td>domain-model.md §693</td></tr>
+</tbody>
+</table>
+
+<div class="callout callout-orange">
+<strong>Empty state</strong>: If no accounts exist, show a centered illustration (friendly character), text "Let's set up your first account", and a primary CTA "Add Account". Optional secondary link "Try with demo data" that seeds 30 days of sample transactions, accounts, and budgets.
+</div>
+
+<h3>Top bar elements</h3>
+
+<table>
+<thead><tr><th>Element</th><th>Position</th><th>Behavior</th></tr></thead>
+<tbody>
+<tr><td>Sync status icon</td><td>Right</td><td>Tap → Sync status sheet. Shows last_synced_at, pending count, failed count, retry button.</td></tr>
+<tr><td>Search icon</td><td>Right</td><td>Tap → Global search (transactions, payees, categories).</td></tr>
+</tbody>
+</table>
+
+<h3>Pull-to-refresh</h3>
+
+<p>Triggers immediate sync cycle (see <code>sync-engine.md</code> §2). Shows refresh indicator. If offline, shows subtle "Offline — will sync when connected" text.</p>
+
+<hr>
+
+<h2 id="s4">4. Tab 2: Transactions</h2>
+
+<p>The unified transaction list. All transactions in one scrollable list — expenses, income, and transfers together. Filterable via a single filter button. Inspired by Monarch's clean searchable list and Copilot's grouped date layout.</p>
+
+<h3>Screen structure</h3>
+
+<pre>
+┌─────────────────────────────────┐
+│  🔍 Search...        [🔧]       │
+├─────────────────────────────────┤
+│                                 │
+│  Today                          │
+│  ┌─────────────────────────┐   │
+│  │ 🍔 McDonald's    -₱250  │   │  ← Expense (red)
+│  │    Food · GCash         │   │
+│  └─────────────────────────┘   │
+│  ┌─────────────────────────┐   │
+│  │ 💰 Salary        +₱45k  │   │  ← Income (green)
+│  │    Income · BPI         │   │
+│  └─────────────────────────┘   │
+│  ┌─────────────────────────┐   │
+│  │ ↕️ BPI → GCash   -₱500  │   │  ← Transfer (blue)
+│  │    Transfer · BPI       │   │
+│  └─────────────────────────┘   │
+│                                 │
+│  Yesterday                      │
+│  ┌─────────────────────────┐   │
+│  │ 🚗 Grab           -₱180 │   │
+│  │    Transport · GCash    │   │
+│  └─────────────────────────┘   │
+│                                 │
+│                        ┌────┐  │
+│                        │ +  │  │  ← Add island
+│                        └────┘  │
+└─────────────────────────────────┘
+</pre>
+
+<h3>Search bar</h3>
+
+<p>Persistent search bar at the top left of the Transactions tab. Filters in real-time across:</p>
+<ul>
+<li>Payee name (fuzzy match)</li>
+<li>Category name</li>
+<li>Amount (exact or range)</li>
+<li>Note text</li>
+</ul>
+
+<p>Tapping the search bar expands it full-width and shows recent searches.</p>
+
+<h3>Filter button (🔧)</h3>
+
+<p>Tapping the filter button (top right, wrench/funnel icon) opens a <strong>Filter Sheet</strong>:</p>
+
+<pre>
+┌─────────────────────────────────┐
+│  Filters                    ✕   │
+├─────────────────────────────────┤
+│                                 │
+│  Direction                      │
+│  [All] [Expense] [Income]       │
+│  [Transfer]                     │
+│                                 │
+│  Mode                           │
+│  [All] [One-time] [Recurring]   │
+│  [Installment] [Debt]           │
+│                                 │
+│  Account                        │
+│  [All] [BPI] [GCash] [Cash]     │
+│                                 │
+│  Category                       │
+│  [All] [Food] [Transport] ...   │
+│                                 │
+│  Amount Range                   │
+│  [Min] — [Max]                  │
+│                                 │
+│  Date Range                     │
+│  [Start] — [End]                │
+│                                 │
+│  [Clear All]      [Apply]       │
+│                                 │
+└─────────────────────────────────┘
+</pre>
+
+<table>
+<thead><tr><th>Filter</th><th>Options</th><th>Source</th></tr></thead>
+<tbody>
+<tr><td>Direction</td><td>All, Expense, Income, Transfer</td><td>domain-model.md §552-554</td></tr>
+<tr><td>Mode</td><td>All, One-time, Recurring, Installment, Debt</td><td>domain-model.md §558-561</td></tr>
+<tr><td>Account</td><td>All, or specific account(s)</td><td>database-schema.md</td></tr>
+<tr><td>Category</td><td>All, or specific category(s)</td><td>database-schema.md</td></tr>
+<tr><td>Amount Range</td><td>Min / Max input</td><td>—</td></tr>
+<tr><td>Date Range</td><td>Start / End date picker</td><td>—</td></tr>
+</tbody>
+</table>
+
+<p>Multiple filters combine with AND logic. "Clear All" resets to default. "Apply" closes sheet and refreshes list.</p>
+
+<h3>Transaction row</h3>
+
+<p>Each row shows:</p>
+<ul>
+<li><strong>Left</strong>: Category icon or payee initial (circular avatar)</li>
+<li><strong>Center</strong>: Payee name (bold), category + account (secondary)</li>
+<li><strong>Right</strong>: Amount (bold, color-coded: <strong>red</strong> for expense, <strong>green</strong> for income, <strong>blue</strong> for transfer)</li>
+<li><strong>Direction badge</strong>: Small text label or color indicating direction (expense/income/transfer)</li>
+</ul>
+
+<p><strong>Swipe actions</strong> (from row):</p>
+<ul>
+<li><strong>Swipe left</strong>: Edit (pencil) → opens edit sheet | Delete (trash) → confirmation dialog</li>
+<li><strong>Swipe right</strong>: Categorize (tag) → opens category picker sheet | Duplicate → creates copy</li>
+</ul>
+
+<p>Tapping a row → <strong>Transaction Detail</strong> (pushed page).</p>
+
+<h3>Grouping</h3>
+
+<p>Transactions grouped by date (Today, Yesterday, this week, this month, older). Within each group, sorted by <code>occurred_at</code> descending.</p>
+
+<h3>Income deduction rows</h3>
+
+<p>Salary transactions with child deductions show an expand indicator (chevron). Tap → expands inline to show deduction breakdown (tax, SSS, PhilHealth, etc.). Tap again → collapse.</p>
+
+<h3>Empty state</h3>
+
+<p>If no accounts exist:</p>
+<ul>
+<li>Illustration (empty wallet)</li>
+<li>"You need an account to track transactions"</li>
+<li>"Add your first account to get started"</li>
+<li>Primary CTA: "Add Account" (opens Account Creation sheet)</li>
+<li>Secondary: "Try demo data"</li>
+</ul>
+
+<p>If accounts exist but no transactions:</p>
+<ul>
+<li>Illustration (empty envelope)</li>
+<li>"No transactions yet"</li>
+<li>"Tap the + button to add your first transaction"</li>
+<li>Primary CTA: "Add Transaction" (opens Add sheet)</li>
+<li>Secondary: "Try demo data"</li>
+</ul>
+
+<hr>
+
+<h2 id="s5">5. Tab 3: Budgets</h2>
+
+<p>Monthly category budgets with progress visualization. Inspired by YNAB's month navigation and Monarch's progress bars.</p>
+
+<h3>Screen structure</h3>
+
+<pre>
+┌─────────────────────────────────┐
+│  ◀ June 2026 ▶     Budgets  [+] │
+├─────────────────────────────────┤
+│                                 │
+│  Spent ₱12,500 of ₱20,000       │  ← Monthly summary
+│  ████████████░░░░░░  63%        │
+│                                 │
+│  ┌─────────────────────────┐   │
+│  │ 🍔 Food          ₱5,200 │   │  ← Tap → Budget detail
+│  │ ████████░░░░  ₱8,000    │   │     Amber = close to limit
+│  └─────────────────────────┘   │
+│  ┌─────────────────────────┐   │
+│  │ 🚗 Transport     ₱1,800 │   │
+│  │ ████░░░░░░░░  ₱3,000    │   │
+│  └─────────────────────────┘   │
+│  ┌─────────────────────────┐   │
+│  │ 🎬 Entertainment  ₱2,500│   │  ← Over budget = soft red
+│  │ ████████████░  ₱3,000   │   │     No guilt text, just color
+│  └─────────────────────────┘   │
+│                                 │
+│  No budget set                  │
+│  ┌─────────────────────────┐   │
+│  │ 🏠 Rent          ₱0     │   │  ← Tap → Create budget sheet
+│  │ Set a budget            │   │
+│  └─────────────────────────┘   │
+│                                 │
+└─────────────────────────────────┘
+</pre>
+
+<h3>Month navigation</h3>
+
+<p>Swipe left/right or tap arrows to navigate months. State: <code>month</code> + <code>year</code>. Month label format: "June 2026". Current month is highlighted.</p>
+
+<h3>Budget row</h3>
+
+<table>
+<thead><tr><th>Element</th><th>Display</th></tr></thead>
+<tbody>
+<tr><td>Category icon + name</td><td>Left</td></tr>
+<tr><td>Spent amount</td><td>Right (primary)</td></tr>
+<tr><td>Progress bar</td><td>Below, colored by status</td></tr>
+<tr><td>Budget amount</td><td>Right (secondary, muted)</td></tr>
+</tbody>
+</table>
+
+<p><strong>Progress bar colors</strong> (semantic, calm):</p>
+
+<table>
+<thead><tr><th>Status</th><th>Color</th><th>Condition</th><th>Haptic</th></tr></thead>
+<tbody>
+<tr><td>On track</td><td>emerald</td><td>spent &lt; 80% of budget</td><td>None</td></tr>
+<tr><td>Warning</td><td>amber</td><td>spent 80–100% of budget</td><td>Light tap when crossing 80%</td></tr>
+<tr><td>Over budget</td><td>soft red</td><td>spent &gt; 100% of budget</td><td>Light tap when crossing 100%</td></tr>
+</tbody>
+</table>
+
+<p>No guilt language. Just color. No "over budget!" alert text.</p>
+
+<p><strong>Rollover indicator</strong>: If a category has rollover enabled and carries a balance from previous month, show a small "+₱X from last month" label below the progress bar in muted text.</p>
+
+<h3>Tap budget row → Budget Detail (pushed page)</h3>
+
+<p>Shows:</p>
+<ul>
+<li>Category name + icon</li>
+<li>Spent vs budget (large numbers)</li>
+<li>Progress bar (full width)</li>
+<li>Rollover info (if applicable)</li>
+<li>All transactions in this category for the month (scrollable list, same row style as Transactions tab)</li>
+<li>Edit budget button (pencil)</li>
+<li>Delete budget button (trash, with confirmation)</li>
+</ul>
+
+<h3>[+] button → Budget Creation/Edit Sheet</h3>
+
+<p>Select category (from unbudgeted categories) → enter monthly amount → toggle rollover (on/off) → save.</p>
+
+<h3>Empty state</h3>
+
+<p>If no budgets set for the month:</p>
+<ul>
+<li>Illustration (empty chart)</li>
+<li>"You haven't set any budgets for June"</li>
+<li>"Budgets help you stay on track without stress"</li>
+<li>Primary CTA: "Create First Budget" (opens creation sheet)</li>
+<li>Secondary: "Auto-suggest budgets" (AI or heuristic suggestion based on last 3 months average spending per category)</li>
+</ul>
+
+<hr>
+
+<h2 id="s6">6. Tab 4: More</h2>
+
+<p>Hub for all secondary features. Grouped into sections for scannability.</p>
+
+<h3>Screen structure</h3>
+
+<pre>
+┌─────────────────────────────────┐
+│           More                  │
+├─────────────────────────────────┤
+│                                 │
+│  FINANCIAL                      │
+│  ┌─────────────────────────┐   │
+│  │ 👤 Accounts         &gt;   │   │
+│  │ 🤝 Debts &amp; Lending  &gt;   │   │
+│  │ 🎯 Goals            &gt;   │   │
+│  │ 🔁 Recurring        &gt;   │   │
+│  └─────────────────────────┘   │
+│                                 │
+│  INSIGHTS                       │
+│  ┌─────────────────────────┐   │
+│  │ 📊 Reports          &gt;   │   │
+│  │ 💡 Insights (AI)    &gt;   │   │
+│  └─────────────────────────┘   │
+│                                 │
+│  MANAGE                         │
+│  ┌─────────────────────────┐   │
+│  │ 🏷️ Categories       &gt;   │   │
+│  │ 🏪 Payees           &gt;   │   │
+│  │ 👨‍👩‍👧 Households       &gt;   │   │
+│  └─────────────────────────┘   │
+│                                 │
+│  SETTINGS                       │
+│  ┌─────────────────────────┐   │
+│  │ ⚙️ Profile &amp; Prefs   &gt;   │   │
+│  │ 🔔 Notifications     &gt;   │   │
+│  │ 🤖 AI &amp; Data         &gt;   │   │
+│  │ ☁️ Cloud Sync        &gt;   │   │
+│  │ 🌙 Appearance        &gt;   │   │  ← Light / Dark / System
+│  │ 🔒 Security          &gt;   │   │  ← Future (biometric, encryption)
+│  │ ℹ️ About             &gt;   │   │
+│  └─────────────────────────┘   │
+│                                 │
+└─────────────────────────────────┘
+</pre>
+
+<h3>Section: Financial</h3>
+
+<h4>Accounts</h4>
+<ul>
+<li><strong>Accounts list</strong> (pushed): All accounts grouped by Asset / Liability. Shows name, type, balance. Archived accounts in separate section. Hidden accounts toggle.</li>
+<li>Tap account → <strong>Account Detail</strong> (pushed): Balance, balance history graph (from <code>account_balance_snapshots</code>), transaction list filtered by account, edit/archive/hide actions.</li>
+<li>[+] → <strong>Account Creation</strong> (sheet): Select type (asset/liability subtype), name, opening balance, currency, ownership (personal/shared).</li>
+</ul>
+
+<h4>Debts &amp; Lending</h4>
+<ul>
+<li><strong>Debt list</strong> (pushed): Grouped by <code>counterparty_name</code>. Each group shows net balance (SUM of lent remaining − SUM of borrowed remaining). Expandable to show individual debt records.</li>
+<li>Tap debt → <strong>Debt Detail</strong> (pushed): Counterparty, direction, amount, remaining balance, due date, status, note. Actions: record payment, mark settled, edit.</li>
+<li>[+] → <strong>Debt Creation</strong> (sheet): Counterparty name, direction (lent/borrowed), amount, due date, note.</li>
+</ul>
+
+<h4>Goals</h4>
+<ul>
+<li><strong>Goals list</strong> (pushed): Cards with progress rings. Shows name, target, current, target date. Filter by type.</li>
+<li>Tap goal → <strong>Goal Detail</strong> (pushed): Progress, contribution history, edit, contribute button.</li>
+<li>[+] → <strong>Goal Creation</strong> (sheet): Name, type, target amount, target date.</li>
+</ul>
+
+<h4>Recurring</h4>
+<ul>
+<li><strong>Recurring list</strong> (pushed): Templates grouped by type (recurring expense, recurring income, subscriptions, installments, reminder-only). Shows next occurrence date.</li>
+<li>Tap template → <strong>Recurring Detail</strong> (pushed): All fields, next occurrences preview, edit, delete. "Create transaction now" button (manual trigger).</li>
+<li>[+] → <strong>Recurring Creation</strong> (sheet): Account, category, payee, amount, recurrence rule, reminder toggle.</li>
+</ul>
+
+<h3>Section: Insights</h3>
+
+<h4>Reports</h4>
+<ul>
+<li><strong>Reports hub</strong> (pushed): 5 report cards.
+  <ol>
+    <li>Spending by category → donut chart + drilldown</li>
+    <li>Income vs expense → bar chart + drilldown</li>
+    <li>Net worth trend → line graph + drilldown</li>
+    <li>Account balances → summary cards + drilldown</li>
+    <li>Budget performance → progress overview + drilldown</li>
+  </ol>
+</li>
+<li>Tap report → <strong>Report Detail</strong> (pushed): Full chart with period selector (month/quarter/year). Tap chart segment → <strong>Transaction list</strong> (pushed, filtered).</li>
+<li>Export button → CSV export sheet.</li>
+</ul>
+
+<h4>Insights (AI)</h4>
+<ul>
+<li><strong>Insights list</strong> (pushed): AI-generated observations (anomalies, spending trends, saving opportunities). Each insight is a card with explanation and affected transactions.</li>
+<li>Tap insight → <strong>Insight Detail</strong> (pushed): Full explanation, supporting data, dismiss / apply action.</li>
+</ul>
+
+<h3>Section: Manage</h3>
+
+<h4>Categories</h4>
+<ul>
+<li><strong>Category list</strong> (pushed): Grouped by <code>category_group</code> (expense, income, transfer). Hierarchical display (parent → child).</li>
+<li>Tap category → <strong>Category Edit</strong> (sheet): Edit name, icon, color.</li>
+<li>Seed categories marked with badge. Custom categories have delete option.</li>
+</ul>
+
+<h4>Payees</h4>
+<ul>
+<li><strong>Payee list</strong> (pushed): Alphabetical. Shows display_name, normalized_name, transaction count.</li>
+<li>Tap payee → <strong>Payee Detail</strong> (pushed): Transaction history, recurring detection, merge/deduplicate option.</li>
+</ul>
+
+<h4>Households</h4>
+<ul>
+<li><strong>Household list</strong> (pushed): List of households user belongs to. Shows name, member count, role.</li>
+<li>Tap household → <strong>Household Detail</strong> (pushed): Member list with roles, shared accounts/budgets/goals, invite button.</li>
+<li>Invite → <strong>User Search Sheet</strong>: Search by email → select → assign role.</li>
+</ul>
+
+<h3>Section: Settings</h3>
+
+<h4>Profile &amp; Preferences</h4>
+<ul>
+<li><strong>Profile screen</strong> (pushed): Display name, email (read-only), currency code, locale, timezone. Edit fields → save.</li>
+<li>Logout button at bottom.</li>
+<li>"Delete account &amp; reset data" button (destructive, confirmation dialog).</li>
+</ul>
+
+<h4>Notifications</h4>
+<ul>
+<li><strong>Notification settings</strong> (pushed): Toggle per notification type (recurring_reminder, bill_due, installment_due, debt_reminder, subscription_reminder). Time preference for daily summaries.</li>
+</ul>
+
+<h4>AI &amp; Data</h4>
+<ul>
+<li><strong>AI settings</strong> (pushed): AI enabled toggle, model info, AI processing log (read-only list), data privacy info.</li>
+<li><strong>AI Processing Log</strong> (pushed from AI settings): List of <code>ai_processing_logs</code> entries. Shows source_type, model_used, confidence_score, timestamp. Tap → payload detail.</li>
+</ul>
+
+<h4>Cloud Sync</h4>
+<ul>
+<li><strong>Sync settings</strong> (pushed): Shows "Cloud sync coming soon. Your data stays on your device." In V1, sync infrastructure is built but email authentication is disabled. The sync settings screen explains that cloud backup will be available in a future update.</li>
+<li>Manual sync button (disabled/greyed in V1).</li>
+<li>No authentication required in V1.</li>
+</ul>
+
+<h4>Appearance</h4>
+<ul>
+<li><strong>Appearance settings</strong> (pushed): Theme selection (Light / Dark / System). Preview card showing current theme. Applies immediately.</li>
+</ul>
+
+<h4>Security (Future)</h4>
+<ul>
+<li><strong>Security settings</strong> (pushed): Biometric lock toggle, auto-lock timer, local DB encryption info. Greyed out / "Coming soon" in V1.</li>
+</ul>
+
+<h4>About</h4>
+<ul>
+<li><strong>About screen</strong> (pushed): App version, build number, licenses, privacy policy, terms, links.</li>
+</ul>
+
+<hr>
+
+<h2 id="s7">7. Modal Flows &amp; Sheets</h2>
+
+<h3>7.1 Add Transaction Flow (from Add island)</h3>
+
+<p>Add island tap → <strong>Quick Actions Bottom Sheet</strong> (see §2 for layout).</p>
+
+<table>
+<thead><tr><th>Action</th><th>Flow</th></tr></thead>
+<tbody>
+<tr><td><strong>Quick Add (NL + Voice)</strong></td><td>Type natural language or tap 🎤 for voice → parse → preview card → confirm → save. Sheet stays open for rapid entry. Dismisses on swipe down or tap outside.</td></tr>
+<tr><td><strong>Manual</strong></td><td>Full transaction form sheet (all fields). Save → close sheet → undo snackbar.</td></tr>
+<tr><td><strong>Scan (OCR)</strong></td><td>Full-screen camera → capture → OCR processing → autofill form sheet → adjust → save.</td></tr>
+</tbody>
+</table>
+
+<p>All flows end with: save transaction → update account balance → close sheet → show undo snackbar (5s).</p>
+
+<h3>7.2 Transaction Edit Flow</h3>
+
+<p>From Transaction Detail → edit button → <strong>Transaction Edit Sheet</strong> (same form as manual entry, pre-filled).</p>
+
+<p>Edit rules (from <code>domain-model.md</code> §240-252):</p>
+<ul>
+<li>Expense edit: refund previous amount → deduct new amount</li>
+<li>Income edit: deduct previous amount → add new amount</li>
+<li>Transfer edit: reverse previous transfer → apply updated transfer</li>
+</ul>
+
+<h3>7.3 Transfer Creation Flow</h3>
+
+<p>From Add island → Manual → direction = transfer. Or from Account Detail → transfer button.</p>
+
+<p><strong>Transfer Form Sheet</strong>: source account, destination account, amount, fee (optional), note, date. Save → update both account balances → if fee, create expense transaction → close.</p>
+
+<h3>7.4 OCR Scan Flow</h3>
+
+<pre>
+Camera (full screen)
+    ↓ capture
+OCR Processing (loading overlay with progress)
+    ↓ extract
+Autofill Form Sheet (pre-filled with merchant, amount, date)
+    ↓ user adjusts
+Save Transaction
+</pre>
+
+<h3>7.5 Onboarding Flow</h3>
+
+<p>First launch only. Can be skipped at any point. Not a login wall. No authentication required for V1.</p>
+
+<pre>
+Step 1: Intro Carousel (3 pages)
+    ├─ Page 1: "Your money, simplified"
+    ├─ Page 2: "Track everything in one place"
+    └─ Page 3: "Budget without stress"
+    ↓
+Step 2: AI Opt-in
+    ├─ Enable AI (recommended) → downloads model in background
+    └─ Skip for now → can enable later in Settings
+    ↓
+Step 3: Create First Account (guided)
+    ├─ Select account type (Cash, Bank, Credit Card, etc.)
+    ├─ Enter name
+    ├─ Enter opening balance
+    └→ Dashboard with account created
+    ↓
+Step 4: Add First Transaction (guided, optional)
+    ├─ Quick add tutorial (highlight the Add island)
+    ├→ Transaction saved
+    └→ Dashboard fully populated
+</pre>
+
+<p><strong>Onboarding empty state</strong>: After onboarding, if the user skipped adding an account, the Dashboard shows the empty state with demo data CTA.</p>
+
+<h3>7.6 Authentication Flow (V2 — Sync)</h3>
+
+<div class="callout">
+<strong>V1 scope</strong>: Authentication and cloud sync are <strong>groundwork only</strong>. The app is fully local-first in V1. Sync infrastructure (endpoints, tokens, sync engine) is built but email authentication is <strong>disabled</strong> until V2.
+<br><br>
+In V1, the Cloud Sync settings screen shows: "Cloud sync coming soon. Your data stays on your device."
+</div>
+
+<p>Future V2 flow (for reference):</p>
+
+<pre>
+Email Entry Screen
+    ↓
+OTP Verification Screen
+    ↓
+Auto-login/Signup
+    ↓
+Return to previous screen
+</pre>
+
+<p>Does NOT block app usage. User can cancel and continue in local mode.</p>
+
+<hr>
+
+<h2 id="s8">8. Deep Link Mappings</h2>
+
+<p>Notification tap → target screen. All deep links use path-based URLs.</p>
+
+<table>
+<thead><tr><th>Notification Type</th><th>Deep Link Path</th><th>Target Screen</th></tr></thead>
+<tbody>
+<tr><td><code>bill_due</code></td><td><code>/transactions?filter=installment</code></td><td>Transactions tab, installment filter</td></tr>
+<tr><td><code>installment_due</code></td><td><code>/transactions?filter=installment</code></td><td>Transactions tab, installment filter</td></tr>
+<tr><td><code>recurring_reminder</code></td><td><code>/recurring/{template_id}</code></td><td>Recurring Detail</td></tr>
+<tr><td><code>debt_reminder</code></td><td><code>/debts/{debt_id}</code></td><td>Debt Detail</td></tr>
+<tr><td><code>subscription_reminder</code></td><td><code>/recurring?filter=subscription</code></td><td>Recurring list, subscription filter</td></tr>
+<tr><td><code>transaction_reminder</code></td><td><code>/transactions/new</code></td><td>Add Transaction sheet</td></tr>
+</tbody>
+</table>
+
+<h3>Sync status deep link</h3>
+
+<table>
+<thead><tr><th>Trigger</th><th>Deep Link Path</th><th>Target</th></tr></thead>
+<tbody>
+<tr><td>Sync failed notification</td><td><code>/settings/sync</code></td><td>Sync settings screen</td></tr>
+</tbody>
+</table>
+
+<hr>
+
+<h2 id="s9">9. Navigation Patterns</h2>
+
+<table>
+<thead><tr><th>Pattern</th><th>When to use</th><th>Example</th></tr></thead>
+<tbody>
+<tr><td><strong>Push (full page)</strong></td><td>Detail views, drilldowns, settings</td><td>Transaction detail, account detail, report detail</td></tr>
+<tr><td><strong>Bottom sheet</strong></td><td>Creation, editing, quick actions</td><td>Add transaction, edit budget, Add island menu, category picker, filter sheet</td></tr>
+<tr><td><strong>Full-screen modal</strong></td><td>Camera, voice input, onboarding</td><td>OCR scan, voice input, intro carousel</td></tr>
+<tr><td><strong>Tab switch</strong></td><td>Primary navigation between top-level domains</td><td>Dashboard → Transactions</td></tr>
+<tr><td><strong>Inline expansion</strong></td><td>Grouped data within a list</td><td>Debt groups, income deduction breakdown</td></tr>
+</tbody>
+</table>
+
+<h3>Back navigation</h3>
+<ul>
+<li>Pushed screens: system back button or custom ← in top bar</li>
+<li>Sheets: swipe down or tap outside</li>
+<li>Full-screen modals: close (✕) button</li>
+<li>Tab switches: no back (tabs preserve state)</li>
+</ul>
+
+<h3>State preservation</h3>
+<p>Each tab preserves its scroll position and filter state when switching tabs. Tab state is held in Riverpod providers scoped to the tab.</p>
+
+<hr>
+
+<h2 id="s10">10. Route Definitions (Flutter go_router)</h2>
+
+<p>Uses <code>go_router</code> with <code>ShellRoute</code> for the bottom tab bar.</p>
+
+<h3>Route tree</h3>
+
+<pre>
+/ (ShellRoute — bottom tab bar)
+├── /                        ← Tab 1: Dashboard
+├── /transactions            ← Tab 2: Transactions
+│   └── /transactions/:id    ← Transaction Detail (pushed)
+├── /budgets                 ← Tab 3: Budgets
+│   └── /budgets/:id         ← Budget Detail (pushed)
+├── /more                    ← Tab 4: More
+│   ├── /more/accounts
+│   │   └── /more/accounts/:id
+│   ├── /more/debts
+│   │   └── /more/debts/:id
+│   ├── /more/goals
+│   │   └── /more/goals/:id
+│   ├── /more/recurring
+│   │   └── /more/recurring/:id
+│   ├── /more/reports
+│   │   └── /more/reports/:type
+│   ├── /more/insights
+│   ├── /more/categories
+│   ├── /more/payees
+│   │   └── /more/payees/:id
+│   ├── /more/households
+│   │   └── /more/households/:id
+│   ├── /more/settings
+│   ├── /more/settings/notifications
+│   ├── /more/settings/ai
+│   │   └── /more/settings/ai/logs
+│   ├── /more/settings/sync
+│   ├── /more/settings/appearance
+│   ├── /more/settings/security
+│   └── /more/settings/about
+│
+├── /onboarding              ← Full-screen modal (first launch)
+├── /transactions/new        ← Bottom sheet (add transaction)
+└── /scan                    ← Full-screen modal (OCR camera)
+</pre>
+
+<h3>Modal routes</h3>
+
+<table>
+<thead><tr><th>Route</th><th>Presentation</th><th>Dismissal</th></tr></thead>
+<tbody>
+<tr><td><code>/onboarding</code></td><td>fullScreen</td><td>cannot dismiss (must complete or skip)</td></tr>
+<tr><td><code>/transactions/new</code></td><td>bottomSheet</td><td>swipe down</td></tr>
+<tr><td><code>/scan</code></td><td>fullScreen</td><td>✕ button</td></tr>
+</tbody>
+</table>
+
+<h3>Query parameters</h3>
+
+<table>
+<thead><tr><th>Route</th><th>Param</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td><code>/transactions</code></td><td><code>filter</code></td><td>Mode filter: <code>one_time</code>, <code>recurring</code>, <code>installment</code>, <code>debt</code></td></tr>
+<tr><td><code>/transactions</code></td><td><code>account</code></td><td>Filter by account ID</td></tr>
+<tr><td><code>/transactions</code></td><td><code>direction</code></td><td>Filter by direction: <code>expense</code>, <code>income</code>, <code>transfer</code></td></tr>
+<tr><td><code>/more/reports/:type</code></td><td><code>period</code></td><td><code>month</code>, <code>quarter</code>, <code>year</code></td></tr>
+<tr><td><code>/budgets</code></td><td><code>month</code>, <code>year</code></td><td>Budget period</td></tr>
+</tbody>
+</table>
+
+<hr>
+
+<h2 id="s11">11. Complete Screen Inventory</h2>
+
+<p>Every screen in the app, mapped to its source requirement.</p>
+
+<h3>Tab screens (4)</h3>
+
+<table>
+<thead><tr><th>#</th><th>Screen</th><th>Tab</th><th>Route</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Dashboard</td><td>1</td><td><code>/</code></td></tr>
+<tr><td>2</td><td>Transactions</td><td>2</td><td><code>/transactions</code></td></tr>
+<tr><td>3</td><td>Budgets</td><td>3</td><td><code>/budgets</code></td></tr>
+<tr><td>4</td><td>More</td><td>4</td><td><code>/more</code></td></tr>
+</tbody>
+</table>
+
+<h3>Pushed screens (detail &amp; list)</h3>
+
+<table>
+<thead><tr><th>#</th><th>Screen</th><th>Route</th><th>Source</th></tr></thead>
+<tbody>
+<tr><td>5</td><td>Transaction Detail</td><td><code>/transactions/:id</code></td><td>domain-model.md</td></tr>
+<tr><td>6</td><td>Budget Detail</td><td><code>/budgets/:id</code></td><td>domain-model.md Prompt 4</td></tr>
+<tr><td>7</td><td>Accounts List</td><td><code>/more/accounts</code></td><td>product-strategy.md §Accounts</td></tr>
+<tr><td>8</td><td>Account Detail</td><td><code>/more/accounts/:id</code></td><td>product-strategy.md §Accounts</td></tr>
+<tr><td>9</td><td>Debts List</td><td><code>/more/debts</code></td><td>product-strategy.md §Borrow/Lend</td></tr>
+<tr><td>10</td><td>Debt Detail</td><td><code>/more/debts/:id</code></td><td>product-strategy.md §Borrow/Lend</td></tr>
+<tr><td>11</td><td>Goals List</td><td><code>/more/goals</code></td><td>product-strategy.md §Goals</td></tr>
+<tr><td>12</td><td>Goal Detail</td><td><code>/more/goals/:id</code></td><td>product-strategy.md §Goals</td></tr>
+<tr><td>13</td><td>Recurring List</td><td><code>/more/recurring</code></td><td>product-strategy.md §Recurring</td></tr>
+<tr><td>14</td><td>Recurring Detail</td><td><code>/more/recurring/:id</code></td><td>product-strategy.md §Recurring</td></tr>
+<tr><td>15</td><td>Reports Hub</td><td><code>/more/reports</code></td><td>product-strategy.md §Reports</td></tr>
+<tr><td>16</td><td>Report Detail</td><td><code>/more/reports/:type</code></td><td>product-strategy.md §Reports</td></tr>
+<tr><td>17</td><td>Insights List</td><td><code>/more/insights</code></td><td>product-strategy.md §AI Scope</td></tr>
+<tr><td>18</td><td>Insight Detail</td><td><code>/more/insights/:id</code></td><td>product-strategy.md §AI Scope</td></tr>
+<tr><td>19</td><td>Categories List</td><td><code>/more/categories</code></td><td>domain-model.md §Category</td></tr>
+<tr><td>20</td><td>Payees List</td><td><code>/more/payees</code></td><td>domain-model.md §Payee</td></tr>
+<tr><td>21</td><td>Payee Detail</td><td><code>/more/payees/:id</code></td><td>domain-model.md §Payee</td></tr>
+<tr><td>22</td><td>Households List</td><td><code>/more/households</code></td><td>domain-model.md §Household</td></tr>
+<tr><td>23</td><td>Household Detail</td><td><code>/more/households/:id</code></td><td>domain-model.md §Household</td></tr>
+<tr><td>24</td><td>Profile &amp; Preferences</td><td><code>/more/settings</code></td><td>api-contracts.md §3</td></tr>
+<tr><td>25</td><td>Notification Settings</td><td><code>/more/settings/notifications</code></td><td>product-strategy.md §Notifications</td></tr>
+<tr><td>26</td><td>AI Settings</td><td><code>/more/settings/ai</code></td><td>product-strategy.md §AI Scope</td></tr>
+<tr><td>27</td><td>AI Processing Log</td><td><code>/more/settings/ai/logs</code></td><td>domain-model.md §AIProcessingLog</td></tr>
+<tr><td>28</td><td>Sync Settings</td><td><code>/more/settings/sync</code></td><td>sync-engine.md §9</td></tr>
+<tr><td>29</td><td>Appearance Settings</td><td><code>/more/settings/appearance</code></td><td>Research: dark mode standard</td></tr>
+<tr><td>30</td><td>Security Settings</td><td><code>/more/settings/security</code></td><td>specs-backlog.md §6 (future)</td></tr>
+<tr><td>31</td><td>About</td><td><code>/more/settings/about</code></td><td>—</td></tr>
+</tbody>
+</table>
+
+<h3>Sheets &amp; modals (15)</h3>
+
+<table>
+<thead><tr><th>#</th><th>Screen</th><th>Presentation</th><th>Route</th></tr></thead>
+<tbody>
+<tr><td>32</td><td>Quick Actions Sheet (Add island)</td><td>bottomSheet</td><td>— (inline)</td></tr>
+<tr><td>33</td><td>Add Transaction — Manual</td><td>bottomSheet</td><td><code>/transactions/new</code></td></tr>
+<tr><td>34</td><td>Add Transaction — Quick Add (NL + Voice)</td><td>bottomSheet</td><td><code>/transactions/new</code></td></tr>
+<tr><td>35</td><td>OCR Scan</td><td>fullScreen</td><td><code>/scan</code></td></tr>
+<tr><td>36</td><td>Transaction Edit</td><td>bottomSheet</td><td>— (inline)</td></tr>
+<tr><td>37</td><td>Budget Creation/Edit</td><td>bottomSheet</td><td>— (inline)</td></tr>
+<tr><td>38</td><td>Account Creation</td><td>bottomSheet</td><td>— (inline)</td></tr>
+<tr><td>39</td><td>Debt Creation</td><td>bottomSheet</td><td>— (inline)</td></tr>
+<tr><td>40</td><td>Goal Creation</td><td>bottomSheet</td><td>— (inline)</td></tr>
+<tr><td>41</td><td>Goal Contribution</td><td>bottomSheet</td><td>— (inline)</td></tr>
+<tr><td>42</td><td>Recurring Creation</td><td>bottomSheet</td><td>— (inline)</td></tr>
+<tr><td>43</td><td>User Search (household invite)</td><td>bottomSheet</td><td>— (inline)</td></tr>
+<tr><td>44</td><td>Sync Status Sheet</td><td>bottomSheet</td><td>— (inline)</td></tr>
+<tr><td>45</td><td>CSV Export Sheet</td><td>bottomSheet</td><td>— (inline)</td></tr>
+<tr><td>46</td><td><strong>Filter Sheet</strong></td><td>bottomSheet</td><td>— (inline)</td></tr>
+</tbody>
+</table>
+
+<h3>Onboarding (4)</h3>
+
+<table>
+<thead><tr><th>#</th><th>Screen</th><th>Presentation</th><th>Route</th></tr></thead>
+<tbody>
+<tr><td>47</td><td>Intro Carousel (3 pages)</td><td>fullScreen</td><td><code>/onboarding</code></td></tr>
+<tr><td>48</td><td>AI Opt-in</td><td>fullScreen</td><td><code>/onboarding</code> (step 2)</td></tr>
+<tr><td>49</td><td>Guided Account Creation</td><td>fullScreen</td><td><code>/onboarding</code> (step 3)</td></tr>
+<tr><td>50</td><td>Guided First Transaction</td><td>fullScreen</td><td><code>/onboarding</code> (step 4)</td></tr>
+</tbody>
+</table>
+
+<div class="callout callout-green">
+<strong>Auth screens (Email Entry + OTP) are V2 only.</strong> Not included in V1 screen count.
+</div>
+
+<div class="callout callout-green">
+<strong>Total: 50 screens</strong> (4 tab screens + 27 pushed screens + 15 sheets/modals + 4 onboarding)
+</div>
+
+<hr>
+
+<h2 id="s12">12. Top Bar Behavior</h2>
+
+<table>
+<thead><tr><th>Screen</th><th>Left</th><th>Center</th><th>Right</th></tr></thead>
+<tbody>
+<tr><td>Dashboard</td><td>—</td><td>Greeting + date</td><td>Sync icon, Search icon</td></tr>
+<tr><td>Transactions</td><td>—</td><td>"Transactions"</td><td>Filter button (🔧), Search icon</td></tr>
+<tr><td>Budgets</td><td>← / → month nav</td><td>"Budgets"</td><td>+ button</td></tr>
+<tr><td>More</td><td>—</td><td>"More"</td><td>—</td></tr>
+<tr><td>Pushed screens</td><td>← back</td><td>Screen title</td><td>Contextual (edit, ⋮)</td></tr>
+<tr><td>Sheets</td><td>—</td><td>Sheet title</td><td>✕ close</td></tr>
+</tbody>
+</table>
+
+<h3>Filter button (Transactions screen)</h3>
+
+<p>Tapping the filter button (🔧) opens the <strong>Filter Sheet</strong> (see §4 for full filter options).</p>
+
+<h3>⋮ menu (pushed screens)</h3>
+
+<p>Contextual ⋮ menu on pushed detail screens (Transaction Detail, Account Detail, etc.) with actions like Edit, Delete, Share, Export.</p>
+
+<hr>
+
+<h2 id="s13">13. Sync Status UI</h2>
+
+<h3>Sync icon (top bar, Dashboard)</h3>
+
+<table>
+<thead><tr><th>State</th><th>Icon</th><th>Color</th></tr></thead>
+<tbody>
+<tr><td>Synced</td><td>cloud-check</td><td>emerald</td></tr>
+<tr><td>Pending</td><td>cloud-arrow-up</td><td>slate</td></tr>
+<tr><td>Syncing</td><td>cloud-arrow-up (animated)</td><td>blue</td></tr>
+<tr><td>Failed</td><td>cloud-exclamation</td><td>amber</td></tr>
+<tr><td>Offline</td><td>cloud-off</td><td>slate</td></tr>
+</tbody>
+</table>
+
+<p>Tap → <strong>Sync Status Sheet</strong> (bottomSheet):</p>
+
+<pre>
+┌─────────────────────────────────┐
+│         Sync Status          ✕  │
+├─────────────────────────────────┤
+│                                 │
+│  ✓ Last synced: 2 min ago       │
+│                                 │
+│  Pending: 3 changes             │
+│  Failed: 0                      │
+│                                 │
+│  [ Sync Now ]                   │
+│                                 │
+│  Sync history                   │
+│  ┌─────────────────────────┐   │
+│  │ Today 2:34 PM  Success  │   │
+│  │ Today 1:12 PM  Success  │   │
+│  │ Yesterday     Failed    │   │
+│  └─────────────────────────┘   │
+│                                 │
+│  Open sync settings &gt;           │
+│                                 │
+└─────────────────────────────────┘
+</pre>
+
+<p>If <code>sync_failed_count &gt; 0</code>, shows retry button and failed record list.</p>
+
+<hr>
+
+<h2 id="s14">14. Household UX</h2>
+
+<h3>Mine / Theirs / Ours visibility</h3>
+
+<p>When viewing shared household data, transactions and accounts show an ownership indicator:</p>
+
+<table>
+<thead><tr><th>Label</th><th>Meaning</th><th>Color</th></tr></thead>
+<tbody>
+<tr><td>Mine</td><td>Owned by current user</td><td>blue</td></tr>
+<tr><td>Theirs</td><td>Owned by another household member</td><td>slate</td></tr>
+<tr><td>Ours</td><td>Shared (household_id set)</td><td>emerald</td></tr>
+</tbody>
+</table>
+
+<h3>Permission-based UI</h3>
+
+<table>
+<thead><tr><th>Role</th><th>Can view</th><th>Can edit</th><th>Can delete</th></tr></thead>
+<tbody>
+<tr><td>Owner</td><td>Everything</td><td>Everything</td><td>Everything</td></tr>
+<tr><td>Member</td><td>Everything</td><td>Own + shared</td><td>Own only</td></tr>
+<tr><td>Viewer</td><td>Everything</td><td>Nothing</td><td>Nothing</td></tr>
+</tbody>
+</table>
+
+<p>Viewer role: Add island hidden, edit buttons hidden, creation buttons hidden.</p>
+
+<hr>
+
+<h2 id="s15">15. Empty States &amp; Demo Data</h2>
+
+<p>Every primary list screen has an empty state with:</p>
+<ol>
+<li><strong>Illustration</strong>: Simple, friendly vector (not photorealistic)</li>
+<li><strong>Headline</strong>: One sentence explaining the empty state</li>
+<li><strong>Subtext</strong>: One sentence explaining the value prop</li>
+<li><strong>Primary CTA</strong>: Action button to create the first item</li>
+<li><strong>Secondary CTA (where applicable)</strong>: "Try demo data" or "Learn more"</li>
+</ol>
+
+<table>
+<thead><tr><th>Screen</th><th>Empty State CTA</th><th>Demo Data Available</th></tr></thead>
+<tbody>
+<tr><td>Dashboard</td><td>"Add Account"</td><td>Yes — seeds accounts + 30 days transactions + budgets</td></tr>
+<tr><td>Transactions</td><td>"Add Account" (if no accounts) or "Add Transaction" (if accounts exist)</td><td>Yes — uses same demo data</td></tr>
+<tr><td>Budgets</td><td>"Create First Budget"</td><td>Yes — auto-suggest from demo transactions</td></tr>
+<tr><td>Accounts</td><td>"Add Account"</td><td>Yes</td></tr>
+<tr><td>Debts</td><td>"Add Debt"</td><td>No</td></tr>
+<tr><td>Goals</td><td>"Add Goal"</td><td>No</td></tr>
+<tr><td>Recurring</td><td>"Add Recurring"</td><td>No</td></tr>
+<tr><td>Reports</td><td>"Add transactions to see reports"</td><td>Yes</td></tr>
+</tbody>
+</table>
+
+<p><strong>Demo data</strong>: Tapping "Try demo data" seeds the local DB with:</p>
+<ul>
+<li>3 accounts (Cash, BPI Savings, GCash)</li>
+<li>30 days of realistic transactions across common categories</li>
+<li>4 budgets (Food, Transport, Entertainment, Rent)</li>
+<li>2 recurring items (Salary, Netflix)</li>
+<li>Demo data is flagged with <code>is_demo = true</code> on all records. A "Clear demo data" button appears in Settings → Profile when demo data is present.</li>
+</ul>
+
+<hr>
+
+<h2 id="s16">16. Industry References</h2>
+
+<p>Patterns adopted from market leaders:</p>
+
+<table>
+<thead><tr><th>App</th><th>Pattern adopted</th><th>Where</th></tr></thead>
+<tbody>
+<tr><td><strong>PocketGuard</strong></td><td>"Safe to Spend" hero number on dashboard</td><td>Dashboard</td></tr>
+<tr><td><strong>PocketGuard</strong></td><td>Demo data for exploration</td><td>Empty states</td></tr>
+<tr><td><strong>Copilot Money</strong></td><td>Spending line / calm visual tone, Add island quick actions</td><td>Dashboard, Add island</td></tr>
+<tr><td><strong>Copilot Money</strong></td><td>Transaction list grouped by date with category icons</td><td>Transactions</td></tr>
+<tr><td><strong>Monarch Money</strong></td><td>Net worth hero card with graph, account summary cards</td><td>Dashboard</td></tr>
+<tr><td><strong>Monarch Money</strong></td><td>Budget progress with category drilldown</td><td>Budgets</td></tr>
+<tr><td><strong>Monarch Money</strong></td><td>Recurring/subscriptions detection and list</td><td>Recurring</td></tr>
+<tr><td><strong>Monarch Money</strong></td><td>Household collaboration with roles</td><td>Households</td></tr>
+<tr><td><strong>Monarch Money</strong></td><td>Bill calendar / upcoming recurring on dashboard</td><td>Dashboard</td></tr>
+<tr><td><strong>YNAB</strong></td><td>Month navigation on budgets (← / →)</td><td>Budgets</td></tr>
+<tr><td><strong>YNAB</strong></td><td>Rollover budgets</td><td>Budgets</td></tr>
+<tr><td><strong>Impeccable</strong></td><td>Typography hierarchy, spacing, card styling</td><td>Throughout</td></tr>
+</tbody>
+</table>
+
+<h3>What we deliberately do differently</h3>
+
+<table>
+<thead><tr><th>Decision</th><th>Rationale</th></tr></thead>
+<tbody>
+<tr><td>No bank integrations</td><td>Privacy-first, manual entry + OCR + NL parsing</td></tr>
+<tr><td>No investment tracking tab</td><td>V1 scope exclusion. Investments are just an account type.</td></tr>
+<tr><td>No review queue for transactions</td><td>Save-first, correction-friendly (domain-model.md §527)</td></tr>
+<tr><td>No guilt-heavy budget alerts</td><td>Calm UX, color-only indicators</td></tr>
+<tr><td>Offline-first, no login wall</td><td>App usable immediately, auth is opt-in</td></tr>
+<tr><td>No gamification</td><td>Badges/streaks distract from actual financial awareness</td></tr>
+<tr><td>Recently-added dot instead of "unreviewed"</td><td>Save-first model: transactions are trusted by default, new ones get a subtle highlight</td></tr>
+</tbody>
+</table>
+
+<hr>
+
+<h2 id="s17">17. Responsive &amp; Accessibility Notes</h2>
+
+<h3>Tablet layout</h3>
+<ul>
+<li>Dashboard: 2-column grid for cards (hero card spans full width)</li>
+<li>Transactions: Master-detail split view (list left, detail right)</li>
+<li>Budgets: 2-column grid for budget cards</li>
+<li>More: 2-column grid for section cards</li>
+</ul>
+
+<h3>Accessibility</h3>
+<ul>
+<li>All icons paired with text labels (tab bar, Add island)</li>
+<li>Progress bars have aria-labels with percentage</li>
+<li>Color is never the sole indicator (paired with text/icons)</li>
+<li>Touch targets minimum 48×48dp</li>
+<li>Supports system font scaling</li>
+<li>Dark mode respects system preference by default</li>
+</ul>
+
+</div>
+</body>
+</html>

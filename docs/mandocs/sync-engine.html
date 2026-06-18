@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sync Engine Design — Personal Finance App</title>
+<style>
+  :root {
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    --bg: #fafafa;
+    --surface: #ffffff;
+    --border: #e2e4e8;
+    --text: #1b1b1f;
+    --text-secondary: #63666e;
+    --accent: #2563eb;
+    --accent-light: #eff6ff;
+    --green: #059669;
+    --green-light: #ecfdf5;
+    --orange: #d97706;
+    --orange-light: #fffbeb;
+    --red: #dc2626;
+    --red-light: #fef2f2;
+    --code-bg: #1e1e2e;
+    --code-text: #cdd6f4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.6; }
+  .wrapper { max-width: 1000px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 28px; font-weight: 700; margin-bottom: 4px; letter-spacing: -0.5px; }
+  h1 + p { color: var(--text-secondary); font-size: 15px; margin-bottom: 32px; }
+  h2 { font-size: 21px; font-weight: 600; margin-top: 40px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 17px; font-weight: 600; margin-top: 28px; margin-bottom: 8px; }
+  h4 { font-size: 14px; font-weight: 600; margin-top: 20px; margin-bottom: 6px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+  p, li { font-size: 15px; }
+  p { margin-bottom: 12px; }
+  ul, ol { margin: 8px 0 16px 20px; }
+  li { margin-bottom: 4px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  strong { font-weight: 600; }
+  code { font-family: var(--mono); font-size: 13px; background: #f2f4f7; padding: 2px 6px; border-radius: 4px; }
+
+  .toc { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-bottom: 32px; }
+  .toc h3 { margin: 0 0 10px; font-size: 15px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); }
+  .toc ul { margin: 0; list-style: none; columns: 2; column-gap: 24px; }
+  .toc li { margin-bottom: 4px; font-size: 14px; }
+  .toc a { color: var(--text); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 12px 0 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  thead { background: #f2f4f7; border-bottom: 1px solid var(--border); }
+  th { font-weight: 600; text-align: left; padding: 10px 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); }
+  td { padding: 9px 12px; border-top: 1px solid var(--border); vertical-align: top; }
+  tr:first-child td { border-top: none; }
+  td:first-child { font-family: var(--mono); font-size: 13px; }
+
+  pre { background: var(--code-bg); color: var(--code-text); border-radius: 8px; padding: 16px 20px; font-family: var(--mono); font-size: 13px; line-height: 1.6; overflow-x: auto; margin: 12px 0 20px; }
+  pre code { background: none; padding: 0; font-size: 13px; color: inherit; }
+
+  .callout { background: var(--accent-light); border-left: 3px solid var(--accent); border-radius: 6px; padding: 12px 16px; margin: 12px 0 20px; font-size: 14px; }
+  .callout-green { background: var(--green-light); border-left-color: var(--green); }
+  .callout-orange { background: var(--orange-light); border-left-color: var(--orange); }
+
+  .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
+  .badge-blue { background: #dbeafe; color: #1d4ed8; }
+  .badge-green { background: #dcfce7; color: #15803d; }
+  .badge-red { background: #fee2e2; color: #b91c1c; }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+  .diagram { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; font-family: var(--mono); font-size: 12px; line-height: 1.7; overflow-x: auto; margin: 12px 0 20px; white-space: pre; }
+
+  @media (max-width: 768px) {
+    .toc ul { columns: 1; }
+    .wrapper { padding: 20px 16px 60px; }
+    table { font-size: 13px; }
+    td, th { padding: 7px 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+<h1>Sync Engine Design</h1>
+<p>Personal Finance App — how the local SQLite DB and NestJS backend stay in sync.<br>References: <code>product-strategy.md</code> (sync architecture), <code>database-schema.md</code> (sync fields), <code>api-contracts.md</code> (sync endpoints).</p>
+
+<div class="toc">
+<h3>Contents</h3>
+<ul>
+  <li><a href="#s1">1. Overview</a></li>
+  <li><a href="#s2">2. Sync Triggers</a></li>
+  <li><a href="#s3">3. Sync State Machine</a></li>
+  <li><a href="#s4">4. Sync Cycle</a></li>
+  <li><a href="#s5">5. Push Flow Detail</a></li>
+  <li><a href="#s6">6. Pull Flow Detail</a></li>
+  <li><a href="#s7">7. Conflict Resolution</a></li>
+  <li><a href="#s8">8. Initial Sync (Cold Start)</a></li>
+  <li><a href="#s9">9. Error Handling & Retry</a></li>
+  <li><a href="#s10">10. sync_metadata Table</a></li>
+  <li><a href="#s11">11. Sync & Local Mutations</a></li>
+  <li><a href="#s12">12. What Syncs and What Doesn't</a></li>
+</ul>
+</div>
+
+<!-- 1. OVERVIEW -->
+<h2 id="s1">1. Overview</h2>
+<p>The app is <strong>local-first</strong>. The local SQLite database is the primary runtime source — all reads and writes happen locally. Sync with the backend is an optional background process that:</p>
+<ul>
+  <li>Pushes local changes to the server (for backup and multi-device access)</li>
+  <li>Pulls server changes to the local DB (for household sharing and multi-device updates)</li>
+</ul>
+<p>Sync does NOT block the UI. If sync fails, the app continues to work fully offline. Sync runs over HTTP (no WebSockets in V1).</p>
+
+<div class="callout">
+  <strong>Design constraints</strong>
+  <ul>
+    <li>No real-time collaboration (V1 scope exclusion)</li>
+    <li>No operational transforms or CRDTs — conflict resolution is last-write-wins</li>
+    <li>Sync is opt-in — only runs after user authenticates via email OTP</li>
+  </ul>
+</div>
+
+<hr>
+
+<!-- 2. TRIGGERS -->
+<h2 id="s2">2. Sync Triggers</h2>
+<p>Sync is triggered by the following events. Multiple triggers may fire — the sync manager deduplicates and runs at most one sync cycle at a time.</p>
+<table>
+<thead><tr><th>Trigger</th><th>When</th><th>Debounce</th></tr></thead>
+<tbody>
+<tr><td>App foreground</td><td>App returns to foreground from background</td><td>Immediate</td></tr>
+<tr><td>Post-mutation</td><td>Any local write to a syncable table</td><td>30 seconds after last mutation</td></tr>
+<tr><td>Periodic timer</td><td>App is in foreground</td><td>Every 5 minutes</td></tr>
+<tr><td>Network reconnect</td><td>Device regains connectivity after being offline</td><td>Immediate (after 5s delay to stabilize)</td></tr>
+<tr><td>Manual refresh</td><td>User pulls to refresh on dashboard or transactions screen</td><td>Immediate</td></tr>
+</tbody>
+</table>
+
+<h4>Trigger behavior</h4>
+<ul>
+  <li>If a sync cycle is already running, new triggers are coalesced — one additional cycle runs after the current one completes.</li>
+  <li>If no auth token is present, all triggers are ignored.</li>
+  <li>If the device is offline, triggers are queued and fire on network reconnect.</li>
+</ul>
+
+<hr>
+
+<!-- 3. STATE MACHINE -->
+<h2 id="s3">3. Sync State Machine</h2>
+<p>Each syncable record has a <code>sync_status</code> field that tracks its sync state.</p>
+
+<h3>States</h3>
+<table>
+<thead><tr><th>State</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>local_only</td><td>Created locally, never sent to server</td></tr>
+<tr><td>pending_sync</td><td>Modified locally since last successful sync</td></tr>
+<tr><td>synced</td><td>In sync with server</td></tr>
+<tr><td>sync_failed</td><td>Last push attempt failed; awaiting retry</td></tr>
+</tbody>
+</table>
+
+<h3>Transitions</h3>
+<div class="diagram">                    ┌──────────────────────────────────────────┐
+                    │                                          │
+                    ▼                                          │
+NEW RECORD ──▶ local_only ──▶ pending_sync ──▶ synced         │
+                    │                │              │          │
+                    │                │              │ LOCAL    │
+                    │                │              │ MUTATION │
+                    │                ▼              └──────────┘
+                    │          sync_failed               │
+                    │                │                   │
+                    │                │ RETRY             │
+                    │                ▼                   │
+                    └─────────▶ pending_sync ◀───────────┘
+                                     │
+                                     │ PUSH SUCCESS
+                                     ▼
+                                  synced</div>
+
+<table>
+<thead><tr><th>From</th><th>To</th><th>Trigger</th></tr></thead>
+<tbody>
+<tr><td>(new record)</td><td>local_only</td><td>Local INSERT</td></tr>
+<tr><td>local_only</td><td>pending_sync</td><td>Sync cycle starts (about to push)</td></tr>
+<tr><td>pending_sync</td><td>synced</td><td>Push succeeded</td></tr>
+<tr><td>pending_sync</td><td>sync_failed</td><td>Push failed (network error, server error)</td></tr>
+<tr><td>sync_failed</td><td>pending_sync</td><td>Retry timer fires</td></tr>
+<tr><td>synced</td><td>pending_sync</td><td>Local mutation (INSERT, UPDATE, or DELETE on this record)</td></tr>
+</tbody>
+</table>
+
+<h4>Notes</h4>
+<ul>
+  <li><code>local_only</code> and <code>pending_sync</code> are treated identically by the push flow — both are sent to the server. The distinction is for client-side observability (has this record ever synced?).</li>
+  <li>Pull does NOT change <code>sync_status</code>. Pull updates local records from the server, but the sync_status of pulled records is set to <code>synced</code> (they came from the server, so they're in sync).</li>
+  <li>Soft-deleted records (with <code>deleted_at</code> set) remain in <code>pending_sync</code> until the deletion is pushed to the server. After successful push, they can be purged from the local DB (configurable retention).</li>
+</ul>
+
+<hr>
+
+<!-- 4. SYNC CYCLE -->
+<h2 id="s4">4. Sync Cycle</h2>
+<p>A sync cycle is a single push-then-pull sequence. Only one cycle runs at a time.</p>
+
+<h3>Sequence</h3>
+<div class="diagram">1. ACQUIRE SYNC LOCK
+   └─ If already running, skip (trigger will queue another cycle)
+
+2. CHECK PRECONDITIONS
+   ├─ Is user authenticated? ── No ──▶ ABORT
+   ├─ Is network available?   ── No ──▶ ABORT (triggers will retry on reconnect)
+   └─ Is access token valid?  ── No ──▶ REFRESH TOKEN ── fail ──▶ ABORT
+
+3. PUSH PHASE
+   ├─ Query all records where sync_status IN ('local_only', 'pending_sync', 'sync_failed')
+   ├─ Group by table
+   ├─ POST /sync/push with batched changes
+   ├─ Process response:
+   │   ├─ status = "applied"  ──▶ set sync_status = 'synced', last_synced_at = server_updated_at
+   │   ├─ status = "conflict" ──▶ replace local record with server_record, set sync_status = 'synced'
+   │   └─ status = "error"    ──▶ set sync_status = 'sync_failed', log error
+   └─ If push request fails (network/5xx) ──▶ set ALL pushed records to 'sync_failed', skip pull
+
+4. PULL PHASE
+   ├─ Read last_synced_at from sync metadata (per-table or global — see below)
+   ├─ POST /sync/pull with last_synced_at + cursor
+   ├─ For each record in response:
+   │   ├─ If record exists locally and incoming updated_at > local updated_at ──▶ UPDATE local record
+   │   ├─ If record doesn't exist locally ──▶ INSERT
+   │   ├─ If record exists locally but incoming updated_at <= local updated_at ──▶ SKIP (local is newer)
+   │   └─ Set sync_status = 'synced', last_synced_at = server updated_at for this record
+   ├─ If has_more = true ──▶ repeat pull with next_cursor
+   └─ After all pages: store server_time as the new last_synced_at
+
+5. POST-SYNC HOOKS
+   ├─ Rebuild account_balance_snapshots if any transactions/transfers changed
+   ├─ Reschedule notifications if recurring_templates or debt_records changed
+   └─ Update UI providers (Riverpod) to reflect synced data
+
+6. RELEASE SYNC LOCK</div>
+
+<h3>last_synced_at: global vs per-table</h3>
+<p>A single <strong>global</strong> <code>last_synced_at</code> timestamp is used for the pull phase. This is stored in a local <code>sync_metadata</code> key-value table:</p>
+<table>
+<thead><tr><th>Key</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>last_synced_at</td><td>ISO 8601 timestamp from server's <code>server_time</code></td></tr>
+</tbody>
+</table>
+<p>This is simpler than per-table timestamps and works because the pull endpoint returns changes across all tables in a single response. The global timestamp is only updated after ALL pages have been pulled successfully.</p>
+
+<hr>
+
+<!-- 5. PUSH FLOW -->
+<h2 id="s5">5. Push Flow Detail</h2>
+
+<h3>Batch construction</h3>
+<ul>
+  <li>Collect all records with <code>sync_status</code> IN (<code>local_only</code>, <code>pending_sync</code>, <code>sync_failed</code>)</li>
+  <li>Group by table name</li>
+  <li>If total records exceed a threshold (e.g., 500), split into multiple push requests by table</li>
+  <li>Each record includes all columns EXCEPT <code>sync_status</code> and <code>last_synced_at</code> (client-only fields)</li>
+</ul>
+
+<h3>Handling push response</h3>
+<p>For each record in the response:</p>
+<table>
+<thead><tr><th>Response status</th><th>Client action</th></tr></thead>
+<tbody>
+<tr><td>applied</td><td>UPDATE local SET sync_status = 'synced', last_synced_at = server_updated_at WHERE id = ?</td></tr>
+<tr><td>conflict</td><td>UPDATE local SET [all fields] = server_record values, sync_status = 'synced' WHERE id = ?</td></tr>
+<tr><td>error</td><td>UPDATE local SET sync_status = 'sync_failed' WHERE id = ?; log error details</td></tr>
+</tbody>
+</table>
+
+<h3>Push failure (network/5xx)</h3>
+<p>If the push HTTP request itself fails (timeout, network error, 5xx):</p>
+<ul>
+  <li>Set ALL records that were in the push batch back to <code>sync_failed</code></li>
+  <li>Do NOT proceed to pull phase</li>
+  <li>Schedule retry with exponential backoff</li>
+</ul>
+
+<hr>
+
+<!-- 6. PULL FLOW -->
+<h2 id="s6">6. Pull Flow Detail</h2>
+
+<h3>Pagination</h3>
+<p>Pull uses cursor-based pagination to handle large datasets:</p>
+<div class="diagram">LOOP:
+  POST /sync/pull { last_synced_at, cursor }
+  APPLY changes to local DB
+  IF has_more = true:
+    cursor = next_cursor
+    CONTINUE
+  ELSE:
+    last_synced_at = server_time
+    BREAK</div>
+
+<h3>Applying pulled records</h3>
+<p>For each incoming server record:</p>
+<ol>
+  <li>Query local DB for record by <code>id</code></li>
+  <li>If NOT found locally: INSERT the record with <code>sync_status = 'synced'</code></li>
+  <li>If found locally: compare <code>updated_at</code> — if server's <code>updated_at</code> > local <code>updated_at</code>, overwrite local record. If server's <code>updated_at</code> <= local <code>updated_at</code>, skip (local is newer or equal). This handles the edge case where a push in the same cycle updated the record, and the pull returns the same version.</li>
+  <li>Set <code>sync_status = 'synced'</code> and <code>last_synced_at = server record's updated_at</code> for applied records</li>
+</ol>
+
+<h3>Soft delete propagation</h3>
+<ul>
+  <li>Server returns records with <code>deleted_at</code> set</li>
+  <li>Client applies the <code>deleted_at</code> locally</li>
+  <li>Records with <code>deleted_at</code> set are filtered out of normal queries (<code>WHERE deleted_at IS NULL</code>)</li>
+  <li>Periodically (e.g., every 30 days), locally purge records where <code>deleted_at</code> is older than 30 days AND <code>sync_status = 'synced'</code></li>
+</ul>
+
+<hr>
+
+<!-- 7. CONFLICT RESOLUTION -->
+<h2 id="s7">7. Conflict Resolution</h2>
+
+<h3>Strategy: Last-Write-Wins (LWW) by updated_at</h3>
+<p>This is the simplest conflict resolution strategy and is appropriate for V1 because:</p>
+<ul>
+  <li>The app is primarily single-user (household sharing is secondary)</li>
+  <li>Most conflicts will be the same user editing on two devices — LWW picks the most recent edit</li>
+  <li>No financial calculations happen on the server, so conflicts don't risk data corruption</li>
+</ul>
+
+<h3>How it works</h3>
+<h4>During push:</h4>
+<ol>
+  <li>Client sends record with its local <code>updated_at</code></li>
+  <li>Server compares incoming <code>updated_at</code> vs stored <code>updated_at</code></li>
+  <li>If incoming > stored: server accepts, stores, returns <code>status = "applied"</code></li>
+  <li>If incoming <= stored: server rejects, returns <code>status = "conflict"</code> + the server's record</li>
+  <li>Client replaces its local copy with the server's version</li>
+</ol>
+
+<h4>During pull:</h4>
+<ol>
+  <li>Server returns records updated since <code>last_synced_at</code></li>
+  <li>Client compares incoming <code>updated_at</code> vs local <code>updated_at</code></li>
+  <li>If incoming > local: overwrite local</li>
+  <li>If incoming <= local: skip (local is newer — this can happen if a local mutation occurred during the sync cycle)</li>
+</ol>
+
+<h3>Limitations of LWW</h3>
+<div class="callout callout-orange">
+  <ul>
+    <li>If two users edit the same household budget simultaneously, the later edit wins and the earlier edit is lost</li>
+    <li>No merge — field-level conflicts are not detected; the entire record is replaced</li>
+    <li>Acceptable for V1. Future versions could add field-level merge for specific entities (e.g., budgets)</li>
+  </ul>
+</div>
+
+<hr>
+
+<!-- 8. INITIAL SYNC -->
+<h2 id="s8">8. Initial Sync (Cold Start)</h2>
+<p>When a user authenticates for the first time on a new device (or after a local DB reset):</p>
+<ol>
+  <li>Local DB may already contain local-only data (if user used the app before authenticating)</li>
+  <li>Run a normal sync cycle:
+    <ul>
+      <li><strong>Push</strong> sends local-only records to the server</li>
+      <li><strong>Pull</strong> with <code>last_synced_at = null</code> retrieves ALL server records</li>
+    </ul>
+  </li>
+  <li>Pull handles the large initial dataset via pagination (see §6)</li>
+  <li>After initial sync completes, <code>last_synced_at</code> is set to the server's current time</li>
+</ol>
+
+<h3>Edge case: existing server data, new local data</h3>
+<p>If the user has data on the server (from another device) AND local-only data on this device:</p>
+<ol>
+  <li>Push phase sends local-only records (they get <code>applied</code> or <code>conflict</code>)</li>
+  <li>Pull phase receives all server records (including the ones just pushed)</li>
+  <li>For records just pushed: server's <code>updated_at</code> equals local <code>updated_at</code> (or is very close) — pull skips them (incoming <= local)</li>
+  <li>For server-only records: pull inserts them locally</li>
+</ol>
+<div class="callout callout-green">This works correctly because push runs before pull.</div>
+
+<hr>
+
+<!-- 9. ERROR HANDLING -->
+<h2 id="s9">9. Error Handling & Retry</h2>
+
+<h3>Retry strategy for sync_failed records</h3>
+<p>Records that fail to sync are retried with exponential backoff:</p>
+<table>
+<thead><tr><th>Retry attempt</th><th>Delay</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>30 seconds</td></tr>
+<tr><td>2</td><td>1 minute</td></tr>
+<tr><td>3</td><td>2 minutes</td></tr>
+<tr><td>4</td><td>5 minutes</td></tr>
+<tr><td>5</td><td>15 minutes</td></tr>
+<tr><td>6+</td><td>30 minutes (max)</td></tr>
+</tbody>
+</table>
+<ul>
+  <li>Retry delay is measured from the last failed attempt, not from the original failure</li>
+  <li>Retries are piggybacked onto normal sync cycles — if a sync trigger fires, <code>sync_failed</code> records are included in the push batch</li>
+  <li>If a record fails 10 times, it stays in <code>sync_failed</code> and is surfaced to the user as a sync error (with a manual "retry" button)</li>
+</ul>
+
+<h3>Error categories</h3>
+<table>
+<thead><tr><th>Error type</th><th>Action</th></tr></thead>
+<tbody>
+<tr><td>Network timeout / no connectivity</td><td>Set records to <code>sync_failed</code>, retry with backoff</td></tr>
+<tr><td>401 Unauthorized</td><td>Attempt token refresh; if refresh fails, pause sync and prompt re-auth</td></tr>
+<tr><td>429 Rate limited</td><td>Wait for <code>retry_after</code> from response, then retry</td></tr>
+<tr><td>500 Server error</td><td>Set records to <code>sync_failed</code>, retry with backoff</td></tr>
+<tr><td>422 Validation error (server rejects record)</td><td>Set to <code>sync_failed</code>, do NOT retry automatically — requires user intervention</td></tr>
+</tbody>
+</table>
+
+<h3>Sync health tracking</h3>
+<p>A <code>sync_metadata</code> key-value table stores sync health:</p>
+<table>
+<thead><tr><th>Key</th><th>Value</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>last_synced_at</td><td>ISO 8601</td><td>Last successful pull timestamp</td></tr>
+<tr><td>last_sync_attempt_at</td><td>ISO 8601</td><td>Last sync cycle start</td></tr>
+<tr><td>last_sync_status</td><td>success / partial / failed</td><td>Overall status of last cycle</td></tr>
+<tr><td>last_sync_error</td><td>string</td><td>Error message if last sync failed</td></tr>
+<tr><td>sync_failed_count</td><td>integer</td><td>Number of records currently in <code>sync_failed</code></td></tr>
+</tbody>
+</table>
+<p>This powers the sync status indicator in the UI.</p>
+
+<hr>
+
+<!-- 10. SYNC_METADATA TABLE -->
+<h2 id="s10">10. Local sync_metadata Table</h2>
+<p>A simple key-value table for sync bookkeeping. NOT syncable — local only.</p>
+<table>
+<thead><tr><th>Column</th><th>Type</th><th>Constraints</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>key</td><td>TEXT</td><td>PK</td><td>e.g. <code>last_synced_at</code></td></tr>
+<tr><td>value</td><td>TEXT</td><td>NOT NULL</td><td>Serialized value (string, number, etc.)</td></tr>
+</tbody>
+</table>
+<div class="callout">This table was not in the original <code>database-schema.md</code> and should be added as table #16 (local-only).</div>
+
+<hr>
+
+<!-- 11. SYNC & LOCAL MUTATIONS -->
+<h2 id="s11">11. Sync & Local Mutations</h2>
+
+<h3>How local mutations interact with sync</h3>
+<table>
+<thead><tr><th>Local operation</th><th>sync_status change</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>INSERT new record</td><td>→ local_only</td><td>New record, never synced</td></tr>
+<tr><td>UPDATE existing synced record</td><td>→ pending_sync</td><td>Was synced, now modified</td></tr>
+<tr><td>UPDATE existing pending record</td><td>stays pending_sync</td><td>Already pending, no change</td></tr>
+<tr><td>Soft-delete (set deleted_at)</td><td>→ pending_sync</td><td>Deletion must propagate to server</td></tr>
+<tr><td>Hard-delete (physical delete)</td><td>N/A</td><td>Avoid in V1 — use soft delete</td></tr>
+</tbody>
+</table>
+
+<h3>Transaction atomicity</h3>
+<p>Local mutations and sync_status updates should be in the same SQLite transaction. For example, when creating a transaction:</p>
+<pre><code>BEGIN TRANSACTION;
+  INSERT INTO transactions (id, ..., sync_status, ...) VALUES (?, ..., 'local_only', ...);
+  UPDATE accounts SET balance = balance - ? WHERE id = ?;
+  UPDATE accounts SET sync_status = 'pending_sync' WHERE id = ?;
+COMMIT;</code></pre>
+<p>This ensures that if a transaction affects an account's balance, both the transaction and the account's <code>sync_status</code> are updated atomically.</p>
+
+<hr>
+
+<!-- 12. SUMMARY -->
+<h2 id="s12">12. What Syncs and What Doesn't</h2>
+<table>
+<thead><tr><th>Table</th><th>Syncs?</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>users</td><td><span class="badge badge-blue">Yes</span></td><td></td></tr>
+<tr><td>households</td><td><span class="badge badge-blue">Yes</span></td><td></td></tr>
+<tr><td>household_members</td><td><span class="badge badge-blue">Yes</span></td><td></td></tr>
+<tr><td>accounts</td><td><span class="badge badge-blue">Yes</span></td><td></td></tr>
+<tr><td>transactions</td><td><span class="badge badge-blue">Yes</span></td><td></td></tr>
+<tr><td>transfers</td><td><span class="badge badge-blue">Yes</span></td><td></td></tr>
+<tr><td>categories</td><td><span class="badge badge-blue">Yes</span></td><td>Seed data starts as synced</td></tr>
+<tr><td>payees</td><td><span class="badge badge-blue">Yes</span></td><td></td></tr>
+<tr><td>budgets</td><td><span class="badge badge-blue">Yes</span></td><td></td></tr>
+<tr><td>debt_records</td><td><span class="badge badge-blue">Yes</span></td><td></td></tr>
+<tr><td>goals</td><td><span class="badge badge-blue">Yes</span></td><td></td></tr>
+<tr><td>recurring_templates</td><td><span class="badge badge-blue">Yes</span></td><td></td></tr>
+<tr><td>account_balance_snapshots</td><td><span class="badge">No</span></td><td>Derived locally, rebuilt from transactions</td></tr>
+<tr><td>notifications</td><td><span class="badge">No</span></td><td>Local scheduling only</td></tr>
+<tr><td>ai_processing_logs</td><td><span class="badge">No</span></td><td>Local audit trail</td></tr>
+<tr><td>sync_metadata</td><td><span class="badge">No</span></td><td>Sync bookkeeping (this spec)</td></tr>
+</tbody>
+</table>
+
+</div>
+</body>
+</html>

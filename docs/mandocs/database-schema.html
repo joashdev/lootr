@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Database Schema — Personal Finance App</title>
+<style>
+  :root {
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    --bg: #fafafa;
+    --surface: #ffffff;
+    --border: #e2e4e8;
+    --text: #1b1b1f;
+    --text-secondary: #63666e;
+    --accent: #2563eb;
+    --accent-light: #eff6ff;
+    --green: #059669;
+    --orange: #d97706;
+    --red: #dc2626;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 0;
+  }
+  .wrapper {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+  h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    letter-spacing: -0.5px;
+  }
+  h1 + p {
+    color: var(--text-secondary);
+    font-size: 15px;
+    margin-bottom: 32px;
+  }
+  h2 {
+    font-size: 21px;
+    font-weight: 600;
+    margin-top: 40px;
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 {
+    font-size: 17px;
+    font-weight: 600;
+    margin-top: 28px;
+    margin-bottom: 8px;
+  }
+  h4 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: 20px;
+    margin-bottom: 6px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  p, li { font-size: 15px; }
+  p { margin-bottom: 12px; }
+  ul, ol { margin: 8px 0 16px 20px; }
+  li { margin-bottom: 4px; }
+
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  strong { font-weight: 600; }
+
+  /* Table of Contents */
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 32px;
+  }
+  .toc h3 { margin: 0 0 10px; font-size: 15px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); }
+  .toc ul { margin: 0; list-style: none; columns: 2; column-gap: 24px; }
+  .toc li { margin-bottom: 4px; font-size: 14px; }
+  .toc a { color: var(--text); }
+  .toc a:hover { color: var(--accent); }
+  .toc .toc-l2 { padding-left: 16px; font-size: 13px; color: var(--text-secondary); }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    margin: 12px 0 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  thead {
+    background: #f2f4f7;
+    border-bottom: 1px solid var(--border);
+  }
+  th {
+    font-weight: 600;
+    text-align: left;
+    padding: 10px 12px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+  }
+  td {
+    padding: 9px 12px;
+    border-top: 1px solid var(--border);
+    vertical-align: top;
+  }
+  tr:first-child td { border-top: none; }
+  td:first-child { font-family: var(--mono); font-size: 13px; white-space: nowrap; }
+  td:nth-child(2) { font-family: var(--mono); font-size: 13px; color: var(--text-secondary); white-space: nowrap; }
+  td:nth-child(3) { font-size: 13px; }
+
+  /* Callout boxes */
+  .callout {
+    background: var(--accent-light);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin: 12px 0 20px;
+    font-size: 14px;
+  }
+  .callout-green { background: #ecfdf5; border-left-color: var(--green); }
+  .callout-orange { background: #fffbeb; border-left-color: var(--orange); }
+
+  /* Badges */
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  .badge-sync { background: #dbeafe; color: #1d4ed8; }
+  .badge-local { background: #f3f4f6; color: #4b5563; }
+
+  /* Mini table description */
+  .table-desc {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+  }
+
+  /* Sync status table */
+  .sync-table { margin: 8px 0 16px; }
+  .sync-table td:first-child { font-family: var(--mono); white-space: nowrap; }
+  .sync-table td:last-child { font-family: var(--font); }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+  .section-label {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 5px;
+    margin-bottom: 8px;
+  }
+  .section-label-sync { background: #dbeafe; color: #1d4ed8; }
+  .section-label-local { background: #f3f4f6; color: #4b5563; }
+
+  .index-summary td:first-child, .index-summary td:nth-child(2) { font-family: var(--mono); }
+
+  @media (max-width: 768px) {
+    .toc ul { columns: 1; }
+    .wrapper { padding: 20px 16px 60px; }
+    table { font-size: 13px; }
+    td, th { padding: 7px 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+<h1>Database Schema</h1>
+<p>Personal Finance App — local SQLite schema for Drift ORM.<br>References: <code>domain-model.md</code> (entities), <code>product-strategy.md</code> (features).</p>
+
+<!-- ============================================================ -->
+<!-- TABLE OF CONTENTS -->
+<!-- ============================================================ -->
+<div class="toc">
+<h3>Contents</h3>
+<ul>
+  <li><a href="#s1">1. Design Decisions</a></li>
+  <li><a href="#s2">2. Conventions</a></li>
+  <li><a href="#s3">3. Syncable Tables (12)</a>
+    <ul>
+      <li class="toc-l2"><a href="#s3-1">users</a> · <a href="#s3-2">households</a> · <a href="#s3-3">household_members</a></li>
+      <li class="toc-l2"><a href="#s3-4">accounts</a> · <a href="#s3-5">transactions</a> · <a href="#s3-6">transfers</a></li>
+      <li class="toc-l2"><a href="#s3-7">categories</a> · <a href="#s3-8">payees</a> · <a href="#s3-9">budgets</a></li>
+      <li class="toc-l2"><a href="#s3-10">debt_records</a> · <a href="#s3-11">goals</a> · <a href="#s3-12">recurring_templates</a></li>
+    </ul>
+  </li>
+  <li><a href="#s4">4. Local-Only Tables (4)</a>
+    <ul>
+      <li class="toc-l2"><a href="#s4-1">account_balance_snapshots</a> · <a href="#s4-2">notifications</a> · <a href="#s4-3">ai_processing_logs</a></li>
+    </ul>
+  </li>
+  <li><a href="#s5">5. Relationship Summary</a></li>
+  <li><a href="#s6">6. Drift ORM Notes</a></li>
+  <li><a href="#s7">7. Index Summary</a></li>
+</ul>
+</div>
+
+<!-- ============================================================ -->
+<!-- 1. DESIGN DECISIONS -->
+<!-- ============================================================ -->
+<h2 id="s1">1. Design Decisions</h2>
+
+<h3>1.1 Transfer Storage</h3>
+<p>Transfers stored in a dedicated <code>transfers</code> table (source → destination + amount). No transaction row is created for a transfer. The transfers table is not included in spending analytics. Transfer fees are a separate expense transaction.</p>
+
+<h3>1.2 Income Deductions</h3>
+<p>Self-referential <code>parent_transaction_id</code> column on <code>transactions</code>. A salary transaction is the parent; each deduction (tax, SSS, PhilHealth, Pag-IBIG, insurance) is a child row referencing it.</p>
+
+<h3>1.3 Opening Balance</h3>
+<p>Modeled as <code>transaction_subtype = 'opening_balance'</code> on an income transaction. A <code>metadata</code> TEXT (JSON) column provides extensible storage for OCR data, voice transcripts, AI metadata, and future special-purpose values without adding a column per flag.</p>
+
+<h3>1.4 Currency Amounts</h3>
+<p>Stored as REAL. Positive for all rows; <code>transaction_direction</code> indicates the financial sign. This keeps aggregation queries simple (SUM with CASE).</p>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 2. CONVENTIONS -->
+<!-- ============================================================ -->
+<h2 id="s2">2. Conventions</h2>
+
+<table>
+<thead><tr><th>Convention</th><th>Rule</th></tr></thead>
+<tbody>
+<tr><td>Naming</td><td>snake_case. Table aliases use abbreviated form (e.g. <code>t</code> for transactions).</td></tr>
+<tr><td>Primary key</td><td>Always <code>id</code> — TEXT, UUID v4, generated locally.</td></tr>
+<tr><td>Foreign keys</td><td>Named <code>{referenced_table}_id</code>.</td></tr>
+<tr><td>Timestamps</td><td>TEXT, ISO 8601 (e.g. <code>2026-06-17T22:34:00Z</code>), UTC.</td></tr>
+<tr><td>Booleans</td><td>INTEGER, 0 or 1.</td></tr>
+<tr><td>Soft delete</td><td><code>deleted_at</code> TEXT, nullable. NULL = active.</td></tr>
+<tr><td>Sync fields</td><td><code>sync_status</code> TEXT + <code>last_synced_at</code> TEXT on every syncable table.</td></tr>
+<tr><td>Monetization</td><td>REAL, always positive.</td></tr>
+<tr><td>JSON</td><td>TEXT column containing valid JSON. Read with <code>json_extract()</code>.</td></tr>
+<tr><td>Default timezone</td><td>UTC for all timestamps. Locale conversion in the application layer.</td></tr>
+</tbody>
+</table>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 3. SYNCABLE TABLES -->
+<!-- ============================================================ -->
+<h2 id="s3">3. Syncable Tables <span class="badge badge-sync">12 tables</span></h2>
+
+<p>These tables carry <code>sync_status</code> and <code>last_synced_at</code> for future sync with the NestJS backend.</p>
+
+<h3>sync_status Values</h3>
+<table class="sync-table">
+<thead><tr><th>Value</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>local_only</td><td>Created offline. Not yet sent to server.</td></tr>
+<tr><td>pending_sync</td><td>Modified locally after last sync.</td></tr>
+<tr><td>synced</td><td>In sync with server.</td></tr>
+<tr><td>sync_failed</td><td>Last sync attempt failed.</td></tr>
+</tbody>
+</table>
+
+<!-- 3.1 users -->
+<h3 id="s3-1">3.1 <code>users</code></h3>
+<p class="table-desc">Local-first. A user can operate without a <code>users</code> row (anonymous offline mode). A row is created when a user opts into cloud sync. <code>email</code> is nullable to support purely local usage.</p>
+<table>
+<thead><tr><th>Column</th><th>Type</th><th>Constraints</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>TEXT</td><td>PK</td><td>UUID v4</td></tr>
+<tr><td>email</td><td>TEXT</td><td>UNIQUE, nullable</td><td>NULL for local-only users</td></tr>
+<tr><td>display_name</td><td>TEXT</td><td>nullable</td><td></td></tr>
+<tr><td>currency_code</td><td>TEXT</td><td>NOT NULL, default 'PHP'</td><td>ISO 4217</td></tr>
+<tr><td>locale</td><td>TEXT</td><td>nullable</td><td>e.g. <code>en-PH</code></td></tr>
+<tr><td>timezone</td><td>TEXT</td><td>nullable</td><td>e.g. <code>Asia/Manila</code></td></tr>
+<tr><td>ai_enabled</td><td>INTEGER</td><td>NOT NULL, default 0</td><td>Boolean</td></tr>
+<tr><td>created_at</td><td>TEXT</td><td>NOT NULL</td><td></td></tr>
+<tr><td>updated_at</td><td>TEXT</td><td>NOT NULL</td><td></td></tr>
+<tr><td>deleted_at</td><td>TEXT</td><td>nullable</td><td>Soft delete</td></tr>
+<tr><td>sync_status</td><td>TEXT</td><td>NOT NULL, default 'local_only'</td><td></td></tr>
+<tr><td>last_synced_at</td><td>TEXT</td><td>nullable</td><td></td></tr>
+</tbody>
+</table>
+<p><strong>Indexes:</strong> <code>idx_users_email</code> on <code>email</code>.</p>
+
+<!-- 3.2 households -->
+<h3 id="s3-2">3.2 <code>households</code></h3>
+<p class="table-desc">Shared financial space supporting shared accounts, budgets, goals, and debts.</p>
+<table>
+<thead><tr><th>Column</th><th>Type</th><th>Constraints</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>TEXT</td><td>PK</td><td>UUID v4</td></tr>
+<tr><td>name</td><td>TEXT</td><td>NOT NULL</td><td></td></tr>
+<tr><td>created_by_user_id</td><td>TEXT</td><td>NOT NULL, FK → users.id</td><td></td></tr>
+<tr><td>created_at</td><td>TEXT</td><td>NOT NULL</td><td></td></tr>
+<tr><td>updated_at</td><td>TEXT</td><td>NOT NULL</td><td></td></tr>
+<tr><td>deleted_at</td><td>TEXT</td><td>nullable</td><td></td></tr>
+<tr><td>sync_status</td><td>TEXT</td><td>NOT NULL, default 'local_only'</td><td></td></tr>
+<tr><td>last_synced_at</td><td>TEXT</td><td>nullable</td><td></td></tr>
+</tbody>
+</table>
+<p><strong>Indexes:</strong> <code>idx_households_created_by</code> on <code>created_by_user_id</code>.</p>
+
+<!-- 3.3 household_members -->
+<h3 id="s3-3">3.3 <code>household_members</code></h3>
+<p class="table-desc">Join table with role-based permissions.</p>
+<table>
+<thead><tr><th>Column</th><th>Type</th><th>Constraints</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>TEXT</td><td>PK</td><td>UUID v4</td></tr>
+<tr><td>household_id</td><td>TEXT</td><td>NOT NULL, FK → households.id</td><td></td></tr>
+<tr><td>user_id</td><td>TEXT</td><td>NOT NULL, FK → users.id</td><td></td></tr>
+<tr><td>role</td><td>TEXT</td><td>NOT NULL, CHECK ('owner', 'member', 'viewer')</td><td></td></tr>
+<tr><td>created_at</td><td>TEXT</td><td>NOT NULL</td><td></td></tr>
+<tr><td>sync_status</td><td>TEXT</td><td>NOT NULL, default 'local_only'</td><td></td></tr>
+<tr><td>last_synced_at</td><td>TEXT</td><td>nullable</td><td></td></tr>
+</tbody>
+</table>
+<p><strong>Unique constraint:</strong> <code>(household_id, user_id)</code>.<br>
+<strong>Indexes:</strong> <code>idx_hh_members_household</code> on <code>household_id</code>, <code>idx_hh_members_user</code> on <code>user_id</code>.</p>
+
+<!-- 3.4 accounts -->
+<h3 id="s3-4">3.4 <code>accounts</code></h3>
+<p class="table-desc">Stored financial containers. Balance is stored directly (read optimisation) and updated when transactions are created, edited, or deleted. Recalculation from transaction history exists as a recovery tool.</p>
+<table>
+<thead><tr><th>Column</th><th>Type</th><th>Constraints</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>TEXT</td><td>PK</td><td>UUID v4</td></tr>
+<tr><td>household_id</td><td>TEXT</td><td>nullable, FK → households.id</td><td>NULL = personal account</td></tr>
+<tr><td>owner_user_id</td><td>TEXT</td><td>NOT NULL, FK → users.id</td><td></td></tr>
+<tr><td>name</td><td>TEXT</td><td>NOT NULL</td><td></td></tr>
+<tr><td>account_type</td><td>TEXT</td><td>NOT NULL, CHECK</td><td>See enum below</td></tr>
+<tr><td>balance</td><td>REAL</td><td>NOT NULL, default 0</td><td>Stored balance (read optimisation)</td></tr>
+<tr><td>currency_code</td><td>TEXT</td><td>NOT NULL, default 'PHP'</td><td></td></tr>
+<tr><td>is_archived</td><td>INTEGER</td><td>NOT NULL, default 0</td><td></td></tr>
+<tr><td>is_hidden</td><td>INTEGER</td><td>NOT NULL, default 0</td><td>Hides from dashboard</td></tr>
+<tr><td>created_at</td><td>TEXT</td><td>NOT NULL</td><td></td></tr>
+<tr><td>updated_at</td><td>TEXT</td><td>NOT NULL</td><td></td></tr>
+<tr><td>deleted_at</td><td>TEXT</td><td>nullable</td><td></td></tr>
+<tr><td>sync_status</td><td>TEXT</td><td>NOT NULL, default 'local_only'</td><td></td></tr>
+<tr><td>last_synced_at</td><td>TEXT</td><td>nullable</td><td></td></tr>
+</tbody>
+</table>
+
+<h4>account_type CHECK Values</h4>
+<table>
+<thead><tr><th>Group</th><th>Values</th></tr></thead>
+<tbody>
+<tr><td>Asset</td><td><code>cash</code>, <code>bank</code>, <code>ewallet</code>, <code>savings</code>, <code>investment</code>, <code>crypto</code></td></tr>
+<tr><td>Liability</td><td><code>credit_card</code>, <code>loan</code>, <code>bnpl</code></td></tr>
+</tbody>
+</table>
+<p><strong>Indexes:</strong> <code>idx_accounts_owner</code> on <code>owner_user_id</code>, <code>idx_accounts_household</code> on <code>household_id</code>, <code>idx_accounts_type</code> on <code>account_type</code>.</p>
+
+<!-- 3.5 transactions -->
+<h3 id="s3-5">3.5 <code>transactions</code></h3>
+<p class="table-desc">Core financial event. Every transaction belongs to one account. Transfers between accounts live in the separate <code>transfers</code> table.</p>
+<table>
+<thead><tr><th>Column</th><th>Type</th><th>Constraints</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>TEXT</td><td>PK</td><td>UUID v4</td></tr>
+<tr><td>account_id</td><td>TEXT</td><td>NOT NULL, FK → accounts.id</td><td></td></tr>
+<tr><td>category_id</td><td>TEXT</td><td>nullable, FK → categories.id</td><td></td></tr>
+<tr><td>payee_id</td><td>TEXT</td><td>nullable, FK → payees.id</td><td></td></tr>
+<tr><td>parent_transaction_id</td><td>TEXT</td><td>nullable, FK → transactions.id</td><td>For income deductions</td></tr>
+<tr><td>recurring_template_id</td><td>TEXT</td><td>nullable, FK → recurring_templates.id</td><td></td></tr>
+<tr><td>amount</td><td>REAL</td><td>NOT NULL</td><td>Always positive</td></tr>
+<tr><td>transaction_direction</td><td>TEXT</td><td>NOT NULL, CHECK</td><td><code>'expense'</code> or <code>'income'</code></td></tr>
+<tr><td>transaction_mode</td><td>TEXT</td><td>NOT NULL, CHECK</td><td><code>'one_time'</code>, <code>'recurring'</code>, <code>'installment'</code>, <code>'debt'</code></td></tr>
+<tr><td>transaction_subtype</td><td>TEXT</td><td>nullable</td><td><code>'salary'</code>, <code>'refund'</code>, <code>'transfer_fee'</code>, <code>'subscription'</code>, <code>'loan_payment'</code>, <code>'debt_payment'</code>, <code>'opening_balance'</code></td></tr>
+<tr><td>note</td><td>TEXT</td><td>nullable</td><td>Human description or raw OCR text</td></tr>
+<tr><td>metadata</td><td>TEXT</td><td>nullable</td><td>JSON — OCR data, voice transcripts, AI metadata</td></tr>
+<tr><td>occurred_at</td><td>TEXT</td><td>NOT NULL</td><td>When the transaction happened</td></tr>
+<tr><td>created_at</td><td>TEXT</td><td>NOT NULL</td><td></td></tr>
+<tr><td>updated_at</td><td>TEXT</td><td>NOT NULL</td><td></td></tr>
+<tr><td>deleted_at</td><td>TEXT</td><td>nullable</td><td></td></tr>
+<tr><td>sync_status</td><td>TEXT</td><td>NOT NULL, default 'local_only'</td><td></td></tr>
+<tr><td>last_synced_at</td><td>TEXT</td><td>nullable</td><td></td></tr>
+</tbody>
+</table>
+<p><strong>Indexes:</strong> <code>idx_transactions_account</code>, <code>idx_transactions_category</code>, <code>idx_transactions_payee</code>, <code>idx_transactions_parent</code>, <code>idx_transactions_occurred_at</code>, <code>idx_transactions_direction</code>.</p>
+
+<!-- 3.6 transfers -->
+<h3 id="s3-6">3.6 <code>transfers</code></h3>
+<p class="table-desc">Dedicated transfer entity. Subtracts from source, adds to destination. Excluded from spending analytics and budget calculations.</p>
+<table>
+<thead><tr><th>Column</th><th>Type</th><th>Constraints</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>TEXT</td><td>PK</td><td>UUID v4</td></tr>
+<tr><td>source_account_id</td><td>TEXT</td><td>NOT NULL, FK → accounts.id</td><td></td></tr>
+<tr><td>destination_account_id</td><td>TEXT</td><td>NOT NULL, FK → accounts.id</td><td></td></tr>
+<tr><td>amount</td><td>REAL</td><td>NOT NULL</td><td></td></tr>
+<tr><td>fee_amount</td><td>REAL</td><td>nullable, default 0</td><td>Informational; actual fee should also be a separate expense transaction</td></tr>
+<tr><td>note</td><td>TEXT</td><td>nullable</td><td></td></tr>
+<tr><td>occurred_at</td><td>TEXT</td><td>NOT NULL</td><td></td></tr>
+<tr><td>created_at</td><td>TEXT</td><td>NOT NULL</td><td></td></tr>
+<tr><td>updated_at</td><td>TEXT</td><td>NOT NULL</td><td></td></tr>
+<tr><td>deleted_at</td><td>TEXT</td><td>nullable</td><td></td></tr>
+<tr><td>sync_status</td><td>TEXT</td><td>NOT NULL, default 'local_only'</td><td></td></tr>
+<tr><td>last_synced_at</td><td>TEXT</td><td>nullable</td><td></td></tr>
+</tbody>
+</table>
+<p><strong>Indexes:</strong> <code>idx_transfers_source</code>, <code>idx_transfers_dest</code>, <code>idx_transfers_occurred_at</code>.</p>
+
+<!-- 3.7 categories -->
+<h3 id="s3-7">3.7 <code>categories</code></h3>
+<p class="table-desc">Transaction categories. Seeded with defaults on first launch. Categories are syncable so user customisations can be backed up, but the initial seed data is bundled with the app.</p>
+<table>
+<thead><tr><th>Column</th><th>Type</th><th>Constraints</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>TEXT</td><td>PK</td><td>UUID v4</td></tr>
+<tr><td>parent_category_id</td><td>TEXT</td><td>nullable, FK → categories.id</td><td>Self-referential</td></tr>
+<tr><td>name</td><td>TEXT</td><td>NOT NULL</td><td></td></tr>
+<tr><td>icon</td><td>TEXT</td><td>nullable</td><td>Icon identifier string</td></tr>
+<tr><td>color</td><td>TEXT</td><td>nullable</td><td>Hex colour</td></tr>
+<tr><td>category_group</td><td>TEXT</td><td>NOT NULL, CHECK</td><td><code>'expense'</code>, <code>'income'</code>, <code>'transfer'</code></td></tr>
+<tr><td>created_at</td><td>TEXT</td><td>NOT NULL</td><td></td></tr>
+<tr><td>updated_at</td><td>TEXT</td><td>NOT NULL</td><td></td></tr>
+<tr><td>sync_status</td><td>TEXT</td><td>NOT NULL, default 'synced'</td><td>Seed data starts as synced</td></tr>
+<tr><td>last_synced_at</td><td>TEXT</td><td>nullable</td><td></td></tr>
+</tbody>
+</table>
+<p><strong>Indexes:</strong> <code>idx_categories_parent</code> on <code>parent_category_id</code>.</p>
+
+<!-- 3.8 payees -->
+<h3 id="s3-8">3.8 <code>payees</code></h3>
+<p class="table-desc">Normalised merchant or payee. Deduplicated by <code>normalized_name</code>.</p>
+<table>
+<thead><tr><th>Column</th><th>Type</th><th>Constraints</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>TEXT</td><td>PK</td><td>UUID v4</td></tr>
+<tr><td>normalized_name</td><td>TEXT</td><td>NOT NULL, UNIQUE</td><td>Lowercase, stripped for dedup</td></tr>
+<tr><td>display_name</td><td>TEXT</td><td>nullable</td><td>Human-readable</td></tr>
+<tr><td>logo_url</td><td>TEXT</td><td>nullable</td><td></td></tr>
+<tr><td>created_at</td><td>TEXT</td><td>NOT NULL</td><td></td></tr>
+<tr><td>updated_at</td><td>TEXT</td><td>NOT NULL</td><td></td></tr>
+<tr><td>sync_status</td><td>TEXT</td><td>NOT NULL, default 'local_only'</td><td></td></tr>
+<tr><td>last_synced_at</td><td>TEXT</td><td>nullable</td><td></td></tr>
+</tbody>
+</table>
+<p><strong>Indexes:</strong> <code>idx_payees_normalized</code> on <code>normalized_name</code> (UNIQUE).</p>
+
+<!-- 3.9 budgets -->
+<h3 id="s3-9">3.9 <code>budgets</code></h3>
+<p class="table-desc">Monthly category spending target. Advisory only — budgets do not block or restrict transactions.</p>
+<table>
+<thead><tr><th>Column</th><th>Type</th><th>Constraints</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>TEXT</td><td>PK</td><td>UUID v4</td></tr>
+<tr><td>household_id</td><td>TEXT</td><td>nullable, FK → households.id</td><td>NULL = personal budget</td></tr>
+<tr><td>owner_user_id</td><td>TEXT</td><td>NOT NULL, FK → users.id</td><td></td></tr>
+<tr><td>category_id</td><td>TEXT</td><td>NOT NULL, FK → categories.id</td><td></td></tr>
+<tr><td>amount</td><td>REAL</td><td>NOT NULL</td><td>Target amount</td></tr>
+<tr><td>month</td><td>INTEGER</td><td>NOT NULL, CHECK 1–12</td><td></td></tr>
+<tr><td>year</td><td>INTEGER</td><td>NOT NULL</td><td></td></tr>
+<tr><td>created_at</td><td>TEXT</td><td>NOT NULL</td><td></td></tr>
+<tr><td>updated_at</td><td>TEXT</td><td>NOT NULL</td><td></td></tr>
+<tr><td>sync_status</td><td>TEXT</td><td>NOT NULL, default 'local_only'</td><td></td></tr>
+<tr><td>last_synced_at</td><td>TEXT</td><td>nullable</td><td></td></tr>
+</tbody>
+</table>
+<p><strong>Unique constraint:</strong> <code>(owner_user_id, category_id, month, year)</code> — one budget per category per month.<br>
+<strong>Indexes:</strong> <code>idx_budgets_owner_period</code> on <code>(owner_user_id, month, year)</code>.</p>
+
+<!-- 3.10 debt_records -->
+<h3 id="s3-10">3.10 <code>debt_records</code></h3>
+<p class="table-desc">Social debt tracking (lent/borrowed between people). Institutional debt (credit cards, loans) is tracked via liability accounts.</p>
+<table>
+<thead><tr><th>Column</th><th>Type</th><th>Constraints</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>TEXT</td><td>PK</td><td>UUID v4</td></tr>
+<tr><td>owner_user_id</td><td>TEXT</td><td>NOT NULL, FK → users.id</td><td></td></tr>
+<tr><td>counterparty_name</td><td>TEXT</td><td>NOT NULL</td><td>Person or entity name</td></tr>
+<tr><td>debt_direction</td><td>TEXT</td><td>NOT NULL, CHECK</td><td><code>'lent'</code> or <code>'borrowed'</code></td></tr>
+<tr><td>amount</td><td>REAL</td><td>NOT NULL</td><td>Original amount</td></tr>
+<tr><td>remaining_balance</td><td>REAL</td><td>NOT NULL</td><td></td></tr>
+<tr><td>note</td><td>TEXT</td><td>nullable</td><td></td></tr>
+<tr><td>due_date</td><td>TEXT</td><td>nullable</td><td>ISO 8601 date</td></tr>
+<tr><td>status</td><td>TEXT</td><td>NOT NULL, CHECK</td><td><code>'active'</code>, <code>'partially_paid'</code>, <code>'settled'</code></td></tr>
+<tr><td>created_at</td><td>TEXT</td><td>NOT NULL</td><td></td></tr>
+<tr><td>updated_at</td><td>TEXT</td><td>NOT NULL</td><td></td></tr>
+<tr><td>sync_status</td><td>TEXT</td><td>NOT NULL, default 'local_only'</td><td></td></tr>
+<tr><td>last_synced_at</td><td>TEXT</td><td>nullable</td><td></td></tr>
+</tbody>
+</table>
+<p><strong>Indexes:</strong> <code>idx_debt_owner</code> on <code>owner_user_id</code>, <code>idx_debt_status</code> on <code>status</code>.</p>
+
+<!-- 3.11 goals -->
+<h3 id="s3-11">3.11 <code>goals</code></h3>
+<p class="table-desc">Financial targets. Users manually contribute; no auto-transfer engine in V1.</p>
+<table>
+<thead><tr><th>Column</th><th>Type</th><th>Constraints</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>TEXT</td><td>PK</td><td>UUID v4</td></tr>
+<tr><td>owner_user_id</td><td>TEXT</td><td>NOT NULL, FK → users.id</td><td></td></tr>
+<tr><td>household_id</td><td>TEXT</td><td>nullable, FK → households.id</td><td>NULL = personal goal</td></tr>
+<tr><td>name</td><td>TEXT</td><td>NOT NULL</td><td></td></tr>
+<tr><td>goal_type</td><td>TEXT</td><td>NOT NULL, CHECK</td><td><code>'emergency_fund'</code>, <code>'savings'</code>, <code>'travel'</code>, <code>'debt_payoff'</code>, <code>'custom'</code></td></tr>
+<tr><td>target_amount</td><td>REAL</td><td>NOT NULL</td><td></td></tr>
+<tr><td>current_amount</td><td>REAL</td><td>NOT NULL, default 0</td><td></td></tr>
+<tr><td>target_date</td><td>TEXT</td><td>nullable</td><td>ISO 8601 date</td></tr>
+<tr><td>created_at</td><td>TEXT</td><td>NOT NULL</td><td></td></tr>
+<tr><td>updated_at</td><td>TEXT</td><td>NOT NULL</td><td></td></tr>
+<tr><td>sync_status</td><td>TEXT</td><td>NOT NULL, default 'local_only'</td><td></td></tr>
+<tr><td>last_synced_at</td><td>TEXT</td><td>nullable</td><td></td></tr>
+</tbody>
+</table>
+<p><strong>Indexes:</strong> <code>idx_goals_owner</code> on <code>owner_user_id</code>, <code>idx_goals_type</code> on <code>goal_type</code>.</p>
+
+<!-- 3.12 recurring_templates -->
+<h3 id="s3-12">3.12 <code>recurring_templates</code></h3>
+<p class="table-desc">Recurring transaction templates. Templates create reminders and suggested entries — they do NOT auto-create finalized transactions.</p>
+<table>
+<thead><tr><th>Column</th><th>Type</th><th>Constraints</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>TEXT</td><td>PK</td><td>UUID v4</td></tr>
+<tr><td>account_id</td><td>TEXT</td><td>NOT NULL, FK → accounts.id</td><td></td></tr>
+<tr><td>category_id</td><td>TEXT</td><td>nullable, FK → categories.id</td><td></td></tr>
+<tr><td>payee_id</td><td>TEXT</td><td>nullable, FK → payees.id</td><td></td></tr>
+<tr><td>amount</td><td>REAL</td><td>NOT NULL</td><td></td></tr>
+<tr><td>recurrence_rule</td><td>TEXT</td><td>NOT NULL</td><td>ISO 8601 duration or RRULE string</td></tr>
+<tr><td>reminder_enabled</td><td>INTEGER</td><td>NOT NULL, default 1</td><td>Boolean</td></tr>
+<tr><td>auto_create_disabled</td><td>INTEGER</td><td>NOT NULL, default 0</td><td>Boolean — 1 = reminder only, no suggested entry</td></tr>
+<tr><td>next_occurrence_at</td><td>TEXT</td><td>nullable</td><td>Pre-computed next date</td></tr>
+<tr><td>created_at</td><td>TEXT</td><td>NOT NULL</td><td></td></tr>
+<tr><td>updated_at</td><td>TEXT</td><td>NOT NULL</td><td></td></tr>
+<tr><td>sync_status</td><td>TEXT</td><td>NOT NULL, default 'local_only'</td><td></td></tr>
+<tr><td>last_synced_at</td><td>TEXT</td><td>nullable</td><td></td></tr>
+</tbody>
+</table>
+<p><strong>Indexes:</strong> <code>idx_recurring_account</code> on <code>account_id</code>, <code>idx_recurring_next</code> on <code>next_occurrence_at</code>.</p>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 4. LOCAL-ONLY TABLES -->
+<!-- ============================================================ -->
+<h2 id="s4">4. Local-Only Tables <span class="badge badge-local">4 tables</span></h2>
+<p>These tables do NOT carry sync fields. Their data is device-local and rebuilt or lost on reset.</p>
+
+<!-- 4.1 account_balance_snapshots -->
+<h3 id="s4-1">4.1 <code>account_balance_snapshots</code></h3>
+<p class="table-desc">Optional optimisation table for fast historical balance charts and net worth timelines. Data is derived from transactions and can be rebuilt.</p>
+<table>
+<thead><tr><th>Column</th><th>Type</th><th>Constraints</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>TEXT</td><td>PK</td><td>UUID v4</td></tr>
+<tr><td>account_id</td><td>TEXT</td><td>NOT NULL, FK → accounts.id</td><td></td></tr>
+<tr><td>balance</td><td>REAL</td><td>NOT NULL</td><td>Snapshot balance</td></tr>
+<tr><td>snapshot_at</td><td>TEXT</td><td>NOT NULL</td><td>ISO 8601</td></tr>
+</tbody>
+</table>
+<p><strong>Indexes:</strong> <code>idx_snapshots_account_date</code> on <code>(account_id, snapshot_at)</code>.</p>
+
+<!-- 4.2 notifications -->
+<h3 id="s4-2">4.2 <code>notifications</code></h3>
+<p class="table-desc">Local-first reminder system. Notifications are scheduled locally on device. Future cloud push (FCM) will be an optional layer.</p>
+<table>
+<thead><tr><th>Column</th><th>Type</th><th>Constraints</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>TEXT</td><td>PK</td><td>UUID v4</td></tr>
+<tr><td>notification_type</td><td>TEXT</td><td>NOT NULL, CHECK</td><td><code>'recurring_reminder'</code>, <code>'bill_due'</code>, <code>'installment_due'</code>, <code>'debt_reminder'</code>, <code>'subscription_reminder'</code></td></tr>
+<tr><td>related_entity_id</td><td>TEXT</td><td>nullable</td><td>UUID of related entity</td></tr>
+<tr><td>scheduled_at</td><td>TEXT</td><td>NOT NULL</td><td>ISO 8601</td></tr>
+<tr><td>is_completed</td><td>INTEGER</td><td>NOT NULL, default 0</td><td>Boolean</td></tr>
+<tr><td>created_at</td><td>TEXT</td><td>NOT NULL</td><td></td></tr>
+</tbody>
+</table>
+<p><strong>Indexes:</strong> <code>idx_notifications_scheduled</code> on <code>scheduled_at</code>, <code>idx_notifications_type</code> on <code>notification_type</code>.</p>
+
+<!-- 4.3 ai_processing_logs -->
+<h3 id="s4-3">4.3 <code>ai_processing_logs</code></h3>
+<p class="table-desc">Stores AI extraction and categorisation metadata for debugging, transparency, and auditability. Read-only for users; written by the AI module.</p>
+<table>
+<thead><tr><th>Column</th><th>Type</th><th>Constraints</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>TEXT</td><td>PK</td><td>UUID v4</td></tr>
+<tr><td>source_type</td><td>TEXT</td><td>NOT NULL</td><td><code>'ocr'</code>, <code>'nlp'</code>, <code>'categorization'</code></td></tr>
+<tr><td>source_reference_id</td><td>TEXT</td><td>nullable</td><td>UUID of related entity</td></tr>
+<tr><td>model_used</td><td>TEXT</td><td>nullable</td><td>e.g. <code>'gemma-4-e4b-it'</code></td></tr>
+<tr><td>extracted_payload</td><td>TEXT</td><td>nullable</td><td>JSON — raw AI output</td></tr>
+<tr><td>confidence_score</td><td>REAL</td><td>nullable</td><td>0.0–1.0</td></tr>
+<tr><td>created_at</td><td>TEXT</td><td>NOT NULL</td><td></td></tr>
+</tbody>
+</table>
+<p><strong>Indexes:</strong> <code>idx_ai_logs_source</code> on <code>source_type</code>, <code>idx_ai_logs_reference</code> on <code>source_reference_id</code>.</p>
+
+<h3>4.4 <code>sync_metadata</code></h3>
+<p>Simple key-value table for sync bookkeeping. Stores sync timestamps, status, and error counts. NOT syncable — this data is device-local. Referenced by the sync engine (<code>sync-engine.md</code> §10) and exposed by the sync health provider (<code>state-management.md</code> §4.5).</p>
+
+<table>
+<thead><tr><th>Column</th><th>Type</th><th>Constraints</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>key</td><td>TEXT</td><td>PK</td><td>e.g. <code>last_synced_at</code>, <code>sync_failed_count</code></td></tr>
+<tr><td>value</td><td>TEXT</td><td>NOT NULL</td><td>Serialized value (string, number, etc.)</td></tr>
+</tbody>
+</table>
+<p><strong>Keys stored:</strong></p>
+<table>
+<thead><tr><th>Key</th><th>Value format</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td><code>last_synced_at</code></td><td>ISO 8601</td><td>Last successful pull timestamp</td></tr>
+<tr><td><code>last_sync_attempt_at</code></td><td>ISO 8601</td><td>Last sync cycle start time</td></tr>
+<tr><td><code>last_sync_status</code></td><td>string</td><td><code>success</code> / <code>partial</code> / <code>failed</code></td></tr>
+<tr><td><code>last_sync_error</code></td><td>string</td><td>Error message if last sync failed</td></tr>
+<tr><td><code>sync_failed_count</code></td><td>integer</td><td>Number of records in <code>sync_failed</code></td></tr>
+</tbody>
+</table>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 5. RELATIONSHIP SUMMARY -->
+<!-- ============================================================ -->
+<h2 id="s5">5. Relationship Summary</h2>
+
+<pre style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; font-family: var(--mono); font-size: 13px; line-height: 1.7; overflow-x: auto;">
+users ──── household_members ──── households
+  │                                  │
+  ├── accounts                        ├── accounts (shared)
+  ├── transactions                   ├── budgets (shared)
+  ├── budgets                        ├── goals (shared)
+  ├── debt_records
+  ├── goals
+  └── recurring_templates
+
+accounts ──── transactions
+accounts ──── transfers (source)
+accounts ──── transfers (destination)
+accounts ──── account_balance_snapshots
+
+categories ──── transactions
+categories ──── budgets
+
+payees ──── transactions
+
+transactions ──── transactions (parent_transaction_id, self-ref)
+transactions ──── recurring_templates
+</pre>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 6. DRIFT ORM NOTES -->
+<!-- ============================================================ -->
+<h2 id="s6">6. Drift ORM Notes</h2>
+
+<h3>6.1 Type Mappings</h3>
+<table>
+<thead><tr><th>SQLite Type</th><th>Dart Type</th><th>Drift Annotation</th></tr></thead>
+<tbody>
+<tr><td>TEXT (UUID)</td><td>String</td><td><code>TextColumn</code></td></tr>
+<tr><td>REAL</td><td>double</td><td><code>RealColumn</code></td></tr>
+<tr><td>INTEGER (boolean)</td><td>bool</td><td><code>IntColumn</code> with <code>@BoolConverter()</code></td></tr>
+<tr><td>TEXT (timestamp)</td><td>DateTime</td><td><code>DateTimeColumn</code></td></tr>
+<tr><td>TEXT (JSON)</td><td>Map&lt;String, dynamic&gt;</td><td><code>TextColumn</code> with custom <code>TypeConverter</code></td></tr>
+</tbody>
+</table>
+
+<h3>6.2 Nullable FK Workaround</h3>
+<p>Drift requires foreign-key columns to be non-nullable for certain queries. Use <code>@reference(mapTo: …)</code> or handle nullable FKs with <code>?</code> on the Dart field and <code>TextColumn.nullable()</code>.</p>
+
+<h3>6.3 Index Naming</h3>
+<p>Drift uses <code>indexName</code> on <code>@Index</code> annotations. Name indexes descriptively (e.g. <code>idx_transactions_account_id</code>).</p>
+
+<h3>6.4 Migration Strategy</h3>
+<table>
+<thead><tr><th>Concern</th><th>Approach</th></tr></thead>
+<tbody>
+<tr><td>Schema versioning</td><td>Use <code>Migrations</code> with <code>onUpgrade</code> callbacks. Start at version 1.</td></tr>
+<tr><td>Schema changes</td><td>Always add, never drop columns in V1. Soft deletes (<code>deleted_at</code>) handle removal.</td></tr>
+<tr><td>Seed data</td><td>Categories are seeded in a post-migration callback via <code>batchInsert</code>.</td></tr>
+<tr><td>Testing</td><td>In-memory <code>NativeDatabase</code> per test suite. Apply migrations in <code>setUp</code>.</td></tr>
+</tbody>
+</table>
+
+<h3>6.5 Generated Code</h3>
+<p>Drift generates data classes (<code>Users</code>, <code>Account</code>, etc.) and companion classes (<code>UsersCompanion</code>). The generated file is <code>database.drift.dart</code>. Never manually edit generated code.</p>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- 7. INDEX SUMMARY -->
+<!-- ============================================================ -->
+<h2 id="s7">7. Index Summary</h2>
+
+<table class="index-summary">
+<thead><tr><th>Table</th><th>Index</th><th>Columns</th></tr></thead>
+<tbody>
+<tr><td>users</td><td>idx_users_email</td><td>email</td></tr>
+<tr><td>households</td><td>idx_households_created_by</td><td>created_by_user_id</td></tr>
+<tr><td>household_members</td><td>idx_hh_members_household</td><td>household_id</td></tr>
+<tr><td>household_members</td><td>idx_hh_members_user</td><td>user_id</td></tr>
+<tr><td>accounts</td><td>idx_accounts_owner</td><td>owner_user_id</td></tr>
+<tr><td>accounts</td><td>idx_accounts_household</td><td>household_id</td></tr>
+<tr><td>accounts</td><td>idx_accounts_type</td><td>account_type</td></tr>
+<tr><td>transactions</td><td>idx_transactions_account</td><td>account_id</td></tr>
+<tr><td>transactions</td><td>idx_transactions_category</td><td>category_id</td></tr>
+<tr><td>transactions</td><td>idx_transactions_payee</td><td>payee_id</td></tr>
+<tr><td>transactions</td><td>idx_transactions_parent</td><td>parent_transaction_id</td></tr>
+<tr><td>transactions</td><td>idx_transactions_occurred_at</td><td>occurred_at</td></tr>
+<tr><td>transactions</td><td>idx_transactions_direction</td><td>transaction_direction</td></tr>
+<tr><td>transfers</td><td>idx_transfers_source</td><td>source_account_id</td></tr>
+<tr><td>transfers</td><td>idx_transfers_dest</td><td>destination_account_id</td></tr>
+<tr><td>transfers</td><td>idx_transfers_occurred_at</td><td>occurred_at</td></tr>
+<tr><td>categories</td><td>idx_categories_parent</td><td>parent_category_id</td></tr>
+<tr><td>payees</td><td>idx_payees_normalized</td><td>normalized_name</td></tr>
+<tr><td>budgets</td><td>idx_budgets_owner_period</td><td>(owner_user_id, month, year)</td></tr>
+<tr><td>debt_records</td><td>idx_debt_owner</td><td>owner_user_id</td></tr>
+<tr><td>debt_records</td><td>idx_debt_status</td><td>status</td></tr>
+<tr><td>goals</td><td>idx_goals_owner</td><td>owner_user_id</td></tr>
+<tr><td>goals</td><td>idx_goals_type</td><td>goal_type</td></tr>
+<tr><td>recurring_templates</td><td>idx_recurring_account</td><td>account_id</td></tr>
+<tr><td>recurring_templates</td><td>idx_recurring_next</td><td>next_occurrence_at</td></tr>
+<tr><td>account_balance_snapshots</td><td>idx_snapshots_account_date</td><td>(account_id, snapshot_at)</td></tr>
+<tr><td>notifications</td><td>idx_notifications_scheduled</td><td>scheduled_at</td></tr>
+<tr><td>notifications</td><td>idx_notifications_type</td><td>notification_type</td></tr>
+<tr><td>ai_processing_logs</td><td>idx_ai_logs_source</td><td>source_type</td></tr>
+<tr><td>ai_processing_logs</td><td>idx_ai_logs_reference</td><td>source_reference_id</td></tr>
+</tbody>
+</table>
+
+</div>
+</body>
+</html>

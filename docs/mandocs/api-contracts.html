@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>API Contracts — Personal Finance App</title>
+<style>
+  :root {
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    --bg: #fafafa;
+    --surface: #ffffff;
+    --border: #e2e4e8;
+    --text: #1b1b1f;
+    --text-secondary: #63666e;
+    --accent: #2563eb;
+    --accent-light: #eff6ff;
+    --green: #059669;
+    --green-light: #ecfdf5;
+    --orange: #d97706;
+    --orange-light: #fffbeb;
+    --red: #dc2626;
+    --red-light: #fef2f2;
+    --code-bg: #1e1e2e;
+    --code-text: #cdd6f4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.6; }
+  .wrapper { max-width: 1000px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 28px; font-weight: 700; margin-bottom: 4px; letter-spacing: -0.5px; }
+  h1 + p { color: var(--text-secondary); font-size: 15px; margin-bottom: 32px; }
+  h2 { font-size: 21px; font-weight: 600; margin-top: 40px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 17px; font-weight: 600; margin-top: 28px; margin-bottom: 8px; }
+  h4 { font-size: 14px; font-weight: 600; margin-top: 20px; margin-bottom: 6px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+  p, li { font-size: 15px; }
+  p { margin-bottom: 12px; }
+  ul, ol { margin: 8px 0 16px 20px; }
+  li { margin-bottom: 4px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  strong { font-weight: 600; }
+  code { font-family: var(--mono); font-size: 13px; background: #f2f4f7; padding: 2px 6px; border-radius: 4px; }
+
+  .toc { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-bottom: 32px; }
+  .toc h3 { margin: 0 0 10px; font-size: 15px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); }
+  .toc ul { margin: 0; list-style: none; columns: 2; column-gap: 24px; }
+  .toc li { margin-bottom: 4px; font-size: 14px; }
+  .toc a { color: var(--text); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 12px 0 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  thead { background: #f2f4f7; border-bottom: 1px solid var(--border); }
+  th { font-weight: 600; text-align: left; padding: 10px 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); }
+  td { padding: 9px 12px; border-top: 1px solid var(--border); vertical-align: top; }
+  tr:first-child td { border-top: none; }
+  td:first-child { font-family: var(--mono); font-size: 13px; }
+  td:nth-child(2) { font-size: 13px; }
+
+  pre { background: var(--code-bg); color: var(--code-text); border-radius: 8px; padding: 16px 20px; font-family: var(--mono); font-size: 13px; line-height: 1.6; overflow-x: auto; margin: 12px 0 20px; }
+  pre code { background: none; padding: 0; font-size: 13px; color: inherit; }
+
+  .callout { background: var(--accent-light); border-left: 3px solid var(--accent); border-radius: 6px; padding: 12px 16px; margin: 12px 0 20px; font-size: 14px; }
+  .callout-green { background: var(--green-light); border-left-color: var(--green); }
+  .callout-orange { background: var(--orange-light); border-left-color: var(--orange); }
+  .callout-red { background: var(--red-light); border-left-color: var(--red); }
+
+  .method { display: inline-block; font-family: var(--mono); font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 4px; margin-right: 8px; }
+  .method-post { background: #dbeafe; color: #1d4ed8; }
+  .method-get { background: #dcfce7; color: #15803d; }
+  .method-put { background: #fef3c7; color: #b45309; }
+  .method-delete { background: #fee2e2; color: #b91c1c; }
+
+  .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
+  .badge-blue { background: #dbeafe; color: #1d4ed8; }
+  .badge-green { background: #dcfce7; color: #15803d; }
+  .badge-red { background: #fee2e2; color: #b91c1c; }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+  @media (max-width: 768px) {
+    .toc ul { columns: 1; }
+    .wrapper { padding: 20px 16px 60px; }
+    table { font-size: 13px; }
+    td, th { padding: 7px 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+<h1>API Contracts</h1>
+<p>Personal Finance App — REST API contract between the Flutter app and NestJS backend.<br>References: <code>product-strategy.md</code> (backend section), <code>database-schema.md</code> (entity shapes).</p>
+
+<div class="toc">
+<h3>Contents</h3>
+<ul>
+  <li><a href="#s1">1. Overview</a></li>
+  <li><a href="#s2">2. Authentication</a></li>
+  <li><a href="#s3">3. User Endpoints</a></li>
+  <li><a href="#s4">4. Sync Endpoints</a></li>
+  <li><a href="#s5">5. File Upload Endpoints</a></li>
+  <li><a href="#s6">6. Error Format</a></li>
+  <li><a href="#s7">7. Error Codes</a></li>
+  <li><a href="#s8">8. Rate Limiting</a></li>
+  <li><a href="#s9">9. Entity Response Shapes</a></li>
+  <li><a href="#s10">10. Sync Exclusions</a></li>
+</ul>
+</div>
+
+<!-- 1. OVERVIEW -->
+<h2 id="s1">1. Overview</h2>
+<p>The backend is a <strong>sync/backup layer only</strong>. It does NOT compute balances, dashboards, analytics, or budget summaries — those are computed locally on-device. The API handles:</p>
+<ul>
+  <li>Authentication (passwordless email OTP)</li>
+  <li>User profile</li>
+  <li>User search (for household invites)</li>
+  <li>Sync (push local changes, pull server changes)</li>
+  <li>File uploads (receipt images)</li>
+</ul>
+<table>
+<thead><tr><th>Property</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>Base URL</td><td><code>https://api.{domain}/v1</code></td></tr>
+<tr><td>Content type</td><td><code>application/json</code> (except uploads: <code>multipart/form-data</code>)</td></tr>
+<tr><td>Auth scheme</td><td>Bearer JWT</td></tr>
+<tr><td>Date format</td><td>ISO 8601, UTC</td></tr>
+</tbody>
+</table>
+
+<hr>
+
+<!-- 2. AUTH -->
+<h2 id="s2">2. Authentication</h2>
+<p>Auth does NOT block app usage. Users can operate fully offline without an account. Cloud auth is opt-in for sync/backups.</p>
+
+<h3>Flow</h3>
+<ol>
+  <li>Client sends email → server sends 6-digit OTP</li>
+  <li>Client verifies OTP → server returns access + refresh tokens</li>
+  <li>Client includes access token in <code>Authorization</code> header for all requests</li>
+  <li>Access token expires → client uses refresh token to get new pair</li>
+</ol>
+
+<h3>Tokens</h3>
+<table>
+<thead><tr><th>Token</th><th>TTL</th><th>Storage</th></tr></thead>
+<tbody>
+<tr><td>Access token</td><td>15 minutes</td><td>Secure storage (Flutter secure storage)</td></tr>
+<tr><td>Refresh token</td><td>30 days</td><td>Secure storage, rotated on each refresh</td></tr>
+</tbody>
+</table>
+
+<h3>2.1 <span class="method method-post">POST</span> /auth/request-otp</h3>
+<p>Request an OTP code to be sent to the email.</p>
+<h4>Request</h4>
+<pre><code>{
+  "email": "user@example.com"
+}</code></pre>
+<h4>Response — 200 OK</h4>
+<pre><code>{
+  "expires_in": 300
+}</code></pre>
+<h4>Errors</h4>
+<table>
+<thead><tr><th>Status</th><th>Code</th><th>When</th></tr></thead>
+<tbody>
+<tr><td>400</td><td>VALIDATION_ERROR</td><td>Invalid email format</td></tr>
+<tr><td>429</td><td>RATE_LIMITED</td><td>Too many OTP requests</td></tr>
+</tbody>
+</table>
+
+<h3>2.2 <span class="method method-post">POST</span> /auth/verify-otp</h3>
+<p>Verify the OTP and receive tokens.</p>
+<h4>Request</h4>
+<pre><code>{
+  "email": "user@example.com",
+  "code": "123456"
+}</code></pre>
+<h4>Response — 200 OK</h4>
+<pre><code>{
+  "access_token": "eyJhbGci...",
+  "refresh_token": "eyJhbGci...",
+  "expires_in": 900,
+  "user": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "email": "user@example.com",
+    "display_name": null,
+    "currency_code": "PHP",
+    "locale": null,
+    "timezone": null,
+    "ai_enabled": false,
+    "created_at": "2026-06-17T22:00:00Z",
+    "updated_at": "2026-06-17T22:00:00Z"
+  }
+}</code></pre>
+<p>If the email is new, a user record is auto-created. If existing, the user record is returned.</p>
+<h4>Errors</h4>
+<table>
+<thead><tr><th>Status</th><th>Code</th><th>When</th></tr></thead>
+<tbody>
+<tr><td>400</td><td>INVALID_OTP</td><td>Wrong code</td></tr>
+<tr><td>410</td><td>OTP_EXPIRED</td><td>Code has expired</td></tr>
+<tr><td>429</td><td>RATE_LIMITED</td><td>Too many verification attempts</td></tr>
+</tbody>
+</table>
+
+<h3>2.3 <span class="method method-post">POST</span> /auth/refresh</h3>
+<p>Exchange a refresh token for a new token pair.</p>
+<h4>Request</h4>
+<pre><code>{
+  "refresh_token": "eyJhbGci..."
+}</code></pre>
+<h4>Response — 200 OK</h4>
+<pre><code>{
+  "access_token": "eyJhbGci...",
+  "refresh_token": "eyJhbGci...",
+  "expires_in": 900
+}</code></pre>
+<h4>Errors</h4>
+<table>
+<thead><tr><th>Status</th><th>Code</th><th>When</th></tr></thead>
+<tbody>
+<tr><td>401</td><td>INVALID_TOKEN</td><td>Refresh token is invalid or expired</td></tr>
+</tbody>
+</table>
+
+<h3>2.4 <span class="method method-post">POST</span> /auth/logout</h3>
+<p>Revoke the current session and invalidate tokens.</p>
+<p><strong>Headers:</strong> <code>Authorization: Bearer {access_token}</code></p>
+<p><strong>Response — 204 No Content</strong></p>
+
+<hr>
+
+<!-- 3. USER -->
+<h2 id="s3">3. User Endpoints</h2>
+
+<h3>3.1 <span class="method method-get">GET</span> /me</h3>
+<p>Get the authenticated user's profile.</p>
+<h4>Response — 200 OK</h4>
+<pre><code>{
+  "user": {
+    "id": "550e8400-...",
+    "email": "user@example.com",
+    "display_name": "Joash",
+    "currency_code": "PHP",
+    "locale": "en-PH",
+    "timezone": "Asia/Manila",
+    "ai_enabled": true,
+    "created_at": "2026-06-17T22:00:00Z",
+    "updated_at": "2026-06-17T22:00:00Z"
+  }
+}</code></pre>
+
+<h3>3.2 <span class="method method-put">PUT</span> /me</h3>
+<p>Update the authenticated user's profile. All fields optional — only provided fields are updated.</p>
+<h4>Request</h4>
+<pre><code>{
+  "display_name": "Joash",
+  "currency_code": "PHP",
+  "locale": "en-PH",
+  "timezone": "Asia/Manila",
+  "ai_enabled": true
+}</code></pre>
+<h4>Response — 200 OK</h4>
+<p>Same shape as GET /me.</p>
+
+<h3>3.3 <span class="method method-get">GET</span> /users/search</h3>
+<p>Search users by email. Used for household member invites.</p>
+<p><strong>Query params:</strong> <code>?email=user@example.com</code></p>
+<h4>Response — 200 OK</h4>
+<pre><code>{
+  "users": [
+    {
+      "id": "550e8400-...",
+      "email": "user@example.com",
+      "display_name": "Joash"
+    }
+  ]
+}</code></pre>
+<p>Returns at most 10 results. Only returns users who exist on the server (have completed OTP auth).</p>
+
+<hr>
+
+<!-- 4. SYNC -->
+<h2 id="s4">4. Sync Endpoints</h2>
+<p>Sync is the core of the backend. All 12 syncable tables (see <code>database-schema.md</code> §3) are synced via two endpoints: push and pull.</p>
+
+<div class="callout">
+  <strong>Principles</strong>
+  <ul>
+    <li><strong>Push first, then pull</strong> — minimizes conflicts</li>
+    <li><strong>Server is authoritative</strong> for conflict resolution (last-write-wins by <code>updated_at</code>)</li>
+    <li><strong>Soft deletes sync</strong> — records with <code>deleted_at</code> set are pushed/pulled so deletions propagate</li>
+    <li><strong>No per-entity CRUD endpoints</strong> — all data flows through sync</li>
+  </ul>
+</div>
+
+<h3>4.1 <span class="method method-post">POST</span> /sync/push</h3>
+<p>Send local changes to the server. Client sends all records with <code>sync_status</code> of <code>local_only</code>, <code>pending_sync</code>, or <code>sync_failed</code>.</p>
+<h4>Request</h4>
+<pre><code>{
+  "changes": {
+    "users": [
+      {
+        "id": "550e8400-...",
+        "email": "user@example.com",
+        "display_name": "Joash",
+        "currency_code": "PHP",
+        "locale": "en-PH",
+        "timezone": "Asia/Manila",
+        "ai_enabled": true,
+        "created_at": "2026-06-17T22:00:00Z",
+        "updated_at": "2026-06-17T22:30:00Z",
+        "deleted_at": null
+      }
+    ],
+    "accounts": [
+      {
+        "id": "660e8400-...",
+        "household_id": null,
+        "owner_user_id": "550e8400-...",
+        "name": "GCash",
+        "account_type": "ewallet",
+        "balance": 5000.00,
+        "currency_code": "PHP",
+        "is_archived": false,
+        "is_hidden": false,
+        "created_at": "2026-06-17T22:00:00Z",
+        "updated_at": "2026-06-17T22:30:00Z",
+        "deleted_at": null
+      }
+    ],
+    "transactions": [],
+    "transfers": [],
+    "categories": [],
+    "payees": [],
+    "budgets": [],
+    "debt_records": [],
+    "goals": [],
+    "recurring_templates": [],
+    "households": [],
+    "household_members": []
+  }
+}</code></pre>
+<p>Only include tables that have changes. Empty arrays can be omitted.</p>
+
+<h4>Response — 200 OK</h4>
+<pre><code>{
+  "results": {
+    "users": [
+      {
+        "id": "550e8400-...",
+        "status": "applied",
+        "server_updated_at": "2026-06-17T22:30:00Z"
+      }
+    ],
+    "accounts": [
+      {
+        "id": "660e8400-...",
+        "status": "applied",
+        "server_updated_at": "2026-06-17T22:30:00Z"
+      }
+    ]
+  }
+}</code></pre>
+
+<h4>Per-record status values</h4>
+<table>
+<thead><tr><th>Status</th><th>Meaning</th><th>Client action</th></tr></thead>
+<tbody>
+<tr><td>applied</td><td>Server accepted the record</td><td>Set <code>sync_status = 'synced'</code>, <code>last_synced_at = server_updated_at</code></td></tr>
+<tr><td>conflict</td><td>Server has a newer version</td><td>Replace local record with <code>server_record</code>, set <code>sync_status = 'synced'</code></td></tr>
+<tr><td>error</td><td>Server rejected (validation/permission)</td><td>Keep as <code>sync_failed</code>, log error</td></tr>
+</tbody>
+</table>
+
+<h4>Conflict response shape</h4>
+<pre><code>{
+  "id": "660e8400-...",
+  "status": "conflict",
+  "server_record": {
+    "id": "660e8400-...",
+    "name": "GCash Wallet",
+    "balance": 4500.00,
+    "updated_at": "2026-06-17T22:35:00Z",
+    "...": "full record from server"
+  }
+}</code></pre>
+
+<h3>4.2 <span class="method method-post">POST</span> /sync/pull</h3>
+<p>Get server changes since the last sync. Returns all records updated after <code>last_synced_at</code>.</p>
+<h4>Request</h4>
+<pre><code>{
+  "last_synced_at": "2026-06-17T22:00:00Z",
+  "limit": 200,
+  "cursor": null
+}</code></pre>
+<table>
+<thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>last_synced_at</td><td>string (ISO 8601)</td><td>Yes</td><td>Server time from previous successful pull. <code>null</code> for initial sync.</td></tr>
+<tr><td>limit</td><td>integer</td><td>No</td><td>Max records per table. Default 200, max 500.</td></tr>
+<tr><td>cursor</td><td>string</td><td>No</td><td>Opaque pagination cursor from previous pull response.</td></tr>
+</tbody>
+</table>
+
+<h4>Response — 200 OK</h4>
+<pre><code>{
+  "server_time": "2026-06-17T22:34:00Z",
+  "changes": {
+    "users": [],
+    "households": [],
+    "household_members": [],
+    "accounts": [
+      {
+        "id": "660e8400-...",
+        "household_id": null,
+        "owner_user_id": "550e8400-...",
+        "name": "GCash Wallet",
+        "account_type": "ewallet",
+        "balance": 4500.00,
+        "currency_code": "PHP",
+        "is_archived": false,
+        "is_hidden": false,
+        "created_at": "2026-06-17T22:00:00Z",
+        "updated_at": "2026-06-17T22:35:00Z",
+        "deleted_at": null
+      }
+    ],
+    "transactions": [],
+    "transfers": [],
+    "categories": [],
+    "payees": [],
+    "budgets": [],
+    "debt_records": [],
+    "goals": [],
+    "recurring_templates": []
+  },
+  "has_more": false,
+  "next_cursor": null
+}</code></pre>
+
+<h4>Pagination</h4>
+<ul>
+  <li>If <code>has_more</code> is <code>true</code>, call pull again with <code>cursor = next_cursor</code>.</li>
+  <li>Repeat until <code>has_more</code> is <code>false</code>.</li>
+  <li>Store <code>server_time</code> as the new <code>last_synced_at</code> ONLY after all pages are pulled.</li>
+  <li>All tables are paginated independently — <code>has_more</code> is true if ANY table has more records.</li>
+</ul>
+
+<hr>
+
+<!-- 5. FILE UPLOAD -->
+<h2 id="s5">5. File Upload Endpoints</h2>
+
+<h3>5.1 <span class="method method-post">POST</span> /uploads</h3>
+<p>Upload a file (receipt image, etc.). Returns a URL for storage.</p>
+<p><strong>Request:</strong> <code>multipart/form-data</code></p>
+<table>
+<thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>file</td><td>binary</td><td>The file to upload</td></tr>
+<tr><td>related_entity_id</td><td>string (UUID)</td><td>Optional. Transaction or debt ID this file relates to.</td></tr>
+</tbody>
+</table>
+<h4>Response — 201 Created</h4>
+<pre><code>{
+  "id": "770e8400-...",
+  "url": "https://storage.{domain}/uploads/770e8400-...",
+  "size": 245678,
+  "content_type": "image/jpeg"
+}</code></pre>
+<h4>Constraints</h4>
+<table>
+<thead><tr><th>Property</th><th>Limit</th></tr></thead>
+<tbody>
+<tr><td>Max file size</td><td>10 MB</td></tr>
+<tr><td>Allowed types</td><td><code>image/jpeg</code>, <code>image/png</code>, <code>image/webp</code>, <code>application/pdf</code></td></tr>
+<tr><td>Retention</td><td>90 days (configurable)</td></tr>
+</tbody>
+</table>
+
+<h3>5.2 <span class="method method-get">GET</span> /uploads/{id}</h3>
+<p>Download a file.</p>
+<p><strong>Response — 200 OK:</strong> File binary with appropriate <code>Content-Type</code>.</p>
+
+<hr>
+
+<!-- 6. ERROR FORMAT -->
+<h2 id="s6">6. Error Format</h2>
+<p>All errors return a consistent JSON shape:</p>
+<pre><code>{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Email format is invalid",
+    "details": {
+      "field": "email",
+      "issue": "must be a valid email address"
+    }
+  }
+}</code></pre>
+<table>
+<thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>code</td><td>string</td><td>Machine-readable error code (see below)</td></tr>
+<tr><td>message</td><td>string</td><td>Human-readable error message</td></tr>
+<tr><td>details</td><td>object</td><td>Optional. Field-level validation details.</td></tr>
+</tbody>
+</table>
+
+<hr>
+
+<!-- 7. ERROR CODES -->
+<h2 id="s7">7. Error Codes</h2>
+<table>
+<thead><tr><th>HTTP Status</th><th>Code</th><th>When</th></tr></thead>
+<tbody>
+<tr><td>400</td><td>BAD_REQUEST</td><td>Malformed request body</td></tr>
+<tr><td>400</td><td>VALIDATION_ERROR</td><td>Request fails validation</td></tr>
+<tr><td>400</td><td>INVALID_OTP</td><td>Wrong OTP code</td></tr>
+<tr><td>401</td><td>UNAUTHORIZED</td><td>Missing or invalid access token</td></tr>
+<tr><td>401</td><td>INVALID_TOKEN</td><td>Refresh token is invalid or expired</td></tr>
+<tr><td>403</td><td>FORBIDDEN</td><td>Authenticated but not permitted (e.g. household role)</td></tr>
+<tr><td>404</td><td>NOT_FOUND</td><td>Resource doesn't exist</td></tr>
+<tr><td>410</td><td>OTP_EXPIRED</td><td>OTP code has expired</td></tr>
+<tr><td>422</td><td>UNPROCESSABLE_ENTITY</td><td>Semantically invalid (e.g. duplicate payee)</td></tr>
+<tr><td>429</td><td>RATE_LIMITED</td><td>Too many requests</td></tr>
+<tr><td>500</td><td>INTERNAL_ERROR</td><td>Server error</td></tr>
+</tbody>
+</table>
+
+<hr>
+
+<!-- 8. RATE LIMITING -->
+<h2 id="s8">8. Rate Limiting</h2>
+<p>Rate limits are per-user (authenticated) or per-IP (unauthenticated).</p>
+<table>
+<thead><tr><th>Endpoint group</th><th>Limit</th><th>Window</th></tr></thead>
+<tbody>
+<tr><td>/auth/request-otp</td><td>3 per email, 5 per IP</td><td>1 minute</td></tr>
+<tr><td>/auth/verify-otp</td><td>5 per email</td><td>1 minute</td></tr>
+<tr><td>/auth/refresh</td><td>10 per user</td><td>1 minute</td></tr>
+<tr><td>/sync/push</td><td>30 per user</td><td>1 minute</td></tr>
+<tr><td>/sync/pull</td><td>30 per user</td><td>1 minute</td></tr>
+<tr><td>/uploads (POST)</td><td>10 per user</td><td>1 minute</td></tr>
+<tr><td>All other endpoints</td><td>100 per user</td><td>1 minute</td></tr>
+</tbody>
+</table>
+
+<h4>Rate limit headers</h4>
+<table>
+<thead><tr><th>Header</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>X-RateLimit-Limit</td><td>Max requests in window</td></tr>
+<tr><td>X-RateLimit-Remaining</td><td>Remaining requests in window</td></tr>
+<tr><td>X-RateLimit-Reset</td><td>Unix timestamp when window resets</td></tr>
+</tbody>
+</table>
+<p>When rate limited, response includes:</p>
+<pre><code>{
+  "error": {
+    "code": "RATE_LIMITED",
+    "message": "Too many requests. Try again in 42 seconds.",
+    "details": {
+      "retry_after": 42
+    }
+  }
+}</code></pre>
+
+<hr>
+
+<!-- 9. ENTITY SHAPES -->
+<h2 id="s9">9. Entity Response Shapes</h2>
+<p>All syncable entities use the same JSON shape as their database columns (see <code>database-schema.md</code> §3). Key conventions:</p>
+<table>
+<thead><tr><th>Convention</th><th>JSON representation</th></tr></thead>
+<tbody>
+<tr><td>UUID</td><td>string</td></tr>
+<tr><td>Timestamps</td><td>ISO 8601 string, UTC (<code>"2026-06-17T22:00:00Z"</code>)</td></tr>
+<tr><td>Booleans</td><td><code>true</code> / <code>false</code></td></tr>
+<tr><td>Nullable fields</td><td><code>null</code> (not omitted)</td></tr>
+<tr><td>Amounts</td><td>number (float)</td></tr>
+<tr><td>JSON metadata</td><td>nested object</td></tr>
+<tr><td>Soft-deleted records</td><td>included with <code>deleted_at</code> set to ISO 8601 string</td></tr>
+</tbody>
+</table>
+
+<h4>Syncable entity list</h4>
+<table>
+<thead><tr><th>Table</th><th>Syncable?</th></tr></thead>
+<tbody>
+<tr><td>users</td><td><span class="badge badge-blue">Yes</span></td></tr>
+<tr><td>households</td><td><span class="badge badge-blue">Yes</span></td></tr>
+<tr><td>household_members</td><td><span class="badge badge-blue">Yes</span></td></tr>
+<tr><td>accounts</td><td><span class="badge badge-blue">Yes</span></td></tr>
+<tr><td>transactions</td><td><span class="badge badge-blue">Yes</span></td></tr>
+<tr><td>transfers</td><td><span class="badge badge-blue">Yes</span></td></tr>
+<tr><td>categories</td><td><span class="badge badge-blue">Yes</span></td></tr>
+<tr><td>payees</td><td><span class="badge badge-blue">Yes</span></td></tr>
+<tr><td>budgets</td><td><span class="badge badge-blue">Yes</span></td></tr>
+<tr><td>debt_records</td><td><span class="badge badge-blue">Yes</span></td></tr>
+<tr><td>goals</td><td><span class="badge badge-blue">Yes</span></td></tr>
+<tr><td>recurring_templates</td><td><span class="badge badge-blue">Yes</span></td></tr>
+<tr><td>account_balance_snapshots</td><td><span class="badge">No</span></td></tr>
+<tr><td>notifications</td><td><span class="badge">No</span></td></tr>
+<tr><td>ai_processing_logs</td><td><span class="badge">No</span></td></tr>
+</tbody>
+</table>
+
+<h4>Fields excluded from API responses</h4>
+<p>The following columns are local-only and NEVER sent to or returned from the server:</p>
+<table>
+<thead><tr><th>Column</th><th>Reason</th></tr></thead>
+<tbody>
+<tr><td>sync_status</td><td>Client-side state only</td></tr>
+<tr><td>last_synced_at</td><td>Client-side state only</td></tr>
+</tbody>
+</table>
+<p>The server manages these internally:</p>
+<ul>
+  <li><code>created_at</code> — set by server on first push, preserved on updates</li>
+  <li><code>updated_at</code> — set by server on each accepted change</li>
+  <li><code>deleted_at</code> — set by client, accepted by server</li>
+</ul>
+
+<hr>
+
+<!-- 10. SYNC EXCLUSIONS -->
+<h2 id="s10">10. Sync Exclusions</h2>
+<p>The server does NOT receive or store:</p>
+<ul>
+  <li><code>account_balance_snapshots</code> — derived locally from transactions</li>
+  <li><code>notifications</code> — scheduled and consumed locally</li>
+  <li><code>ai_processing_logs</code> — local audit trail only</li>
+</ul>
+<p>These tables exist only in the local SQLite database.</p>
+
+</div>
+</body>
+</html>

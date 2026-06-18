@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>State Management — Personal Finance App</title>
+<style>
+  :root {
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    --bg: #fafafa;
+    --surface: #ffffff;
+    --border: #e2e4e8;
+    --text: #1b1b1f;
+    --text-secondary: #63666e;
+    --accent: #2563eb;
+    --accent-light: #eff6ff;
+    --green: #059669;
+    --green-light: #ecfdf5;
+    --orange: #d97706;
+    --orange-light: #fffbeb;
+    --red: #dc2626;
+    --red-light: #fef2f2;
+    --code-bg: #1e1e2e;
+    --code-text: #cdd6f4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.6; }
+  .wrapper { max-width: 1000px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 28px; font-weight: 700; margin-bottom: 4px; letter-spacing: -0.5px; }
+  h1 + p { color: var(--text-secondary); font-size: 15px; margin-bottom: 32px; }
+  h2 { font-size: 21px; font-weight: 600; margin-top: 40px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 17px; font-weight: 600; margin-top: 28px; margin-bottom: 8px; }
+  h4 { font-size: 14px; font-weight: 600; margin-top: 20px; margin-bottom: 6px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+  p, li { font-size: 15px; }
+  p { margin-bottom: 12px; }
+  ul, ol { margin: 8px 0 16px 20px; }
+  li { margin-bottom: 4px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  strong { font-weight: 600; }
+  code { font-family: var(--mono); font-size: 13px; background: #f2f4f7; padding: 2px 6px; border-radius: 4px; }
+
+  .toc { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-bottom: 32px; }
+  .toc h3 { margin: 0 0 10px; font-size: 15px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); }
+  .toc ul { margin: 0; list-style: none; columns: 2; column-gap: 24px; }
+  .toc li { margin-bottom: 4px; font-size: 14px; }
+  .toc a { color: var(--text); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 12px 0 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  thead { background: #f2f4f7; border-bottom: 1px solid var(--border); }
+  th { font-weight: 600; text-align: left; padding: 10px 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); }
+  td { padding: 9px 12px; border-top: 1px solid var(--border); vertical-align: top; }
+  tr:first-child td { border-top: none; }
+  td:first-child { font-family: var(--mono); font-size: 13px; }
+
+  pre { background: var(--code-bg); color: var(--code-text); border-radius: 8px; padding: 16px 20px; font-family: var(--mono); font-size: 13px; line-height: 1.6; overflow-x: auto; margin: 12px 0 20px; }
+  pre code { background: none; padding: 0; font-size: 13px; color: inherit; }
+
+  .callout { background: var(--accent-light); border-left: 3px solid var(--accent); border-radius: 6px; padding: 12px 16px; margin: 12px 0 20px; font-size: 14px; }
+  .callout-green { background: var(--green-light); border-left-color: var(--green); }
+  .callout-orange { background: var(--orange-light); border-left-color: var(--orange); }
+  .callout-red { background: var(--red-light); border-left-color: var(--red); }
+
+  .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
+  .badge-blue { background: #dbeafe; color: #1d4ed8; }
+  .badge-green { background: #dcfce7; color: #15803d; }
+  .badge-red { background: #fee2e2; color: #b91c1c; }
+  .badge-orange { background: #fef3c7; color: #b45309; }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+  .diagram { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; font-family: var(--mono); font-size: 12px; line-height: 1.7; overflow-x: auto; margin: 12px 0 20px; white-space: pre; }
+
+  @media (max-width: 768px) {
+    .toc ul { columns: 1; }
+    .wrapper { padding: 20px 16px 60px; }
+    table { font-size: 13px; }
+    td, th { padding: 7px 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+<h1>State Management</h1>
+<p>Personal Finance App — Riverpod provider structure, data flow, and state patterns.<br>References: <code>product-strategy.md</code> (optimistic UI), <code>database-schema.md</code> (Drift streams), <code>sync-engine.md</code> (sync FSM), <code>navigation-arch.md</code> (tab scoping), <code>solutions-arch.md</code> (§5, §6).</p>
+
+<div class="toc">
+<h3>Contents</h3>
+<ul>
+  <li><a href="#s1">1. Overview</a></li>
+  <li><a href="#s2">2. Provider Hierarchy</a></li>
+  <li><a href="#s3">3. Data Flow Patterns</a></li>
+  <li><a href="#s4">4. Provider Design Patterns</a></li>
+  <li><a href="#s5">5. Loading / Error / Empty States</a></li>
+  <li><a href="#s6">6. Optimistic Update Flow</a></li>
+  <li><a href="#s7">7. Demo Data Provider</a></li>
+  <li><a href="#s8">8. Provider Lifetime & Tab Scoping</a></li>
+  <li><a href="#s9">9. Repository Injection & Testing</a></li>
+  <li><a href="#s10">10. AI-Assisted Entry State</a></li>
+  <li><a href="#s11">11. Balance Recalculation</a></li>
+  <li><a href="#s12">12. Provider Map (Complete)</a></li>
+  <li><a href="#s13">13. Anti-Patterns</a></li>
+  <li><a href="#s14">14. Summary</a></li>
+</ul>
+</div>
+
+<!-- 1. OVERVIEW -->
+<h2 id="s1">1. Overview</h2>
+<p>State management is layered to match the architecture:</p>
+<ul>
+  <li><strong>Drift <code>.watch()</code></strong> at the data layer emits reactive streams from SQLite.</li>
+  <li><strong>Repository providers</strong> wrap Drift DAOs, exposing typed <code>Stream&lt;List&lt;T&gt;&gt;</code> for reads and <code>Future&lt;void&gt;</code> for writes.</li>
+  <li><strong>Feature providers</strong> consume repositories, apply domain logic, and expose <code>AsyncValue&lt;T&gt;</code> to the UI.</li>
+  <li><strong>Tab-scoped providers</strong> keep scroll position and filter state across tab switches.</li>
+  <li><strong>Sync state</strong> is derived from <code>sync_metadata</code> and per-row <code>sync_status</code> — not stored in feature providers.</li>
+</ul>
+<p>Every read is local. Every write hits the local DB first and triggers a debounced sync cycle. The UI updates from Drift streams before sync completes (optimistic).</p>
+
+<!-- 2. PROVIDER HIERARCHY -->
+<h2 id="s2">2. Provider Hierarchy</h2>
+<div class="diagram">ProviderScope (root)
+ │
+ ├── databaseProvider         ← Drift Database singleton
+ │
+ ├── Repository providers (stateless, depend on databaseProvider)
+ │   ├── transactionRepoProvider
+ │   ├── accountRepoProvider
+ │   ├── budgetRepoProvider
+ │   ├── categoryRepoProvider
+ │   ├── payeeRepoProvider
+ │   ├── transferRepoProvider
+ │   ├── debtRepoProvider
+ │   ├── goalRepoProvider
+ │   ├── recurringRepoProvider
+ │   └── userRepoProvider
+ │
+ ├── Feature providers (depends on repo providers)
+ │   ├── dashboardProvider         ← scoped to Dashboard tab
+ │   │   ├── safeToSpendProvider
+ │   │   ├── netWorthProvider
+ │   │   └── recentTransactionsProvider
+ │   ├── transactionsTabProvider   ← scoped to Transactions tab
+ │   │   └── filteredTransactionsProvider(filters)
+ │   ├── budgetsTabProvider        ← scoped to Budgets tab
+ │   │   └── budgetDetailProvider(budgetId)
+ │   ├── moreTabProvider           ← scoped to More tab
+ │   ├── accountDetailProvider(accountId)
+ │   ├── debtDetailProvider(debtId)
+ │   ├── goalDetailProvider(goalId)
+ │   └── recurringDetailProvider(templateId)
+ │
+ ├── App-level providers
+ │   ├── authProvider              ← login state, JWT tokens
+ │   ├── themeProvider             ← light/dark/system
+ │   ├── localeProvider            ← currency, locale, timezone
+ │   └── onboardingProvider        ← completed? skipped?
+ │
+ ├── Sync providers
+ │   ├── syncManagerProvider       ← orchestrates sync cycle
+ │   ├── syncHealthProvider        ← reads sync_metadata table
+ │   └── syncStatusIconProvider    ← derived: synced/pending/syncing/failed/offline
+ │
+ ├── UI ephemeral providers
+ │   ├── undoStackProvider         ← rollback closures, auto-pop after 5s
+ │   ├── filterSheetProvider       ← Filter Sheet state
+ │   ├── quickAddPreviewProvider   ← NL parse preview before save
+ │   └── demoDataProvider          ← seeds/clears demo data
+ │
+ └── Cross-cutting
+     ├── snackbarProvider          ← global snackbar queue
+     └── errorReporterProvider     ← Sentry + local log sink</div>
+
+<h3>Scoping rules</h3>
+<table>
+  <thead><tr><th>Scope</th><th>Mechanism</th><th>Example</th></tr></thead>
+  <tbody>
+    <tr><td>App-wide (singleton)</td><td><code>databaseProvider</code>, <code>syncManagerProvider</code></td><td>One Drift DB, one sync lock</td></tr>
+    <tr><td>Tab-scoped</td><td><code>autoDispose</code> + <code>KeepAliveLink</code> held by <code>ShellRoute</code></td><td><code>transactionsTabProvider</code>, <code>budgetsTabProvider</code></td></tr>
+    <tr><td>Screen-scoped</td><td><code>autoDispose</code>, created on push, disposed on pop</td><td><code>budgetDetailProvider(budgetId)</code></td></tr>
+    <tr><td>Ephemeral</td><td>StatefulWidget local state</td><td>Quick Add autofill preview, camera preview</td></tr>
+  </tbody>
+</table>
+<p>Tab-scoped providers use <code>autoDispose</code> to free resources when the tab is destroyed, but are kept alive while the tab exists via <code>KeepAliveLink</code>. Scroll position and filter state survive tab switches because the provider instance persists.</p>
+
+<!-- 3. DATA FLOW -->
+<h2 id="s3">3. Data Flow Patterns</h2>
+
+<h3>3.1 Read path (stream from Drift)</h3>
+<div class="diagram">Widget
+  │  ref.watch(filteredTransactionsProvider(filters))
+  ▼
+filteredTransactionsProvider (family, autoDispose)
+  │  ref.watch(transactionRepoProvider).watchFiltered(filters)
+  ▼
+TransactionRepo.watchFiltered(filters)
+  │  driftDb.select(transactions).watch()
+  │  WHERE account_id = ? AND occurred_at BETWEEN ? AND ?
+  ▼
+Stream&lt;List&lt;TransactionRow&gt;&gt;
+  │  emitted on every INSERT/UPDATE/DELETE in transactions table
+  ▼
+AsyncValue&lt;List&lt;TransactionView&gt;&gt;
+  │  provider maps rows → domain entities → view models
+  ▼
+Widget rebuilds with AsyncValue.data, .loading, or .error</div>
+
+<h3>3.2 Write path (optimistic local save)</h3>
+<div class="diagram">User taps "Save"
+  │
+  ▼
+Widget calls ref.read(addTransactionProvider).save(transaction)
+  │
+  ▼
+addTransactionProvider
+  │  awaits transactionRepo.create(transaction)
+  │
+  ▼
+TransactionRepo.create(tx)
+  │  BEGIN TRANSACTION
+  │    INSERT INTO transactions (...) VALUES (...)
+  │    UPDATE accounts SET balance = balance ± amount WHERE id = ?
+  │    UPDATE accounts SET sync_status = 'pending_sync' WHERE id = ?
+  │  COMMIT
+  │
+  ▼
+Drift stream fires → watching providers rebuild → UI shows new row
+  │
+  ▼
+snackbarProvider.emitUndo(transactionId)
+  │  "Transaction saved · UNDO" — auto-dismiss 5s
+  │  onUndo: transactionRepo.delete(transactionId)
+  │  → Drift stream fires → UI removes row
+  │
+  ▼
+Sync trigger debounced 30s</div>
+
+<h3>3.3 Sync interaction with providers</h3>
+<div class="diagram">Sync cycle
+  │
+  ├─ PUSH: status 'local_only'/'pending_sync' → POST /sync/push
+  │   └─ On success: UPDATE sync_status='synced'
+  │      → Drift stream fires → syncStatusIconProvider recomputes
+  │
+  ├─ PULL: POST /sync/pull → upsert server records local
+  │   └─ INSERT or UPDATE on local tables
+  │      → Drift streams fire → watching providers rebuild
+  │
+  └─ POST-SYNC: rebuild account_balance_snapshots, reschedule notifications
+     → relevant providers rebuild</div>
+<p>Providers do NOT trigger sync. The <code>syncManagerProvider</code> listens to network/foreground/timer events independently. Providers just react to the DB changes that sync produces.</p>
+
+<!-- 4. PROVIDER DESIGN PATTERNS -->
+<h2 id="s4">4. Provider Design Patterns</h2>
+
+<h3>4.1 Repository providers</h3>
+<p>Stateless, pure data access. One per table group. Injected into feature providers via <code>ref.watch</code>.</p>
+<pre><code>final transactionRepoProvider = Provider&lt;TransactionRepo&gt;((ref) {
+  return TransactionRepo(ref.watch(databaseProvider));
+});
+
+class TransactionRepo {
+  final AppDatabase _db;
+  TransactionRepo(this._db);
+
+  Stream&lt;List&lt;TransactionRow&gt;&gt; watchFiltered(TransactionFilters filters) { ... }
+  Future&lt;String&gt; create(TransactionCompanion tx) { ... }
+  Future&lt;void&gt; update(TransactionCompanion tx) { ... }
+  Future&lt;void&gt; softDelete(String id) { ... }
+}</code></pre>
+
+<h3>4.2 Feature providers (AsyncNotifier)</h3>
+<p>For screens that need loading/error/empty states. Uses <code>AsyncNotifier</code> from Riverpod 2.x.</p>
+<pre><code>final transactionsProvider =
+    AsyncNotifierProvider.autoDispose
+        .family&lt;TransactionsState, TransactionFilters&gt;(
+            () =&gt; TransactionsNotifier);
+
+class TransactionsNotifier
+    extends AutoDisposeFamilyAsyncNotifier&lt;TransactionsState, TransactionFilters&gt; {
+  @override
+  Future&lt;TransactionsState&gt; build(TransactionFilters arg) async {
+    final repo = ref.watch(transactionRepoProvider);
+    return repo.watchFiltered(arg).map((rows) =&gt; ...);
+  }
+}</code></pre>
+
+<h3>4.3 Filter state within a tab provider</h3>
+<pre><code>final transactionFiltersProvider =
+    StateProvider.autoDispose&lt;TransactionFilters&gt;((ref) => TransactionFilters.defaults);
+
+final filteredTransactionsProvider =
+    AsyncNotifierProvider.autoDispose&lt;FilteredTransactionsState&gt;(
+        () => FilteredTransactionsNotifier);
+
+class FilteredTransactionsNotifier extends AutoDisposeAsyncNotifier&lt;...&gt; {
+  @override
+  Future&lt;...&gt; build() async {
+    final filters = ref.watch(transactionFiltersProvider);
+    final repo = ref.watch(transactionRepoProvider);
+    return repo.watchFiltered(filters).map(...);
+  }
+}</code></pre>
+
+<h3>4.4 Undo stack pattern</h3>
+<pre><code>final undoStackProvider = StateNotifierProvider&lt;UndoStackNotifier, List&lt;UndoEntry&gt;&gt;((ref) {
+  return UndoStackNotifier();
+});
+
+class UndoEntry {
+  final String transactionId;
+  final String message;
+  final Future&lt;void&gt; Function() rollback;
+  final DateTime createdAt;
+}
+
+class UndoStackNotifier extends StateNotifier&lt;List&lt;UndoEntry&gt;&gt; {
+  void push(UndoEntry entry) {
+    state = [...state, entry];
+    Future.delayed(Duration(seconds: 5), () => _pop(entry.id));
+  }
+  Future&lt;void&gt; undo(String id) async {
+    final entry = state.firstWhere((e) => e.id == id);
+    await entry.rollback();
+    state = state.where((e) => e.id != id).toList();
+  }
+}</code></pre>
+
+<h3>4.5 Sync health provider</h3>
+<pre><code>enum SyncIconState { synced, pending, syncing, failed, offline }
+
+final syncHealthProvider = Provider&lt;SyncHealth&gt;((ref) {
+  final db = ref.watch(databaseProvider);
+  return SyncHealth(
+    lastSyncedAt: db.syncMetadata('last_synced_at'),
+    pendingCount: db.countPendingSync(),
+    failedCount: db.countSyncFailed(),
+    lastStatus: db.syncMetadata('last_sync_status'),
+  );
+});
+
+final syncStatusIconProvider = Provider&lt;SyncIconState&gt;((ref) {
+  final health = ref.watch(syncHealthProvider);
+  // Derived state: maps counts + status + connectivity to icon
+  ...
+});</code></pre>
+
+<!-- 5. LOADING / ERROR / EMPTY -->
+<h2 id="s5">5. Loading / Error / Empty States</h2>
+
+<h3>5.1 Pattern</h3>
+<pre><code>final state = ref.watch(filteredTransactionsProvider(filters));
+
+return switch (state) {
+  AsyncLoading()   => SkeletonList(count: 5),
+  AsyncError(:final error) => ErrorState(
+    message: error.toString(),
+    onRetry: () => ref.invalidate(...),
+  ),
+  AsyncData(:final value) when value.isEmpty => EmptyTransactionsState(filters: filters),
+  AsyncData(:final value) => TransactionListView(transactions: value),
+};</code></pre>
+
+<h3>5.2 Empty state conventions</h3>
+<table>
+  <thead><tr><th>Situation</th><th>Illustration</th><th>Primary CTA</th><th>Secondary CTA</th></tr></thead>
+  <tbody>
+    <tr><td>No accounts exist</td><td>Empty wallet</td><td>"Add Account"</td><td>"Try demo data"</td></tr>
+    <tr><td>Accounts exist, no transactions</td><td>Empty envelope</td><td>"Add Transaction"</td><td>"Try demo data"</td></tr>
+    <tr><td>No budgets set</td><td>Empty chart</td><td>"Create First Budget"</td><td>"Auto-suggest"</td></tr>
+    <tr><td>No debts</td><td>Empty handshake</td><td>"Add Debt"</td><td>—</td></tr>
+    <tr><td>No goals</td><td>Empty target</td><td>"Add Goal"</td><td>—</td></tr>
+    <tr><td>No results (filter)</td><td>Empty search</td><td>"Clear Filters"</td><td>—</td></tr>
+  </tbody>
+</table>
+
+<h3>5.3 Error state</h3>
+<table>
+  <thead><tr><th>Error type</th><th>UI</th></tr></thead>
+  <tbody>
+    <tr><td>Drift/DB error</td><td>"Something went wrong loading your data." Retry button invalidates the provider.</td></tr>
+    <tr><td>Sync failed records</td><td>Sync status sheet shows count; manual "Retry" per record or "Retry All".</td></tr>
+    <tr><td>Network error (sync)</td><td>Sync icon → amber cloud-exclamation; tap → Sync Status sheet with error details.</td></tr>
+  </tbody>
+</table>
+
+<!-- 6. OPTIMISTIC UPDATE -->
+<h2 id="s6">6. Optimistic Update Flow</h2>
+<div class="diagram">1. User fills form, taps Save
+2. Widget calls ref.read(addTransactionProvider).save(transaction)
+3. Provider awaits repo.create() — inserts into SQLite
+4. Drift stream fires → watching providers rebuild → new row appears in list
+5. Sync trigger fires 30s later (if no other mutations in that window)
+6. If sync push fails: record stays sync_failed; UI shows amber indicator
+7. If sync push conflicts (server has newer): LWW resolves → server version
+   overwrites local → Drift stream fires → row updates in place</div>
+<p>The optimistic part is steps 2-4: the row appears before sync. Users never wait for the network. The downside (sync_failed or conflict overwrite) is rare and handled gracefully.</p>
+
+<!-- 7. DEMO DATA -->
+<h2 id="s7">7. Demo Data Provider</h2>
+<pre><code>final demoDataProvider = AsyncNotifierProvider&lt;DemoDataNotifier, DemoDataState&gt;(() {
+  return DemoDataNotifier();
+});
+
+class DemoDataNotifier extends AsyncNotifier&lt;DemoDataState&gt; {
+  Future&lt;void&gt; seed() async {
+    final db = ref.read(databaseProvider);
+    await db.seedDemoData();
+  }
+  Future&lt;void&gt; clear() async {
+    final db = ref.read(databaseProvider);
+    await db.clearDemoData();  // DELETE WHERE is_demo = true
+  }
+  bool get hasDemoData => ...;
+}</code></pre>
+<p>A <code>settingsProvider</code> tracks whether demo data is present. The "Clear demo data" button in Settings invalidates <code>demoDataProvider</code>, which clears all <code>is_demo = true</code> rows and then refreshes all watching providers via Drift stream triggers.</p>
+
+<!-- 8. PROVIDER LIFETIME -->
+<h2 id="s8">8. Provider Lifetime &amp; Tab Scoping</h2>
+
+<h3>8.1 Tab preservation</h3>
+<pre><code>final transactionsTabProvider = AsyncNotifierProvider.autoDispose&lt;...&gt;(() {
+  return TransactionsTabNotifier();
+});
+
+// In the ShellRoute builder:
+@override
+Widget build(BuildContext context, WidgetRef ref, Widget navigator) {
+  return KeepAlive(
+    link: ref.keepAlive(),
+    child: navigator,
+  );
+}</code></pre>
+<p>When a tab is switched away, <code>autoDispose</code> would normally dispose the provider. But <code>KeepAliveLink</code> holds a reference, preventing auto-disposal. The provider stays alive until the tab is removed from the navigation stack entirely.</p>
+
+<h3>8.2 Screen-scoped</h3>
+<p>Pushed screens use <code>autoDispose</code> without a keep-alive link. Created on push, disposed on pop.</p>
+
+<h3>8.3 App-wide</h3>
+<table>
+  <thead><tr><th>Provider</th><th>Lifetime</th></tr></thead>
+  <tbody>
+    <tr><td><code>databaseProvider</code></td><td>App runtime</td></tr>
+    <tr><td><code>syncManagerProvider</code></td><td>App runtime</td></tr>
+    <tr><td><code>authProvider</code></td><td>App runtime</td></tr>
+    <tr><td><code>themeProvider</code></td><td>App runtime</td></tr>
+  </tbody>
+</table>
+
+<!-- 9. INJECTION & TESTING -->
+<h2 id="s9">9. Repository Injection &amp; Testing</h2>
+
+<h3>9.1 Injection</h3>
+<pre><code>final databaseProvider = Provider&lt;AppDatabase&gt;((ref) {
+  return AppDatabase();
+});
+
+final transactionRepoProvider = Provider&lt;TransactionRepo&gt;((ref) {
+  return TransactionRepo(ref.watch(databaseProvider));
+});</code></pre>
+
+<h3>9.2 Testing</h3>
+<pre><code>void main() {
+  test('Transaction list shows saved rows', () async {
+    final container = ProviderContainer(
+      overrides: [
+        databaseProvider.overrideWith((ref) => AppDatabase.inMemory()),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final db = container.read(databaseProvider);
+    await db.migrate();
+
+    final repo = container.read(transactionRepoProvider);
+    await repo.create(testTransaction());
+
+    final state = await container.read(filteredTransactionsProvider(defaultFilters).future);
+    expect(state, hasLength(1));
+  });
+}</code></pre>
+<p>Overriding <code>databaseProvider</code> at the container level propagates to all repo and feature providers — no individual mocking needed. Drift's in-memory <code>NativeDatabase</code> provides a real SQLite instance in test.</p>
+
+<!-- 10. AI STATE -->
+<h2 id="s10">10. AI-Assisted Entry State</h2>
+<div class="diagram">User types NL text
+  │
+  ▼
+StatefulWidget local state
+  │  calls NL parser (deterministic → AI fallback)
+  │  holds parsedPreview: {amount, payee, category, account}
+  │  shows preview card (not persisted)
+  │
+  ▼
+User taps "Confirm"
+  │
+  ▼
+ref.read(addTransactionProvider).save(parsedPreview)
+  │  → normal write path
+  │
+  ▼
+Widget clears local state, sheet dismisses</div>
+<p>The Quick Add NL preview is ephemeral — it lives in a <code>StatefulWidget</code>'s local state, not in a Riverpod provider. Only the persisted transaction touches the provider layer. If the user dismisses without confirming, the preview is discarded.</p>
+
+<!-- 11. BALANCE RECALC -->
+<h2 id="s11">11. Balance Recalculation &amp; Provider Invalidation</h2>
+<p>When the balance recalculation utility runs (<code>recalcBalances()</code>), it directly updates <code>accounts.balance</code> in SQLite. This triggers the Drift stream for <code>accounts</code>, which causes all account-watching providers to rebuild. No explicit provider invalidation needed — the Drift <code>.watch()</code> stream handles it automatically.</p>
+
+<!-- 12. PROVIDER MAP -->
+<h2 id="s12">12. Provider Map (Complete)</h2>
+<table>
+  <thead><tr><th>Provider</th><th>Type</th><th>Scope</th><th>Depends on</th></tr></thead>
+  <tbody>
+    <tr><td><code>databaseProvider</code></td><td><code>Provider&lt;AppDatabase&gt;</code></td><td>App-wide</td><td>—</td></tr>
+    <tr><td><code>transactionRepoProvider</code></td><td><code>Provider&lt;TransactionRepo&gt;</code></td><td>App-wide</td><td><code>databaseProvider</code></td></tr>
+    <tr><td><code>accountRepoProvider</code></td><td><code>Provider&lt;AccountRepo&gt;</code></td><td>App-wide</td><td><code>databaseProvider</code></td></tr>
+    <tr><td><code>budgetRepoProvider</code></td><td><code>Provider&lt;BudgetRepo&gt;</code></td><td>App-wide</td><td><code>databaseProvider</code></td></tr>
+    <tr><td><code>categoryRepoProvider</code></td><td><code>Provider&lt;CategoryRepo&gt;</code></td><td>App-wide</td><td><code>databaseProvider</code></td></tr>
+    <tr><td><code>payeeRepoProvider</code></td><td><code>Provider&lt;PayeeRepo&gt;</code></td><td>App-wide</td><td><code>databaseProvider</code></td></tr>
+    <tr><td><code>transferRepoProvider</code></td><td><code>Provider&lt;TransferRepo&gt;</code></td><td>App-wide</td><td><code>databaseProvider</code></td></tr>
+    <tr><td><code>debtRepoProvider</code></td><td><code>Provider&lt;DebtRepo&gt;</code></td><td>App-wide</td><td><code>databaseProvider</code></td></tr>
+    <tr><td><code>goalRepoProvider</code></td><td><code>Provider&lt;GoalRepo&gt;</code></td><td>App-wide</td><td><code>databaseProvider</code></td></tr>
+    <tr><td><code>recurringRepoProvider</code></td><td><code>Provider&lt;RecurringRepo&gt;</code></td><td>App-wide</td><td><code>databaseProvider</code></td></tr>
+    <tr><td><code>authProvider</code></td><td><code>StateNotifierProvider</code></td><td>App-wide</td><td><code>userRepoProvider</code></td></tr>
+    <tr><td><code>themeProvider</code></td><td><code>StateProvider&lt;ThemeMode&gt;</code></td><td>App-wide</td><td>—</td></tr>
+    <tr><td><code>syncManagerProvider</code></td><td><code>Provider&lt;SyncManager&gt;</code></td><td>App-wide</td><td>repos, <code>authProvider</code></td></tr>
+    <tr><td><code>syncHealthProvider</code></td><td><code>Provider&lt;SyncHealth&gt;</code></td><td>App-wide</td><td><code>databaseProvider</code></td></tr>
+    <tr><td><code>syncStatusIconProvider</code></td><td><code>Provider&lt;SyncIconState&gt;</code></td><td>App-wide</td><td><code>syncHealthProvider</code></td></tr>
+    <tr><td><code>dashboardProvider</code></td><td><code>AsyncNotifierProvider</code></td><td>Tab 1</td><td>account, txn, budget repos</td></tr>
+    <tr><td><code>safeToSpendProvider</code></td><td><code>Provider&lt;SafeToSpend&gt;</code></td><td>Tab 1</td><td><code>dashboardProvider</code></td></tr>
+    <tr><td><code>netWorthProvider</code></td><td><code>Provider&lt;NetWorth&gt;</code></td><td>Tab 1</td><td><code>dashboardProvider</code></td></tr>
+    <tr><td><code>transactionsTabProvider</code></td><td><code>AsyncNotifierProvider</code></td><td>Tab 2</td><td><code>transactionRepoProvider</code></td></tr>
+    <tr><td><code>transactionFiltersProvider</code></td><td><code>StateProvider&lt;TxnFilters&gt;</code></td><td>Tab 2</td><td>—</td></tr>
+    <tr><td><code>filteredTransactionsProvider</code></td><td><code>AsyncNotifierProvider.family</code></td><td>Tab 2</td><td>txnRepo, filters</td></tr>
+    <tr><td><code>budgetsTabProvider</code></td><td><code>AsyncNotifierProvider</code></td><td>Tab 3</td><td>budget, txn repos</td></tr>
+    <tr><td><code>budgetDetailProvider</code></td><td><code>AsyncNotifierProvider.family</code></td><td>Pushed</td><td>budget, txn repos</td></tr>
+    <tr><td><code>undoStackProvider</code></td><td><code>StateNotifierProvider</code></td><td>App-wide</td><td>—</td></tr>
+    <tr><td><code>demoDataProvider</code></td><td><code>AsyncNotifierProvider</code></td><td>App-wide</td><td><code>databaseProvider</code></td></tr>
+    <tr><td><code>onboardingProvider</code></td><td><code>StateProvider&lt;OnboardingState&gt;</code></td><td>App-wide</td><td>—</td></tr>
+  </tbody>
+</table>
+
+<!-- 13. ANTI-PATTERNS -->
+<h2 id="s13">13. Anti-Patterns (what NOT to do)</h2>
+<table>
+  <thead><tr><th>Anti-pattern</th><th>Why avoid</th><th>Correct pattern</th></tr></thead>
+  <tbody>
+    <tr><td>Direct DB access from widgets</td><td>Breaks layered architecture; untestable</td><td>Always go through a provider → repo</td></tr>
+    <tr><td><code>ref.refresh</code> to force reload</td><td>Works against Drift's reactive streams</td><td>Trust <code>.watch()</code> — it fires on every mutation</td></tr>
+    <tr><td><code>ref.watch</code> in write methods</td><td>Writes should not subscribe to data</td><td>Use <code>ref.read</code> inside <code>save()</code> / <code>delete()</code></td></tr>
+    <tr><td>Storing sync status in feature providers</td><td>Redundant; sync_status is on every row in DB</td><td>Read from entity rows; aggregate via <code>syncHealthProvider</code></td></tr>
+    <tr><td>One provider per screen (monolith)</td><td>Unnecessary rebuilds; hard to test</td><td>Compose small providers; use <code>family</code></td></tr>
+    <tr><td><code>ChangeNotifier</code> in Riverpod 2.x</td><td>Legacy pattern; not compile-safe</td><td>Use <code>Notifier</code> / <code>AsyncNotifier</code></td></tr>
+    <tr><td>Ephemeral form state in providers</td><td>Pollutes long-lived state</td><td>StatefulWidget local state for uncommitted form fields</td></tr>
+  </tbody>
+</table>
+
+<!-- 14. SUMMARY -->
+<h2 id="s14">14. Summary</h2>
+<table>
+  <thead><tr><th>Concern</th><th>Pattern</th></tr></thead>
+  <tbody>
+    <tr><td>Data reads</td><td>Drift <code>.watch()</code> → Stream → <code>AsyncNotifier</code> → <code>AsyncValue</code> → Widget</td></tr>
+    <tr><td>Data writes</td><td>Widget → Provider → Repo → SQLite → Stream fires → Widget rebuilds</td></tr>
+    <tr><td>Optimistic UI</td><td>Write to local DB first; sync happens later; stream updates all observers</td></tr>
+    <tr><td>Tab scoping</td><td><code>autoDispose</code> + <code>KeepAliveLink</code>; scroll + filter survive tab switches</td></tr>
+    <tr><td>Undo</td><td><code>undoStackProvider</code> holds rollback closures; 5s auto-pop</td></tr>
+    <tr><td>Loading/error/empty</td><td><code>AsyncValue</code> switch expression in widgets</td></tr>
+    <tr><td>Sync state</td><td>Separate <code>syncHealthProvider</code> derived from <code>sync_metadata</code> + per-row <code>sync_status</code></td></tr>
+    <tr><td>Demo data</td><td><code>demoDataProvider</code> seeds via repos; clear invalidates all watching providers</td></tr>
+    <tr><td>AI preview</td><td>Local <code>StatefulWidget</code> state; only persisted on confirm</td></tr>
+    <tr><td>Testing</td><td>Override <code>databaseProvider</code> with in-memory Drift at <code>ProviderContainer</code> level</td></tr>
+  </tbody>
+</table>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solution Architecture — Personal Finance App</title>
+<style>
+  :root {
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    --bg: #fafafa;
+    --surface: #ffffff;
+    --border: #e2e4e8;
+    --text: #1b1b1f;
+    --text-secondary: #63666e;
+    --accent: #2563eb;
+    --accent-light: #eff6ff;
+    --green: #059669;
+    --green-light: #ecfdf5;
+    --orange: #d97706;
+    --orange-light: #fffbeb;
+    --red: #dc2626;
+    --red-light: #fef2f2;
+    --code-bg: #1e1e2e;
+    --code-text: #cdd6f4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.6; }
+  .wrapper { max-width: 1000px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 28px; font-weight: 700; margin-bottom: 4px; letter-spacing: -0.5px; }
+  h1 + p { color: var(--text-secondary); font-size: 15px; margin-bottom: 32px; }
+  h2 { font-size: 21px; font-weight: 600; margin-top: 40px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 17px; font-weight: 600; margin-top: 28px; margin-bottom: 8px; }
+  h4 { font-size: 14px; font-weight: 600; margin-top: 20px; margin-bottom: 6px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+  p, li { font-size: 15px; }
+  p { margin-bottom: 12px; }
+  ul, ol { margin: 8px 0 16px 20px; }
+  li { margin-bottom: 4px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  strong { font-weight: 600; }
+  code { font-family: var(--mono); font-size: 13px; background: #f2f4f7; padding: 2px 6px; border-radius: 4px; }
+
+  .toc { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-bottom: 32px; }
+  .toc h3 { margin: 0 0 10px; font-size: 15px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); }
+  .toc ul { margin: 0; list-style: none; columns: 2; column-gap: 24px; }
+  .toc li { margin-bottom: 4px; font-size: 14px; }
+  .toc a { color: var(--text); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 12px 0 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  thead { background: #f2f4f7; border-bottom: 1px solid var(--border); }
+  th { font-weight: 600; text-align: left; padding: 10px 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); }
+  td { padding: 9px 12px; border-top: 1px solid var(--border); vertical-align: top; }
+  tr:first-child td { border-top: none; }
+  td:first-child { font-family: var(--mono); font-size: 13px; }
+
+  pre { background: var(--code-bg); color: var(--code-text); border-radius: 8px; padding: 16px 20px; font-family: var(--mono); font-size: 13px; line-height: 1.6; overflow-x: auto; margin: 12px 0 20px; }
+  pre code { background: none; padding: 0; font-size: 13px; color: inherit; }
+
+  .callout { background: var(--accent-light); border-left: 3px solid var(--accent); border-radius: 6px; padding: 12px 16px; margin: 12px 0 20px; font-size: 14px; }
+  .callout-green { background: var(--green-light); border-left-color: var(--green); }
+  .callout-orange { background: var(--orange-light); border-left-color: var(--orange); }
+
+  .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
+  .badge-blue { background: #dbeafe; color: #1d4ed8; }
+  .badge-green { background: #dcfce7; color: #15803d; }
+  .badge-red { background: #fee2e2; color: #b91c1c; }
+  .badge-orange { background: #fef3c7; color: #b45309; }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+  .diagram { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; font-family: var(--mono); font-size: 12px; line-height: 1.7; overflow-x: auto; margin: 12px 0 20px; white-space: pre; }
+
+  @media (max-width: 768px) {
+    .toc ul { columns: 1; }
+    .wrapper { padding: 20px 16px 60px; }
+    table { font-size: 13px; }
+    td, th { padding: 7px 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+<h1>Solution Architecture</h1>
+<p>Personal Finance App — synthesizes the foundation specs into one cohesive view of how the system fits together.<br>Onboarding doc for any developer entering the project.</p>
+
+<div class="toc">
+<h3>Contents</h3>
+<ul>
+  <li><a href="#s1">1. What We're Building</a></li>
+  <li><a href="#s2">2. System Context</a></li>
+  <li><a href="#s3">3. Architecture Principles</a></li>
+  <li><a href="#s4">4. Tech Stack</a></li>
+  <li><a href="#s5">5. Layered Architecture</a></li>
+  <li><a href="#s6">6. Data Flow</a></li>
+  <li><a href="#s7">7. Domain Decomposition</a></li>
+  <li><a href="#s8">8. Key Decisions</a></li>
+  <li><a href="#s9">9. How Specs Fit Together</a></li>
+  <li><a href="#s10">10. Cross-Cutting Concerns</a></li>
+  <li><a href="#s11">11. V1 vs V2 Boundary</a></li>
+  <li><a href="#s12">12. Open Risks & Gaps</a></li>
+  <li><a href="#s13">13. Status</a></li>
+</ul>
+</div>
+
+<!-- 1. WHAT WE'RE BUILDING -->
+<h2 id="s1">1. What We're Building</h2>
+<p>A calm, offline-first, privacy-first personal finance app for early-career professionals. The local SQLite database is the primary runtime — every read and write happens locally. A NestJS backend exists only as an optional sync/backup layer; it never computes balances, dashboards, or analytics.</p>
+<ul>
+  <li><strong>V1 is fully local.</strong> No login wall. Sync infrastructure is built but email auth is disabled until V2.</li>
+  <li><strong>AI is optional and on-device</strong> (llama.cpp / GGUF). Core features work without it.</li>
+  <li><strong>No bank integrations.</strong> Manual entry + OCR + natural language parsing only.</li>
+  <li><strong>Save-first.</strong> Transactions persist immediately; no review queue. Correction-friendly with undo.</li>
+</ul>
+
+<!-- 2. SYSTEM CONTEXT -->
+<h2 id="s2">2. System Context</h2>
+<div class="diagram">┌──────────────────────────────────────────────────────────┐
+│                   MOBILE APP (Flutter)                    │
+│                                                          │
+│   ┌────────────┐   ┌────────────┐   ┌──────────────┐    │
+│   │  UI Layer   │   │  Domain    │   │  AI Layer    │    │
+│   │ (Riverpod)  │   │  Logic     │   │ (llama.cpp)  │    │
+│   │  50 screens │   │  parsers,  │   │  OCR, NLP,   │    │
+│   │  go_router  │   │  calcs,    │   │  categorize  │    │
+│   │             │   │  rules     │   │  (optional)  │    │
+│   └──────┬──────┘   └──────┬─────┘   └──────┬───────┘    │
+│          │                 │                │             │
+│          └────────┬────────┴────────────────┘             │
+│                   ▼                                       │
+│          ┌────────────────────┐   ┌──────────────────┐   │
+│          │  Data Layer (Drift) │   │  Local Notifs     │   │
+│          │  Repository pattern │   │  (local_notifs)   │   │
+│          └────────┬───────────┘   └──────────────────┘   │
+│                   ▼                                       │
+│          ┌────────────────────┐                          │
+│          │  SQLite (primary)   │                          │
+│          │  16 tables           │                          │
+│          │  fast indexed reads │                          │
+│          └────────┬───────────┘                          │
+│                   ▼                                       │
+│          ┌────────────────────┐                          │
+│          │  Sync Engine        │                          │
+│          │  push/pull over HTTP│                          │
+│          │  LWW, FSM, retry    │                          │
+│          └────────┬───────────┘                          │
+└───────────────────┼──────────────────────────────────────┘
+                    │ HTTPS · REST · Bearer JWT
+                    │ (opt-in, only after V2 auth)
+┌───────────────────┼──────────────────────────────────────┐
+│              BACKEND (NestJS)                            │
+│   ┌───────────────┴──────────────┐                       │
+│   │  /auth    OTP, refresh, JWT   │                       │
+│   │  /sync    push, pull (cursor) │                       │
+│   │  /uploads receipt images      │                       │
+│   │  /me, /users  profile, search │                       │
+│   └───────────────┬──────────────┘                       │
+│   ┌───────────────┴──────────────┐                       │
+│   │  PostgreSQL                   │                       │
+│   │  12 syncable tables           │                       │
+│   │  (mirror of local schema)     │                       │
+│   └──────────────────────────────┘                       │
+└──────────────────────────────────────────────────────────┘</div>
+
+<h3>Boundaries</h3>
+<table>
+  <thead><tr><th>Boundary</th><th>Direction</th><th>What crosses it</th></tr></thead>
+  <tbody>
+    <tr><td>UI ↔ Domain</td><td>bidirectional</td><td>User intents up, view models down</td></tr>
+    <tr><td>Domain ↔ Data</td><td>bidirectional</td><td>Repository calls down, entity streams up</td></tr>
+    <tr><td>Data ↔ SQLite</td><td>local</td><td>SQL queries, Drift-generated</td></tr>
+    <tr><td>App ↔ AI Layer</td><td>local, optional</td><td>Raw text/image in, extracted payload out</td></tr>
+    <tr><td>Sync Engine ↔ Backend</td><td>network</td><td>JSON batches over HTTPS (V2+)</td></tr>
+  </tbody>
+</table>
+<p>The backend is a <strong>dumb store + auth gate</strong>. It validates and persists syncable rows. No business logic, no balance computation, no analytics. This keeps the server simple and the app fast offline.</p>
+
+<!-- 3. PRINCIPLES -->
+<h2 id="s3">3. Architecture Principles</h2>
+<table>
+  <thead><tr><th>Principle</th><th>How it shapes the code</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Local-first</strong></td><td>SQLite is the runtime source. Every read is a local query. Network is never on the critical path for UI.</td></tr>
+    <tr><td><strong>Offline-first</strong></td><td>App is fully functional with no connectivity. Sync queues mutations and replays on reconnect.</td></tr>
+    <tr><td><strong>Save-first</strong></td><td>Transactions persist immediately on confirm. No review queue, no draft state. Undo snackbar (5s) is the safety net.</td></tr>
+    <tr><td><strong>Optimistic UI</strong></td><td>Writes update the local DB and notify providers before any sync. UI never waits on the network.</td></tr>
+    <tr><td><strong>Server is sync-only</strong></td><td>Backend stores and returns rows. Balances, budgets, reports — all computed on-device.</td></tr>
+    <tr><td><strong>AI assistive, never authoritative</strong></td><td>AI extracts and suggests; it never mutates finances without user confirm. Core flows work with AI disabled.</td></tr>
+    <tr><td><strong>Sync-friendly from day one</strong></td><td>Every syncable table carries <code>id</code>, <code>created_at</code>, <code>updated_at</code>, <code>deleted_at</code>, <code>sync_status</code>, <code>last_synced_at</code>.</td></tr>
+    <tr><td><strong>Calm, not gamified</strong></td><td>Color-only semantic feedback. No streaks, badges, or guilt language.</td></tr>
+    <tr><td><strong>Additive migrations</strong></td><td>V1 schema changes add columns, never drop. Soft deletes handle removal.</td></tr>
+  </tbody>
+</table>
+
+<!-- 4. TECH STACK -->
+<h2 id="s4">4. Tech Stack</h2>
+<h3>Mobile</h3>
+<table>
+  <thead><tr><th>Layer</th><th>Choice</th><th>Why</th></tr></thead>
+  <tbody>
+    <tr><td>Framework</td><td>Flutter</td><td>Single codebase, iOS + Android, strong widget testing</td></tr>
+    <tr><td>State</td><td>Riverpod</td><td>Compile-safe, testable, scoped providers per tab</td></tr>
+    <tr><td>Routing</td><td>go_router</td><td>Declarative, deep-linkable, ShellRoute for tab bar</td></tr>
+    <tr><td>Local DB</td><td>SQLite + Drift</td><td>Type-safe ORM, reactive streams, migrations, in-memory test DB</td></tr>
+    <tr><td>AI runtime</td><td>llama.cpp / GGUF</td><td>On-device, offline, no cloud dependency</td></tr>
+    <tr><td>OCR</td><td>Google ML Kit</td><td>On-device, no network needed</td></tr>
+    <tr><td>Notifications</td><td>flutter_local_notifications</td><td>Local scheduling, fully offline</td></tr>
+  </tbody>
+</table>
+<h3>Backend</h3>
+<table>
+  <thead><tr><th>Layer</th><th>Choice</th><th>Why</th></tr></thead>
+  <tbody>
+    <tr><td>Framework</td><td>NestJS</td><td>Modular, TypeScript, good for REST</td></tr>
+    <tr><td>DB</td><td>PostgreSQL</td><td>Reliable, JSON support for metadata</td></tr>
+    <tr><td>Auth</td><td>JWT (access + refresh) + email OTP</td><td>Passwordless, low friction</td></tr>
+    <tr><td>Storage</td><td>Object storage (receipt uploads)</td><td>90-day retention, signed URLs</td></tr>
+    <tr><td>Deploy</td><td>Docker on VPS/Hetzner</td><td>Cheap, simple, GitHub Actions CI</td></tr>
+    <tr><td>Monitoring</td><td>Sentry</td><td>Error grouping, perf</td></tr>
+  </tbody>
+</table>
+
+<!-- 5. LAYERED ARCHITECTURE -->
+<h2 id="s5">5. Layered Architecture (Mobile)</h2>
+<div class="diagram">┌─────────────────────────────────────────────────────────┐
+│  PRESENTATION                                           │
+│  Widgets · Screens · Sheets · go_router routes          │
+│  Consumes Riverpod providers, renders design tokens     │
+│  No direct DB access                                    │
+├─────────────────────────────────────────────────────────┤
+│  APPLICATION / STATE                                    │
+│  Riverpod providers (scoped per tab)                    │
+│  Loading/Error/Empty state machines                     │
+│  Undo snackbar orchestration                            │
+│  Sync status UI binding                                 │
+├─────────────────────────────────────────────────────────┤
+│  DOMAIN                                                 │
+│  Entities (Transaction, Account, Budget, …)             │
+│  Use cases: AddTransaction, EditTransaction,            │
+│    CreateTransfer, RecalcBalance, ParseNL, RunOCR       │
+│  Pure Dart, no Flutter/DB imports                       │
+│  Balance edit rules, budget math, filter logic          │
+├─────────────────────────────────────────────────────────┤
+│  DATA                                                   │
+│  Repositories (TransactionRepo, AccountRepo, …)         │
+│  Drift DAOs, queries, streams                           │
+│  SQLite transactions, balance updates                   │
+│  Seed data, demo data loader                            │
+├─────────────────────────────────────────────────────────┤
+│  SYNC                                                   │
+│  SyncManager (single-cycle lock, dedupe triggers)       │
+│  Push/Pull clients, conflict applier                    │
+│  Retry with exponential backoff                         │
+│  sync_metadata key-value store                          │
+├─────────────────────────────────────────────────────────┤
+│  AI (optional)                                          │
+│  NL parser (deterministic first, AI fallback)           │
+│  OCR pipeline (ML Kit → extract → autofill)             │
+│  Categorizer · ai_processing_logs audit trail           │
+└─────────────────────────────────────────────────────────┘</div>
+<div class="callout"><strong>Dependency rule:</strong> arrows point down. Presentation depends on Application; Application depends on Domain; Domain depends on nothing below it. Sync and AI are side-channels that read/write through the Data layer's repositories — they never bypass it.</div>
+
+<!-- 6. DATA FLOW -->
+<h2 id="s6">6. Data Flow</h2>
+
+<h3>6.1 Write path (local mutation)</h3>
+<div class="diagram">User taps "Save" on transaction form
+  │
+  ▼
+AddTransaction use case (Domain)
+  │  validates, applies edit rules
+  ▼
+TransactionRepo.create() (Data)
+  │
+  ▼
+Drift transaction {
+    INSERT transactions (... sync_status='local_only')
+    UPDATE accounts SET balance = balance ± amount
+    UPDATE accounts SET sync_status='pending_sync'
+  }
+  │
+  ├─▶ Stream emits new row → provider rebuilds UI
+  └─▶ Sync trigger debounced 30s (or fires on foreground)</div>
+<p>Balance update and <code>sync_status</code> flip happen in <strong>one SQLite transaction</strong> so they can't drift apart. The UI updates from the local stream immediately — no await on network. Sync runs later as a background concern.</p>
+
+<h3>6.2 Read path</h3>
+<div class="diagram">Widget build()
+  │  ref.watch(transactionsProvider(filter))
+  ▼
+Provider (Application)
+  │  delegates to repo
+  ▼
+TransactionRepo.watchFiltered() (Data)
+  │  returns Stream&lt;List&lt;Transaction&gt;&gt;
+  ▼
+Drift .watch() query on SQLite
+  │  indexed by account, category, payee, occurred_at, direction
+  ▼
+Local rows → entities → view models → widget</div>
+<p>All reads are local. A dashboard with net worth, budgets, and recent transactions is a handful of indexed SQLite queries — sub-frame on any device.</p>
+
+<h3>6.3 Sync cycle</h3>
+<div class="diagram">Trigger (foreground / 5min timer / reconnect / pull-to-refresh / debounce)
+  │
+  ▼
+ACQUIRE SYNC LOCK (one cycle at a time; extra triggers coalesce)
+  │
+  ├─ Not authenticated? ──▶ ABORT (V2 gate)
+  ├─ Offline? ──▶ ABORT (reconnect trigger will retry)
+  └─ Token expired? ──▶ refresh ──▶ fail ──▶ ABORT
+  │
+  ▼
+PUSH PHASE
+  │  collect sync_status IN (local_only, pending_sync, sync_failed)
+  │  POST /sync/push  (batched by table)
+  │  per record:
+  │     applied  ──▶ sync_status='synced'
+  │     conflict ──▶ replace local with server_record
+  │     error    ──▶ sync_status='sync_failed', log
+  │  (on network/5xx: mark all pushed as sync_failed, skip pull)
+  ▼
+PULL PHASE
+  │  LOOP:
+  │    POST /sync/pull { last_synced_at, cursor }
+  │    for each server record:
+  │       not local   ──▶ INSERT (synced)
+  │       server newer ──▶ UPDATE local
+  │       local newer  ──▶ SKIP
+  │    has_more=true ──▶ cursor=next_cursor, repeat
+  │  store server_time as global last_synced_at
+  ▼
+POST-SYNC HOOKS
+  │  rebuild account_balance_snapshots (if txns changed)
+  │  reschedule notifications (if recurring/debts changed)
+  │  refresh Riverpod providers
+  ▼
+RELEASE LOCK</div>
+
+<h3>6.4 AI-assisted entry flow</h3>
+<div class="diagram">User types "mcdo 250 gcash"  (or 🎤 voice → transcribe)
+  │
+  ▼
+Deterministic NL parser (regex + dictionary)
+  │  extracts: amount=250, payee=mcdo, account=gcash
+  ├─ success? ──▶ preview card
+  └─ ambiguous? ──▶ AI fallback (llama.cpp) ──▶ preview card
+  │
+  ▼
+User confirms → normal write path (6.1)
+  │
+  └─ ai_processing_logs row written (model, payload, confidence)</div>
+<p>AI never writes to <code>transactions</code> directly. It only fills the form; the user taps Save.</p>
+
+<!-- 7. DOMAIN DECOMPOSITION -->
+<h2 id="s7">7. Domain Decomposition</h2>
+<p>The 10 domains from <code>domain-model.md</code> map to tables, screens, and sync behavior:</p>
+<table>
+  <thead><tr><th>Domain</th><th>Local tables</th><th>Primary screens</th><th>Syncs?</th></tr></thead>
+  <tbody>
+    <tr><td>Identity</td><td>users, households, household_members</td><td>Profile, Households</td><td><span class="badge badge-green">Yes</span></td></tr>
+    <tr><td>Accounts</td><td>accounts, account_balance_snapshots</td><td>Accounts list/detail, Dashboard</td><td>Yes (snapshots: no)</td></tr>
+    <tr><td>Transactions</td><td>transactions, transfers, categories, payees</td><td>Transactions, Add sheet, Detail</td><td><span class="badge badge-green">Yes</span></td></tr>
+    <tr><td>Budgeting</td><td>budgets</td><td>Budgets, Budget detail</td><td><span class="badge badge-green">Yes</span></td></tr>
+    <tr><td>Debt</td><td>debt_records</td><td>Debts, Debt detail</td><td><span class="badge badge-green">Yes</span></td></tr>
+    <tr><td>Goals</td><td>goals</td><td>Goals, Goal detail</td><td><span class="badge badge-green">Yes</span></td></tr>
+    <tr><td>Recurring</td><td>recurring_templates</td><td>Recurring, Recurring detail</td><td><span class="badge badge-green">Yes</span></td></tr>
+    <tr><td>Notifications</td><td>notifications</td><td>Notification settings</td><td><span class="badge badge-orange">No (local)</span></td></tr>
+    <tr><td>AI Assistance</td><td>ai_processing_logs</td><td>AI settings, log</td><td><span class="badge badge-orange">No (local)</span></td></tr>
+    <tr><td>Sync</td><td>sync_metadata</td><td>Sync status sheet</td><td><span class="badge badge-orange">No (local)</span></td></tr>
+  </tbody>
+</table>
+<h3>Relationship core</h3>
+<div class="diagram">users ─── household_members ─── households
+  │                                  │
+  ├── accounts ──── transactions     ├── accounts (shared)
+  │              └── transfers       ├── budgets (shared)
+  ├── budgets                        └── goals (shared)
+  ├── debt_records
+  ├── goals
+  └── recurring_templates
+
+transactions ─── categories
+transactions ─── payees
+transactions ─── transactions (parent_transaction_id, income deductions)</div>
+
+<!-- 8. KEY DECISIONS -->
+<h2 id="s8">8. Key Architectural Decisions</h2>
+<table>
+  <thead><tr><th>#</th><th>Decision</th><th>Rationale</th><th>Source</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>SQLite is the runtime source; backend is sync-only</td><td>Fast offline reads, simple server, privacy</td><td>product-strategy.md</td></tr>
+    <tr><td>2</td><td>Stored balances + transaction audit trail</td><td>Dashboard speed; recalculation is recovery only</td><td>domain-model.md</td></tr>
+    <tr><td>3</td><td>Transfers in a dedicated table (no transaction row)</td><td>Excluded from spending analytics cleanly</td><td>database-schema.md §1.1</td></tr>
+    <tr><td>4</td><td>Income deductions via self-ref <code>parent_transaction_id</code></td><td>No payroll engine; simple parent/child rows</td><td>database-schema.md §1.2</td></tr>
+    <tr><td>5</td><td>Amounts stored as positive REAL; direction is a column</td><td>Simple aggregations (SUM + CASE)</td><td>database-schema.md §1.4</td></tr>
+    <tr><td>6</td><td>4 tabs + rightmost Add island (not centered FAB)</td><td>Add is always one tap; accent bg signals primary action</td><td>navigation-arch.md §2</td></tr>
+    <tr><td>7</td><td>Single unified transaction list + Filter Sheet</td><td>Reduces tab clutter; filters compose with AND</td><td>navigation-arch.md §4</td></tr>
+    <tr><td>8</td><td>NL quick add with mic toggle inside the field</td><td>Combines text + voice in one input; rapid entry</td><td>navigation-arch.md §2</td></tr>
+    <tr><td>9</td><td>Save-first, no review queue, undo snackbar</td><td>Matches Monarch/Copilot; correction-friendly</td><td>domain-model.md §527</td></tr>
+    <tr><td>10</td><td>Last-write-wins conflict resolution</td><td>Single-user primary; no CRDT complexity in V1</td><td>sync-engine.md §7</td></tr>
+    <tr><td>11</td><td>Global <code>last_synced_at</code> (not per-table)</td><td>Simpler; pull returns all tables in one response</td><td>sync-engine.md §4</td></tr>
+    <tr><td>12</td><td>Cursor pagination on pull</td><td>Handles large initial sync without timeout</td><td>api-contracts.md §4.2</td></tr>
+    <tr><td>13</td><td>Auth disabled in V1; sync infra built but gated</td><td>Ship local-only first; flip the switch in V2</td><td>navigation-arch.md §7.6</td></tr>
+    <tr><td>14</td><td>AI optional, on-device, never auto-mutates</td><td>Privacy + reliability; core works without AI</td><td>product-strategy.md</td></tr>
+    <tr><td>15</td><td>Color-only semantic feedback (green/amber/red)</td><td>Calm UX, no guilt language</td><td>design.md §1</td></tr>
+    <tr><td>16</td><td>Additive migrations, soft deletes</td><td>Safe schema evolution in V1</td><td>database-schema.md §6.4</td></tr>
+  </tbody>
+</table>
+
+<!-- 9. HOW SPECS FIT -->
+<h2 id="s9">9. How the Specs Fit Together</h2>
+<div class="diagram">                    ┌─────────────────┐
+                    │ product-strategy│  vision, scope, stack
+                    └────────┬────────┘
+                             │
+              ┌──────────────┴──────────────┐
+              ▼                             ▼
+      ┌───────────────┐            ┌────────────────┐
+      │ domain-model  │            │  design.md     │  tokens, components
+      │ (entities)    │            └────────┬───────┘
+      └───────┬───────┘                     │
+              │                              │
+   ┌──────────┴───────────┐                  │
+   ▼                      ▼                  ▼
+┌──────────────┐   ┌───────────────┐  ┌──────────────────┐
+│database-     │   │navigation-arch│◄─┤  app-mockups.html│  visual reference
+│schema        │   │ (50 screens)  │  └──────────────────┘
+│(16 tables)   │   └───────┬───────┘
+└──────┬───────┘           │
+       │                   │
+       ▼                   │
+┌──────────────┐           │
+│ sync-engine  │           │
+│ (FSM, LWW)   │           │
+└──────┬───────┘           │
+       │                   │
+       ▼                   │
+┌──────────────┐           │
+│ api-contracts│◄──────────┘  sync endpoints referenced by nav
+│ (REST, JWT)  │
+└──────────────┘</div>
+<ul>
+  <li><strong>product-strategy.md</strong> is the root — defines what and why.</li>
+  <li><strong>domain-model.md</strong> translates strategy into entities.</li>
+  <li><strong>database-schema.md</strong> is the local physical model derived from domain-model.</li>
+  <li><strong>api-contracts.md</strong> mirrors the syncable subset of the schema over HTTP.</li>
+  <li><strong>sync-engine.md</strong> defines how the two copies (local + server) converge.</li>
+  <li><strong>navigation-arch.md</strong> maps entities to screens and user flows.</li>
+  <li><strong>design.md</strong> defines how those screens look.</li>
+  <li><strong>app-mockups.html</strong> is the visual proof of design + navigation together.</li>
+  <li><strong>solutions-arch.md</strong> (this doc) sits above all of them, showing how the layers connect.</li>
+</ul>
+
+<!-- 10. CROSS-CUTTING -->
+<h2 id="s10">10. Cross-Cutting Concerns</h2>
+
+<h3>10.1 Sync status lifecycle</h3>
+<p>Every syncable row moves through: <code>local_only</code> → <code>pending_sync</code> → <code>synced</code>, with <code>sync_failed</code> as a retryable error state. Local mutations flip <code>synced</code> back to <code>pending_sync</code>. Soft-deleted rows stay <code>pending_sync</code> until the deletion is pushed, then are purged after 30 days.</p>
+
+<h3>10.2 Transaction atomicity</h3>
+<p>Balance updates and <code>sync_status</code> flips share one SQLite transaction. A transaction that affects an account balance updates both atomically — no half-applied state.</p>
+
+<h3>10.3 Error handling</h3>
+<table>
+  <thead><tr><th>Layer</th><th>Strategy</th></tr></thead>
+  <tbody>
+    <tr><td>UI</td><td>Empty / error / loading states per provider; undo snackbar on writes</td></tr>
+    <tr><td>Domain</td><td>Use cases return Result types; no exceptions for expected failures</td></tr>
+    <tr><td>Data</td><td>Drift errors surface as repo failures; DB never left inconsistent</td></tr>
+    <tr><td>Sync</td><td>Network/5xx → <code>sync_failed</code> + exponential backoff; 401 → refresh; 422 → surface to user, no auto-retry</td></tr>
+    <tr><td>API</td><td>Consistent <code>{ error: { code, message, details } }</code> envelope; machine-readable codes</td></tr>
+  </tbody>
+</table>
+
+<h3>10.4 Observability</h3>
+<ul>
+  <li><strong>Local:</strong> <code>ai_processing_logs</code> (AI audit trail), <code>sync_metadata</code> (sync health: last_synced_at, last_sync_status, sync_failed_count).</li>
+  <li><strong>Backend:</strong> Sentry for errors, structured logs for sync cycles.</li>
+  <li><strong>UI:</strong> Sync status icon in top bar (synced / pending / syncing / failed / offline) → tap for Sync Status sheet.</li>
+</ul>
+
+<h3>10.5 Security (spec pending — specs-backlog #6)</h3>
+<div class="callout callout-orange">Known decisions so far — full spec pending:
+<ul>
+  <li>No bank credentials/tokens stored.</li>
+  <li>JWT access (15min) + refresh (30d, rotated) in secure storage.</li>
+  <li>Household roles: owner / member / viewer (viewer hides Add island + edit buttons).</li>
+  <li>Local DB encryption, biometric lock — specified but not yet detailed (Phase 2 spec).</li>
+</ul></div>
+
+<h3>10.6 State management (spec pending — specs-backlog #5)</h3>
+<div class="callout callout-orange">Known decisions so far — full spec pending:
+<ul>
+  <li>Riverpod, providers scoped per tab.</li>
+  <li>Tab state (scroll position, filters) preserved across switches.</li>
+  <li>Optimistic updates: write to DB → stream notifies providers → UI rebuilds.</li>
+  <li>Sync state separate from local state (sync status is derived, not stored per-provider).</li>
+</ul></div>
+
+<!-- 11. V1 VS V2 -->
+<h2 id="s11">11. V1 vs V2 Boundary</h2>
+<p>What's <strong>built but disabled</strong> in V1 (infrastructure exists, gate is closed):</p>
+<table>
+  <thead><tr><th>Capability</th><th>V1</th><th>V2</th></tr></thead>
+  <tbody>
+    <tr><td>Email OTP auth</td><td><span class="badge badge-orange">Built, disabled</span></td><td>Enabled</td></tr>
+    <tr><td>Cloud sync (push/pull)</td><td><span class="badge badge-orange">Engine built, no auth → never runs</span></td><td>Runs after login</td></tr>
+    <tr><td>Household sharing</td><td><span class="badge badge-blue">Schema + routes exist</span></td><td>Activated with sync</td></tr>
+    <tr><td>Receipt uploads (backend)</td><td><span class="badge badge-blue">Endpoint exists</span></td><td>Used with sync</td></tr>
+    <tr><td>Cloud push notifications</td><td>—</td><td>FCM</td></tr>
+  </tbody>
+</table>
+<p>The codebase carries sync code in V1 but it's inert. The Cloud Sync settings screen reads: "Cloud sync coming soon. Your data stays on your device." Flipping V2 on is an auth gate, not a rewrite.</p>
+
+<!-- 12. RISKS -->
+<h2 id="s12">12. Open Risks & Gaps</h2>
+<table>
+  <thead><tr><th>Gap</th><th>Impact</th><th>Mitigation / Next spec</th></tr></thead>
+  <tbody>
+    <tr><td>State management spec not written</td><td>Provider structure unformalized</td><td>specs-backlog #5</td></tr>
+    <tr><td>Security model not written</td><td>Encryption, biometrics, permissions undefined</td><td>specs-backlog #6</td></tr>
+    <tr><td><code>sync_metadata</code> table not in database-schema.md</td><td>Schema doc out of sync with sync-engine.md</td><td>Add as table #16</td></tr>
+    <tr><td><code>AGENTS.md</code> not written</td><td>Dev/agent conventions not captured</td><td>Write at repo root</td></tr>
+    <tr><td>LWW loses concurrent household edits</td><td>Same-budget edits on two devices: later wins</td><td>Acceptable V1; field-merge in future</td></tr>
+    <tr><td>AI model download size/UX</td><td>First-run friction</td><td>Onboarding opt-in + background download</td></tr>
+    <tr><td>Balance drift over time</td><td>Stored balances desync from history</td><td>Recalculation utility as recovery tool</td></tr>
+  </tbody>
+</table>
+
+<!-- 13. STATUS -->
+<h2 id="s13">13. Status</h2>
+<table>
+  <thead><tr><th>Spec</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td>product-strategy.md</td><td><span class="badge badge-green">Done</span></td></tr>
+    <tr><td>domain-model.md</td><td><span class="badge badge-green">Done</span></td></tr>
+    <tr><td>database-schema.md</td><td><span class="badge badge-blue">Done (sync_metadata pending)</span></td></tr>
+    <tr><td>api-contracts.md</td><td><span class="badge badge-green">Done</span></td></tr>
+    <tr><td>sync-engine.md</td><td><span class="badge badge-green">Done</span></td></tr>
+    <tr><td>navigation-arch.md</td><td><span class="badge badge-green">Done</span></td></tr>
+    <tr><td>design.md</td><td><span class="badge badge-green">Done</span></td></tr>
+    <tr><td>app-mockups.html</td><td><span class="badge badge-green">Done</span></td></tr>
+    <tr><td><strong>solutions-arch.md</strong></td><td><span class="badge badge-green">Done (this doc)</span></td></tr>
+    <tr><td>state-management.md</td><td><span class="badge badge-orange">Pending (Phase 2 #5)</span></td></tr>
+    <tr><td>security-model.md</td><td><span class="badge badge-orange">Pending (Phase 2 #6)</span></td></tr>
+    <tr><td>notifications-arch.md</td><td><span class="badge badge-orange">Pending (Phase 3 #8)</span></td></tr>
+    <tr><td>roadmap.md</td><td><span class="badge badge-orange">Pending (Phase 3 #9)</span></td></tr>
+    <tr><td>testing-strategy.md</td><td><span class="badge badge-orange">Pending (Phase 3 #10)</span></td></tr>
+    <tr><td>infrastructure.md</td><td><span class="badge badge-orange">Pending (Phase 3 #11)</span></td></tr>
+    <tr><td>monetization.md</td><td><span class="badge badge-orange">Pending (Phase 3 #12)</span></td></tr>
+  </tbody>
+</table>
+<div class="callout callout-green">Foundation phase is complete enough to begin coding the data + domain layers. State management and security specs should land before the presentation layer.</div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Modern Personal Finance App UI/UX Research Report</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .screenshot { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); border-radius: 0.75rem; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+  <header class="bg-slate-900 text-white py-12">
+    <div class="max-w-5xl mx-auto px-6">
+      <p class="text-sm font-semibold tracking-wider text-slate-400 uppercase">Research Report</p>
+      <h1 class="text-3xl md:text-5xl font-bold mt-2">UI Layouts, Navigation &amp; Visual Design of Modern Personal Finance Apps</h1>
+      <p class="mt-4 text-lg text-slate-300 max-w-3xl">A pattern-by-pattern analysis of Copilot, Monarch, YNAB, PocketGuard, Maybe, Lunch Money and other notable apps, with recommendations for a beginner-focused Flutter app.</p>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-6 py-12 space-y-16">
+
+    <section>
+      <h2 class="text-2xl font-bold mb-4">Scope &amp; Methodology</h2>
+      <p class="text-slate-700 leading-relaxed">This report is based on the public marketing sites, App Store listings, GitHub repositories and help-center documentation for each product. I captured screenshots where they were publicly available and inferred navigation/UX patterns from feature descriptions and user reviews. <strong>Maybe Finance</strong> (maybe.co) blocked direct fetching, so its section relies on the open-source GitHub repository and prior public knowledge.</p>
+    </section>
+
+    <section>
+      <h2 class="text-2xl font-bold mb-6">Cross-App Pattern Summary</h2>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div class="bg-white rounded-xl p-6 border border-slate-200">
+          <h3 class="font-semibold text-lg mb-2">Navigation</h3>
+          <ul class="list-disc pl-5 space-y-1 text-slate-700">
+            <li>Bottom tab bar is the dominant mobile pattern (4-5 top-level tabs).</li>
+            <li>Web apps lean on collapsible left sidebars with secondary top tabs.</li>
+            <li>Budget and Transactions are almost always top-level.</li>
+            <li>Add-transaction moves from bottom-center tab to a floating action button in newer redesigns.</li>
+          </ul>
+        </div>
+        <div class="bg-white rounded-xl p-6 border border-slate-200">
+          <h3 class="font-semibold text-lg mb-2">Dashboard Cards</h3>
+          <ul class="list-disc pl-5 space-y-1 text-slate-700">
+            <li>Large headline number (net worth, safe-to-spend, ready to assign).</li>
+            <li>Secondary cards: recent transactions, budget progress, upcoming bills, investments.</li>
+            <li>Progress bars and mini line charts are preferred over dense tables.</li>
+          </ul>
+        </div>
+        <div class="bg-white rounded-xl p-6 border border-slate-200">
+          <h3 class="font-semibold text-lg mb-2">Transactions</h3>
+          <ul class="list-disc pl-5 space-y-1 text-slate-700">
+            <li>Chronological list grouped by date with merchant logos and category icons.</li>
+            <li>Swipe actions for review, edit, categorize and split.</li>
+            <li>Search plus chip filters for account, category and date range.</li>
+          </ul>
+        </div>
+        <div class="bg-white rounded-xl p-6 border border-slate-200">
+          <h3 class="font-semibold text-lg mb-2">Budgeting</h3>
+          <ul class="list-disc pl-5 space-y-1 text-slate-700">
+            <li>Progress bars per category with color-coded status (green on-track, yellow close, red over).</li>
+            <li>Rollover and goal-target indicators are increasingly common.</li>
+            <li>One-number “safe to spend” views help beginners avoid overwhelm.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Copilot -->
+    <section class="bg-white rounded-2xl p-8 border border-slate-200">
+      <div class="flex items-start justify-between flex-wrap gap-4 mb-6">
+        <div>
+          <p class="text-xs font-bold uppercase tracking-wider text-indigo-600">1. Apple-First, Clean Design</p>
+          <h2 class="text-2xl font-bold">Copilot Money</h2>
+          <p class="text-slate-500 text-sm">copilot.money &middot; iOS, iPad, Mac, Web &middot; Subscription</p>
+        </div>
+        <a href="https://copilot.money" target="_blank" class="text-indigo-600 font-medium hover:underline">Open site</a>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-6 mb-6">
+        <div class="md:col-span-2 space-y-4 text-slate-700">
+          <p><strong>Navigation:</strong> Native iOS bottom tab bar. Core tabs are typically Home (dashboard), Transactions, Budget, Net Worth and Settings. A dedicated chat/AI assistant (“Copilot Agent”) is accessible from the top-right or a floating prompt.</p>
+          <p><strong>Dashboard:</strong> A single scrollable feed of cards: a large “spending line” chart for the month, pending refunds/upcoming bills, budget health, recent transactions and investment performance. Apple-style large titles, generous whitespace and rounded cards.</p>
+          <p><strong>Transactions:</strong> Unified list auto-categorized by machine learning. Each row shows merchant name, category icon, amount and a “reviewed” state. Users can split charges, add tags and attach notes.</p>
+          <p><strong>Budget:</strong> Category cards with horizontal progress bars and rollover amounts. Green “under budget” labels and red “over budget” labels are prominent. Cash flow is surfaced as income vs. spending vs. net income.</p>
+          <p><strong>Accounts:</strong> Account list grouped by institution with real-time balances. Net worth total sits at the top. Investments include allocation charts and live price updates.</p>
+          <p><strong>Modals/Sheets:</strong> iOS-style sheets slide up for transaction details, budget creation and account linking. Demo mode lets new users explore without connecting banks.</p>
+          <p><strong>Colors &amp; Visual Hierarchy:</strong> Light/dark mode, iOS system colors, purple/indigo accents, green for surplus, red for overspending, large bold totals, muted secondary labels.</p>
+          <p><strong>Mobile Patterns:</strong> Native gestures (swipe to review/edit), haptics, home-screen widgets, Apple Watch support, Liquid Glass visual refresh on iOS 26.</p>
+          <p><strong>Beginner UX:</strong> Excellent for beginners because automation does the heavy lifting. Downsides: subscription cost, U.S.-only institutions, occasional sync/data-date issues and limited search/export options.</p>
+        </div>
+        <div class="space-y-4">
+          <div class="bg-slate-100 rounded-xl p-4 text-sm">
+            <h4 class="font-semibold mb-2">Key Components</h4>
+            <ul class="list-disc pl-4 space-y-1 text-slate-700">
+              <li>Large-title dashboard</li>
+              <li>Spending-line chart card</li>
+              <li>Category progress bars</li>
+              <li>Subscription-tracking card</li>
+              <li>iOS sheet modals</li>
+              <li>Home-screen widgets</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Monarch -->
+    <section class="bg-white rounded-2xl p-8 border border-slate-200">
+      <div class="flex items-start justify-between flex-wrap gap-4 mb-6">
+        <div>
+          <p class="text-xs font-bold uppercase tracking-wider text-indigo-600">2. Web + Mobile, Highly Customizable</p>
+          <h2 class="text-2xl font-bold">Monarch Money</h2>
+          <p class="text-slate-500 text-sm">monarchmoney.com &middot; Web, iOS, Android &middot; Subscription</p>
+        </div>
+        <a href="https://monarchmoney.com" target="_blank" class="text-indigo-600 font-medium hover:underline">Open site</a>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-6 mb-6">
+        <img src="https://cdn.sanity.io/images/mdewiujj/production/99dbd52607deac3978603f7ed95e777f425bd5b0-1284x1202.png?auto=format&fit=max&q=90&w=642" alt="Monarch net worth screen" class="screenshot w-full object-cover" />
+        <img src="https://cdn.sanity.io/images/mdewiujj/production/0d3d27b5c77ceb4aa16c3f8b2e26b99cbd3ad5ba-1258x1452.png?auto=format&fit=max&q=90&w=629" alt="Monarch transactions list" class="screenshot w-full object-cover" />
+        <img src="https://cdn.sanity.io/images/mdewiujj/production/a700be6edba75030179e97b2cc96d4e14e90e3ce-3200x2192.png?auto=format&fit=max&q=90&w=1600" alt="Monarch budgeting screen" class="screenshot w-full object-cover" />
+        <img src="https://cdn.sanity.io/images/mdewiujj/production/db4909057347a98634a07c8cf8df8b07bfa58607-2048x2732.png?auto=format&fit=max&q=90&w=1024" alt="Monarch investments" class="screenshot w-full object-cover" />
+      </div>
+
+      <div class="space-y-4 text-slate-700">
+        <p><strong>Navigation:</strong> <em>Web:</em> collapsible left sidebar (Dashboard, Transactions, Budget, Cash Flow, Goals, Reports, Recurring, Accounts, Settings) plus top tabs inside sections. <em>Mobile:</em> bottom tab bar with Dashboard, Transactions, Budget, Cash Flow and More.</p>
+        <p><strong>Dashboard:</strong> Fully customizable widget grid. Users drag and drop cards for net worth, recent transactions, budget progress, investment performance, upcoming expenses and savings goals. A monthly-review card can be swiped through for quick insights.</p>
+        <p><strong>Transactions:</strong> One clean, searchable list across all accounts. AI categorization plus manual overrides. Swipe to review or edit. Filter by account, category, date, amount, merchant and review status.</p>
+        <p><strong>Budget:</strong> Two modes: <em>Category Budgeting</em> (traditional envelopes) and <em>Flex Budgeting</em> (one “flexible spending” number after fixed/non-monthly buckets). Category groups use emojis. Progress bars, rollover support and future forecasting are built in.</p>
+        <p><strong>Accounts:</strong> Accounts grouped by type (Cash, Credit, Loans, Investments, Real Estate). Zillow integration for property values. Net-worth chart over time.</p>
+        <p><strong>Modals/Sheets:</strong> Slide-up sheets for transaction editing, receipt uploads, budget adjustments, recurring bill details and filters. Recent updates added AI assistant chat threads and bulk receipt uploads.</p>
+        <p><strong>Colors &amp; Visual Hierarchy:</strong> Clean white surfaces, rounded 2xl cards, purple/indigo primary, green/red semantic colors, bold monetary figures, subtle gray labels. Consistent border-radius and soft shadows.</p>
+        <p><strong>Mobile Patterns:</strong> Bottom navigation, home-screen widgets, Siri Shortcuts, Quick Action receipt scanning, biometric auth, drag-and-drop dashboard customization on larger screens.</p>
+        <p><strong>Beginner UX:</strong> Strong for users who want control; onboarding auto-categorizes past transactions and suggests budgets. The breadth of options can feel overwhelming for absolute beginners, and the subscription is required after a short trial.</p>
+      </div>
+    </section>
+
+    <!-- YNAB -->
+    <section class="bg-white rounded-2xl p-8 border border-slate-200">
+      <div class="flex items-start justify-between flex-wrap gap-4 mb-6">
+        <div>
+          <p class="text-xs font-bold uppercase tracking-wider text-indigo-600">3. Proactive Envelope Budgeting</p>
+          <h2 class="text-2xl font-bold">YNAB (You Need A Budget)</h2>
+          <p class="text-slate-500 text-sm">ynab.com &middot; Web, iOS, Android, Apple Watch &middot; Subscription</p>
+        </div>
+        <a href="https://ynab.com" target="_blank" class="text-indigo-600 font-medium hover:underline">Open site</a>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-6 mb-6">
+        <img src="https://cdn.prod.website-files.com/640f69143ec11b21d42015c6/6754d6950a834d8433241515_e3ea8d230f1a9f58459f2ce511ddd14b_app_devices_lineup_blurple%20%282%29.avif" alt="YNAB on multiple devices" class="screenshot w-full object-cover" />
+        <img src="https://cdn.prod.website-files.com/640f69143ec11b21d42015c6/67350d63e28f42309450d27b_77d05ac8c8ee307591fab5f2fdb1c7a2_img_features_targets%20%282%29%20%281%29.avif" alt="YNAB goal targets" class="screenshot w-full object-cover" />
+        <img src="https://cdn.prod.website-files.com/640f69143ec11b21d42015c6/67350e4e45fdeceb0586f6c3_719e8398077a49f72ee10111d8dcc61b_img_features_networth%20%281%29.avif" alt="YNAB net worth report" class="screenshot w-full object-cover" />
+        <img src="https://cdn.prod.website-files.com/640f69143ec11b21d42015c6/67350bb902c9d39b882d1d9c_c7bc1d82bc5afef6ddd914e61e3abd2a_img_features_direct-import%20%281%29.avif" alt="YNAB bank import" class="screenshot w-full object-cover" />
+      </div>
+
+      <div class="space-y-4 text-slate-700">
+        <p><strong>Navigation:</strong> <em>Web:</em> left sidebar with Budget, Reflect, Accounts, Reports and Goals; the budget is the canonical view. <em>Mobile:</em> bottom tab bar with Home, Budget, Accounts, Reports and a floating “Add Transaction” FAB. The recent redesign introduced a Home tab that aggregates notifications and insights.</p>
+        <p><strong>Dashboard/Home:</strong> Home tab shows actionable notifications (new transactions, overspending, bank reconnect), account balances, goal progress and spending insights. The Budget screen remains the core dashboard for many users.</p>
+        <p><strong>Transactions:</strong> Account-register style lists. Each row shows payee, category, outflow/inflow, cleared/uncleared status and flag color. Strong search and filters by payee, category, memo and date. Manual entry is first-class.</p>
+        <p><strong>Budget:</strong> Envelope grid. Categories show “Assigned,” “Activity” and “Available.” Color coding is central: green = funded, yellow = underfunded target, red = overspent. Users tap a category to assign money or move funds. Target/progress bars appear for goals.</p>
+        <p><strong>Accounts:</strong> Account list with current and cleared balances. Reconciliation workflow is a standout feature. Credit-card payments get their own payment category.</p>
+        <p><strong>Modals/Sheets:</strong> Transaction editor (recently redesigned with clearer type selection), move-money popover, category target setup, loan calculator, split-transaction sheet and report filters.</p>
+        <p><strong>Colors &amp; Visual Hierarchy:</strong> Signature “blurple” purple/blue primary, green for available/positive, red for overspending, yellow/orange for warnings, clean sans-serif typography. High contrast and strong accessibility support.</p>
+        <p><strong>Mobile Patterns:</strong> Floating add-transaction FAB, bottom navigation, widgets, Siri integration, dark mode, strong VoiceOver/Voice Control support, swipe to approve, haptic feedback.</p>
+        <p><strong>Beginner UX:</strong> The methodology is powerful but has a learning curve. YNAB mitigates this with a 34-day free trial, live workshops, guided setup and extensive help docs. Best for beginners willing to invest time; not ideal for users wanting a zero-effort overview.</p>
+      </div>
+    </section>
+
+    <!-- PocketGuard -->
+    <section class="bg-white rounded-2xl p-8 border border-slate-200">
+      <div class="flex items-start justify-between flex-wrap gap-4 mb-6">
+        <div>
+          <p class="text-xs font-bold uppercase tracking-wider text-indigo-600">4. Simplicity &amp; Safe-to-Spend</p>
+          <h2 class="text-2xl font-bold">PocketGuard</h2>
+          <p class="text-slate-500 text-sm">pocketguard.com &middot; Web, iOS, Android &middot; Freemium</p>
+        </div>
+        <a href="https://pocketguard.com" target="_blank" class="text-indigo-600 font-medium hover:underline">Open site</a>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-6 mb-6">
+        <img src="https://pocketguard.com/wp-content/themes/pocket-guard-dark/assets/images/page-home/section-intro/pic-intro@2x.webp?v=2" alt="PocketGuard intro" class="screenshot w-full object-cover" />
+        <img src="https://pocketguard.com/wp-content/themes/pocket-guard-dark/assets/images/page-home/section-features/pic-features-1@2x.png" alt="PocketGuard spending insights" class="screenshot w-full object-cover" />
+        <img src="https://pocketguard.com/wp-content/themes/pocket-guard-dark/assets/images/page-home/section-features/pic-features-2@2x.png?v=2" alt="PocketGuard budget confidence" class="screenshot w-full object-cover" />
+        <img src="https://pocketguard.com/wp-content/themes/pocket-guard-dark/assets/images/page-budgeting/section-intro/pic-intro@2x.png?v=2" alt="PocketGuard budgeting" class="screenshot w-full object-cover" />
+      </div>
+
+      <div class="space-y-4 text-slate-700">
+        <p><strong>Navigation:</strong> <em>Mobile:</em> bottom tab bar with Plan (budget/cash flow), Transactions, Insights, Goals and Profile. <em>Web:</em> top navigation with sections for Plan, Transactions, Insights, Debt, Net Worth and Settings.</p>
+        <p><strong>Dashboard:</strong> Centered around a single headline number: “In My Pocket” — the amount safe to spend after bills, goals and necessities. Supporting cards show budget health, net worth, upcoming bills and cash-flow projection.</p>
+        <p><strong>Transactions:</strong> Unified list from linked accounts plus manually entered cash transactions. Auto-categorization with custom rules. Pending transactions are visible. Search and filter by account, category, merchant and date. Hashtags enable custom spending reports.</p>
+        <p><strong>Budget:</strong> Spreadsheet-like category list with emojis, budget limits and progress bars. Users get notified at 50% spend in a category. Budgets reset monthly automatically. Debt-payoff planner and savings goals are integrated.</p>
+        <p><strong>Accounts:</strong> Linked accounts list grouped by type; net-worth tracker and property-value support. Recurring bills and subscriptions are shown in a calendar or list.</p>
+        <p><strong>Modals/Sheets:</strong> Bottom sheets for transaction details, category editing, rule creation, goal setup and budget scenario testing.</p>
+        <p><strong>Colors &amp; Visual Hierarchy:</strong> Dark-first marketing site; app supports light/dark. Teal/cyan accent, green/red semantics, high-contrast numbers, rounded cards.</p>
+        <p><strong>Mobile Patterns:</strong> Bottom navigation, push notifications for bills and budget thresholds, QR install flow on the site, simple onboarding focused on the one “In My Pocket” number.</p>
+        <p><strong>Beginner UX:</strong> One of the best for beginners. The “In My Pocket” abstraction removes complexity, automation is strong, and the app offers a PFM course and budget calculator. Power users may find it less flexible than Monarch or YNAB.</p>
+      </div>
+    </section>
+
+    <!-- Maybe -->
+    <section class="bg-white rounded-2xl p-8 border border-slate-200">
+      <div class="flex items-start justify-between flex-wrap gap-4 mb-6">
+        <div>
+          <p class="text-xs font-bold uppercase tracking-wider text-indigo-600">5. Open Source, Self-Hostable</p>
+          <h2 class="text-2xl font-bold">Maybe Finance</h2>
+          <p class="text-slate-500 text-sm">maybe.co / github.com/maybe-finance/maybe &middot; Web (self-hosted) &middot; Open source</p>
+        </div>
+        <a href="https://github.com/maybe-finance/maybe" target="_blank" class="text-indigo-600 font-medium hover:underline">Open repo</a>
+      </div>
+
+      <div class="space-y-4 text-slate-700">
+        <p><strong>Navigation:</strong> Web sidebar: Dashboard, Accounts, Transactions, Budget, Investments, Net Worth, Settings. No native mobile app; the responsive web UI is the mobile experience.</p>
+        <p><strong>Dashboard:</strong> Minimal overview of net worth, account balances, recent transactions and portfolio allocation. Designed for clarity rather than dense widgets.</p>
+        <p><strong>Transactions:</strong> Register list with categories and tags. Supports manual entry, CSV upload, bank sync and a developer API. Search and filters are present but simpler than commercial competitors.</p>
+        <p><strong>Budget:</strong> Category budgets with progress bars. Less sophisticated rollover/target logic than Monarch or YNAB.</p>
+        <p><strong>Accounts:</strong> Grouped account cards by type with balances. Real-estate tracking by address.</p>
+        <p><strong>Modals/Sheets:</strong> Modal forms for adding/editing transactions, accounts and categories. Because it is web-first, sheets are center/right-side modals rather than native bottom sheets.</p>
+        <p><strong>Colors &amp; Visual Hierarchy:</strong> Neutral, minimalist palette with a single accent color (likely blue/indigo). Clean typography, low visual noise.</p>
+        <p><strong>Mobile Patterns:</strong> Limited native mobile patterns. Touch-friendly buttons and responsive tables, but no gestures, widgets or bottom navigation.</p>
+        <p><strong>Beginner UX:</strong> Great for privacy-conscious or technical users who want free self-hosting. Bad for typical beginners: requires setup, archived by the maintainer in mid-2025, no dedicated mobile app and fewer guardrails.</p>
+      </div>
+    </section>
+
+    <!-- Lunch Money -->
+    <section class="bg-white rounded-2xl p-8 border border-slate-200">
+      <div class="flex items-start justify-between flex-wrap gap-4 mb-6">
+        <div>
+          <p class="text-xs font-bold uppercase tracking-wider text-indigo-600">6. Indie, Spreadsheet-Like</p>
+          <h2 class="text-2xl font-bold">Lunch Money</h2>
+          <p class="text-slate-500 text-sm">lunchmoney.app &middot; Web-first + companion mobile app &middot; Subscription</p>
+        </div>
+        <a href="https://lunchmoney.app" target="_blank" class="text-indigo-600 font-medium hover:underline">Open site</a>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-6 mb-6">
+        <img src="https://lunchmoney.app/assets/images/screenshots/dashboard.png" alt="Lunch Money dashboard" class="screenshot w-full object-cover" />
+      </div>
+
+      <div class="space-y-4 text-slate-700">
+        <p><strong>Navigation:</strong> <em>Web:</em> left sidebar with Dashboard, Transactions, Budget, Calendar, Net Worth, Stats &amp; Trends, Analytics, Rules and Settings. <em>Mobile companion:</em> simplified bottom or drawer navigation.</p>
+        <p><strong>Dashboard:</strong> Big-picture dashboard with net-worth chart, account balances, upcoming recurring items, budget overview and recent transactions. Emphasis on “see the big picture.”</p>
+        <p><strong>Transactions:</strong> Unified, searchable list. Users can split, group, tag and categorize. Strong rules engine auto-categorizes based on merchant/description. Filter by category, tag, account, date and amount.</p>
+        <p><strong>Budget:</strong> Monthly category budgets with progress bars. Color-coded categories and tags. Supports multi-currency budgets aggregated into a home currency.</p>
+        <p><strong>Accounts:</strong> Multi-currency accounts grouped by type. Net worth tracked month over month. Crypto wallets and ledgers can be connected.</p>
+        <p><strong>Modals/Sheets:</strong> Web modals for transaction editing, splits, rule creation and category/tag management. Mobile uses native screens.</p>
+        <p><strong>Colors &amp; Visual Hierarchy:</strong> Light, friendly palette, soft accent colors, mascot branding, clean readable tables that feel spreadsheet-like but polished.</p>
+        <p><strong>Mobile Patterns:</strong> Web-first; companion app is secondary. Less reliance on native gestures, but responsive tables and clear touch targets.</p>
+        <p><strong>Beginner UX:</strong> Approachable and “just works” according to user testimonials. Multi-currency is a standout for expats and digital nomads. The rules engine and spreadsheet-style tables may intimidate absolute beginners.</p>
+      </div>
+    </section>
+
+    <!-- Other notable apps -->
+    <section class="bg-white rounded-2xl p-8 border border-slate-200">
+      <h2 class="text-2xl font-bold mb-6">Other Notable Modern Apps</h2>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div class="border border-slate-200 rounded-xl p-5">
+          <h3 class="font-semibold text-lg">Goodbudget</h3>
+          <p class="text-slate-600 text-sm mb-2">goodbudget.com &middot; Envelope budgeting, manual entry, shared budgets.</p>
+          <p class="text-slate-700 text-sm">Simple visual “fill envelopes” interface with progress rings, color-coded categories and a family-sharing model. Best for users who want a digital version of cash envelopes.</p>
+        </div>
+        <div class="border border-slate-200 rounded-xl p-5">
+          <h3 class="font-semibold text-lg">Simplifi by Quicken</h3>
+          <p class="text-slate-600 text-sm mb-2">simplifi.money &middot; Dashboard cards, watchlists, spending plan.</p>
+          <p class="text-slate-700 text-sm">Top tabs for Dashboard, Transactions, Spending Plan, Reports and Accounts. Heavy use of cards and watchlists. Good for users transitioning from Mint.</p>
+        </div>
+        <div class="border border-slate-200 rounded-xl p-5">
+          <h3 class="font-semibold text-lg">Empower (formerly Personal Capital)</h3>
+          <p class="text-slate-600 text-sm mb-2">empower.com &middot; Net worth + retirement/investment focus.</p>
+          <p class="text-slate-700 text-sm">Net-worth dashboard, portfolio allocation, retirement planner and cash-flow calendar. Investment visualization is more advanced than budgeting.</p>
+        </div>
+        <div class="border border-slate-200 rounded-xl p-5">
+          <h3 class="font-semibold text-lg">Rocket Money</h3>
+          <p class="text-slate-600 text-sm mb-2">rocketmoney.com &middot; Subscription cancellation focus.</p>
+          <p class="text-slate-700 text-sm">Clean list of recurring charges, cancellation actions, spending by category and net-worth tracking. Strong empty-state illustrations and clear CTAs.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Comparison matrix -->
+    <section class="bg-white rounded-2xl p-8 border border-slate-200 overflow-x-auto">
+      <h2 class="text-2xl font-bold mb-6">Pattern Comparison Matrix</h2>
+      <table class="min-w-full text-sm text-left">
+        <thead class="bg-slate-100 text-slate-700 uppercase font-semibold">
+          <tr>
+            <th class="px-4 py-3">App</th>
+            <th class="px-4 py-3">Primary Navigation</th>
+            <th class="px-4 py-3">Budget Model</th>
+            <th class="px-4 py-3">Transaction List</th>
+            <th class="px-4 py-3">Dashboard Focus</th>
+            <th class="px-4 py-3">Beginner Fit</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-200">
+          <tr>
+            <td class="px-4 py-3 font-medium">Copilot Money</td>
+            <td class="px-4 py-3">iOS bottom tabs + AI assistant</td>
+            <td class="px-4 py-3">Adaptive category budgets with rollovers</td>
+            <td class="px-4 py-3">Auto-categorized, swipe review</td>
+            <td class="px-4 py-3">Spending line + net worth</td>
+            <td class="px-4 py-3">High, if U.S. and willing to pay</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-3 font-medium">Monarch</td>
+            <td class="px-4 py-3">Sidebar (web) / bottom tabs (mobile)</td>
+            <td class="px-4 py-3">Category OR Flex budgeting</td>
+            <td class="px-4 py-3">Unified, searchable, mark reviewed</td>
+            <td class="px-4 py-3">Customizable widget grid</td>
+            <td class="px-4 py-3">High, but feature breadth can overwhelm</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-3 font-medium">YNAB</td>
+            <td class="px-4 py-3">Sidebar + bottom tabs + FAB</td>
+            <td class="px-4 py-3">Envelope/zero-based</td>
+            <td class="px-4 py-3">Register style, manual-friendly</td>
+            <td class="px-4 py-3">Budget grid is the product</td>
+            <td class="px-4 py-3">Medium; requires learning the method</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-3 font-medium">PocketGuard</td>
+            <td class="px-4 py-3">Bottom tabs, Plan-first</td>
+            <td class="px-4 py-3">Safe-to-spend + category limits</td>
+            <td class="px-4 py-3">Auto-categorized, rules, hashtags</td>
+            <td class="px-4 py-3">“In My Pocket” number</td>
+            <td class="px-4 py-3">Very high for beginners</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-3 font-medium">Maybe</td>
+            <td class="px-4 py-3">Web sidebar only</td>
+            <td class="px-4 py-3">Basic category budgets</td>
+            <td class="px-4 py-3">Manual/API/CSV</td>
+            <td class="px-4 py-3">Net worth + account balances</td>
+            <td class="px-4 py-3">Low for typical beginners</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-3 font-medium">Lunch Money</td>
+            <td class="px-4 py-3">Web sidebar + companion app</td>
+            <td class="px-4 py-3">Monthly category budgets</td>
+            <td class="px-4 py-3">Split/group/tag, rules engine</td>
+            <td class="px-4 py-3">Big picture + multi-currency</td>
+            <td class="px-4 py-3">High for global/manual users</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Flutter recommendations -->
+    <section class="bg-indigo-50 rounded-2xl p-8 border border-indigo-100">
+      <h2 class="text-2xl font-bold mb-4">Patterns to Adapt for a Beginner-Focused Flutter App</h2>
+      <p class="text-slate-700 mb-6">Based on the analysis above, the following patterns strike the best balance between simplicity and usefulness for first-time budgeters.</p>
+
+      <div class="grid md:grid-cols-2 gap-6">
+        <div class="bg-white rounded-xl p-5 border border-indigo-100">
+          <h3 class="font-semibold text-lg mb-2">1. Bottom navigation, 4-5 tabs</h3>
+          <p class="text-slate-700 text-sm">Use Home, Transactions, Budget and More/Profile. Keep the budget and transactions always one tap away. Avoid hamburger menus as primary navigation.</p>
+        </div>
+        <div class="bg-white rounded-xl p-5 border border-indigo-100">
+          <h3 class="font-semibold text-lg mb-2">2. One headline number on Home</h3>
+          <p class="text-slate-700 text-sm">Follow PocketGuard’s “In My Pocket” model: show the amount safe to spend today, then reveal category breakdowns on tap. This reduces anxiety and cognitive load.</p>
+        </div>
+        <div class="bg-white rounded-xl p-5 border border-indigo-100">
+          <h3 class="font-semibold text-lg mb-2">3. Card-based dashboard with progress bars</h3>
+          <p class="text-slate-700 text-sm">Use large rounded cards for net worth/cash flow, budget progress and upcoming bills. Horizontal progress bars with color thresholds are instantly scannable.</p>
+        </div>
+        <div class="bg-white rounded-xl p-5 border border-indigo-100">
+          <h3 class="font-semibold text-lg mb-2">4. Friendly transaction list</h3>
+          <p class="text-slate-700 text-sm">Group by date, show merchant icons or initials, category chips and amount. Add pull-to-refresh, swipe-to-edit/delete and a persistent search bar with filter chips.</p>
+        </div>
+        <div class="bg-white rounded-xl p-5 border border-indigo-100">
+          <h3 class="font-semibold text-lg mb-2">5. Bottom sheets for detail &amp; creation</h3>
+          <p class="text-slate-700 text-sm">Use Flutter <code>DraggableScrollableSheet</code> or modal bottom sheets for transaction forms, category pickers and filters. Keeps context visible and feels native.</p>
+        </div>
+        <div class="bg-white rounded-xl p-5 border border-indigo-100">
+          <h3 class="font-semibold text-lg mb-2">6. Empty states with a clear first action</h3>
+          <p class="text-slate-700 text-sm">Illustrate empty budgets, accounts and transactions with a short explanation and a primary button. Add demo/sample data so users can explore before linking banks.</p>
+        </div>
+        <div class="bg-white rounded-xl p-5 border border-indigo-100">
+          <h3 class="font-semibold text-lg mb-2">7. Simple data visualization</h3>
+          <p class="text-slate-700 text-sm">Start with a donut chart for spending by category and a line chart for net worth over time. Avoid complex reports until users ask for them.</p>
+        </div>
+        <div class="bg-white rounded-xl p-5 border border-indigo-100">
+          <h3 class="font-semibold text-lg mb-2">8. Semantic color system</h3>
+          <p class="text-slate-700 text-sm">Reserve green for on-track/surplus, amber for warnings, red for overspending. Pair colors with icons or text labels for accessibility.</p>
+        </div>
+        <div class="bg-white rounded-xl p-5 border border-indigo-100">
+          <h3 class="font-semibold text-lg mb-2">9. Guided onboarding with defaults</h3>
+          <p class="text-slate-700 text-sm">Pre-populate common categories, ask for a starting balance, let users add one manual transaction, then optionally connect a bank. Use tooltips on first use.</p>
+        </div>
+        <div class="bg-white rounded-xl p-5 border border-indigo-100">
+          <h3 class="font-semibold text-lg mb-2">10. Native-feeling mobile details</h3>
+          <p class="text-slate-700 text-sm">Add haptic feedback when budgets hit thresholds, a floating action button for adding transactions, and light/dark mode from day one. Keep tablet layouts as a two-pane master-detail view.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="text-2xl font-bold mb-4">References</h2>
+      <ul class="list-disc pl-5 text-slate-700 space-y-1">
+        <li><a class="text-indigo-600 hover:underline" href="https://copilot.money" target="_blank">copilot.money</a></li>
+        <li><a class="text-indigo-600 hover:underline" href="https://monarchmoney.com" target="_blank">monarchmoney.com</a></li>
+        <li><a class="text-indigo-600 hover:underline" href="https://ynab.com" target="_blank">ynab.com</a></li>
+        <li><a class="text-indigo-600 hover:underline" href="https://pocketguard.com" target="_blank">pocketguard.com</a></li>
+        <li><a class="text-indigo-600 hover:underline" href="https://lunchmoney.app" target="_blank">lunchmoney.app</a></li>
+        <li><a class="text-indigo-600 hover:underline" href="https://github.com/maybe-finance/maybe" target="_blank">github.com/maybe-finance/maybe</a></li>
+        <li>Apple App Store listings for Copilot, Monarch and YNAB.</li>
+      </ul>
+    </section>
+
+  </main>
+
+  <footer class="bg-slate-900 text-slate-400 py-8 mt-12">
+    <div class="max-w-5xl mx-auto px-6 text-sm">
+      Report generated for UI/UX research — images belong to their respective apps.
+    </div>
+  </footer>
+</body>
+</html>
