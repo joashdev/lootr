@@ -1,0 +1,3 @@
+class RecalcBalance {
+  void call() {}
+}

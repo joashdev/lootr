@@ -1,0 +1,3 @@
+class RunOCR {
+  void call() {}
+}

@@ -1,0 +1,13 @@
+targets:
+  $default:
+    builders:
+      drift_dev:
+        options:
+          store_date_time_values_as_text: false
+      freezed:
+        options:
+          format: false
+
+      json_serializable:
+        options:
+          checked: false

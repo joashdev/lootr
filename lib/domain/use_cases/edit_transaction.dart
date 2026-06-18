@@ -1,0 +1,3 @@
+class EditTransaction {
+  void call() {}
+}

@@ -1,0 +1,3 @@
+class DeleteTransaction {
+  void call() {}
+}
