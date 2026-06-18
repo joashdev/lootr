@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lootr — App Mockups</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/regular/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/fill/style.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['-apple-system','BlinkMacSystemFont','Segoe UI','Roboto','Helvetica Neue','Arial','sans-serif'],
+            mono: ['SF Mono','Fira Code','Cascadia Code','monospace']
+          },
+          colors: {
+            'bg': '#fafafa',
+            'bg-dark': '#0f0f11',
+            'surface': '#ffffff',
+            'surface-dark': '#1a1a1e',
+            'surface-elevated-dark': '#242428',
+            'border-light': '#e2e4e8',
+            'border-dark': '#2e2e33',
+            'border-subtle-light': '#f2f4f7',
+            'border-subtle-dark': '#1f1f23',
+            'text-primary': '#1b1b1f',
+            'text-primary-dark': '#f0f0f5',
+            'text-secondary': '#63666e',
+            'text-secondary-dark': '#9ca3af',
+            'text-tertiary': '#a1a5ad',
+            'text-tertiary-dark': '#6b7280',
+            'primary': '#2563eb',
+            'primary-light': '#3b82f6',
+            'primary-dark': '#3b82f6',
+            'success': '#059669',
+            'success-dark': '#10b981',
+            'warning': '#d97706',
+            'warning-dark': '#f59e0b',
+            'danger': '#dc2626',
+            'danger-dark': '#ef4444',
+            'primary-50': '#eff6ff',
+            'primary-100': '#dbeafe',
+            'primary-700': '#1d4ed8',
+            'danger-50': '#fef2f2',
+            'success-50': '#ecfdf5',
+            'warning-50': '#fffbeb',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .phone-frame { max-width: 390px; height: 780px; border-radius: 40px; overflow: hidden; box-shadow: 0 25px 80px rgba(0,0,0,0.25); border: 8px solid #1b1b1f; position: relative; }
+    .phone-frame-dark { border-color: #333; }
+    .screen-content { height: 100%; overflow-y: auto; scrollbar-width: none; }
+    .screen-content::-webkit-scrollbar { display: none; }
+    .floating-nav {
+      position: absolute;
+      bottom: 20px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 50;
+    }
+    .nav-pill {
+      flex: 1;
+      display: flex;
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(20px);
+      border-radius: 20px;
+      padding: 6px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+      border: 1px solid rgba(0,0,0,0.05);
+    }
+    .nav-pill-dark {
+      background: rgba(26,26,30,0.95);
+      border-color: rgba(255,255,255,0.08);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+    .nav-tab {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 2px;
+      border-radius: 14px;
+      gap: 2px;
+      transition: all 0.15s ease;
+    }
+    .nav-tab-active { background: rgba(37,99,235,0.1); }
+    .nav-tab-active-dark { background: rgba(59,130,246,0.15); }
+    .add-island {
+      width: 52px;
+      height: 52px;
+      background: #2563eb;
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 16px rgba(37,99,235,0.4);
+      transition: all 0.15s ease;
+    }
+    .add-island-dark {
+      background: #3b82f6;
+      box-shadow: 0 4px 16px rgba(59,130,246,0.35);
+    }
+    .progress-track { background: #f2f4f7; border-radius: 999px; height: 8px; overflow: hidden; }
+    .progress-track-dark { background: #2e2e33; }
+    .progress-fill { height: 100%; border-radius: 999px; transition: width 0.3s ease; }
+    .card-shadow { box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04); }
+    .card-shadow-dark { border: 1px solid #2e2e33; box-shadow: none; }
+    .sheet-handle { width: 40px; height: 4px; background: #a1a5ad; border-radius: 2px; margin: 0 auto; }
+    .sheet-handle-dark { background: #6b7280; }
+    .chip { padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 500; border: 1px solid; transition: all 0.1s; }
+    .chip-active { background: #eff6ff; border-color: #dbeafe; color: #1d4ed8; }
+    .chip-inactive { background: #fff; border-color: #e2e4e8; color: #63666e; }
+    .chip-inactive-dark { background: #1a1a1e; border-color: #2e2e33; color: #9ca3af; }
+    .chip-active-dark { background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.3); color: #60a5fa; }
+    .amount-positive { color: #059669; }
+    .amount-positive-dark { color: #10b981; }
+    .amount-negative { color: #dc2626; }
+    .amount-negative-dark { color: #ef4444; }
+    .amount-transfer { color: #2563eb; }
+    .amount-transfer-dark { color: #3b82f6; }
+    .badge { padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; }
+    .icon-box { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  </style>
+</head>
+<body class="bg-neutral-100">
+
+<!-- Sidebar Nav -->
+<div class="fixed left-0 top-0 w-56 h-screen bg-white border-r border-neutral-200 overflow-y-auto z-50">
+  <div class="p-5">
+    <div class="text-lg font-bold text-text-primary mb-1">Mockups</div>
+    <div class="text-xs text-text-tertiary mb-5">11 screens</div>
+    <nav class="space-y-1">
+      <a href="#dashboard" class="block px-3 py-2 text-sm text-text-secondary hover:bg-neutral-50 rounded-lg transition">Dashboard</a>
+      <a href="#dashboard-empty" class="block px-3 py-2 text-sm text-text-secondary hover:bg-neutral-50 rounded-lg transition">Dashboard Empty</a>
+      <a href="#transactions" class="block px-3 py-2 text-sm text-text-secondary hover:bg-neutral-50 rounded-lg transition">Transactions</a>
+      <a href="#budgets" class="block px-3 py-2 text-sm text-text-secondary hover:bg-neutral-50 rounded-lg transition">Budgets</a>
+      <a href="#more" class="block px-3 py-2 text-sm text-text-secondary hover:bg-neutral-50 rounded-lg transition">More</a>
+      <a href="#add-sheet" class="block px-3 py-2 text-sm text-text-secondary hover:bg-neutral-50 rounded-lg transition">Add Transaction</a>
+      <a href="#filter-sheet" class="block px-3 py-2 text-sm text-text-secondary hover:bg-neutral-50 rounded-lg transition">Filter Sheet</a>
+      <a href="#empty-txns" class="block px-3 py-2 text-sm text-text-secondary hover:bg-neutral-50 rounded-lg transition">Empty Transactions</a>
+      <a href="#dark-dashboard" class="block px-3 py-2 text-sm text-text-secondary hover:bg-neutral-50 rounded-lg transition">Dark Dashboard</a>
+      <a href="#dark-transactions" class="block px-3 py-2 text-sm text-text-secondary hover:bg-neutral-50 rounded-lg transition">Dark Transactions</a>
+      <a href="#dark-budgets" class="block px-3 py-2 text-sm text-text-secondary hover:bg-neutral-50 rounded-lg transition">Dark Budgets</a>
+    </nav>
+  </div>
+</div>
+
+<!-- Main Content -->
+<div class="ml-56 p-10 space-y-16">
+
+<!-- ==================== DASHBOARD ==================== -->
+<section id="dashboard" class="scroll-mt-10">
+  <h2 class="text-xl font-bold text-text-primary mb-4">Dashboard</h2>
+  <div class="phone-frame bg-bg">
+    <div class="screen-content relative">
+      <!-- Header -->
+      <div class="px-5 pt-5 pb-3">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <div class="text-caption text-text-secondary">Good morning</div>
+            <div class="text-h3 font-semibold text-text-primary">Alex</div>
+          </div>
+          <div class="w-9 h-9 rounded-full bg-primary-50 flex items-center justify-center text-primary">
+            <i class="ph ph-bell text-lg"></i>
+          </div>
+        </div>
+        <!-- Period toggle -->
+        <div class="flex bg-surface rounded-full p-1 gap-1 card-shadow">
+          <button class="flex-1 py-1.5 text-xs font-medium rounded-full text-text-secondary">Day</button>
+          <button class="flex-1 py-1.5 text-xs font-medium rounded-full text-text-secondary">Week</button>
+          <button class="flex-1 py-1.5 text-xs font-medium rounded-full bg-primary text-white">Month</button>
+        </div>
+      </div>
+
+      <!-- Hero Card -->
+      <div class="mx-4 mb-3 bg-surface rounded-2xl p-5 card-shadow">
+        <div class="text-caption text-text-secondary mb-1">Safe to spend</div>
+        <div class="text-display font-bold text-text-primary font-mono">₱24,580</div>
+        <div class="flex items-center gap-1.5 mt-2">
+          <div class="badge bg-success-50 text-success">+12% vs last month</div>
+        </div>
+      </div>
+
+      <!-- Upcoming Section -->
+      <div class="px-4 mb-3">
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-caption-medium font-semibold text-text-secondary">Upcoming</div>
+          <div class="text-xs text-primary">See all</div>
+        </div>
+        <div class="bg-surface rounded-xl p-4 card-shadow space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="icon-box bg-danger-50 text-danger"><i class="ph ph-wifi-high"></i></div>
+              <div>
+                <div class="text-body-medium font-medium text-text-primary">Globe Postpaid</div>
+                <div class="text-caption text-text-secondary">Bill • Tomorrow</div>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="text-h3 font-semibold font-mono amount-negative">-₱999</div>
+              <div class="badge bg-danger-50 text-danger">DUE</div>
+            </div>
+          </div>
+          <div class="h-px bg-border-subtle-light"></div>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="icon-box bg-primary-50 text-primary"><i class="ph ph-film-strip"></i></div>
+              <div>
+                <div class="text-body-medium font-medium text-text-primary">Netflix</div>
+                <div class="text-caption text-text-secondary">Subscription • Jun 25</div>
+              </div>
+            </div>
+            <div class="text-h3 font-semibold font-mono amount-negative">-₱249</div>
+          </div>
+          <div class="h-px bg-border-subtle-light"></div>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="icon-box bg-success-50 text-success"><i class="ph ph-arrow-down-left"></i></div>
+              <div>
+                <div class="text-body-medium font-medium text-text-primary">Online Selling Payout</div>
+                <div class="text-caption text-text-secondary">Income • Jun 22</div>
+              </div>
+            </div>
+            <div class="text-h3 font-semibold font-mono amount-positive">+₱4,500</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Goals -->
+      <div class="px-4 mb-3">
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-caption-medium font-semibold text-text-secondary">Goals</div>
+          <div class="text-xs text-primary">See all</div>
+        </div>
+        <div class="bg-surface rounded-xl p-4 card-shadow space-y-4">
+          <div>
+            <div class="flex justify-between mb-1.5">
+              <div class="text-body-medium font-medium text-text-primary">Bohol Trip</div>
+              <div class="text-caption font-mono text-text-secondary">₱47,000 / ₱100,000</div>
+            </div>
+            <div class="progress-track"><div class="progress-fill bg-primary" style="width:47%"></div></div>
+            <div class="text-caption text-text-tertiary mt-1">47% saved</div>
+          </div>
+          <div>
+            <div class="flex justify-between mb-1.5">
+              <div class="text-body-medium font-medium text-text-primary">Emergency Fund</div>
+              <div class="text-caption font-mono text-text-secondary">₱60,000 / ₱100,000</div>
+            </div>
+            <div class="progress-track"><div class="progress-fill bg-success" style="width:60%"></div></div>
+            <div class="text-caption text-text-tertiary mt-1">60% saved</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Padding for floating nav -->
+      <div class="h-24"></div>
+    </div>
+
+    <!-- Floating Nav -->
+    <div class="floating-nav">
+      <div class="nav-pill">
+        <div class="nav-tab nav-tab-active">
+          <i class="ph-fill ph-house text-lg text-primary"></i>
+          <span class="text-micro font-semibold text-primary">Home</span>
+        </div>
+        <div class="nav-tab">
+          <i class="ph ph-list text-lg text-text-tertiary"></i>
+          <span class="text-micro font-medium text-text-tertiary">Txns</span>
+        </div>
+        <div class="nav-tab">
+          <i class="ph ph-chart-pie text-lg text-text-tertiary"></i>
+          <span class="text-micro font-medium text-text-tertiary">Budgets</span>
+        </div>
+        <div class="nav-tab">
+          <i class="ph ph-squares-four text-lg text-text-tertiary"></i>
+          <span class="text-micro font-medium text-text-tertiary">More</span>
+        </div>
+      </div>
+      <div class="add-island">
+        <i class="ph-bold ph-plus text-2xl text-white"></i>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== DASHBOARD EMPTY ==================== -->
+<section id="dashboard-empty" class="scroll-mt-10">
+  <h2 class="text-xl font-bold text-text-primary mb-4">Dashboard Empty</h2>
+  <div class="phone-frame bg-bg">
+    <div class="screen-content relative">
+      <div class="px-5 pt-5 pb-3">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <div class="text-caption text-text-secondary">Good morning</div>
+            <div class="text-h3 font-semibold text-text-primary">Alex</div>
+          </div>
+          <div class="w-9 h-9 rounded-full bg-primary-50 flex items-center justify-center text-primary">
+            <i class="ph ph-bell text-lg"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div class="flex-1 flex flex-col items-center justify-center px-8" style="min-height: 500px;">
+        <div class="w-28 h-28 rounded-full bg-primary-50 flex items-center justify-center mb-5">
+          <i class="ph ph-wallet text-5xl text-primary"></i>
+        </div>
+        <div class="text-h2 font-bold text-text-primary text-center mb-2">Let's set up your first account</div>
+        <div class="text-body text-text-secondary text-center mb-6">Add a bank account, cash wallet, or credit card to start tracking your money.</div>
+        <button class="bg-primary text-white font-medium px-7 py-3 rounded-full text-body-medium shadow-lg shadow-primary/25">
+          <span class="flex items-center gap-2"><i class="ph-bold ph-plus"></i> Add Account</span>
+        </button>
+        <button class="mt-3 text-primary font-medium text-body-medium">Skip for now</button>
+      </div>
+
+      <div class="h-24"></div>
+    </div>
+    <div class="floating-nav">
+      <div class="nav-pill">
+        <div class="nav-tab nav-tab-active">
+          <i class="ph-fill ph-house text-lg text-primary"></i>
+          <span class="text-micro font-semibold text-primary">Home</span>
+        </div>
+        <div class="nav-tab">
+          <i class="ph ph-list text-lg text-text-tertiary"></i>
+          <span class="text-micro font-medium text-text-tertiary">Txns</span>
+        </div>
+        <div class="nav-tab">
+          <i class="ph ph-chart-pie text-lg text-text-tertiary"></i>
+          <span class="text-micro font-medium text-text-tertiary">Budgets</span>
+        </div>
+        <div class="nav-tab">
+          <i class="ph ph-squares-four text-lg text-text-tertiary"></i>
+          <span class="text-micro font-medium text-text-tertiary">More</span>
+        </div>
+      </div>
+      <div class="add-island">
+        <i class="ph-bold ph-plus text-2xl text-white"></i>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== TRANSACTIONS ==================== -->
+<section id="transactions" class="scroll-mt-10">
+  <h2 class="text-xl font-bold text-text-primary mb-4">Transactions</h2>
+  <div class="phone-frame bg-bg">
+    <div class="screen-content relative">
+      <!-- Header -->
+      <div class="px-5 pt-5 pb-3">
+        <div class="text-h2 font-bold text-text-primary mb-4">Transactions</div>
+        <div class="flex gap-2">
+          <div class="flex-1 flex items-center gap-2 bg-surface rounded-full px-4 py-2.5 card-shadow">
+            <i class="ph ph-magnifying-glass text-text-tertiary"></i>
+            <span class="text-body text-text-tertiary">Search transactions...</span>
+          </div>
+          <div class="w-10 h-10 bg-surface rounded-full flex items-center justify-center card-shadow">
+            <i class="ph ph-funnel text-text-secondary"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Today -->
+      <div class="px-4 mb-3">
+        <div class="text-caption-medium font-semibold text-text-secondary mb-2 px-1">Today</div>
+        <div class="bg-surface rounded-xl card-shadow overflow-hidden">
+          <div class="flex items-center justify-between p-3.5">
+            <div class="flex items-center gap-3">
+              <div class="icon-box bg-danger-50 text-danger"><i class="ph ph-hamburger"></i></div>
+              <div>
+                <div class="text-body-medium font-medium text-text-primary">McDonald's</div>
+                <div class="text-caption text-text-secondary">Food • GCash</div>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="text-h3 font-semibold font-mono amount-negative">-₱250</div>
+              <div class="text-caption text-text-tertiary">2:30 PM</div>
+            </div>
+          </div>
+          <div class="h-px bg-border-subtle-light mx-3.5"></div>
+          <div class="flex items-center justify-between p-3.5">
+            <div class="flex items-center gap-3">
+              <div class="icon-box bg-success-50 text-success"><i class="ph ph-arrow-down-left"></i></div>
+              <div>
+                <div class="text-body-medium font-medium text-text-primary">Salary</div>
+                <div class="text-caption text-text-secondary">Income • BPI Savings</div>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="text-h3 font-semibold font-mono amount-positive">+₱45,000</div>
+              <div class="text-caption text-text-tertiary">9:00 AM</div>
+            </div>
+          </div>
+          <div class="h-px bg-border-subtle-light mx-3.5"></div>
+          <div class="flex items-center justify-between p-3.5">
+            <div class="flex items-center gap-3">
+              <div class="icon-box bg-primary-50 text-primary"><i class="ph ph-arrows-left-right"></i></div>
+              <div>
+                <div class="text-body-medium font-medium text-text-primary">BPI → GCash</div>
+                <div class="text-caption text-text-secondary">Transfer</div>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="text-h3 font-semibold font-mono amount-transfer">-₱500</div>
+              <div class="text-caption text-text-tertiary">8:15 AM</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Yesterday -->
+      <div class="px-4 mb-3">
+        <div class="text-caption-medium font-semibold text-text-secondary mb-2 px-1">Yesterday</div>
+        <div class="bg-surface rounded-xl card-shadow overflow-hidden">
+          <div class="flex items-center justify-between p-3.5">
+            <div class="flex items-center gap-3">
+              <div class="icon-box bg-danger-50 text-danger"><i class="ph ph-car"></i></div>
+              <div>
+                <div class="text-body-medium font-medium text-text-primary">Grab</div>
+                <div class="text-caption text-text-secondary">Transport • GCash</div>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="text-h3 font-semibold font-mono amount-negative">-₱180</div>
+              <div class="text-caption text-text-tertiary">6:45 PM</div>
+            </div>
+          </div>
+          <div class="h-px bg-border-subtle-light mx-3.5"></div>
+          <div class="flex items-center justify-between p-3.5">
+            <div class="flex items-center gap-3">
+              <div class="icon-box bg-danger-50 text-danger"><i class="ph ph-storefront"></i></div>
+              <div>
+                <div class="text-body-medium font-medium text-text-primary">7-Eleven</div>
+                <div class="text-caption text-text-secondary">Groceries • Cash</div>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="text-h3 font-semibold font-mono amount-negative">-₱89</div>
+              <div class="text-caption text-text-tertiary">11:20 AM</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="h-24"></div>
+    </div>
+    <div class="floating-nav">
+      <div class="nav-pill">
+        <div class="nav-tab">
+          <i class="ph ph-house text-lg text-text-tertiary"></i>
+          <span class="text-micro font-medium text-text-tertiary">Home</span>
+        </div>
+        <div class="nav-tab nav-tab-active">
+          <i class="ph-fill ph-list text-lg text-primary"></i>
+          <span class="text-micro font-semibold text-primary">Txns</span>
+        </div>
+        <div class="nav-tab">
+          <i class="ph ph-chart-pie text-lg text-text-tertiary"></i>
+          <span class="text-micro font-medium text-text-tertiary">Budgets</span>
+        </div>
+        <div class="nav-tab">
+          <i class="ph ph-squares-four text-lg text-text-tertiary"></i>
+          <span class="text-micro font-medium text-text-tertiary">More</span>
+        </div>
+      </div>
+      <div class="add-island">
+        <i class="ph-bold ph-plus text-2xl text-white"></i>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== BUDGETS ==================== -->
+<section id="budgets" class="scroll-mt-10">
+  <h2 class="text-xl font-bold text-text-primary mb-4">Budgets</h2>
+  <div class="phone-frame bg-bg">
+    <div class="screen-content relative">
+      <div class="px-5 pt-5 pb-3">
+        <div class="text-h2 font-bold text-text-primary mb-4">Budgets</div>
+        <!-- Month nav -->
+        <div class="flex items-center justify-between mb-4">
+          <button class="w-8 h-8 rounded-full bg-surface flex items-center justify-center card-shadow"><i class="ph ph-caret-left text-text-secondary"></i></button>
+          <div class="text-body-medium font-semibold text-text-primary">June 2025</div>
+          <button class="w-8 h-8 rounded-full bg-surface flex items-center justify-center card-shadow"><i class="ph ph-caret-right text-text-secondary"></i></button>
+        </div>
+        <!-- Summary Card -->
+        <div class="bg-surface rounded-2xl p-5 card-shadow mb-4">
+          <div class="text-caption text-text-secondary mb-1">Total budgeted</div>
+          <div class="text-h1 font-bold text-text-primary font-mono mb-3">₱35,000</div>
+          <div class="flex gap-4">
+            <div>
+              <div class="text-caption text-text-secondary">Spent</div>
+              <div class="text-body-medium font-semibold font-mono amount-negative">₱21,400</div>
+            </div>
+            <div>
+              <div class="text-caption text-text-secondary">Remaining</div>
+              <div class="text-body-medium font-semibold font-mono amount-positive">₱13,600</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Budget Rows -->
+      <div class="px-4 space-y-3">
+        <div class="bg-surface rounded-xl p-4 card-shadow">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2.5">
+              <div class="icon-box bg-danger-50 text-danger"><i class="ph ph-hamburger"></i></div>
+              <div class="text-body-medium font-medium text-text-primary">Food & Dining</div>
+            </div>
+            <div class="badge bg-danger-50 text-danger">83%</div>
+          </div>
+          <div class="progress-track mb-1.5"><div class="progress-fill bg-danger" style="width:83%"></div></div>
+          <div class="flex justify-between text-caption">
+            <span class="text-text-secondary font-mono">₱8,300 / ₱10,000</span>
+            <span class="text-danger font-medium">₱1,700 left</span>
+          </div>
+        </div>
+
+        <div class="bg-surface rounded-xl p-4 card-shadow">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2.5">
+              <div class="icon-box bg-warning-50 text-warning"><i class="ph ph-car"></i></div>
+              <div class="text-body-medium font-medium text-text-primary">Transport</div>
+            </div>
+            <div class="badge bg-warning-50 text-warning">72%</div>
+          </div>
+          <div class="progress-track mb-1.5"><div class="progress-fill bg-warning" style="width:72%"></div></div>
+          <div class="flex justify-between text-caption">
+            <span class="text-text-secondary font-mono">₱3,600 / ₱5,000</span>
+            <span class="text-warning font-medium">₱1,400 left</span>
+          </div>
+        </div>
+
+        <div class="bg-surface rounded-xl p-4 card-shadow">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2.5">
+              <div class="icon-box bg-primary-50 text-primary"><i class="ph ph-shopping-bag"></i></div>
+              <div class="text-body-medium font-medium text-text-primary">Shopping</div>
+            </div>
+            <div class="badge bg-primary-50 text-primary">45%</div>
+          </div>
+          <div class="progress-track mb-1.5"><div class="progress-fill bg-primary" style="width:45%"></div></div>
+          <div class="flex justify-between text-caption">
+            <span class="text-text-secondary font-mono">₱4,500 / ₱10,000</span>
+            <span class="text-primary font-medium">₱5,500 left</span>
+          </div>
+        </div>
+
+        <div class="bg-surface rounded-xl p-4 card-shadow">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2.5">
+              <div class="icon-box bg-success-50 text-success"><i class="ph ph-wifi-high"></i></div>
+              <div class="text-body-medium font-medium text-text-primary">Bills</div>
+            </div>
+            <div class="badge bg-success-50 text-success">60%</div>
+          </div>
+          <div class="progress-track mb-1.5"><div class="progress-fill bg-success" style="width:60%"></div></div>
+          <div class="flex justify-between text-caption">
+            <span class="text-text-secondary font-mono">₱5,000 / ₱10,000</span>
+            <span class="text-success font-medium">₱5,000 left</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="h-24"></div>
+    </div>
+    <div class="floating-nav">
+      <div class="nav-pill">
+        <div class="nav-tab">
+          <i class="ph ph-house text-lg text-text-tertiary"></i>
+          <span class="text-micro font-medium text-text-tertiary">Home</span>
+        </div>
+        <div class="nav-tab">
+          <i class="ph ph-list text-lg text-text-tertiary"></i>
+          <span class="text-micro font-medium text-text-tertiary">Txns</span>
+        </div>
+        <div class="nav-tab nav-tab-active">
+          <i class="ph-fill ph-chart-pie text-lg text-primary"></i>
+          <span class="text-micro font-semibold text-primary">Budgets</span>
+        </div>
+        <div class="nav-tab">
+          <i class="ph ph-squares-four text-lg text-text-tertiary"></i>
+          <span class="text-micro font-medium text-text-tertiary">More</span>
+        </div>
+      </div>
+      <div class="add-island">
+        <i class="ph-bold ph-plus text-2xl text-white"></i>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== MORE ==================== -->
+<section id="more" class="scroll-mt-10">
+  <h2 class="text-xl font-bold text-text-primary mb-4">More</h2>
+  <div class="phone-frame bg-bg">
+    <div class="screen-content relative">
+      <div class="px-5 pt-5 pb-3">
+        <div class="text-h2 font-bold text-text-primary mb-5">More</div>
+      </div>
+
+      <div class="px-4 space-y-3">
+        <!-- Financial -->
+        <div class="bg-surface rounded-xl card-shadow overflow-hidden">
+          <div class="text-caption-medium font-semibold text-text-secondary px-4 pt-3 pb-2">Financial</div>
+          <div class="px-4 py-3 flex items-center justify-between hover:bg-neutral-50/50 transition">
+            <div class="flex items-center gap-3">
+              <div class="icon-box bg-primary-50 text-primary"><i class="ph ph-bank"></i></div>
+              <span class="text-body-medium font-medium text-text-primary">Accounts</span>
+            </div>
+            <i class="ph ph-caret-right text-text-tertiary"></i>
+          </div>
+          <div class="h-px bg-border-subtle-light mx-4"></div>
+          <div class="px-4 py-3 flex items-center justify-between hover:bg-neutral-50/50 transition">
+            <div class="flex items-center gap-3">
+              <div class="icon-box bg-danger-50 text-danger"><i class="ph ph-hand-coins"></i></div>
+              <span class="text-body-medium font-medium text-text-primary">Debts</span>
+            </div>
+            <i class="ph ph-caret-right text-text-tertiary"></i>
+          </div>
+          <div class="h-px bg-border-subtle-light mx-4"></div>
+          <div class="px-4 py-3 flex items-center justify-between hover:bg-neutral-50/50 transition">
+            <div class="flex items-center gap-3">
+              <div class="icon-box bg-success-50 text-success"><i class="ph ph-target"></i></div>
+              <span class="text-body-medium font-medium text-text-primary">Goals</span>
+            </div>
+            <i class="ph ph-caret-right text-text-tertiary"></i>
+          </div>
+          <div class="h-px bg-border-subtle-light mx-4"></div>
+          <div class="px-4 py-3 flex items-center justify-between hover:bg-neutral-50/50 transition">
+            <div class="flex items-center gap-3">
+              <div class="icon-box bg-warning-50 text-warning"><i class="ph ph-repeat"></i></div>
+              <span class="text-body-medium font-medium text-text-primary">Recurring</span>
+            </div>
+            <i class="ph ph-caret-right text-text-tertiary"></i>
+          </div>
+        </div>
+
+        <!-- Insights -->
+        <div class="bg-surface rounded-xl card-shadow overflow-hidden">
+          <div class="text-caption-medium font-semibold text-text-secondary px-4 pt-3 pb-2">Insights</div>
+          <div class="px-4 py-3 flex items-center justify-between hover:bg-neutral-50/50 transition">
+            <div class="flex items-center gap-3">
+              <div class="icon-box bg-primary-50 text-primary"><i class="ph ph-chart-line-up"></i></div>
+              <span class="text-body-medium font-medium text-text-primary">Reports</span>
+            </div>
+            <i class="ph ph-caret-right text-text-tertiary"></i>
+          </div>
+        </div>
+
+        <!-- Settings -->
+        <div class="bg-surface rounded-xl card-shadow overflow-hidden">
+          <div class="text-caption-medium font-semibold text-text-secondary px-4 pt-3 pb-2">Settings</div>
+          <div class="px-4 py-3 flex items-center justify-between hover:bg-neutral-50/50 transition">
+            <div class="flex items-center gap-3">
+              <div class="icon-box bg-primary-50 text-primary"><i class="ph ph-user"></i></div>
+              <span class="text-body-medium font-medium text-text-primary">Profile</span>
+            </div>
+            <i class="ph ph-caret-right text-text-tertiary"></i>
+          </div>
+          <div class="h-px bg-border-subtle-light mx-4"></div>
+          <div class="px-4 py-3 flex items-center justify-between hover:bg-neutral-50/50 transition">
+            <div class="flex items-center gap-3">
+              <div class="icon-box bg-primary-50 text-primary"><i class="ph ph-bell"></i></div>
+              <span class="text-body-medium font-medium text-text-primary">Notifications</span>
+            </div>
+            <i class="ph ph-caret-right text-text-tertiary"></i>
+          </div>
+          <div class="h-px bg-border-subtle-light mx-4"></div>
+          <div class="px-4 py-3 flex items-center justify-between hover:bg-neutral-50/50 transition">
+            <div class="flex items-center gap-3">
+              <div class="icon-box bg-primary-50 text-primary"><i class="ph ph-cloud-arrow-up"></i></div>
+              <span class="text-body-medium font-medium text-text-primary">Cloud Sync</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="w-2 h-2 rounded-full bg-success"></div>
+              <span class="text-caption text-text-secondary">Synced</span>
+              <i class="ph ph-caret-right text-text-tertiary"></i>
+            </div>
+          </div>
+          <div class="h-px bg-border-subtle-light mx-4"></div>
+          <div class="px-4 py-3 flex items-center justify-between hover:bg-neutral-50/50 transition">
+            <div class="flex items-center gap-3">
+              <div class="icon-box bg-primary-50 text-primary"><i class="ph ph-moon"></i></div>
+              <span class="text-body-medium font-medium text-text-primary">Appearance</span>
+            </div>
+            <i class="ph ph-caret-right text-text-tertiary"></i>
+          </div>
+          <div class="h-px bg-border-subtle-light mx-4"></div>
+          <div class="px-4 py-3 flex items-center justify-between hover:bg-neutral-50/50 transition">
+            <div class="flex items-center gap-3">
+              <div class="icon-box bg-primary-50 text-primary"><i class="ph ph-shield-check"></i></div>
+              <span class="text-body-medium font-medium text-text-primary">Security</span>
+            </div>
+            <i class="ph ph-caret-right text-text-tertiary"></i>
+          </div>
+          <div class="h-px bg-border-subtle-light mx-4"></div>
+          <div class="px-4 py-3 flex items-center justify-between hover:bg-neutral-50/50 transition">
+            <div class="flex items-center gap-3">
+              <div class="icon-box bg-primary-50 text-primary"><i class="ph ph-info"></i></div>
+              <span class="text-body-medium font-medium text-text-primary">About</span>
+            </div>
+            <i class="ph ph-caret-right text-text-tertiary"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="h-24"></div>
+    </div>
+    <div class="floating-nav">
+      <div class="nav-pill">
+        <div class="nav-tab">
+          <i class="ph ph-house text-lg text-text-tertiary"></i>
+          <span class="text-micro font-medium text-text-tertiary">Home</span>
+        </div>
+        <div class="nav-tab">
+          <i class="ph ph-list text-lg text-text-tertiary"></i>
+          <span class="text-micro font-medium text-text-tertiary">Txns</span>
+        </div>
+        <div class="nav-tab">
+          <i class="ph ph-chart-pie text-lg text-text-tertiary"></i>
+          <span class="text-micro font-medium text-text-tertiary">Budgets</span>
+        </div>
+        <div class="nav-tab nav-tab-active">
+          <i class="ph-fill ph-squares-four text-lg text-primary"></i>
+          <span class="text-micro font-semibold text-primary">More</span>
+        </div>
+      </div>
+      <div class="add-island">
+        <i class="ph-bold ph-plus text-2xl text-white"></i>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== ADD TRANSACTION SHEET ==================== -->
+<section id="add-sheet" class="scroll-mt-10">
+  <h2 class="text-xl font-bold text-text-primary mb-4">Add Transaction Sheet</h2>
+  <div class="phone-frame bg-bg relative overflow-hidden">
+    <!-- Background (dimmed) -->
+    <div class="absolute inset-0 bg-black/40 z-10"></div>
+    <!-- Sheet -->
+    <div class="absolute bottom-0 left-0 right-0 bg-surface rounded-t-2xl z-20 shadow-lg" style="max-height: 65%;">
+      <div class="pt-3 pb-2">
+        <div class="sheet-handle"></div>
+      </div>
+      <div class="px-5 pb-6">
+        <div class="text-h2 font-bold text-text-primary mb-1">Add Transaction</div>
+        <div class="text-body text-text-secondary mb-5">How would you like to add it?</div>
+
+        <!-- NL Input -->
+        <div class="relative mb-4">
+          <div class="flex items-center gap-2 bg-bg rounded-xl px-4 py-3.5 border border-border-light">
+            <i class="ph ph-lightning text-primary text-lg"></i>
+            <input type="text" placeholder="Coffee at Starbucks ₱180" class="flex-1 bg-transparent text-body text-text-primary outline-none placeholder:text-text-tertiary" />
+            <button class="w-8 h-8 rounded-full bg-primary-50 flex items-center justify-center text-primary">
+              <i class="ph-fill ph-microphone"></i>
+            </button>
+          </div>
+          <div class="text-caption text-text-tertiary mt-1.5 px-1">Try: "Grab ride ₱150" or "Salary ₱45k"</div>
+        </div>
+
+        <div class="h-px bg-border-subtle-light my-4"></div>
+
+        <!-- Options -->
+        <div class="grid grid-cols-2 gap-3">
+          <button class="flex flex-col items-center gap-2 py-4 bg-bg rounded-xl border border-border-light hover:border-primary transition">
+            <div class="w-10 h-10 rounded-full bg-primary-50 flex items-center justify-center text-primary">
+              <i class="ph ph-pencil-simple text-xl"></i>
+            </div>
+            <span class="text-body-medium font-medium text-text-primary">Manual Entry</span>
+            <span class="text-caption text-text-secondary">Fill in details</span>
+          </button>
+          <button class="flex flex-col items-center gap-2 py-4 bg-bg rounded-xl border border-border-light hover:border-primary transition">
+            <div class="w-10 h-10 rounded-full bg-primary-50 flex items-center justify-center text-primary">
+              <i class="ph ph-camera text-xl"></i>
+            </div>
+            <span class="text-body-medium font-medium text-text-primary">Scan Receipt</span>
+            <span class="text-caption text-text-secondary">OCR capture</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    <!-- Floating Nav (behind sheet) -->
+    <div class="floating-nav" style="z-index: 5;">
+      <div class="nav-pill">
+        <div class="nav-tab">
+          <i class="ph ph-house text-lg text-text-tertiary"></i>
+          <span class="text-micro font-medium text-text-tertiary">Home</span>
+        </div>
+        <div class="nav-tab">
+          <i class="ph ph-list text-lg text-text-tertiary"></i>
+          <span class="text-micro font-medium text-text-tertiary">Txns</span>
+        </div>
+        <div class="nav-tab">
+          <i class="ph ph-chart-pie text-lg text-text-tertiary"></i>
+          <span class="text-micro font-medium text-text-tertiary">Budgets</span>
+        </div>
+        <div class="nav-tab">
+          <i class="ph ph-squares-four text-lg text-text-tertiary"></i>
+          <span class="text-micro font-medium text-text-tertiary">More</span>
+        </div>
+      </div>
+      <div class="add-island" style="background: #1d4ed8;">
+        <i class="ph-bold ph-plus text-2xl text-white"></i>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== FILTER SHEET ==================== -->
+<section id="filter-sheet" class="scroll-mt-10">
+  <h2 class="text-xl font-bold text-text-primary mb-4">Filter Sheet</h2>
+  <div class="phone-frame bg-bg relative overflow-hidden">
+    <div class="absolute inset-0 bg-black/40 z-10"></div>
+    <div class="absolute bottom-0 left-0 right-0 bg-surface rounded-t-2xl z-20 shadow-lg" style="max-height: 75%;">
+      <div class="pt-3 pb-2">
+        <div class="sheet-handle"></div>
+      </div>
+      <div class="px-5 pb-6">
+        <div class="flex items-center justify-between mb-5">
+          <div class="text-h2 font-bold text-text-primary">Filter</div>
+          <button class="text-body-medium text-primary font-medium">Clear all</button>
+        </div>
+
+        <!-- Direction -->
+        <div class="mb-4">
+          <div class="text-caption-medium font-semibold text-text-secondary mb-2">Direction</div>
+          <div class="flex flex-wrap gap-2">
+            <span class="chip chip-active">All</span>
+            <span class="chip chip-inactive">Expense</span>
+            <span class="chip chip-inactive">Income</span>
+            <span class="chip chip-inactive">Transfer</span>
+          </div>
+        </div>
+
+        <!-- Mode -->
+        <div class="mb-4">
+          <div class="text-caption-medium font-semibold text-text-secondary mb-2">Mode</div>
+          <div class="flex flex-wrap gap-2">
+            <span class="chip chip-active">All</span>
+            <span class="chip chip-inactive">Manual</span>
+            <span class="chip chip-inactive">Voice</span>
+            <span class="chip chip-inactive">OCR</span>
+            <span class="chip chip-inactive">Recurring</span>
+          </div>
+        </div>
+
+        <!-- Account -->
+        <div class="mb-4">
+          <div class="text-caption-medium font-semibold text-text-secondary mb-2">Account</div>
+          <div class="flex flex-wrap gap-2">
+            <span class="chip chip-active">All Accounts</span>
+            <span class="chip chip-inactive">BPI Savings</span>
+            <span class="chip chip-inactive">GCash</span>
+            <span class="chip chip-inactive">Cash</span>
+          </div>
+        </div>
+
+        <!-- Category -->
+        <div class="mb-4">
+          <div class="text-caption-medium font-semibold text-text-secondary mb-2">Category</div>
+          <div class="flex flex-wrap gap-2">
+            <span class="chip chip-active">All</span>
+            <span class="chip chip-inactive">Food</span>
+            <span class="chip chip-inactive">Transport</span>
+            <span class="chip chip-inactive">Bills</span>
+            <span class="chip chip-inactive">Shopping</span>
+          </div>
+        </div>
+
+        <!-- Amount Range -->
+        <div class="mb-4">
+          <div class="text-caption-medium font-semibold text-text-secondary mb-2">Amount Range</div>
+          <div class="flex gap-3">
+            <div class="flex-1">
+              <div class="bg-bg rounded-lg px-3 py-2.5 border border-border-light">
+                <div class="text-caption text-text-tertiary mb-0.5">Min</div>
+                <div class="text-body-medium font-mono text-text-primary">₱0</div>
+              </div>
+            </div>
+            <div class="flex-1">
+              <div class="bg-bg rounded-lg px-3 py-2.5 border border-border-light">
+                <div class="text-caption text-text-tertiary mb-0.5">Max</div>
+                <div class="text-body-medium font-mono text-text-primary">₱100,000</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Date Range -->
+        <div class="mb-6">
+          <div class="text-caption-medium font-semibold text-text-secondary mb-2">Date Range</div>
+          <div class="flex gap-3">
+            <div class="flex-1">
+              <div class="bg-bg rounded-lg px-3 py-2.5 border border-border-light">
+                <div class="text-caption text-text-tertiary mb-0.5">From</div>
+                <div class="text-body-medium text-text-primary">Jun 1, 2025</div>
+              </div>
+            </div>
+            <div class="flex-1">
+              <div class="bg-bg rounded-lg px-3 py-2.5 border border-border-light">
+                <div class="text-caption text-text-tertiary mb-0.5">To</div>
+                <div class="text-body-medium text-text-primary">Jun 30, 2025</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button class="w-full bg-primary text-white font-medium py-3.5 rounded-full text-body-medium">Apply Filters</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== EMPTY TRANSACTIONS ==================== -->
+<section id="empty-txns" class="scroll-mt-10">
+  <h2 class="text-xl font-bold text-text-primary mb-4">Empty Transactions</h2>
+  <div class="phone-frame bg-bg">
+    <div class="screen-content relative">
+      <div class="px-5 pt-5 pb-3">
+        <div class="text-h2 font-bold text-text-primary mb-4">Transactions</div>
+        <div class="flex gap-2 mb-4">
+          <div class="flex-1 flex items-center gap-2 bg-surface rounded-full px-4 py-2.5 card-shadow">
+            <i class="ph ph-magnifying-glass text-text-tertiary"></i>
+            <span class="text-body text-text-tertiary">Search transactions...</span>
+          </div>
+          <div class="w-10 h-10 bg-surface rounded-full flex items-center justify-center card-shadow">
+            <i class="ph ph-funnel text-text-secondary"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex-1 flex flex-col items-center justify-center px-8" style="min-height: 400px;">
+        <div class="w-24 h-24 rounded-full bg-primary-50 flex items-center justify-center mb-5">
+          <i class="ph ph-receipt text-4xl text-primary"></i>
+        </div>
+        <div class="text-h2 font-bold text-text-primary text-center mb-2">You need an account</div>
+        <div class="text-body text-text-secondary text-center mb-6">Add an account first, then your transactions will appear here.</div>
+        <button class="bg-primary text-white font-medium px-7 py-3 rounded-full text-body-medium shadow-lg shadow-primary/25">
+          <span class="flex items-center gap-2"><i class="ph-bold ph-plus"></i> Add Account</span>
+        </button>
+      </div>
+
+      <div class="h-24"></div>
+    </div>
+    <div class="floating-nav">
+      <div class="nav-pill">
+        <div class="nav-tab">
+          <i class="ph ph-house text-lg text-text-tertiary"></i>
+          <span class="text-micro font-medium text-text-tertiary">Home</span>
+        </div>
+        <div class="nav-tab nav-tab-active">
+          <i class="ph-fill ph-list text-lg text-primary"></i>
+          <span class="text-micro font-semibold text-primary">Txns</span>
+        </div>
+        <div class="nav-tab">
+          <i class="ph ph-chart-pie text-lg text-text-tertiary"></i>
+          <span class="text-micro font-medium text-text-tertiary">Budgets</span>
+        </div>
+        <div class="nav-tab">
+          <i class="ph ph-squares-four text-lg text-text-tertiary"></i>
+          <span class="text-micro font-medium text-text-tertiary">More</span>
+        </div>
+      </div>
+      <div class="add-island">
+        <i class="ph-bold ph-plus text-2xl text-white"></i>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== DARK DASHBOARD ==================== -->
+<section id="dark-dashboard" class="scroll-mt-10">
+  <h2 class="text-xl font-bold text-text-primary mb-4">Dark Dashboard</h2>
+  <div class="phone-frame phone-frame-dark bg-bg-dark">
+    <div class="screen-content relative">
+      <div class="px-5 pt-5 pb-3">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <div class="text-caption text-text-secondary-dark">Good morning</div>
+            <div class="text-h3 font-semibold text-text-primary-dark">Alex</div>
+          </div>
+          <div class="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-primary-dark">
+            <i class="ph ph-bell text-lg"></i>
+          </div>
+        </div>
+        <div class="flex bg-surface-dark rounded-full p-1 gap-1 card-shadow-dark">
+          <button class="flex-1 py-1.5 text-xs font-medium rounded-full text-text-tertiary-dark">Day</button>
+          <button class="flex-1 py-1.5 text-xs font-medium rounded-full text-text-tertiary-dark">Week</button>
+          <button class="flex-1 py-1.5 text-xs font-medium rounded-full bg-primary text-white">Month</button>
+        </div>
+      </div>
+
+      <div class="mx-4 mb-3 bg-surface-dark rounded-2xl p-5 card-shadow-dark">
+        <div class="text-caption text-text-secondary-dark mb-1">Safe to spend</div>
+        <div class="text-display font-bold text-text-primary-dark font-mono">₱24,580</div>
+        <div class="flex items-center gap-1.5 mt-2">
+          <div class="badge bg-success/15 text-success-dark">+12% vs last month</div>
+        </div>
+      </div>
+
+      <div class="px-4 mb-3">
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-caption-medium font-semibold text-text-secondary-dark">Upcoming</div>
+          <div class="text-xs text-primary-dark">See all</div>
+        </div>
+        <div class="bg-surface-dark rounded-xl p-4 card-shadow-dark space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="icon-box bg-danger/15 text-danger-dark"><i class="ph ph-wifi-high"></i></div>
+              <div>
+                <div class="text-body-medium font-medium text-text-primary-dark">Globe Postpaid</div>
+                <div class="text-caption text-text-secondary-dark">Bill • Tomorrow</div>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="text-h3 font-semibold font-mono amount-negative-dark">-₱999</div>
+              <div class="badge bg-danger/15 text-danger-dark">DUE</div>
+            </div>
+          </div>
+          <div class="h-px bg-border-dark mx-0"></div>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="icon-box bg-primary/15 text-primary-dark"><i class="ph ph-film-strip"></i></div>
+              <div>
+                <div class="text-body-medium font-medium text-text-primary-dark">Netflix</div>
+                <div class="text-caption text-text-secondary-dark">Subscription • Jun 25</div>
+              </div>
+            </div>
+            <div class="text-h3 font-semibold font-mono amount-negative-dark">-₱249</div>
+          </div>
+          <div class="h-px bg-border-dark mx-0"></div>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="icon-box bg-success/15 text-success-dark"><i class="ph ph-arrow-down-left"></i></div>
+              <div>
+                <div class="text-body-medium font-medium text-text-primary-dark">Online Selling Payout</div>
+                <div class="text-caption text-text-secondary-dark">Income • Jun 22</div>
+              </div>
+            </div>
+            <div class="text-h3 font-semibold font-mono amount-positive-dark">+₱4,500</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="px-4 mb-3">
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-caption-medium font-semibold text-text-secondary-dark">Goals</div>
+          <div class="text-xs text-primary-dark">See all</div>
+        </div>
+        <div class="bg-surface-dark rounded-xl p-4 card-shadow-dark space-y-4">
+          <div>
+            <div class="flex justify-between mb-1.5">
+              <div class="text-body-medium font-medium text-text-primary-dark">Bohol Trip</div>
+              <div class="text-caption font-mono text-text-secondary-dark">₱47,000 / ₱100,000</div>
+            </div>
+            <div class="progress-track progress-track-dark"><div class="progress-fill bg-primary" style="width:47%"></div></div>
+            <div class="text-caption text-text-tertiary-dark mt-1">47% saved</div>
+          </div>
+          <div>
+            <div class="flex justify-between mb-1.5">
+              <div class="text-body-medium font-medium text-text-primary-dark">Emergency Fund</div>
+              <div class="text-caption font-mono text-text-secondary-dark">₱60,000 / ₱100,000</div>
+            </div>
+            <div class="progress-track progress-track-dark"><div class="progress-fill bg-success-dark" style="width:60%"></div></div>
+            <div class="text-caption text-text-tertiary-dark mt-1">60% saved</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="h-24"></div>
+    </div>
+    <div class="floating-nav">
+      <div class="nav-pill nav-pill-dark">
+        <div class="nav-tab nav-tab-active-dark">
+          <i class="ph-fill ph-house text-lg text-primary-dark"></i>
+          <span class="text-micro font-semibold text-primary-dark">Home</span>
+        </div>
+        <div class="nav-tab">
+          <i class="ph ph-list text-lg text-text-tertiary-dark"></i>
+          <span class="text-micro font-medium text-text-tertiary-dark">Txns</span>
+        </div>
+        <div class="nav-tab">
+          <i class="ph ph-chart-pie text-lg text-text-tertiary-dark"></i>
+          <span class="text-micro font-medium text-text-tertiary-dark">Budgets</span>
+        </div>
+        <div class="nav-tab">
+          <i class="ph ph-squares-four text-lg text-text-tertiary-dark"></i>
+          <span class="text-micro font-medium text-text-tertiary-dark">More</span>
+        </div>
+      </div>
+      <div class="add-island add-island-dark">
+        <i class="ph-bold ph-plus text-2xl text-white"></i>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== DARK TRANSACTIONS ==================== -->
+<section id="dark-transactions" class="scroll-mt-10">
+  <h2 class="text-xl font-bold text-text-primary mb-4">Dark Transactions</h2>
+  <div class="phone-frame phone-frame-dark bg-bg-dark">
+    <div class="screen-content relative">
+      <div class="px-5 pt-5 pb-3">
+        <div class="text-h2 font-bold text-text-primary-dark mb-4">Transactions</div>
+        <div class="flex gap-2">
+          <div class="flex-1 flex items-center gap-2 bg-surface-dark rounded-full px-4 py-2.5 card-shadow-dark">
+            <i class="ph ph-magnifying-glass text-text-tertiary-dark"></i>
+            <span class="text-body text-text-tertiary-dark">Search transactions...</span>
+          </div>
+          <div class="w-10 h-10 bg-surface-dark rounded-full flex items-center justify-center card-shadow-dark">
+            <i class="ph ph-funnel text-text-secondary-dark"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="px-4 mb-3">
+        <div class="text-caption-medium font-semibold text-text-secondary-dark mb-2 px-1">Today</div>
+        <div class="bg-surface-dark rounded-xl card-shadow-dark overflow-hidden">
+          <div class="flex items-center justify-between p-3.5">
+            <div class="flex items-center gap-3">
+              <div class="icon-box bg-danger/15 text-danger-dark"><i class="ph ph-hamburger"></i></div>
+              <div>
+                <div class="text-body-medium font-medium text-text-primary-dark">McDonald's</div>
+                <div class="text-caption text-text-secondary-dark">Food • GCash</div>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="text-h3 font-semibold font-mono amount-negative-dark">-₱250</div>
+              <div class="text-caption text-text-tertiary-dark">2:30 PM</div>
+            </div>
+          </div>
+          <div class="h-px bg-border-dark mx-3.5"></div>
+          <div class="flex items-center justify-between p-3.5">
+            <div class="flex items-center gap-3">
+              <div class="icon-box bg-success/15 text-success-dark"><i class="ph ph-arrow-down-left"></i></div>
+              <div>
+                <div class="text-body-medium font-medium text-text-primary-dark">Salary</div>
+                <div class="text-caption text-text-secondary-dark">Income • BPI Savings</div>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="text-h3 font-semibold font-mono amount-positive-dark">+₱45,000</div>
+              <div class="text-caption text-text-tertiary-dark">9:00 AM</div>
+            </div>
+          </div>
+          <div class="h-px bg-border-dark mx-3.5"></div>
+          <div class="flex items-center justify-between p-3.5">
+            <div class="flex items-center gap-3">
+              <div class="icon-box bg-primary/15 text-primary-dark"><i class="ph ph-arrows-left-right"></i></div>
+              <div>
+                <div class="text-body-medium font-medium text-text-primary-dark">BPI → GCash</div>
+                <div class="text-caption text-text-secondary-dark">Transfer</div>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="text-h3 font-semibold font-mono amount-transfer-dark">-₱500</div>
+              <div class="text-caption text-text-tertiary-dark">8:15 AM</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="px-4 mb-3">
+        <div class="text-caption-medium font-semibold text-text-secondary-dark mb-2 px-1">Yesterday</div>
+        <div class="bg-surface-dark rounded-xl card-shadow-dark overflow-hidden">
+          <div class="flex items-center justify-between p-3.5">
+            <div class="flex items-center gap-3">
+              <div class="icon-box bg-danger/15 text-danger-dark"><i class="ph ph-car"></i></div>
+              <div>
+                <div class="text-body-medium font-medium text-text-primary-dark">Grab</div>
+                <div class="text-caption text-text-secondary-dark">Transport • GCash</div>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="text-h3 font-semibold font-mono amount-negative-dark">-₱180</div>
+              <div class="text-caption text-text-tertiary-dark">6:45 PM</div>
+            </div>
+          </div>
+          <div class="h-px bg-border-dark mx-3.5"></div>
+          <div class="flex items-center justify-between p-3.5">
+            <div class="flex items-center gap-3">
+              <div class="icon-box bg-danger/15 text-danger-dark"><i class="ph ph-storefront"></i></div>
+              <div>
+                <div class="text-body-medium font-medium text-text-primary-dark">7-Eleven</div>
+                <div class="text-caption text-text-secondary-dark">Groceries • Cash</div>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="text-h3 font-semibold font-mono amount-negative-dark">-₱89</div>
+              <div class="text-caption text-text-tertiary-dark">11:20 AM</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="h-24"></div>
+    </div>
+    <div class="floating-nav">
+      <div class="nav-pill nav-pill-dark">
+        <div class="nav-tab">
+          <i class="ph ph-house text-lg text-text-tertiary-dark"></i>
+          <span class="text-micro font-medium text-text-tertiary-dark">Home</span>
+        </div>
+        <div class="nav-tab nav-tab-active-dark">
+          <i class="ph-fill ph-list text-lg text-primary-dark"></i>
+          <span class="text-micro font-semibold text-primary-dark">Txns</span>
+        </div>
+        <div class="nav-tab">
+          <i class="ph ph-chart-pie text-lg text-text-tertiary-dark"></i>
+          <span class="text-micro font-medium text-text-tertiary-dark">Budgets</span>
+        </div>
+        <div class="nav-tab">
+          <i class="ph ph-squares-four text-lg text-text-tertiary-dark"></i>
+          <span class="text-micro font-medium text-text-tertiary-dark">More</span>
+        </div>
+      </div>
+      <div class="add-island add-island-dark">
+        <i class="ph-bold ph-plus text-2xl text-white"></i>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== DARK BUDGETS ==================== -->
+<section id="dark-budgets" class="scroll-mt-10">
+  <h2 class="text-xl font-bold text-text-primary mb-4">Dark Budgets</h2>
+  <div class="phone-frame phone-frame-dark bg-bg-dark">
+    <div class="screen-content relative">
+      <div class="px-5 pt-5 pb-3">
+        <div class="text-h2 font-bold text-text-primary-dark mb-4">Budgets</div>
+        <div class="flex items-center justify-between mb-4">
+          <button class="w-8 h-8 rounded-full bg-surface-dark flex items-center justify-center card-shadow-dark"><i class="ph ph-caret-left text-text-secondary-dark"></i></button>
+          <div class="text-body-medium font-semibold text-text-primary-dark">June 2025</div>
+          <button class="w-8 h-8 rounded-full bg-surface-dark flex items-center justify-center card-shadow-dark"><i class="ph ph-caret-right text-text-secondary-dark"></i></button>
+        </div>
+        <div class="bg-surface-dark rounded-2xl p-5 card-shadow-dark mb-4">
+          <div class="text-caption text-text-secondary-dark mb-1">Total budgeted</div>
+          <div class="text-h1 font-bold text-text-primary-dark font-mono mb-3">₱35,000</div>
+          <div class="flex gap-4">
+            <div>
+              <div class="text-caption text-text-secondary-dark">Spent</div>
+              <div class="text-body-medium font-semibold font-mono amount-negative-dark">₱21,400</div>
+            </div>
+            <div>
+              <div class="text-caption text-text-secondary-dark">Remaining</div>
+              <div class="text-body-medium font-semibold font-mono amount-positive-dark">₱13,600</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="px-4 space-y-3">
+        <div class="bg-surface-dark rounded-xl p-4 card-shadow-dark">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2.5">
+              <div class="icon-box bg-danger/15 text-danger-dark"><i class="ph ph-hamburger"></i></div>
+              <div class="text-body-medium font-medium text-text-primary-dark">Food & Dining</div>
+            </div>
+            <div class="badge bg-danger/15 text-danger-dark">83%</div>
+          </div>
+          <div class="progress-track progress-track-dark mb-1.5"><div class="progress-fill bg-danger-dark" style="width:83%"></div></div>
+          <div class="flex justify-between text-caption">
+            <span class="text-text-secondary-dark font-mono">₱8,300 / ₱10,000</span>
+            <span class="text-danger-dark font-medium">₱1,700 left</span>
+          </div>
+        </div>
+
+        <div class="bg-surface-dark rounded-xl p-4 card-shadow-dark">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2.5">
+              <div class="icon-box bg-warning/15 text-warning-dark"><i class="ph ph-car"></i></div>
+              <div class="text-body-medium font-medium text-text-primary-dark">Transport</div>
+            </div>
+            <div class="badge bg-warning/15 text-warning-dark">72%</div>
+          </div>
+          <div class="progress-track progress-track-dark mb-1.5"><div class="progress-fill bg-warning-dark" style="width:72%"></div></div>
+          <div class="flex justify-between text-caption">
+            <span class="text-text-secondary-dark font-mono">₱3,600 / ₱5,000</span>
+            <span class="text-warning-dark font-medium">₱1,400 left</span>
+          </div>
+        </div>
+
+        <div class="bg-surface-dark rounded-xl p-4 card-shadow-dark">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2.5">
+              <div class="icon-box bg-primary/15 text-primary-dark"><i class="ph ph-shopping-bag"></i></div>
+              <div class="text-body-medium font-medium text-text-primary-dark">Shopping</div>
+            </div>
+            <div class="badge bg-primary/15 text-primary-dark">45%</div>
+          </div>
+          <div class="progress-track progress-track-dark mb-1.5"><div class="progress-fill bg-primary" style="width:45%"></div></div>
+          <div class="flex justify-between text-caption">
+            <span class="text-text-secondary-dark font-mono">₱4,500 / ₱10,000</span>
+            <span class="text-primary-dark font-medium">₱5,500 left</span>
+          </div>
+        </div>
+
+        <div class="bg-surface-dark rounded-xl p-4 card-shadow-dark">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2.5">
+              <div class="icon-box bg-success/15 text-success-dark"><i class="ph ph-wifi-high"></i></div>
+              <div class="text-body-medium font-medium text-text-primary-dark">Bills</div>
+            </div>
+            <div class="badge bg-success/15 text-success-dark">60%</div>
+          </div>
+          <div class="progress-track progress-track-dark mb-1.5"><div class="progress-fill bg-success-dark" style="width:60%"></div></div>
+          <div class="flex justify-between text-caption">
+            <span class="text-text-secondary-dark font-mono">₱5,000 / ₱10,000</span>
+            <span class="text-success-dark font-medium">₱5,000 left</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="h-24"></div>
+    </div>
+    <div class="floating-nav">
+      <div class="nav-pill nav-pill-dark">
+        <div class="nav-tab">
+          <i class="ph ph-house text-lg text-text-tertiary-dark"></i>
+          <span class="text-micro font-medium text-text-tertiary-dark">Home</span>
+        </div>
+        <div class="nav-tab">
+          <i class="ph ph-list text-lg text-text-tertiary-dark"></i>
+          <span class="text-micro font-medium text-text-tertiary-dark">Txns</span>
+        </div>
+        <div class="nav-tab nav-tab-active-dark">
+          <i class="ph-fill ph-chart-pie text-lg text-primary-dark"></i>
+          <span class="text-micro font-semibold text-primary-dark">Budgets</span>
+        </div>
+        <div class="nav-tab">
+          <i class="ph ph-squares-four text-lg text-text-tertiary-dark"></i>
+          <span class="text-micro font-medium text-text-tertiary-dark">More</span>
+        </div>
+      </div>
+      <div class="add-island add-island-dark">
+        <i class="ph-bold ph-plus text-2xl text-white"></i>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div>
+
+</body>
+</html>
