@@ -1,6 +1,6 @@
 # Task 04 — Data Layer — Repositories
 
-**Status:** [ ]
+**Status:** [x]
 
 ---
 
@@ -114,15 +114,15 @@ Add all 12 repos to `lib/application/providers/repo_providers.dart` as singleton
 
 ## Acceptance Criteria
 
-- [ ] All repos compile and pass Dart analysis
-- [ ] Unit tests for each repo using `AppDatabase.inMemory()`
-- [ ] `TransactionRepo.create()` atomically updates both transaction table and account balance in one SQLite transaction
-- [ ] `TransactionRepo.softDelete()` reverts balance and sets `deleted_at`
-- [ ] `TransferRepo.create()` atomically debits source and credits destination
-- [ ] `BudgetRepo.watchSpentForBudget()` returns correct SUM for category+period
-- [ ] Reactive `watch*()` methods emit when underlying rows change
-- [ ] Repos do NOT import Flutter libraries (pure Dart dependency)
-- [ ] All repos are registered in `repo_providers.dart`
+- [x] All repos compile and pass Dart analysis
+- [x] Unit tests for each repo using `AppDatabase.inMemory()`
+- [x] `TransactionRepo.create()` atomically updates both transaction table and account balance in one SQLite transaction
+- [x] `TransactionRepo.softDelete()` reverts balance and sets `deleted_at`
+- [x] `TransferRepo.create()` atomically debits source and credits destination
+- [x] `BudgetRepo.watchSpentForBudget()` returns correct SUM for category+period
+- [x] Reactive `watch*()` methods emit when underlying rows change
+- [x] Repos do NOT import Flutter libraries (pure Dart dependency)
+- [x] All repos are registered in `repo_providers.dart`
 
 ## Files Likely Affected
 

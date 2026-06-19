@@ -12,16 +12,52 @@ import '../../data/repositories/sync_metadata_repo.dart';
 import '../../data/repositories/transaction_repo.dart';
 import '../../data/repositories/transfer_repo.dart';
 import '../../data/repositories/user_repo.dart';
+import 'database_provider.dart';
 
-final transactionRepoProvider = Provider<TransactionRepo>((ref) => throw UnimplementedError());
-final accountRepoProvider = Provider<AccountRepo>((ref) => throw UnimplementedError());
-final budgetRepoProvider = Provider<BudgetRepo>((ref) => throw UnimplementedError());
-final categoryRepoProvider = Provider<CategoryRepo>((ref) => throw UnimplementedError());
-final payeeRepoProvider = Provider<PayeeRepo>((ref) => throw UnimplementedError());
-final transferRepoProvider = Provider<TransferRepo>((ref) => throw UnimplementedError());
-final debtRepoProvider = Provider<DebtRepo>((ref) => throw UnimplementedError());
-final goalRepoProvider = Provider<GoalRepo>((ref) => throw UnimplementedError());
-final recurringRepoProvider = Provider<RecurringRepo>((ref) => throw UnimplementedError());
-final userRepoProvider = Provider<UserRepo>((ref) => throw UnimplementedError());
-final householdRepoProvider = Provider<HouseholdRepo>((ref) => throw UnimplementedError());
-final syncMetadataRepoProvider = Provider<SyncMetadataRepo>((ref) => throw UnimplementedError());
+final transactionRepoProvider = Provider<TransactionRepo>((ref) {
+  return TransactionRepo(ref.watch(databaseProvider));
+});
+
+final accountRepoProvider = Provider<AccountRepo>((ref) {
+  return AccountRepo(ref.watch(databaseProvider));
+});
+
+final budgetRepoProvider = Provider<BudgetRepo>((ref) {
+  return BudgetRepo(ref.watch(databaseProvider));
+});
+
+final categoryRepoProvider = Provider<CategoryRepo>((ref) {
+  return CategoryRepo(ref.watch(databaseProvider));
+});
+
+final payeeRepoProvider = Provider<PayeeRepo>((ref) {
+  return PayeeRepo(ref.watch(databaseProvider));
+});
+
+final transferRepoProvider = Provider<TransferRepo>((ref) {
+  return TransferRepo(ref.watch(databaseProvider));
+});
+
+final debtRepoProvider = Provider<DebtRepo>((ref) {
+  return DebtRepo(ref.watch(databaseProvider));
+});
+
+final goalRepoProvider = Provider<GoalRepo>((ref) {
+  return GoalRepo(ref.watch(databaseProvider));
+});
+
+final recurringRepoProvider = Provider<RecurringRepo>((ref) {
+  return RecurringRepo(ref.watch(databaseProvider));
+});
+
+final userRepoProvider = Provider<UserRepo>((ref) {
+  return UserRepo(ref.watch(databaseProvider));
+});
+
+final householdRepoProvider = Provider<HouseholdRepo>((ref) {
+  return HouseholdRepo(ref.watch(databaseProvider));
+});
+
+final syncMetadataRepoProvider = Provider<SyncMetadataRepo>((ref) {
+  return SyncMetadataRepo(ref.watch(databaseProvider));
+});

@@ -9,9 +9,9 @@ Derived from `docs/solutions-arch.md`. Build order follows the dependency rule: 
 | # | Task | Depends On | Priority |
 |---|---|---|---|
 | 01 | Project Setup & Scaffolding | — | Critical | [x] |
-| 02 | Design System & Theme | 01 | High |
-| 03 | Data Layer — Drift Schema & Database | 01 | Critical |
-| 04 | Data Layer — Repositories | 03 | Critical |
+| 02 | Design System & Theme | 01 | High | [x] |
+| 03 | Data Layer — Drift Schema & Database | 01 | Critical | [x] |
+| 04 | Data Layer — Repositories | 03 | Critical | [x] |
 | 05 | Domain Layer — Entities & Value Objects | 03 | Critical |
 | 06 | Domain Layer — Use Cases | 05, 04 | Critical |
 | 07 | Application Layer — Riverpod Providers | 06, 04 | Critical |
