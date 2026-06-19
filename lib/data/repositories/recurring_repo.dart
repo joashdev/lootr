@@ -51,6 +51,7 @@ class RecurringRepo {
           ..where((row) => row.id.equals(id)))
         .write(RecurringTemplatesCompanion(
       syncStatus: const Value('pending_sync'),
+      updatedAt: Value(DateTime.now()),
     ));
   }
 
@@ -71,6 +72,7 @@ class RecurringRepo {
           .write(RecurringTemplatesCompanion(
         nextOccurrenceAt: Value(next),
         syncStatus: const Value('pending_sync'),
+        updatedAt: Value(DateTime.now()),
       ));
     });
   }

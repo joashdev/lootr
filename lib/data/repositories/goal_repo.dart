@@ -34,6 +34,7 @@ class GoalRepo {
     await (_db.update(_db.goals)..where((row) => row.id.equals(id)))
         .write(GoalsCompanion(
       syncStatus: const Value('pending_sync'),
+      updatedAt: Value(DateTime.now()),
     ));
   }
 
@@ -42,7 +43,8 @@ class GoalRepo {
       final goal = await (_db.select(_db.goals)
             ..where((g) => g.id.equals(id))
             ..limit(1))
-          .getSingle();
+          .getSingleOrNull();
+      if (goal == null) throw StateError('Goal not found: $id');
 
       final newAmount = goal.currentAmount + amount;
 
@@ -50,6 +52,7 @@ class GoalRepo {
           .write(GoalsCompanion(
         currentAmount: Value(newAmount),
         syncStatus: const Value('pending_sync'),
+        updatedAt: Value(DateTime.now()),
       ));
     });
   }

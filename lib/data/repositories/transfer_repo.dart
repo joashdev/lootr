@@ -48,6 +48,7 @@ class TransferRepo {
           .write(AccountsCompanion(
         balance: Value(sourceAccount.balance - row.amount),
         syncStatus: const Value('pending_sync'),
+        updatedAt: Value(DateTime.now()),
       ));
 
       final destAccount = await (_db.select(_db.accounts)
@@ -60,6 +61,7 @@ class TransferRepo {
           .write(AccountsCompanion(
         balance: Value(destAccount.balance + row.amount),
         syncStatus: const Value('pending_sync'),
+        updatedAt: Value(DateTime.now()),
       ));
 
       return id;
@@ -85,6 +87,7 @@ class TransferRepo {
           .write(AccountsCompanion(
         balance: Value(sourceAccount.balance + transfer.amount),
         syncStatus: const Value('pending_sync'),
+        updatedAt: Value(DateTime.now()),
       ));
 
       final destAccount = await (_db.select(_db.accounts)
@@ -97,6 +100,7 @@ class TransferRepo {
           .write(AccountsCompanion(
         balance: Value(destAccount.balance - transfer.amount),
         syncStatus: const Value('pending_sync'),
+        updatedAt: Value(DateTime.now()),
       ));
 
       final now = DateTime.now();
@@ -104,6 +108,7 @@ class TransferRepo {
           .write(TransfersCompanion(
         deletedAt: Value(now),
         syncStatus: const Value('pending_sync'),
+        updatedAt: Value(now),
       ));
     });
   }

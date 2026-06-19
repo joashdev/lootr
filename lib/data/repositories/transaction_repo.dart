@@ -91,6 +91,7 @@ class TransactionRepo {
           .write(AccountsCompanion(
         balance: Value(account.balance + balanceChange),
         syncStatus: const Value('pending_sync'),
+        updatedAt: Value(DateTime.now()),
       ));
 
       if (row.recurringTemplateId != null) {
@@ -124,6 +125,7 @@ class TransactionRepo {
           .write(AccountsCompanion(
         balance: Value(oldAccount.balance - oldImpact),
         syncStatus: const Value('pending_sync'),
+        updatedAt: Value(DateTime.now()),
       ));
 
       await (_db.update(_db.transactions)..where((t) => t.id.equals(id)))
@@ -132,6 +134,7 @@ class TransactionRepo {
       await (_db.update(_db.transactions)..where((t) => t.id.equals(id)))
           .write(TransactionsCompanion(
         syncStatus: const Value('pending_sync'),
+        updatedAt: Value(DateTime.now()),
       ));
 
       final updated = await (_db.select(_db.transactions)
@@ -153,6 +156,7 @@ class TransactionRepo {
           .write(AccountsCompanion(
         balance: Value(newAccount.balance + newImpact),
         syncStatus: const Value('pending_sync'),
+        updatedAt: Value(DateTime.now()),
       ));
     });
   }
@@ -179,6 +183,7 @@ class TransactionRepo {
           .write(AccountsCompanion(
         balance: Value(account.balance - impact),
         syncStatus: const Value('pending_sync'),
+        updatedAt: Value(DateTime.now()),
       ));
 
       final now = DateTime.now();
@@ -186,6 +191,7 @@ class TransactionRepo {
           .write(TransactionsCompanion(
         deletedAt: Value(now),
         syncStatus: const Value('pending_sync'),
+        updatedAt: Value(now),
       ));
     });
   }
@@ -206,6 +212,8 @@ class TransactionRepo {
           ..where((t) => t.id.equals(templateId)))
         .write(RecurringTemplatesCompanion(
       nextOccurrenceAt: Value(next),
+      syncStatus: const Value('pending_sync'),
+      updatedAt: Value(DateTime.now()),
     ));
   }
 

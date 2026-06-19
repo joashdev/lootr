@@ -65,6 +65,7 @@ class BudgetRepo {
     await (_db.update(_db.budgets)..where((row) => row.id.equals(id)))
         .write(BudgetsCompanion(
       syncStatus: const Value('pending_sync'),
+      updatedAt: Value(DateTime.now()),
     ));
   }
 
@@ -74,6 +75,7 @@ class BudgetRepo {
         .write(BudgetsCompanion(
       deletedAt: Value(now),
       syncStatus: const Value('pending_sync'),
+      updatedAt: Value(now),
     ));
   }
 }

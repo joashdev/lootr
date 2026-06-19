@@ -40,6 +40,7 @@ class AccountRepo {
     await (_db.update(_db.accounts)..where((row) => row.id.equals(id)))
         .write(AccountsCompanion(
       syncStatus: const Value('pending_sync'),
+      updatedAt: Value(DateTime.now()),
     ));
   }
 
@@ -48,6 +49,7 @@ class AccountRepo {
         .write(AccountsCompanion(
       isArchived: const Value(true),
       syncStatus: const Value('pending_sync'),
+      updatedAt: Value(DateTime.now()),
     ));
   }
 
@@ -83,6 +85,8 @@ class AccountRepo {
       await (_db.update(_db.accounts)..where((a) => a.id.equals(id)))
           .write(AccountsCompanion(
         balance: Value(balance),
+        syncStatus: const Value('pending_sync'),
+        updatedAt: Value(DateTime.now()),
       ));
     });
   }

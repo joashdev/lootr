@@ -35,6 +35,7 @@ class CategoryRepo {
     await (_db.update(_db.categories)..where((row) => row.id.equals(id)))
         .write(CategoriesCompanion(
       syncStatus: const Value('pending_sync'),
+      updatedAt: Value(DateTime.now()),
     ));
   }
 }

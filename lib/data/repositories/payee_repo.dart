@@ -35,7 +35,7 @@ class PayeeRepo {
       final existing = await findByNormalizedName(normalizedName);
       if (existing != null) return existing;
 
-      final id = 'pay-${DateTime.now().millisecondsSinceEpoch}';
+      final id = 'pay-${DateTime.now().microsecondsSinceEpoch}';
       await _db.into(_db.payees).insert(PayeesCompanion.insert(
             id: id,
             normalizedName: normalizedName,

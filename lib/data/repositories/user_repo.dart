@@ -26,6 +26,7 @@ class UserRepo {
     await (_db.update(_db.users)..where((row) => row.id.equals(id)))
         .write(UsersCompanion(
       syncStatus: const Value('pending_sync'),
+      updatedAt: Value(DateTime.now()),
     ));
   }
 
@@ -37,6 +38,7 @@ class UserRepo {
         .write(UsersCompanion(
       aiEnabled: Value(enabled),
       syncStatus: const Value('pending_sync'),
+      updatedAt: Value(DateTime.now()),
     ));
   }
 }

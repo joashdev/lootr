@@ -43,6 +43,7 @@ class HouseholdRepo {
         .write(HouseholdMembersCompanion(
       role: Value(role),
       syncStatus: const Value('pending_sync'),
+      updatedAt: Value(DateTime.now()),
     ));
   }
 }

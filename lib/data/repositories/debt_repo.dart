@@ -35,6 +35,7 @@ class DebtRepo {
     await (_db.update(_db.debtRecords)..where((row) => row.id.equals(id)))
         .write(DebtRecordsCompanion(
       syncStatus: const Value('pending_sync'),
+      updatedAt: Value(DateTime.now()),
     ));
   }
 
@@ -44,6 +45,7 @@ class DebtRepo {
       status: const Value('settled'),
       remainingBalance: const Value(0.0),
       syncStatus: const Value('pending_sync'),
+      updatedAt: Value(DateTime.now()),
     ));
   }
 }
