@@ -13,4 +13,9 @@ class Notifications extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
+
+  @override
+  List<String> get customConstraints => [
+        'CHECK (notification_type IN (\'recurring_reminder\', \'bill_due\', \'installment_due\', \'debt_reminder\', \'subscription_reminder\'))',
+      ];
 }

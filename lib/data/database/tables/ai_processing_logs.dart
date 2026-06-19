@@ -14,4 +14,9 @@ class AiProcessingLogs extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
+
+  @override
+  List<String> get customConstraints => [
+        'CHECK (source_type IN (\'ocr\', \'nlp\', \'categorization\'))',
+      ];
 }

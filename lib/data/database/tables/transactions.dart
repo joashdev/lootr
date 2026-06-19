@@ -3,6 +3,7 @@ import 'accounts.dart';
 import 'categories.dart';
 import 'payees.dart';
 import 'recurring_templates.dart';
+import '../converters/type_converters.dart';
 
 @DataClassName('TransactionData')
 @TableIndex(name: 'idx_transactions_account', columns: {#accountId})
@@ -23,7 +24,7 @@ class Transactions extends Table {
   TextColumn get transactionMode => text().named('transaction_mode')();
   TextColumn get transactionSubtype => text().named('transaction_subtype').nullable()();
   TextColumn get note => text().nullable()();
-  TextColumn get metadata => text().nullable()();
+  TextColumn get metadata => text().nullable().map(const JsonConverter())();
   DateTimeColumn get occurredAt => dateTime().named('occurred_at')();
   DateTimeColumn get createdAt => dateTime().named('created_at').withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().named('updated_at').withDefault(currentDateAndTime)();
@@ -33,4 +34,12 @@ class Transactions extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
+
+  @override
+  List<String> get customConstraints => [
+        'CHECK (transaction_direction IN (\'expense\', \'income\'))',
+        'CHECK (transaction_mode IN (\'one_time\', \'recurring\', \'installment\', \'debt\'))',
+        'CHECK (transaction_subtype IS NULL OR transaction_subtype IN (\'salary\', \'refund\', \'transfer_fee\', \'subscription\', \'loan_payment\', \'debt_payment\', \'opening_balance\'))',
+        'CHECK (sync_status IN (\'local_only\', \'pending_sync\', \'synced\', \'sync_failed\'))',
+      ];
 }

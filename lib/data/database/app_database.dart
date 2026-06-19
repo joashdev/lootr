@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
+import 'converters/type_converters.dart';
 import 'tables/users.dart';
 import 'tables/households.dart';
 import 'tables/household_members.dart';
@@ -58,6 +59,7 @@ class AppDatabase extends _$AppDatabase {
     onCreate: (m) async {
       await m.createAll();
     },
+    onUpgrade: (m, from, to) async {},
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
     },

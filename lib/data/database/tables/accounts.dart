@@ -24,4 +24,10 @@ class Accounts extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
+
+  @override
+  List<String> get customConstraints => [
+        'CHECK (account_type IN (\'cash\', \'bank\', \'ewallet\', \'savings\', \'investment\', \'crypto\', \'credit_card\', \'loan\', \'bnpl\'))',
+        'CHECK (sync_status IN (\'local_only\', \'pending_sync\', \'synced\', \'sync_failed\'))',
+      ];
 }

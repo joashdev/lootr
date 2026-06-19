@@ -1,6 +1,6 @@
 # Task 03 — Data Layer — Drift Schema & Database
 
-**Status:** [ ]
+**Status:** [x]
 
 ---
 
@@ -87,15 +87,15 @@ Enable `PRAGMA foreign_keys = ON` on every database connection.
 
 ## Acceptance Criteria
 
-- [ ] `dart run build_runner build` generates all Drift code without errors
-- [ ] `AppDatabase` opens successfully with both `NativeDatabase` and `.inMemory()`
-- [ ] All 16 tables are accessible via `database.users`, `database.transactions`, etc.
-- [ ] All CHECK constraints enforce valid enum values (insert invalid → error)
-- [ ] UNIQUE constraints enforce correctly (duplicate household_members key → error)
-- [ ] All foreign keys resolve correctly
-- [ ] All 28 indexes exist on the generated schema
-- [ ] `PRAGMA foreign_keys` returns 1 after opening
-- [ ] In-memory database works for tests (no filesystem dependency)
+- [x] `dart run build_runner build` generates all Drift code without errors
+- [x] `AppDatabase` opens successfully with both `NativeDatabase` and `.inMemory()`
+- [x] All 16 tables are accessible via `database.users`, `database.transactions`, etc.
+- [x] All CHECK constraints enforce valid enum values (insert invalid → error)
+- [x] UNIQUE constraints enforce correctly (duplicate household_members key → error)
+- [x] All foreign keys resolve correctly
+- [x] All 28 indexes exist on the generated schema
+- [x] `PRAGMA foreign_keys` returns 1 after opening
+- [x] In-memory database works for tests (no filesystem dependency)
 
 ## Files Likely Affected
 

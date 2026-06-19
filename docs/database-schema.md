@@ -29,10 +29,10 @@ Stored as REAL. Positive for all rows; `transaction_direction` indicates the fin
 | Naming | snake_case. Table aliases in queries use abbreviated form (e.g. `t` for transactions). |
 | Primary key | Always `id` — TEXT, UUID v4, generated locally. |
 | Foreign keys | Named `{referenced_table}_id`. |
-| Timestamps | TEXT, ISO 8601 (e.g. `2026-06-17T22:34:00Z`), UTC. |
+| Timestamps | INTEGER (Unix seconds), UTC. Drift `dateTime()` default. |
 | Booleans | INTEGER, 0 or 1. |
-| Soft delete | `deleted_at` TEXT, nullable. NULL = active. |
-| Sync fields | `sync_status` TEXT + `last_synced_at` TEXT on every syncable table. |
+| Soft delete | `deleted_at` INTEGER, nullable. NULL = active. |
+| Sync fields | `sync_status` TEXT + `last_synced_at` INTEGER on every syncable table. |
 | Monetization | REAL, always positive. |
 | JSON | TEXT column containing valid JSON. Read with `json_extract()`, validate with `json_valid()`. |
 | Default timezone | UTC for all timestamps. Locale conversion in the application layer. |
@@ -67,11 +67,11 @@ Local-first. A user can operate without a `users` row (anonymous offline mode). 
 | locale | TEXT | nullable | e.g. `en-PH` |
 | timezone | TEXT | nullable | e.g. `Asia/Manila` |
 | ai_enabled | INTEGER | NOT NULL, default 0 | Boolean |
-| created_at | TEXT | NOT NULL | |
-| updated_at | TEXT | NOT NULL | |
-| deleted_at | TEXT | nullable | Soft delete |
+| created_at | INTEGER | NOT NULL | |
+| updated_at | INTEGER | NOT NULL | |
+| deleted_at | INTEGER | nullable | Soft delete |
 | sync_status | TEXT | NOT NULL, default `'local_only'` | |
-| last_synced_at | TEXT | nullable | |
+| last_synced_at | INTEGER | nullable | |
 
 **Indexes:** `idx_users_email` on `email`.
 
@@ -86,11 +86,11 @@ Shared financial space supporting shared accounts, budgets, goals, and debts.
 | id | TEXT | PK | UUID v4 |
 | name | TEXT | NOT NULL | |
 | created_by_user_id | TEXT | NOT NULL, FK → users.id | |
-| created_at | TEXT | NOT NULL | |
-| updated_at | TEXT | NOT NULL | |
-| deleted_at | TEXT | nullable | |
+| created_at | INTEGER | NOT NULL | |
+| updated_at | INTEGER | NOT NULL | |
+| deleted_at | INTEGER | nullable | |
 | sync_status | TEXT | NOT NULL, default `'local_only'` | |
-| last_synced_at | TEXT | nullable | |
+| last_synced_at | INTEGER | nullable | |
 
 **Indexes:** `idx_households_created_by` on `created_by_user_id`.
 
@@ -106,9 +106,9 @@ Join table with role-based permissions.
 | household_id | TEXT | NOT NULL, FK → households.id | |
 | user_id | TEXT | NOT NULL, FK → users.id | |
 | role | TEXT | NOT NULL, CHECK (`'owner'`, `'member'`, `'viewer'`) | |
-| created_at | TEXT | NOT NULL | |
+| created_at | INTEGER | NOT NULL | |
 | sync_status | TEXT | NOT NULL, default `'local_only'` | |
-| last_synced_at | TEXT | nullable | |
+| last_synced_at | INTEGER | nullable | |
 
 **Unique constraint:** `(household_id, user_id)`.
 **Indexes:** `idx_hh_members_household` on `household_id`, `idx_hh_members_user` on `user_id`.
@@ -130,11 +130,11 @@ Stored financial containers. Balance is stored directly (read optimisation) and 
 | currency_code | TEXT | NOT NULL, default `'PHP'` | |
 | is_archived | INTEGER | NOT NULL, default 0 | |
 | is_hidden | INTEGER | NOT NULL, default 0 | Hides from dashboard |
-| created_at | TEXT | NOT NULL | |
-| updated_at | TEXT | NOT NULL | |
-| deleted_at | TEXT | nullable | |
+| created_at | INTEGER | NOT NULL | |
+| updated_at | INTEGER | NOT NULL | |
+| deleted_at | INTEGER | nullable | |
 | sync_status | TEXT | NOT NULL, default `'local_only'` | |
-| last_synced_at | TEXT | nullable | |
+| last_synced_at | INTEGER | nullable | |
 
 **account_type CHECK values:**
 
@@ -165,12 +165,12 @@ Core financial event. Every transaction belongs to one account. Transfers betwee
 | transaction_subtype | TEXT | nullable | e.g. `'salary'`, `'refund'`, `'transfer_fee'`, `'subscription'`, `'loan_payment'`, `'debt_payment'`, `'opening_balance'` |
 | note | TEXT | nullable | Human description or raw OCR text |
 | metadata | TEXT | nullable | JSON — extensible (OCR data, voice transcripts, AI metadata) |
-| occurred_at | TEXT | NOT NULL | When the transaction happened |
-| created_at | TEXT | NOT NULL | |
-| updated_at | TEXT | NOT NULL | |
-| deleted_at | TEXT | nullable | |
+| occurred_at | INTEGER | NOT NULL | When the transaction happened |
+| created_at | INTEGER | NOT NULL | |
+| updated_at | INTEGER | NOT NULL | |
+| deleted_at | INTEGER | nullable | |
 | sync_status | TEXT | NOT NULL, default `'local_only'` | |
-| last_synced_at | TEXT | nullable | |
+| last_synced_at | INTEGER | nullable | |
 
 **Indexes:**
 - `idx_transactions_account` on `account_id`
@@ -194,12 +194,12 @@ Dedicated transfer entity. Subtracts from source, adds to destination. Excluded 
 | amount | REAL | NOT NULL | |
 | fee_amount | REAL | nullable, default 0 | Informational; the actual fee should also be recorded as a separate expense transaction |
 | note | TEXT | nullable | |
-| occurred_at | TEXT | NOT NULL | |
-| created_at | TEXT | NOT NULL | |
-| updated_at | TEXT | NOT NULL | |
-| deleted_at | TEXT | nullable | |
+| occurred_at | INTEGER | NOT NULL | |
+| created_at | INTEGER | NOT NULL | |
+| updated_at | INTEGER | NOT NULL | |
+| deleted_at | INTEGER | nullable | |
 | sync_status | TEXT | NOT NULL, default `'local_only'` | |
-| last_synced_at | TEXT | nullable | |
+| last_synced_at | INTEGER | nullable | |
 
 **Indexes:** `idx_transfers_source` on `source_account_id`, `idx_transfers_dest` on `destination_account_id`, `idx_transfers_occurred_at` on `occurred_at`.
 
@@ -217,10 +217,10 @@ Transaction categories. Seeded with defaults on first launch. Categories are syn
 | icon | TEXT | nullable | Icon identifier string |
 | color | TEXT | nullable | Hex colour |
 | category_group | TEXT | NOT NULL, CHECK | `'expense'`, `'income'`, `'transfer'` |
-| created_at | TEXT | NOT NULL | |
-| updated_at | TEXT | NOT NULL | |
+| created_at | INTEGER | NOT NULL | |
+| updated_at | INTEGER | NOT NULL | |
 | sync_status | TEXT | NOT NULL, default `'synced'` | Seed data starts as synced |
-| last_synced_at | TEXT | nullable | |
+| last_synced_at | INTEGER | nullable | |
 
 **Indexes:** `idx_categories_parent` on `parent_category_id`.
 
@@ -236,10 +236,10 @@ Normalised merchant or payee. Deduplicated by `normalized_name`.
 | normalized_name | TEXT | NOT NULL, UNIQUE | Lowercase, stripped for dedup |
 | display_name | TEXT | nullable | Human-readable |
 | logo_url | TEXT | nullable | |
-| created_at | TEXT | NOT NULL | |
-| updated_at | TEXT | NOT NULL | |
+| created_at | INTEGER | NOT NULL | |
+| updated_at | INTEGER | NOT NULL | |
 | sync_status | TEXT | NOT NULL, default `'local_only'` | |
-| last_synced_at | TEXT | nullable | |
+| last_synced_at | INTEGER | nullable | |
 
 **Indexes:** `idx_payees_normalized` on `normalized_name` (UNIQUE).
 
@@ -258,10 +258,10 @@ Monthly category spending target. Advisory only — budgets do not block or rest
 | amount | REAL | NOT NULL | Target amount |
 | month | INTEGER | NOT NULL, CHECK 1–12 | |
 | year | INTEGER | NOT NULL | |
-| created_at | TEXT | NOT NULL | |
-| updated_at | TEXT | NOT NULL | |
+| created_at | INTEGER | NOT NULL | |
+| updated_at | INTEGER | NOT NULL | |
 | sync_status | TEXT | NOT NULL, default `'local_only'` | |
-| last_synced_at | TEXT | nullable | |
+| last_synced_at | INTEGER | nullable | |
 
 **Unique constraint:** `(owner_user_id, category_id, month, year)` — one budget per category per month.
 **Indexes:** `idx_budgets_owner_period` on `(owner_user_id, month, year)`.
@@ -281,12 +281,12 @@ Social debt tracking (lent/borrowed between people). Institutional debt (credit 
 | amount | REAL | NOT NULL | Original amount |
 | remaining_balance | REAL | NOT NULL | |
 | note | TEXT | nullable | |
-| due_date | TEXT | nullable | ISO 8601 date |
+| due_date | INTEGER | nullable | ISO 8601 date |
 | status | TEXT | NOT NULL, CHECK | `'active'`, `'partially_paid'`, `'settled'` |
-| created_at | TEXT | NOT NULL | |
-| updated_at | TEXT | NOT NULL | |
+| created_at | INTEGER | NOT NULL | |
+| updated_at | INTEGER | NOT NULL | |
 | sync_status | TEXT | NOT NULL, default `'local_only'` | |
-| last_synced_at | TEXT | nullable | |
+| last_synced_at | INTEGER | nullable | |
 
 **Indexes:** `idx_debt_owner` on `owner_user_id`, `idx_debt_status` on `status`.
 
@@ -305,11 +305,11 @@ Financial targets. Users manually contribute; no auto-transfer engine in V1.
 | goal_type | TEXT | NOT NULL, CHECK | `'emergency_fund'`, `'savings'`, `'travel'`, `'debt_payoff'`, `'custom'` |
 | target_amount | REAL | NOT NULL | |
 | current_amount | REAL | NOT NULL, default 0 | |
-| target_date | TEXT | nullable | ISO 8601 date |
-| created_at | TEXT | NOT NULL | |
-| updated_at | TEXT | NOT NULL | |
+| target_date | INTEGER | nullable | ISO 8601 date |
+| created_at | INTEGER | NOT NULL | |
+| updated_at | INTEGER | NOT NULL | |
 | sync_status | TEXT | NOT NULL, default `'local_only'` | |
-| last_synced_at | TEXT | nullable | |
+| last_synced_at | INTEGER | nullable | |
 
 **Indexes:** `idx_goals_owner` on `owner_user_id`, `idx_goals_type` on `goal_type`.
 
@@ -329,11 +329,11 @@ Recurring transaction templates. Templates create reminders and suggested entrie
 | recurrence_rule | TEXT | NOT NULL | ISO 8601 duration or RRULE string |
 | reminder_enabled | INTEGER | NOT NULL, default 1 | Boolean |
 | auto_create_disabled | INTEGER | NOT NULL, default 0 | Boolean — 1 = reminder only, no suggested entry |
-| next_occurrence_at | TEXT | nullable | Pre-computed next date |
-| created_at | TEXT | NOT NULL | |
-| updated_at | TEXT | NOT NULL | |
+| next_occurrence_at | INTEGER | nullable | Pre-computed next date |
+| created_at | INTEGER | NOT NULL | |
+| updated_at | INTEGER | NOT NULL | |
 | sync_status | TEXT | NOT NULL, default `'local_only'` | |
-| last_synced_at | TEXT | nullable | |
+| last_synced_at | INTEGER | nullable | |
 
 **Indexes:** `idx_recurring_account` on `account_id`, `idx_recurring_next` on `next_occurrence_at`.
 
@@ -354,7 +354,7 @@ Optional optimisation table for fast historical balance charts and net worth tim
 | id | TEXT | PK | UUID v4 |
 | account_id | TEXT | NOT NULL, FK → accounts.id | |
 | balance | REAL | NOT NULL | Snapshot balance |
-| snapshot_at | TEXT | NOT NULL | ISO 8601 |
+| snapshot_at | INTEGER | NOT NULL | ISO 8601 |
 
 **Indexes:** `idx_snapshots_account_date` on `(account_id, snapshot_at)`.
 
@@ -369,9 +369,9 @@ Local-first reminder system. Notifications are scheduled locally on device. Futu
 | id | TEXT | PK | UUID v4 |
 | notification_type | TEXT | NOT NULL, CHECK | `'recurring_reminder'`, `'bill_due'`, `'installment_due'`, `'debt_reminder'`, `'subscription_reminder'` |
 | related_entity_id | TEXT | nullable | UUID of the related entity (transaction, debt, etc.) |
-| scheduled_at | TEXT | NOT NULL | ISO 8601 |
+| scheduled_at | INTEGER | NOT NULL | ISO 8601 |
 | is_completed | INTEGER | NOT NULL, default 0 | Boolean |
-| created_at | TEXT | NOT NULL | |
+| created_at | INTEGER | NOT NULL | |
 
 **Indexes:** `idx_notifications_scheduled` on `scheduled_at`, `idx_notifications_type` on `notification_type`.
 
@@ -389,7 +389,7 @@ Stores AI extraction and categorisation metadata for debugging, transparency, an
 | model_used | TEXT | nullable | Model name e.g. `'gemma-4-e4b-it'` |
 | extracted_payload | TEXT | nullable | JSON — the raw AI output |
 | confidence_score | REAL | nullable | 0.0–1.0 |
-| created_at | TEXT | NOT NULL | |
+| created_at | INTEGER | NOT NULL | |
 
 **Indexes:** `idx_ai_logs_source` on `source_type`, `idx_ai_logs_reference` on `source_reference_id`.
 
@@ -453,7 +453,7 @@ transactions ──── recurring_templates
 | TEXT (UUID) | `String` | `TextColumn` |
 | REAL | `double` | `RealColumn` |
 | INTEGER (boolean) | `bool` | `IntColumn` with `@BoolConverter()` |
-| TEXT (timestamp) | `DateTime` | `DateTimeColumn` |
+| TEXT (timestamp) | `DateTime` | `DateTimeColumn` — stored as INTEGER (Unix seconds) |
 | TEXT (JSON) | `String` or custom type | `TextColumn` with custom `TypeConverter<Map<String, dynamic>, String>` |
 
 ### 6.2 Nullable FK Workaround

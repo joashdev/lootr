@@ -22,4 +22,11 @@ class DebtRecords extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
+
+  @override
+  List<String> get customConstraints => [
+        'CHECK (debt_direction IN (\'lent\', \'borrowed\'))',
+        'CHECK (status IN (\'active\', \'partially_paid\', \'settled\'))',
+        'CHECK (sync_status IN (\'local_only\', \'pending_sync\', \'synced\', \'sync_failed\'))',
+      ];
 }

@@ -22,4 +22,10 @@ class Budgets extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
+
+  @override
+  List<String> get customConstraints => [
+        'CHECK (month BETWEEN 1 AND 12)',
+        'CHECK (sync_status IN (\'local_only\', \'pending_sync\', \'synced\', \'sync_failed\'))',
+      ];
 }

@@ -1,10 +1,10 @@
 import 'package:drift/drift.dart';
 
 @DataClassName('UserData')
-@TableIndex(name: 'idx_users_email', columns: {#email})
+@TableIndex(name: 'idx_users_email', columns: {#email}, unique: true)
 class Users extends Table {
   TextColumn get id => text()();
-  TextColumn get email => text().nullable().unique()();
+  TextColumn get email => text().nullable()();
   TextColumn get displayName => text().named('display_name').nullable()();
   TextColumn get currencyCode => text().named('currency_code').withDefault(const Constant('PHP'))();
   TextColumn get locale => text().nullable()();
@@ -18,4 +18,9 @@ class Users extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
+
+  @override
+  List<String> get customConstraints => [
+        'CHECK (sync_status IN (\'local_only\', \'pending_sync\', \'synced\', \'sync_failed\'))',
+      ];
 }

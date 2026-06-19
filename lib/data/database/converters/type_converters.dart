@@ -11,16 +11,6 @@ class DateTimeConverter extends TypeConverter<DateTime, String> {
   String toSql(DateTime value) => value.toUtc().toIso8601String();
 }
 
-class BoolConverter extends TypeConverter<bool, int> {
-  const BoolConverter();
-
-  @override
-  bool fromSql(int fromDb) => fromDb == 1;
-
-  @override
-  int toSql(bool value) => value ? 1 : 0;
-}
-
 class JsonConverter extends TypeConverter<Map<String, dynamic>, String> {
   const JsonConverter();
 
