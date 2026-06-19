@@ -1,15 +1,17 @@
 import 'package:drift/drift.dart';
 
 @DataClassName('AiProcessingLogData')
+@TableIndex(name: 'idx_ai_logs_source', columns: {#sourceType})
+@TableIndex(name: 'idx_ai_logs_reference', columns: {#sourceReferenceId})
 class AiProcessingLogs extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  IntColumn get transactionId => integer().nullable()();
-  TextColumn get inputText => text()();
-  TextColumn get outputJson => text().nullable()();
-  TextColumn get modelUsed => text().nullable()();
-  IntColumn get processingTimeMs => integer().nullable()();
-  BoolColumn get isSuccess => boolean().withDefault(const Constant(false))();
-  TextColumn get errorMessage => text().nullable()();
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  TextColumn get id => text()();
+  TextColumn get sourceType => text().named('source_type')();
+  TextColumn get sourceReferenceId => text().named('source_reference_id').nullable()();
+  TextColumn get modelUsed => text().named('model_used').nullable()();
+  TextColumn get extractedPayload => text().named('extracted_payload').nullable()();
+  RealColumn get confidenceScore => real().named('confidence_score').nullable()();
+  DateTimeColumn get createdAt => dateTime().named('created_at').withDefault(currentDateAndTime)();
 
+  @override
+  Set<Column> get primaryKey => {id};
 }

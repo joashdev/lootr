@@ -1,22 +1,25 @@
 import 'package:drift/drift.dart';
+import 'users.dart';
+import 'households.dart';
 
 @DataClassName('GoalData')
+@TableIndex(name: 'idx_goals_owner', columns: {#ownerUserId})
+@TableIndex(name: 'idx_goals_type', columns: {#goalType})
 class Goals extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  TextColumn get uuid => text().unique()();
-  IntColumn get userId => integer()();
-  IntColumn get accountId => integer().nullable()();
+  TextColumn get id => text()();
+  TextColumn get ownerUserId => text().named('owner_user_id').references(Users, #id)();
+  TextColumn get householdId => text().named('household_id').nullable().references(Households, #id)();
   TextColumn get name => text()();
-  RealColumn get targetAmount => real()();
-  RealColumn get currentAmount => real().withDefault(const Constant(0))();
-  DateTimeColumn get targetDate => dateTime().nullable()();
-  TextColumn get status => text().withDefault(const Constant('active'))();
-  TextColumn get icon => text().nullable()();
-  TextColumn get color => text().nullable()();
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
-  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
-  DateTimeColumn get deletedAt => dateTime().nullable()();
-  DateTimeColumn get lastSyncedAt => dateTime().nullable()();
-  TextColumn get syncStatus => text().withDefault(const Constant('pending'))();
+  TextColumn get goalType => text().named('goal_type')();
+  RealColumn get targetAmount => real().named('target_amount')();
+  RealColumn get currentAmount => real().named('current_amount').withDefault(const Constant(0))();
+  DateTimeColumn get targetDate => dateTime().named('target_date').nullable()();
+  DateTimeColumn get createdAt => dateTime().named('created_at').withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().named('updated_at').withDefault(currentDateAndTime)();
+  DateTimeColumn get deletedAt => dateTime().named('deleted_at').nullable()();
+  TextColumn get syncStatus => text().named('sync_status').withDefault(const Constant('local_only'))();
+  DateTimeColumn get lastSyncedAt => dateTime().named('last_synced_at').nullable()();
 
+  @override
+  Set<Column> get primaryKey => {id};
 }

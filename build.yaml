@@ -3,7 +3,7 @@ targets:
     builders:
       drift_dev:
         options:
-          store_date_time_values_as_text: false
+          store_date_time_values_as_text: true
       freezed:
         options:
           format: false
@@ -11,3 +11,6 @@ targets:
       json_serializable:
         options:
           checked: false
+        generate_for:
+          exclude:
+            - lib/data/database/tables/**.dart

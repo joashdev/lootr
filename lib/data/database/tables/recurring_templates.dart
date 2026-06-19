@@ -1,25 +1,27 @@
 import 'package:drift/drift.dart';
+import 'accounts.dart';
+import 'categories.dart';
+import 'payees.dart';
 
 @DataClassName('RecurringTemplateData')
+@TableIndex(name: 'idx_recurring_account', columns: {#accountId})
+@TableIndex(name: 'idx_recurring_next', columns: {#nextOccurrenceAt})
 class RecurringTemplates extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  TextColumn get uuid => text().unique()();
-  IntColumn get accountId => integer()();
-  IntColumn get categoryId => integer().nullable()();
-  IntColumn get payeeId => integer().nullable()();
-  TextColumn get type => text()();
+  TextColumn get id => text()();
+  TextColumn get accountId => text().named('account_id').references(Accounts, #id)();
+  TextColumn get categoryId => text().named('category_id').nullable().references(Categories, #id)();
+  TextColumn get payeeId => text().named('payee_id').nullable().references(Payees, #id)();
   RealColumn get amount => real()();
-  TextColumn get currency => text()();
-  TextColumn get description => text().nullable()();
-  TextColumn get frequency => text()();
-  IntColumn get interval => integer().withDefault(const Constant(1))();
-  DateTimeColumn get nextDueDate => dateTime()();
-  DateTimeColumn get endDate => dateTime().nullable()();
-  BoolColumn get isActive => boolean().withDefault(const Constant(true))();
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
-  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
-  DateTimeColumn get deletedAt => dateTime().nullable()();
-  DateTimeColumn get lastSyncedAt => dateTime().nullable()();
-  TextColumn get syncStatus => text().withDefault(const Constant('pending'))();
+  TextColumn get recurrenceRule => text().named('recurrence_rule')();
+  BoolColumn get reminderEnabled => boolean().named('reminder_enabled').withDefault(const Constant(true))();
+  BoolColumn get autoCreateDisabled => boolean().named('auto_create_disabled').withDefault(const Constant(false))();
+  DateTimeColumn get nextOccurrenceAt => dateTime().named('next_occurrence_at').nullable()();
+  DateTimeColumn get createdAt => dateTime().named('created_at').withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().named('updated_at').withDefault(currentDateAndTime)();
+  DateTimeColumn get deletedAt => dateTime().named('deleted_at').nullable()();
+  TextColumn get syncStatus => text().named('sync_status').withDefault(const Constant('local_only'))();
+  DateTimeColumn get lastSyncedAt => dateTime().named('last_synced_at').nullable()();
 
+  @override
+  Set<Column> get primaryKey => {id};
 }

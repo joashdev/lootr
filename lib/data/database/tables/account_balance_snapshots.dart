@@ -1,12 +1,14 @@
 import 'package:drift/drift.dart';
+import 'accounts.dart';
 
 @DataClassName('AccountBalanceSnapshotData')
+@TableIndex(name: 'idx_snapshots_account_date', columns: {#accountId, #snapshotAt})
 class AccountBalanceSnapshots extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  IntColumn get accountId => integer()();
+  TextColumn get id => text()();
+  TextColumn get accountId => text().named('account_id').references(Accounts, #id)();
   RealColumn get balance => real()();
-  TextColumn get currency => text()();
-  DateTimeColumn get snapshotDate => dateTime()();
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get snapshotAt => dateTime().named('snapshot_at')();
 
+  @override
+  Set<Column> get primaryKey => {id};
 }

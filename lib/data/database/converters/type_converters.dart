@@ -1,11 +1,38 @@
+import 'dart:convert';
 import 'package:drift/drift.dart';
 
-class TypeConverters extends TypeConverter<String, String> {
-  const TypeConverters();
+class DateTimeConverter extends TypeConverter<DateTime, String> {
+  const DateTimeConverter();
 
   @override
-  String fromSql(String fromDb) => fromDb;
+  DateTime fromSql(String fromDb) => DateTime.parse(fromDb);
 
   @override
-  String toSql(String value) => value;
+  String toSql(DateTime value) => value.toUtc().toIso8601String();
+}
+
+class BoolConverter extends TypeConverter<bool, int> {
+  const BoolConverter();
+
+  @override
+  bool fromSql(int fromDb) => fromDb == 1;
+
+  @override
+  int toSql(bool value) => value ? 1 : 0;
+}
+
+class JsonConverter extends TypeConverter<Map<String, dynamic>, String> {
+  const JsonConverter();
+
+  @override
+  Map<String, dynamic> fromSql(String fromDb) {
+    if (fromDb.isEmpty) return {};
+    return Map<String, dynamic>.from(json.decode(fromDb) as Map);
+  }
+
+  @override
+  String toSql(Map<String, dynamic> value) {
+    if (value.isEmpty) return '{}';
+    return json.encode(value);
+  }
 }

@@ -1,15 +1,16 @@
 import 'package:drift/drift.dart';
 
 @DataClassName('NotificationData')
+@TableIndex(name: 'idx_notifications_scheduled', columns: {#scheduledAt})
+@TableIndex(name: 'idx_notifications_type', columns: {#notificationType})
 class Notifications extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  TextColumn get uuid => text().unique()();
-  IntColumn get userId => integer()();
-  TextColumn get type => text()();
-  TextColumn get title => text()();
-  TextColumn get body => text()();
-  TextColumn get dataJson => text().nullable()();
-  BoolColumn get isRead => boolean().withDefault(const Constant(false))();
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  TextColumn get id => text()();
+  TextColumn get notificationType => text().named('notification_type')();
+  TextColumn get relatedEntityId => text().named('related_entity_id').nullable()();
+  DateTimeColumn get scheduledAt => dateTime().named('scheduled_at')();
+  BoolColumn get isCompleted => boolean().named('is_completed').withDefault(const Constant(false))();
+  DateTimeColumn get createdAt => dateTime().named('created_at').withDefault(currentDateAndTime)();
 
+  @override
+  Set<Column> get primaryKey => {id};
 }

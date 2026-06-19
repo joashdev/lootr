@@ -1,22 +1,25 @@
 import 'package:drift/drift.dart';
+import 'users.dart';
+import 'categories.dart';
+import 'households.dart';
 
 @DataClassName('BudgetData')
+@TableIndex(name: 'idx_budgets_owner_period', columns: {#ownerUserId, #month, #year})
+@TableIndex(name: 'uq_budget_category_period', columns: {#ownerUserId, #categoryId, #month, #year}, unique: true)
 class Budgets extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  TextColumn get uuid => text().unique()();
-  IntColumn get householdId => integer()();
-  IntColumn get categoryId => integer()();
-  TextColumn get name => text()();
+  TextColumn get id => text()();
+  TextColumn get householdId => text().named('household_id').nullable().references(Households, #id)();
+  TextColumn get ownerUserId => text().named('owner_user_id').references(Users, #id)();
+  TextColumn get categoryId => text().named('category_id').references(Categories, #id)();
   RealColumn get amount => real()();
-  RealColumn get spent => real().withDefault(const Constant(0))();
-  TextColumn get mode => text()();
-  DateTimeColumn get startDate => dateTime()();
-  DateTimeColumn get endDate => dateTime()();
-  BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
-  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
-  DateTimeColumn get deletedAt => dateTime().nullable()();
-  DateTimeColumn get lastSyncedAt => dateTime().nullable()();
-  TextColumn get syncStatus => text().withDefault(const Constant('pending'))();
+  IntColumn get month => integer()();
+  IntColumn get year => integer()();
+  DateTimeColumn get createdAt => dateTime().named('created_at').withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().named('updated_at').withDefault(currentDateAndTime)();
+  DateTimeColumn get deletedAt => dateTime().named('deleted_at').nullable()();
+  TextColumn get syncStatus => text().named('sync_status').withDefault(const Constant('local_only'))();
+  DateTimeColumn get lastSyncedAt => dateTime().named('last_synced_at').nullable()();
 
+  @override
+  Set<Column> get primaryKey => {id};
 }

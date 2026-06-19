@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:drift/native.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
 import 'tables/users.dart';
@@ -39,13 +40,26 @@ part 'app_database.g.dart';
   SyncMetadata,
 ])
 class AppDatabase extends _$AppDatabase {
-  AppDatabase()
-      : super(
-          driftDatabase(
-            name: 'lootr',
-          ),
-        );
+  AppDatabase(super.e);
+
+  factory AppDatabase.inMemory() {
+    return AppDatabase(NativeDatabase.memory());
+  }
+
+  factory AppDatabase.defaultDatabase() {
+    return AppDatabase(driftDatabase(name: 'lootr'));
+  }
 
   @override
   int get schemaVersion => 1;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (m) async {
+      await m.createAll();
+    },
+    beforeOpen: (details) async {
+      await customStatement('PRAGMA foreign_keys = ON');
+    },
+  );
 }

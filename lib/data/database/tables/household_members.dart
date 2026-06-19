@@ -1,18 +1,22 @@
 import 'package:drift/drift.dart';
+import 'users.dart';
+import 'households.dart';
 
 @DataClassName('HouseholdMemberData')
+@TableIndex(name: 'idx_hh_members_household', columns: {#householdId})
+@TableIndex(name: 'idx_hh_members_user', columns: {#userId})
+@TableIndex(name: 'uq_hh_members_pair', columns: {#householdId, #userId}, unique: true)
 class HouseholdMembers extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  TextColumn get uuid => text().unique()();
-  IntColumn get householdId => integer()();
-  IntColumn get userId => integer()();
+  TextColumn get id => text()();
+  TextColumn get householdId => text().named('household_id').references(Households, #id)();
+  TextColumn get userId => text().named('user_id').references(Users, #id)();
   TextColumn get role => text()();
-  DateTimeColumn get joinedAt => dateTime().withDefault(currentDateAndTime)();
-  DateTimeColumn get leftAt => dateTime().nullable()();
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
-  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
-  DateTimeColumn get deletedAt => dateTime().nullable()();
-  DateTimeColumn get lastSyncedAt => dateTime().nullable()();
-  TextColumn get syncStatus => text().withDefault(const Constant('pending'))();
+  DateTimeColumn get createdAt => dateTime().named('created_at').withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().named('updated_at').withDefault(currentDateAndTime)();
+  DateTimeColumn get deletedAt => dateTime().named('deleted_at').nullable()();
+  TextColumn get syncStatus => text().named('sync_status').withDefault(const Constant('local_only'))();
+  DateTimeColumn get lastSyncedAt => dateTime().named('last_synced_at').nullable()();
 
+  @override
+  Set<Column> get primaryKey => {id};
 }
