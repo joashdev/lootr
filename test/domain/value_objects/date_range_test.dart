@@ -13,10 +13,10 @@ void main() {
         expect(range.end, end);
       });
 
-      test('should assert start is not after end', () {
+      test('should throw when start is after end', () {
         expect(
           () => DateRange(end, start),
-          throwsA(isA<AssertionError>()),
+          throwsA(isA<ArgumentError>()),
         );
       });
     });

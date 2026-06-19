@@ -15,6 +15,7 @@ class Goal extends Equatable {
   final DateTime? targetDate;
   /// Computed by the repository layer — not stored in the DB.
   /// Populated when fetching goals (e.g., `GoalRepo.watchWithProgress`).
+  @JsonKey(includeFromJson: false, includeToJson: false)
   final double progress;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -80,7 +81,6 @@ class Goal extends Equatable {
         targetAmount,
         currentAmount,
         targetDate,
-        progress,
         createdAt,
         updatedAt,
         deletedAt,

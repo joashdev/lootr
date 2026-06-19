@@ -495,8 +495,8 @@ void main() {
     test('JSON round-trip missing optional keys uses defaults', () {
       final json = <String, dynamic>{
         'id': 'u1',
-        'createdAt': now.toIso8601String(),
-        'updatedAt': now.toIso8601String(),
+        'created_at': now.toIso8601String(),
+        'updated_at': now.toIso8601String(),
       };
       final u = User.fromJson(json);
       expect(u.currencyCode, 'PHP');

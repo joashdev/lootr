@@ -2,7 +2,11 @@ class DateRange {
   final DateTime start;
   final DateTime end;
 
-  DateRange(this.start, this.end) : assert(!start.isAfter(end));
+  DateRange(this.start, this.end) {
+    if (start.isAfter(end)) {
+      throw ArgumentError('start must not be after end');
+    }
+  }
 
   bool contains(DateTime date) =>
       !date.isBefore(start) && !date.isAfter(end);

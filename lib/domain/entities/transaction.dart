@@ -20,8 +20,11 @@ class Transaction extends Equatable {
   final String? parentTransactionId;
   final String? recurringTemplateId;
   final double amount;
+  @JsonKey(name: 'transaction_direction')
   final String direction;
+  @JsonKey(name: 'transaction_mode')
   final String mode;
+  @JsonKey(name: 'transaction_subtype')
   final String? subtype;
   final String? note;
   final Map<String, dynamic>? metadata;
@@ -30,7 +33,7 @@ class Transaction extends Equatable {
   final DateTime updatedAt;
   final DateTime? deletedAt;
 
-  const Transaction({
+  Transaction({
     required this.id,
     required this.accountId,
     this.categoryId,
@@ -42,12 +45,12 @@ class Transaction extends Equatable {
     required this.mode,
     this.subtype,
     this.note,
-    this.metadata,
+    Map<String, dynamic>? metadata,
     required this.occurredAt,
     required this.createdAt,
     required this.updatedAt,
     this.deletedAt,
-  });
+  }) : metadata = metadata == null ? null : Map<String, dynamic>.unmodifiable(metadata);
 
   factory Transaction.fromJson(Map<String, dynamic> json) =>
       _$TransactionFromJson(json);

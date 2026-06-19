@@ -11,6 +11,7 @@ targets:
       json_serializable:
         options:
           checked: false
+          field_rename: snake
         generate_for:
           exclude:
             - lib/data/database/tables/**.dart

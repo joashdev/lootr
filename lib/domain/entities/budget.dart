@@ -14,6 +14,7 @@ class Budget extends Equatable {
   final int year;
   /// Computed by the repository layer — not stored in the DB.
   /// Populated when fetching budgets (e.g., `BudgetRepo.watchWithSpent`).
+  @JsonKey(includeFromJson: false, includeToJson: false)
   final double spent;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -76,7 +77,6 @@ class Budget extends Equatable {
         amount,
         month,
         year,
-        spent,
         createdAt,
         updatedAt,
         deletedAt,
