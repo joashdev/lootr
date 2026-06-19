@@ -1,6 +1,6 @@
 # Task 05 — Domain Layer — Entities & Value Objects
 
-**Status:** [ ]
+**Status:** [x]
 
 ---
 
@@ -55,14 +55,14 @@ Mappers live alongside entities, not in the data layer, to keep the dependency r
 
 ## Acceptance Criteria
 
-- [ ] All entities compile with no Drift or Flutter imports (pure Dart)
-- [ ] `freezed` generates `==`, `hashCode`, `copyWith`, `toString` for all entities
-- [ ] `json_annotation` generates `fromJson`/`toJson` for all entities
-- [ ] `Money` arithmetic works correctly with same and different currencies (throws on mismatch)
-- [ ] `DateRange.monthsInRange()` returns correct month-year pairs
-- [ ] `TransactionFilters.isEmpty` returns true when all filters are null/default
-- [ ] Row-to-entity mappers handle nullable fields correctly
-- [ ] Entity-to-companion mappers produce valid Drift companions
+- [x] All entities compile with no Drift or Flutter imports (pure Dart)
+- [x] `Equatable` + manual `copyWith` provides `==`, `hashCode`, `copyWith`, `toString` (freezed unresolvable with build_runner 2.15.0)
+- [x] `json_annotation` generates `fromJson`/`toJson` for all entities
+- [x] `Money` arithmetic works correctly with same and different currencies (throws on mismatch)
+- [x] `DateRange.monthsInRange()` returns correct month-year pairs
+- [x] `TransactionFilters.isEmpty` returns true when all filters are null/default
+- [x] Row-to-entity mappers handle nullable fields correctly
+- [x] Entity-to-companion mappers produce valid Drift companions
 
 ## Files Likely Affected
 

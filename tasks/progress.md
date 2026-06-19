@@ -24,13 +24,18 @@
 
 ---
 
+**Task:** 05 — Domain Layer — Entities & Value Objects ✅
+**Summary:** All 12 domain entities defined with Equatable + json_annotation + manual copyWith (freezed had unresolvable version conflicts with build_runner 2.15.0). 5 value objects implemented: Money, DateRange, TransactionFilters, SyncHealth, UndoEntry. Row→Entity and Entity→Companion mappers for all 12 entities. 66 unit tests pass. flutter analyze shows 0 domain-layer errors.
+
+---
+
 | Task | Status | Date |
 |---|---|---|
 | 01 — Project Setup & Scaffolding | ✅ Done | 2026-06-18 |
 | 02 — Design System & Theme | ✅ Done | 2026-06-19 |
 | 03 — Data Layer — Drift Schema & Database | ✅ Done | 2026-06-19 |
 | 04 — Data Layer — Repositories | ✅ Done | 2026-06-19 |
-| 05 — Domain Layer — Entities & Value Objects | [ ] Pending | — |
+| 05 — Domain Layer — Entities & Value Objects | ✅ Done | 2026-06-19 |
 | 06 — Domain Layer — Use Cases | [ ] Pending | — |
 | 07 — Application Layer — Riverpod Providers | [ ] Pending | — |
 | 08 — Application Layer — Sync Engine | [ ] Pending | — |

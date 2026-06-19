@@ -1,43 +1,47 @@
 import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
 
-part 'household.g.dart';
+part 'household_member.g.dart';
 
 @JsonSerializable()
-class Household extends Equatable {
+class HouseholdMember extends Equatable {
   final String id;
-  final String name;
-  final String createdByUserId;
+  final String householdId;
+  final String userId;
+  final String role;
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? deletedAt;
 
-  const Household({
+  const HouseholdMember({
     required this.id,
-    required this.name,
-    required this.createdByUserId,
+    required this.householdId,
+    required this.userId,
+    required this.role,
     required this.createdAt,
     required this.updatedAt,
     this.deletedAt,
   });
 
-  factory Household.fromJson(Map<String, dynamic> json) =>
-      _$HouseholdFromJson(json);
+  factory HouseholdMember.fromJson(Map<String, dynamic> json) =>
+      _$HouseholdMemberFromJson(json);
 
-  Map<String, dynamic> toJson() => _$HouseholdToJson(this);
+  Map<String, dynamic> toJson() => _$HouseholdMemberToJson(this);
 
-  Household copyWith({
+  HouseholdMember copyWith({
     String? id,
-    String? name,
-    String? createdByUserId,
+    String? householdId,
+    String? userId,
+    String? role,
     DateTime? createdAt,
     DateTime? updatedAt,
     DateTime? Function()? deletedAt,
   }) {
-    return Household(
+    return HouseholdMember(
       id: id ?? this.id,
-      name: name ?? this.name,
-      createdByUserId: createdByUserId ?? this.createdByUserId,
+      householdId: householdId ?? this.householdId,
+      userId: userId ?? this.userId,
+      role: role ?? this.role,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt != null ? deletedAt() : this.deletedAt,
@@ -47,8 +51,9 @@ class Household extends Equatable {
   @override
   List<Object?> get props => [
         id,
-        name,
-        createdByUserId,
+        householdId,
+        userId,
+        role,
         createdAt,
         updatedAt,
         deletedAt,
