@@ -8,6 +8,7 @@ A calm, offline-first, privacy-first personal finance app. Flutter/Riverpod/Drif
 
 ## Workflow
 
+0. **Checkout latest main.** Before starting any task, run `git checkout main && git pull`. If a different branch is specified, use that instead.
 1. **Specs before code.** Read `docs/specs-backlog.md` for what's done and what's next. All specs are `.md` files under `docs/`.
 2. **Write the MD first** — each spec is a standalone markdown doc that must be concrete enough to hand to a developer.
 3. **Then write `docs/mandocs/{same-name}.html`** — identical content, self-contained HTML with inline CSS for human review. Match the existing style (custom CSS vars at `:root`, system font stack, mono for code, `.diagram` blocks for ASCII art).
