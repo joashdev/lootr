@@ -1,6 +1,8 @@
 enum SyncStatus { pending, synced, conflicted, failed }
 
-enum TransactionDirection { inflow, outflow }
+enum SyncIconState { synced, syncing, warning, error }
+
+enum TransactionDirection { expense, income, transfer }
 
 enum BudgetMode { monthly, weekly, custom }
 

@@ -1,6 +1,6 @@
 # Task 02 — Design System & Theme
 
-**Status:** [ ]
+**Status:** [x] Done
 
 ---
 

@@ -1,9 +1,9 @@
 abstract class AppRadius {
   AppRadius._();
 
-  static const double sm = 4;
-  static const double md = 8;
-  static const double lg = 12;
-  static const double xl = 16;
+  static const double sm = 6;
+  static const double md = 10;
+  static const double lg = 14;
+  static const double xl = 18;
   static const double full = 9999;
 }
