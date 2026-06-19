@@ -6,6 +6,10 @@ import 'app.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+  };
+
   runApp(
     const ProviderScope(
       child: App(),
