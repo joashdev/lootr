@@ -38,6 +38,9 @@ dependencies:
   drift_flutter: 0.3.0
   path_provider: 2.1.6
 
+  phosphor_flutter:
+    path: packages/phosphor_flutter
+
   intl: 0.20.2
 
   flutter_local_notifications: 22.0.1

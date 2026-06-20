@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/shadows.dart';
@@ -43,28 +43,28 @@ class TabShell extends StatelessWidget {
             child: Row(
               children: [
                 _TabItem(
-                  icon: Icons.home,
+                  icon: PhosphorIconsRegular.house,
                   label: 'Dashboard',
                   isActive: navigationShell.currentIndex == 0,
                   onTap: () => navigationShell.goBranch(0),
                   lootrColors: lootrColors,
                 ),
                 _TabItem(
-                  icon: Icons.list,
+                  icon: PhosphorIconsRegular.list,
                   label: 'Transactions',
                   isActive: navigationShell.currentIndex == 1,
                   onTap: () => navigationShell.goBranch(1),
                   lootrColors: lootrColors,
                 ),
                 _TabItem(
-                  icon: Icons.pie_chart,
+                  icon: PhosphorIconsRegular.chartPie,
                   label: 'Budgets',
                   isActive: navigationShell.currentIndex == 2,
                   onTap: () => navigationShell.goBranch(2),
                   lootrColors: lootrColors,
                 ),
                 _TabItem(
-                  icon: Icons.grid_view_rounded,
+                  icon: PhosphorIconsRegular.gridFour,
                   label: 'More',
                   isActive: navigationShell.currentIndex == 3,
                   onTap: () => navigationShell.goBranch(3),
@@ -90,7 +90,7 @@ class TabShell extends StatelessWidget {
                 boxShadow: AppShadows.island,
               ),
               child: const Icon(
-                Icons.add,
+                PhosphorIconsRegular.plus,
                 color: Colors.white,
                 size: 28,
               ),
