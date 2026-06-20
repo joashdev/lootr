@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+
 
 class TransactionsScreen extends StatelessWidget {
   const TransactionsScreen({super.key});
@@ -11,11 +11,11 @@ class TransactionsScreen extends StatelessWidget {
         title: const Text('Transactions'),
         actions: [
           IconButton(
-            icon: const Icon(PhosphorIconsRegular.slidersHorizontal),
+            icon: const Icon(Icons.tune),
             onPressed: () {},
           ),
           IconButton(
-            icon: const Icon(PhosphorIconsRegular.magnifyingGlass),
+            icon: const Icon(Icons.search),
             onPressed: () {},
           ),
         ],

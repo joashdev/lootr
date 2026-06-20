@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+
 
 class BudgetsScreen extends StatelessWidget {
   const BudgetsScreen({super.key});
@@ -11,7 +11,7 @@ class BudgetsScreen extends StatelessWidget {
         title: const Text('Budgets'),
         actions: [
           IconButton(
-            icon: const Icon(PhosphorIconsRegular.plus),
+            icon: const Icon(Icons.add),
             onPressed: () {},
           ),
         ],

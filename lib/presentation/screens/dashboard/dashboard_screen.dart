@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -11,11 +11,11 @@ class DashboardScreen extends StatelessWidget {
         title: const Text('Dashboard'),
         actions: [
           IconButton(
-            icon: const Icon(PhosphorIconsRegular.cloudCheck),
+            icon: const Icon(Icons.cloud_done),
             onPressed: () {},
           ),
           IconButton(
-            icon: const Icon(PhosphorIconsRegular.magnifyingGlass),
+            icon: const Icon(Icons.search),
             onPressed: () {},
           ),
         ],
