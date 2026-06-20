@@ -17,57 +17,9 @@ class TabShell extends StatelessWidget {
     final lootrColors = Theme.of(context).extension<LootrColorScheme>()!;
 
     return Scaffold(
-      appBar: _buildAppBar(context),
       body: navigationShell,
       bottomNavigationBar: _buildBottomBar(context, lootrColors),
     );
-  }
-
-  PreferredSizeWidget? _buildAppBar(BuildContext context) {
-    switch (navigationShell.currentIndex) {
-      case 0:
-        return AppBar(
-          title: const Text('Dashboard'),
-          actions: [
-            IconButton(
-              icon: const Icon(PhosphorIconsRegular.cloudCheck),
-              onPressed: () {},
-            ),
-            IconButton(
-              icon: const Icon(PhosphorIconsRegular.magnifyingGlass),
-              onPressed: () {},
-            ),
-          ],
-        );
-      case 1:
-        return AppBar(
-          title: const Text('Transactions'),
-          actions: [
-            IconButton(
-              icon: const Icon(PhosphorIconsRegular.slidersHorizontal),
-              onPressed: () {},
-            ),
-            IconButton(
-              icon: const Icon(PhosphorIconsRegular.magnifyingGlass),
-              onPressed: () {},
-            ),
-          ],
-        );
-      case 2:
-        return AppBar(
-          title: const Text('Budgets'),
-          actions: [
-            IconButton(
-              icon: const Icon(PhosphorIconsRegular.plus),
-              onPressed: () {},
-            ),
-          ],
-        );
-      case 3:
-        return AppBar(title: const Text('More'));
-      default:
-        return null;
-    }
   }
 
   Widget _buildBottomBar(

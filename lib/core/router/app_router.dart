@@ -86,6 +86,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/',
     routes: [
+      // Deep-link redirects for spec paths → actual registered routes
+      GoRoute(
+        path: '/settings/sync',
+        redirect: (context, state) => '/more/settings/sync',
+      ),
+      GoRoute(
+        path: '/recurring/:templateId',
+        redirect: (context, state) =>
+            '/more/recurring/${state.pathParameters['templateId']}',
+      ),
+      GoRoute(
+        path: '/debts/:debtId',
+        redirect: (context, state) =>
+            '/more/debts/${state.pathParameters['debtId']}',
+      ),
+
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
             TabShell(navigationShell: navigationShell),

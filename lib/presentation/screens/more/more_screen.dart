@@ -5,6 +5,9 @@ class MoreScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(child: Text('More'));
+    return Scaffold(
+      appBar: AppBar(title: const Text('More')),
+      body: const Center(child: Text('More')),
+    );
   }
 }
