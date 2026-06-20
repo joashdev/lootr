@@ -2,6 +2,13 @@
 
 ---
 
+## 2026-06-20 — Task 07 Complete
+
+**Task:** 07 — Application Layer — Riverpod Providers ✅
+**Summary:** All 26 provider files implemented: repository providers (re-exported), dashboard (safeToSpend, netWorth, recentTransactions, spendingByCategory, dashboardProvider), transactions (filters, filtered, tab), budgets (tab + detail), accounts (list + detail + types), debts (list + detail), goals (list + detail with progress %), recurring (list + detail), categories, payees, more tab sections, auth (V1 stub), onboarding, undo stack (single-entry, 5s expiry), demo data (seed/clear), sync (manager, health, status icon). StreamProvider for reactive Drift data, NotifierProvider for mutable state. 16 unit tests with in-memory DB override (380 total passing). flutter analyze clean.
+
+---
+
 ## 2026-06-19 — Task 06 Complete
 
 **Task:** 06 — Domain Layer — Use Cases ✅
@@ -44,7 +51,7 @@
 | 04 — Data Layer — Repositories | ✅ Done | 2026-06-19 |
 | 05 — Domain Layer — Entities & Value Objects | ✅ Done | 2026-06-19 |
 | 06 — Domain Layer — Use Cases | ✅ Done | 2026-06-19 |
-| 07 — Application Layer — Riverpod Providers | [ ] Pending | — |
+| 07 — Application Layer — Riverpod Providers | ✅ Done | 2026-06-20 |
 | 08 — Application Layer — Sync Engine | [ ] Pending | — |
 | 09 — Application Layer — AI Layer | [ ] Pending | — |
 | 10 — Presentation — Navigation Shell & Tab Bar | [ ] Pending | — |

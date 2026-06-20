@@ -1,6 +1,6 @@
 enum SyncStatus { localOnly, pendingSync, synced, syncFailed }
 
-enum TransactionDirection { expense, income }
+enum TransactionDirection { expense, income, transfer }
 
 enum TransactionMode { oneTime, recurring, installment, debt }
 

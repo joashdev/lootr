@@ -14,7 +14,7 @@ Derived from `docs/solutions-arch.md`. Build order follows the dependency rule: 
 | 04 | Data Layer — Repositories | 03 | Critical | [x] |
 | 05 | Domain Layer — Entities & Value Objects | 03 | Critical | [x] |
 | 06 | Domain Layer — Use Cases | 05, 04 | Critical | [x]
-| 07 | Application Layer — Riverpod Providers | 06, 04 | Critical |
+| 07 | Application Layer — Riverpod Providers | 06, 04 | Critical | [x] |
 | 08 | Application Layer — Sync Engine | 04, 03 | High |
 | 09 | Application Layer — AI Layer (Optional) | 06 | Medium |
 | 10 | Presentation — Navigation Shell & Tab Bar | 02, 07 | Critical |

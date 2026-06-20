@@ -2,6 +2,7 @@ class TransactionDirection {
   const TransactionDirection._();
   static const expense = 'expense';
   static const income = 'income';
+  static const transfer = 'transfer';
 }
 
 class TransactionMode {

@@ -1,6 +1,6 @@
 # Task 08 — Application Layer — Sync Engine
 
-**Status:** [ ]
+**Status:** [x]
 
 ---
 
@@ -97,21 +97,21 @@ Wrap `connectivity_plus` to expose `Stream<bool>` (online/offline). Wire to sync
 
 ## Acceptance Criteria
 
-- [ ] `SyncManager.sync()` acquires lock, runs push→pull→hooks, releases lock
-- [ ] Concurrent `sync()` calls coalesce (only one runs)
-- [ ] Push phase correctly batches records by table
-- [ ] Push responses update `sync_status` and `last_synced_at` per record
-- [ ] Pull phase handles cursor pagination (loops until `has_more == false`)
-- [ ] LWW: server record replaces local when `server.updated_at >= local.updated_at`
-- [ ] Soft-deleted records are pushed and purged after 30 days
-- [ ] Network failure marks records as `sync_failed` and aborts pull
-- [ ] Exponential backoff retries at correct intervals
-- [ ] 401 triggers token refresh + single retry
-- [ ] 422 does not retry
-- [ ] Post-sync hooks invalidate all affected providers
-- [ ] Sync metadata table updated after each cycle
-- [ ] V1 gate: sync returns early if auth not enabled
-- [ ] Unit tests with mocked HTTP client and in-memory DB
+- [x] `SyncManager.sync()` acquires lock, runs push→pull→hooks, releases lock
+- [x] Concurrent `sync()` calls coalesce (only one runs)
+- [x] Push phase correctly batches records by table
+- [x] Push responses update `sync_status` and `last_synced_at` per record
+- [x] Pull phase handles cursor pagination (loops until `has_more == false`)
+- [x] LWW: server record replaces local when `server.updated_at >= local.updated_at`
+- [x] Soft-deleted records are pushed and purged after 30 days
+- [x] Network failure marks records as `sync_failed` and aborts pull
+- [x] Exponential backoff retries at correct intervals
+- [x] 401 triggers token refresh + single retry
+- [x] 422 does not retry
+- [x] Post-sync hooks invalidate all affected providers
+- [x] Sync metadata table updated after each cycle
+- [x] V1 gate: sync returns early if auth not enabled
+- [x] Unit tests with mocked HTTP client and in-memory DB
 
 ## Files Likely Affected
 

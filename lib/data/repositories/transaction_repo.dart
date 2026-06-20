@@ -7,6 +7,8 @@ class TransactionRepoFilters {
   final String? categoryId;
   final String? payeeId;
   final String? direction;
+  final String? mode;
+  final String? payeeIdFilter;
   final DateTime? from;
   final DateTime? to;
 
@@ -15,6 +17,8 @@ class TransactionRepoFilters {
     this.categoryId,
     this.payeeId,
     this.direction,
+    this.mode,
+    this.payeeIdFilter,
     this.from,
     this.to,
   });
@@ -40,6 +44,12 @@ class TransactionRepo {
     }
     if (filters.direction != null) {
       q.where((t) => t.transactionDirection.equals(filters.direction!));
+    }
+    if (filters.mode != null) {
+      q.where((t) => t.transactionMode.equals(filters.mode!));
+    }
+    if (filters.payeeIdFilter != null) {
+      q.where((t) => t.payeeId.equals(filters.payeeIdFilter!));
     }
     if (filters.from != null) {
       q.where((t) => t.occurredAt.isBiggerOrEqualValue(filters.from!));

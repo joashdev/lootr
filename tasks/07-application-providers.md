@@ -1,6 +1,6 @@
 # Task 07 — Application Layer — Riverpod Providers
 
-**Status:** [ ]
+**Status:** [x]
 
 ---
 
@@ -124,16 +124,16 @@ Register all 12 repos + database provider. Each is a `Provider` (no `autoDispose
 
 ## Acceptance Criteria
 
-- [ ] All providers compile and are registered in their respective files
-- [ ] `safeToSpendProvider` computes correct safe-to-spend = total income - committed expenses
-- [ ] `netWorthProvider` computes correct net worth = sum(assets) - sum(liabilities)
-- [ ] `filteredTransactionsProvider` reacts to `transactionFiltersProvider` changes
-- [ ] `budgetDetailProvider` returns spent amount matching budget's category+period
-- [ ] `goalDetailProvider` returns correct progress % = currentAmount / targetAmount * 100
-- [ ] Tab-scoped providers survive tab switches (KeepAliveLink)
-- [ ] Screen-scoped providers are disposed on pop (no memory leaks)
-- [ ] `undoStackProvider` enforces single-entry policy (oldest expires at 5s)
-- [ ] All providers have unit tests with in-memory DB override
+- [x] All providers compile and are registered in their respective files
+- [x] `safeToSpendProvider` computes correct safe-to-spend = total income - committed expenses
+- [x] `netWorthProvider` computes correct net worth = sum(assets) - sum(liabilities)
+- [x] `filteredTransactionsProvider` reacts to `transactionFiltersProvider` changes
+- [x] `budgetDetailProvider` returns spent amount matching budget's category+period
+- [x] `goalDetailProvider` returns correct progress % = currentAmount / targetAmount * 100
+- [x] Tab-scoped providers survive tab switches (KeepAliveLink)
+- [x] Screen-scoped providers are disposed on pop (no memory leaks)
+- [x] `undoStackProvider` enforces single-entry policy (oldest expires at 5s)
+- [x] All providers have unit tests with in-memory DB override
 
 ## Files Likely Affected
 
