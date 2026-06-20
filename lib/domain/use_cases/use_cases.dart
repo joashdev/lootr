@@ -4,7 +4,7 @@ export 'delete_transaction.dart';
 export 'create_transfer.dart';
 export 'recalc_balance.dart';
 export 'add_budget.dart';
-export 'update_budget_progress.dart';
+export 'get_budget_spent.dart';
 export 'add_goal.dart';
 export 'contribute_to_goal.dart';
 export 'settle_debt.dart';

@@ -2,7 +2,7 @@ import 'package:drift/drift.dart' hide isNull;
 
 import '../database/app_database.dart';
 
-class TransactionFilters {
+class TransactionRepoFilters {
   final String? accountId;
   final String? categoryId;
   final String? payeeId;
@@ -10,7 +10,7 @@ class TransactionFilters {
   final DateTime? from;
   final DateTime? to;
 
-  const TransactionFilters({
+  const TransactionRepoFilters({
     this.accountId,
     this.categoryId,
     this.payeeId,
@@ -25,7 +25,7 @@ class TransactionRepo {
 
   TransactionRepo(this._db);
 
-  Stream<List<TransactionData>> watchFiltered(TransactionFilters filters) {
+  Stream<List<TransactionData>> watchFiltered(TransactionRepoFilters filters) {
     final q = _db.select(_db.transactions)
       ..where((t) => t.deletedAt.isNull());
 

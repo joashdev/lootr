@@ -8,6 +8,10 @@ class SettleDebt {
 
   Future<Result<void>> call(String debtId) async {
     try {
+      final debt = await _debtRepo.watchById(debtId).first;
+      if (debt == null) {
+        return Failure('Debt record not found: $debtId', code: 'not_found');
+      }
       await _debtRepo.settle(debtId);
       return const Success(null);
     } catch (e) {

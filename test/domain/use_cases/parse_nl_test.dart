@@ -68,6 +68,38 @@ void main() {
         final parsed = (result as Success<ParsedTransaction>).value;
         expect(parsed.amount, 150.50);
       });
+
+      test('should handle leading decimal like .99', () {
+        final result = useCase('snack .99 gcash');
+
+        expect(result.isSuccess, isTrue);
+        final parsed = (result as Success<ParsedTransaction>).value;
+        expect(parsed.amount, 0.99);
+      });
+
+      test('should handle negative amounts', () {
+        final result = useCase('refund -500 gcash');
+
+        expect(result.isSuccess, isTrue);
+        final parsed = (result as Success<ParsedTransaction>).value;
+        expect(parsed.amount, -500);
+      });
+
+      test('should handle k suffix with decimal like 0.5k', () {
+        final result = useCase('item 0.5k cash');
+
+        expect(result.isSuccess, isTrue);
+        final parsed = (result as Success<ParsedTransaction>).value;
+        expect(parsed.amount, 500);
+      });
+
+      test('should handle m suffix with decimal like 1.5m', () {
+        final result = useCase('car 1.5m bank');
+
+        expect(result.isSuccess, isTrue);
+        final parsed = (result as Success<ParsedTransaction>).value;
+        expect(parsed.amount, 1500000);
+      });
     });
 
     group('payee extraction', () {

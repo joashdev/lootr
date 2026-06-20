@@ -29,6 +29,7 @@ class TransferRepo {
   Future<String> create(TransfersCompanion t) async {
     if (!t.id.present) throw ArgumentError('id is required for create');
     final id = t.id.value;
+    final hasFee = t.feeAmount.present && (t.feeAmount.value ?? 0) > 0;
 
     return _db.transaction(() async {
       await _db.into(_db.transfers).insert(t);
@@ -43,10 +44,11 @@ class TransferRepo {
             ..limit(1))
           .getSingle();
 
+      final totalDeduction = row.amount + (hasFee ? row.feeAmount! : 0);
       await (_db.update(_db.accounts)
             ..where((a) => a.id.equals(row.sourceAccountId)))
           .write(AccountsCompanion(
-        balance: Value(sourceAccount.balance - row.amount),
+        balance: Value(sourceAccount.balance - totalDeduction),
         syncStatus: const Value('pending_sync'),
         updatedAt: Value(DateTime.now()),
       ));
@@ -64,6 +66,22 @@ class TransferRepo {
         updatedAt: Value(DateTime.now()),
       ));
 
+      if (hasFee) {
+        final feeId = 'txn-fee-$id';
+        await _db.into(_db.transactions).insert(
+              TransactionsCompanion.insert(
+                id: feeId,
+                accountId: row.sourceAccountId,
+                amount: row.feeAmount!,
+                transactionDirection: 'expense',
+                transactionMode: 'one_time',
+                transactionSubtype: const Value('transfer_fee'),
+                note: const Value('Transfer fee'),
+                occurredAt: row.occurredAt,
+              ),
+            );
+      }
+
       return id;
     });
   }
@@ -76,16 +94,18 @@ class TransferRepo {
           .get();
       if (rows.isEmpty) return;
       final transfer = rows.first;
+      final hasFee = transfer.feeAmount != null && transfer.feeAmount! > 0;
 
       final sourceAccount = await (_db.select(_db.accounts)
             ..where((a) => a.id.equals(transfer.sourceAccountId))
             ..limit(1))
           .getSingle();
 
+      final totalReversal = transfer.amount + (hasFee ? transfer.feeAmount! : 0);
       await (_db.update(_db.accounts)
             ..where((a) => a.id.equals(transfer.sourceAccountId)))
           .write(AccountsCompanion(
-        balance: Value(sourceAccount.balance + transfer.amount),
+        balance: Value(sourceAccount.balance + totalReversal),
         syncStatus: const Value('pending_sync'),
         updatedAt: Value(DateTime.now()),
       ));
@@ -110,6 +130,16 @@ class TransferRepo {
         syncStatus: const Value('pending_sync'),
         updatedAt: Value(now),
       ));
+
+      if (hasFee) {
+        final feeId = 'txn-fee-$id';
+        await (_db.update(_db.transactions)..where((t) => t.id.equals(feeId)))
+            .write(TransactionsCompanion(
+          deletedAt: Value(now),
+          syncStatus: const Value('pending_sync'),
+          updatedAt: Value(now),
+        ));
+      }
     });
   }
 }

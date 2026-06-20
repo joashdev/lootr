@@ -20,7 +20,8 @@ class CreateRecurring {
     }
 
     try {
-      final nextAt = _computeNext(DateTime.now(), template.recurrenceRule);
+      DateTime? nextAt = template.nextOccurrenceAt;
+      nextAt ??= _computeNext(DateTime.now(), template.recurrenceRule);
 
       final entity = template.copyWith(
         nextOccurrenceAt: nextAt != null ? () => nextAt : () => null,

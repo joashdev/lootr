@@ -45,7 +45,7 @@ class ParseNL {
 
   _AmountMatch? _extractAmount(String text) {
     final currencyPattern = RegExp(
-        r'(?:[₱\$€£¥]\s*)?(\d+(?:,\d{3})*(?:\.\d+)?)\s*(k|K|m|M)?');
+        r'(?:[₱\$€£¥]\s*)?(-?(?:\d+(?:,\d{3})*(?:\.\d+)?|\.\d+))\s*(k|K|m|M)?');
     final match = currencyPattern.firstMatch(text);
     if (match == null) return null;
 

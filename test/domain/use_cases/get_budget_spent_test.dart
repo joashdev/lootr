@@ -1,21 +1,21 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:lootr/data/repositories/budget_repo.dart';
-import 'package:lootr/domain/use_cases/update_budget_progress.dart';
+import 'package:lootr/domain/use_cases/get_budget_spent.dart';
 import 'package:lootr/domain/value_objects/result.dart';
 
 class MockBudgetRepo extends Mock implements BudgetRepo {}
 
 void main() {
   late MockBudgetRepo mockRepo;
-  late UpdateBudgetProgress useCase;
+  late GetBudgetSpent useCase;
 
   setUp(() {
     mockRepo = MockBudgetRepo();
-    useCase = UpdateBudgetProgress(mockRepo);
+    useCase = GetBudgetSpent(mockRepo);
   });
 
-  group('UpdateBudgetProgress', () {
+  group('GetBudgetSpent', () {
     test('should return Success with spent amount', () async {
       when(() => mockRepo.watchSpentForBudget('bdg-1'))
           .thenAnswer((_) => Stream.value(3500.0));

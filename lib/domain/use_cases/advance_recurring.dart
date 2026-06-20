@@ -31,6 +31,7 @@ class AdvanceRecurring {
         amount: template.amount,
         direction: TransactionDirection.expense,
         mode: TransactionMode.recurring,
+        recurringTemplateId: templateId,
         occurredAt: occurredAt,
         createdAt: now,
         updatedAt: now,

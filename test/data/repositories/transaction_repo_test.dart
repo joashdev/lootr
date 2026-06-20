@@ -138,7 +138,7 @@ void main() {
       ));
 
       final txns = await repo
-          .watchFiltered(const TransactionFilters())
+          .watchFiltered(const TransactionRepoFilters())
           .first;
 
       expect(txns.length, 1);
@@ -175,7 +175,7 @@ void main() {
 
       final txns = await repo
           .watchFiltered(
-              const TransactionFilters(accountId: 'acc-1'))
+              const TransactionRepoFilters(accountId: 'acc-1'))
           .first;
 
       expect(txns.length, 1);

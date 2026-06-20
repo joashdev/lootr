@@ -24,7 +24,8 @@ class AddBudget {
 
       final duplicate = existing.where((b) =>
           b.categoryId == budget.categoryId &&
-          b.ownerUserId == budget.ownerUserId);
+          b.ownerUserId == budget.ownerUserId &&
+          b.householdId == budget.householdId);
 
       if (duplicate.isNotEmpty) {
         return Failure(
