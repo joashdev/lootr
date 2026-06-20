@@ -5,8 +5,9 @@ class ReportsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Reports')),
+    return Scaffold(
+      appBar: AppBar(title: const Text('Reports')),
+      body: const Center(child: Text('Reports')),
     );
   }
 }

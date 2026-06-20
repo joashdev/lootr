@@ -1,6 +1,6 @@
 # Task 10 — Presentation — Navigation Shell & Tab Bar
 
-**Status:** [ ]
+**Status:** [x]
 
 ---
 
@@ -110,17 +110,17 @@ void main() async {
 
 ## Acceptance Criteria
 
-- [ ] All 31 routes are registered in go_router config
-- [ ] Tab switching preserves scroll position and state (StatefulShellRoute)
-- [ ] Deep link paths resolve to correct screens
-- [ ] Add Island is rendered above tab bar, rightmost position
-- [ ] Add Island → QuickActionsSheet opens with 3 options
-- [ ] AppBar shows correct elements per tab (Dashboard: sync + search; Transactions: filter + search; Budgets: month nav + [+]; More: none)
-- [ ] Route transitions use correct animation curves and durations
-- [ ] Browser back button / Android back button navigates correctly in route stack
-- [ ] Tab bar matches design spec (64px, icon+label stacked, active/inactive colors)
-- [ ] Widgets load with no null provider errors (placeholder screens acceptable)
-- [ ] `app_router.dart` has no unused route constants
+- [x] All 31 routes are registered in go_router config
+- [x] Tab switching preserves scroll position and state (StatefulShellRoute)
+- [x] Deep link paths resolve to correct screens
+- [x] Add Island is rendered above tab bar, rightmost position
+- [x] Add Island → QuickActionsSheet opens with 3 options
+- [x] AppBar shows correct elements per tab (Dashboard: sync + search; Transactions: filter + search; Budgets: month nav + [+]; More: none)
+- [x] Route transitions use correct animation curves and durations
+- [x] Browser back button / Android back button navigates correctly in route stack
+- [x] Tab bar matches design spec (64px, icon+label stacked, active/inactive colors)
+- [x] Widgets load with no null provider errors (placeholder screens acceptable)
+- [x] `app_router.dart` has no unused route constants
 
 ## Files Likely Affected
 

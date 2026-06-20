@@ -30,6 +30,11 @@ class UserRepo {
     ));
   }
 
+  Future<UserData?> getCurrentUser() async {
+    final rows = await (_db.select(_db.users)..limit(1)).get();
+    return rows.isNotEmpty ? rows.first : null;
+  }
+
   Future<void> updateAiEnabled(bool enabled) async {
     final user = await (_db.select(_db.users)..limit(1)).getSingleOrNull();
     if (user == null) return;

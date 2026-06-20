@@ -1,6 +1,20 @@
 # Task 09 — Application Layer — AI Layer (Optional)
 
-**Status:** [ ]
+**Status:** Done (✅ Code review fixes applied 2025-06-20)
+
+**Review fixes (7 blocking + 5 non-blocking):**
+- **Block 1:** RunOCR wired to OCRPipeline, returns Success/Failure based on aiEnabled
+- **Block 2:** `google_mlkit_text_recognition: ^0.14.0` added to pubspec.yaml
+- **Block 3:** AiProcessingLogRepo injected into NLParser, OCRPipeline, Categorizer — all operations log to ai_processing_logs
+- **Block 4:** ParsedTransaction now populated with isTransfer, sourceAccount, destAccount from ParseResult
+- **Block 5:** ParseNL.updateLists fixed — `_parser` made non-final, reassigned after copyWith
+- **Block 6:** AiSettingsNotifier.build() reads ai_enabled from users table via UserRepo.getCurrentUser()
+- **Block 7:** aiEnabled gating added to NLParser, OCRPipeline, Categorizer, ParseNL, RunOCR
+- **Non-blocking:** AiSettingsNotifier watches userRepoProvider instead of constructing UserRepo directly
+- **Non-blocking:** Amount regex adds \b suffix boundary
+- **Non-blocking:** `_extractAccount` uses whole-word matching for known accounts
+- **Non-blocking:** `_parseReceiptFields` uses injected `_nlParser` instead of instantiating new NLParser
+- **Dependency rule:** Domain still imports `../../ai/nl_parser.dart` (interface extraction to domain deferred)
 
 ---
 
@@ -60,15 +74,15 @@ Every AI interaction writes to `ai_processing_logs`:
 
 ## Acceptance Criteria
 
-- [ ] Deterministic NL parser correctly extracts amount, payee, account, direction from all listed patterns
-- [ ] NL parser handles currency symbols and abbreviations
-- [ ] OCR pipeline processes a receipt image and extracts text via ML Kit
-- [ ] OCR text is passed to NL parser for field extraction
-- [ ] Every AI operation writes an audit log to `ai_processing_logs`
-- [ ] AI categorizer deterministic fallback suggests category from payee history
-- [ ] `ai_enabled=false` bypasses all AI processing (core flows unaffected)
-- [ ] AI never writes to `transactions` table — only fills preview fields
-- [ ] All AI functions are optional and gated behind user settings
+- [x] Deterministic NL parser correctly extracts amount, payee, account, direction from all listed patterns
+- [x] NL parser handles currency symbols and abbreviations
+- [x] OCR pipeline processes a receipt image and extracts text via ML Kit
+- [x] OCR text is passed to NL parser for field extraction
+- [x] Every AI operation writes an audit log to `ai_processing_logs`
+- [x] AI categorizer deterministic fallback suggests category from payee history
+- [x] `ai_enabled=false` bypasses all AI processing (core flows unaffected)
+- [x] AI never writes to `transactions` table — only fills preview fields
+- [x] All AI functions are optional and gated behind user settings
 
 ## Files Likely Affected
 

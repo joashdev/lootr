@@ -15,6 +15,16 @@ A calm, offline-first, privacy-first personal finance app. Flutter/Riverpod/Drif
 4. **Update `specs-backlog.md`** when a spec is done — mark it `✅` and set `**Status:** Done.`
 5. **Before coding:** complete all Phase 2 specs. Foundation phase (Phase 1) is sufficient to begin data/domain layers.
 
+### Task execution (MANDATORY)
+
+When the user says "run task X", "run task X and Y", "do task N", or any variant asking to execute numbered tasks from `tasks/`:
+
+- **ALWAYS delegate to a sub-agent.** Never implement task work in the session agent. Use the `task` tool with `subagent_type: "general"`.
+- **One sub-agent per task.** Two tasks → two parallel `task` tool calls. Do not bundle multiple tasks into one sub-agent.
+- **Load the task-runner skill instructions into the prompt.** Include: branch naming (`feat/task-NN-desc` or `fix/task-NN-desc`), read the task file in full, check dependencies, implement, run tests/lint, update backlog.md and progress.md.
+- **No research-only delegation.** Do not use `explore` sub-agent type for task execution. Use `general` only.
+- **The session agent stays free for conversation.** Sub-agents return results; session agent relays them to the user.
+
 ## Conventions
 
 ### File naming

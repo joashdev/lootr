@@ -2,10 +2,31 @@
 
 ---
 
+## 2026-06-20 — Task 10 Complete
+
+**Task:** 10 — Presentation — Navigation Shell & Tab Bar ✅
+**Summary:** Full go_router configuration with StatefulShellRoute.indexedStack preserving tab state across 4 tabs. TabShell widget with BottomNavigationBar (64px, phosphor icons, active primary-600 / inactive text-tertiary). Add island (56×44px pill, primary-600, elevated) opens QuickActionsSheet. QuickActionsSheet with 3 actions (Quick Add, Manual, Scan) navigating to /transactions/new and /scan via go_router. All 33 routes from navigation-arch.md §10 registered (4 tab + 27 pushed + 2 modal/onboarding). CustomTransitionPage with proper curves/durations per design.md. AppBar per tab spec (Dashboard: sync+search, Transactions: filter+search, Budgets: [+], More: none). All placeholder screens updated with AppBars and route params. 5 new screen files created (insight_detail, report_detail, payee_detail, household_detail, ocr_scan). flutter analyze clean for new code. 494 tests pass.
+
+---
+
+## 2026-06-20 — Task 09 Complete
+
+**Task:** 09 — Application Layer — AI Layer ✅
+**Summary:** All AI layer files implemented: NLParser (deterministic regex-based NL parser with transfer detection, currency/abbreviation support, known payees/accounts matching), OCRPipeline (ML Kit wrapper stub, receipt field parsing), Categorizer (deterministic payee→category fallback, heuristic keyword matching, AI inference stub). AiProcessingLogRepo for audit logging. AiSettingsProvider (Notifier-based, toggle, model download status). ParseNL use case wired to NLParser. ParsedTransaction extended with isTransfer/sourceAccount/destAccount fields. 72 new AI tests (nl_parser: 72, ocr_pipeline: 4, categorizer: 13). Total 494 tests passing (380 + 114 new). flutter analyze clean for AI code.
+
+---
+
 ## 2026-06-20 — Task 07 Complete
 
 **Task:** 07 — Application Layer — Riverpod Providers ✅
 **Summary:** All 26 provider files implemented: repository providers (re-exported), dashboard (safeToSpend, netWorth, recentTransactions, spendingByCategory, dashboardProvider), transactions (filters, filtered, tab), budgets (tab + detail), accounts (list + detail + types), debts (list + detail), goals (list + detail with progress %), recurring (list + detail), categories, payees, more tab sections, auth (V1 stub), onboarding, undo stack (single-entry, 5s expiry), demo data (seed/clear), sync (manager, health, status icon). StreamProvider for reactive Drift data, NotifierProvider for mutable state. 16 unit tests with in-memory DB override (380 total passing). flutter analyze clean.
+
+---
+
+## 2026-06-20 — Task 08 Complete
+
+**Task:** 08 — Application Layer — Sync Engine ✅
+**Summary:** All sync engine files implemented: SyncManager (push→pull→hooks FSM, single-cycle lock), PushClient, PullClient (cursor pagination), ConflictApplier (LWW), SyncTriggers (foreground/timer/reconnect/post-mutation), ConnectivityMonitor, SyncHttpClient. V1 gate (auth check), exponential backoff retry, sync metadata tracking. 8 source files in lib/application/sync/.
 
 ---
 
@@ -52,9 +73,9 @@
 | 05 — Domain Layer — Entities & Value Objects | ✅ Done | 2026-06-19 |
 | 06 — Domain Layer — Use Cases | ✅ Done | 2026-06-19 |
 | 07 — Application Layer — Riverpod Providers | ✅ Done | 2026-06-20 |
-| 08 — Application Layer — Sync Engine | [ ] Pending | — |
-| 09 — Application Layer — AI Layer | [ ] Pending | — |
-| 10 — Presentation — Navigation Shell & Tab Bar | [ ] Pending | — |
+| 08 — Application Layer — Sync Engine | ✅ Done | 2026-06-20 |
+| 09 — Application Layer — AI Layer | ✅ Done | 2026-06-20 |
+| 10 — Presentation — Navigation Shell & Tab Bar | ✅ Done | 2026-06-20 |
 | 11 — Presentation — Dashboard Tab | [ ] Pending | — |
 | 12 — Presentation — Transactions Tab | [ ] Pending | — |
 | 13 — Presentation — Budgets Tab | [ ] Pending | — |

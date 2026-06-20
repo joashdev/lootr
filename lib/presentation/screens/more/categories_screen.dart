@@ -5,8 +5,9 @@ class CategoriesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Categories')),
+    return Scaffold(
+      appBar: AppBar(title: const Text('Categories')),
+      body: const Center(child: Text('Categories')),
     );
   }
 }

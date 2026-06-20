@@ -5,8 +5,9 @@ class PayeesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Payees')),
+    return Scaffold(
+      appBar: AppBar(title: const Text('Payees')),
+      body: const Center(child: Text('Payees')),
     );
   }
 }

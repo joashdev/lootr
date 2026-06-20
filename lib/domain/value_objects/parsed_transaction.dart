@@ -6,6 +6,9 @@ class ParsedTransaction {
   final String? direction;
   final String? note;
   final double confidence;
+  final bool isTransfer;
+  final String? sourceAccount;
+  final String? destAccount;
 
   const ParsedTransaction({
     this.amount,
@@ -15,6 +18,9 @@ class ParsedTransaction {
     this.direction,
     this.note,
     this.confidence = 0.0,
+    this.isTransfer = false,
+    this.sourceAccount,
+    this.destAccount,
   });
 
   ParsedTransaction copyWith({
@@ -25,6 +31,9 @@ class ParsedTransaction {
     String? Function()? direction,
     String? Function()? note,
     double? confidence,
+    bool? isTransfer,
+    String? Function()? sourceAccount,
+    String? Function()? destAccount,
   }) {
     return ParsedTransaction(
       amount: amount != null ? amount() : this.amount,
@@ -34,6 +43,9 @@ class ParsedTransaction {
       direction: direction != null ? direction() : this.direction,
       note: note != null ? note() : this.note,
       confidence: confidence ?? this.confidence,
+      isTransfer: isTransfer ?? this.isTransfer,
+      sourceAccount: sourceAccount != null ? sourceAccount() : this.sourceAccount,
+      destAccount: destAccount != null ? destAccount() : this.destAccount,
     );
   }
 
@@ -46,15 +58,19 @@ class ParsedTransaction {
       category == other.category &&
       direction == other.direction &&
       note == other.note &&
-      confidence == other.confidence;
+      confidence == other.confidence &&
+      isTransfer == other.isTransfer &&
+      sourceAccount == other.sourceAccount &&
+      destAccount == other.destAccount;
 
   @override
   int get hashCode => Object.hash(amount, payee, account, category, direction,
-      note, confidence);
+      note, confidence, isTransfer, sourceAccount, destAccount);
 
   @override
   String toString() =>
       'ParsedTransaction(amount=$amount, payee=$payee, account=$account, '
       'category=$category, direction=$direction, note=$note, '
-      'confidence=$confidence)';
+      'confidence=$confidence, isTransfer=$isTransfer, '
+      'sourceAccount=$sourceAccount, destAccount=$destAccount)';
 }

@@ -5,8 +5,9 @@ class AppearanceScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Appearance')),
+    return Scaffold(
+      appBar: AppBar(title: const Text('Appearance')),
+      body: const Center(child: Text('Appearance')),
     );
   }
 }

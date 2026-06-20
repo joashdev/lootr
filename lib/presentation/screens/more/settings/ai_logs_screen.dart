@@ -5,8 +5,9 @@ class AiLogsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('AI Logs')),
+    return Scaffold(
+      appBar: AppBar(title: const Text('AI Processing Log')),
+      body: const Center(child: Text('AI Logs')),
     );
   }
 }

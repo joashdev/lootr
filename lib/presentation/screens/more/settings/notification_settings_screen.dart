@@ -5,8 +5,9 @@ class NotificationSettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Notification Settings')),
+    return Scaffold(
+      appBar: AppBar(title: const Text('Notifications')),
+      body: const Center(child: Text('Notification Settings')),
     );
   }
 }

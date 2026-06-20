@@ -5,8 +5,9 @@ class GoalsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Goals')),
+    return Scaffold(
+      appBar: AppBar(title: const Text('Goals')),
+      body: const Center(child: Text('Goals')),
     );
   }
 }

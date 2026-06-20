@@ -5,8 +5,9 @@ class InsightsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Insights')),
+    return Scaffold(
+      appBar: AppBar(title: const Text('Insights')),
+      body: const Center(child: Text('Insights')),
     );
   }
 }

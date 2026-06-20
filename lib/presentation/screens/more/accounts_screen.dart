@@ -5,8 +5,9 @@ class AccountsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Accounts')),
+    return Scaffold(
+      appBar: AppBar(title: const Text('Accounts')),
+      body: const Center(child: Text('Accounts')),
     );
   }
 }

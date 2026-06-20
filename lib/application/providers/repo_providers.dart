@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/repositories/account_repo.dart';
+import '../../data/repositories/ai_processing_log_repo.dart';
 import '../../data/repositories/budget_repo.dart';
 import '../../data/repositories/category_repo.dart';
 import '../../data/repositories/debt_repo.dart';
@@ -60,4 +61,8 @@ final householdRepoProvider = Provider<HouseholdRepo>((ref) {
 
 final syncMetadataRepoProvider = Provider<SyncMetadataRepo>((ref) {
   return SyncMetadataRepo(ref.watch(databaseProvider));
+});
+
+final aiProcessingLogRepoProvider = Provider<AiProcessingLogRepo>((ref) {
+  return AiProcessingLogRepo(ref.watch(databaseProvider));
 });

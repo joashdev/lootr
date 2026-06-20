@@ -5,8 +5,6 @@ class TransactionsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Transactions')),
-    );
+    return const Center(child: Text('Transactions'));
   }
 }
