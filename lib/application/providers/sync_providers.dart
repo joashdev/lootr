@@ -39,16 +39,10 @@ final syncManagerProvider = Provider<SyncManager>((ref) {
   final conflictApplier = ref.watch(conflictApplierProvider);
   final connectivityMonitor = ref.watch(connectivityMonitorProvider);
 
-  const baseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'https://api.lootr.app/v1',
-  );
-
   final manager = SyncManager(
     db: db,
     syncMetadataRepo: syncMetadataRepo,
     httpClient: httpClient,
-    baseUrl: baseUrl,
     connectivityMonitor: connectivityMonitor,
     conflictApplier: conflictApplier,
   );
@@ -73,11 +67,12 @@ final syncTriggersProvider = Provider<SyncTriggers>((ref) {
 enum SyncIconState { synced, pending, syncing, failed, offline }
 
 final syncHealthProvider = Provider<SyncHealth>((ref) {
-  final syncRepo = ref.watch(syncMetadataRepoProvider);
-
-  final lastSyncedStr =
-      throw UnimplementedError('Use syncHealthStreamProvider for reactive health');
-  return const SyncHealth();
+  final healthAsync = ref.watch(syncHealthStreamProvider);
+  return healthAsync.when(
+    data: (h) => h,
+    loading: () => const SyncHealth(),
+    error: (_, __) => const SyncHealth(),
+  );
 });
 
 final syncHealthStreamProvider = StreamProvider<SyncHealth>((ref) {
@@ -88,14 +83,18 @@ final syncHealthStreamProvider = StreamProvider<SyncHealth>((ref) {
     final lastStatus = await syncRepo.get(SyncMetadataRepo.keyLastSyncStatus);
     final failedCountStr =
         await syncRepo.get(SyncMetadataRepo.keySyncFailedCount);
+    final pendingCountStr =
+        await syncRepo.get(SyncMetadataRepo.keySyncPendingCount);
 
     final failedCount =
         failedCountStr != null ? int.tryParse(failedCountStr) ?? 0 : 0;
+    final pendingCount =
+        pendingCountStr != null ? int.tryParse(pendingCountStr) ?? 0 : 0;
 
     return SyncHealth(
       lastSyncedAt:
           lastSyncedStr != null ? DateTime.tryParse(lastSyncedStr) : null,
-      pendingCount: 0,
+      pendingCount: pendingCount,
       failedCount: failedCount,
       lastStatus: lastStatus ?? 'healthy',
     );

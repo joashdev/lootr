@@ -19,6 +19,9 @@ class DemoDataNotifier extends AsyncNotifier<DemoDataState> {
   }
 
   Future<void> seed() async {
+    final alreadySeeded = await hasDemoData();
+    if (alreadySeeded) return;
+
     state = const AsyncData(DemoDataState(status: DemoDataStatus.loading));
     final db = ref.read(databaseProvider);
 

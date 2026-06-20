@@ -6,10 +6,11 @@ final netWorthProvider = StreamProvider<double>((ref) {
   final repo = ref.watch(accountRepoProvider);
 
   return repo.watchAll().map((accounts) {
+    final active = accounts.where((a) => !a.isArchived && !a.isHidden).toList();
     double assets = 0;
     double liabilities = 0;
 
-    for (final acc in accounts) {
+    for (final acc in active) {
       final type = acc.accountType;
       if (type == AccountType.creditCard ||
           type == AccountType.loan ||

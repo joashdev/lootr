@@ -10,6 +10,7 @@ class SyncMetadataRepo {
   static const keyLastSyncStatus = 'last_sync_status';
   static const keyLastSyncError = 'last_sync_error';
   static const keySyncFailedCount = 'sync_failed_count';
+  static const keySyncPendingCount = 'sync_pending_count';
 
   Future<String?> get(String key) async {
     final rows = await (_db.select(_db.syncMetadata)

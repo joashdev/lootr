@@ -6,7 +6,12 @@ class UndoStackNotifier extends Notifier<List<UndoEntry>> {
   Timer? _expiryTimer;
 
   @override
-  List<UndoEntry> build() => [];
+  List<UndoEntry> build() {
+    ref.onDispose(() {
+      _expiryTimer?.cancel();
+    });
+    return [];
+  }
 
   void push(UndoEntry entry) {
     if (state.isNotEmpty) {

@@ -9,6 +9,7 @@ class SyncTriggers {
 
   Timer? _periodicTimer;
   Timer? _postMutationTimer;
+  Timer? _connectivityTimer;
   DateTime? _lastSyncTime;
   StreamSubscription<bool>? _connectivitySubscription;
   bool _disposed = false;
@@ -28,12 +29,17 @@ class SyncTriggers {
 
     _connectivitySubscription = _connectivityMonitor.onlineStream.listen((online) {
       if (online && !_disposed) {
-        Future.delayed(const Duration(seconds: 5), () {
+        _connectivityTimer?.cancel();
+        _connectivityTimer = Timer(const Duration(seconds: 5), () {
           if (!_disposed) {
             _syncManager.sync();
           }
         });
       }
+    });
+
+    _syncManager.onSyncComplete.listen((_) {
+      _lastSyncTime = DateTime.now();
     });
   }
 
@@ -81,6 +87,7 @@ class SyncTriggers {
     _disposed = true;
     _periodicTimer?.cancel();
     _postMutationTimer?.cancel();
+    _connectivityTimer?.cancel();
     _connectivitySubscription?.cancel();
   }
 }

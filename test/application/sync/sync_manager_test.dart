@@ -77,7 +77,6 @@ void main() {
         db: db,
         syncMetadataRepo: syncMetadataRepo,
         httpClient: FakeSyncHttpClient(),
-        baseUrl: 'https://api.test/v1',
         connectivityMonitor: FakeOnlineMonitor(),
       );
 
@@ -93,7 +92,6 @@ void main() {
         db: db,
         syncMetadataRepo: syncMetadataRepo,
         httpClient: FakeSyncHttpClient(),
-        baseUrl: 'https://api.test/v1',
         connectivityMonitor: FakeOnlineMonitor(isOnlineResult: false),
       );
 
@@ -139,7 +137,6 @@ void main() {
         db: db,
         syncMetadataRepo: syncMetadataRepo,
         httpClient: httpClient,
-        baseUrl: 'https://api.test/v1',
         connectivityMonitor: FakeOnlineMonitor(),
       );
 
@@ -185,7 +182,6 @@ void main() {
         db: db,
         syncMetadataRepo: syncMetadataRepo,
         httpClient: httpClient,
-        baseUrl: 'https://api.test/v1',
         connectivityMonitor: FakeOnlineMonitor(),
       );
 
@@ -216,7 +212,6 @@ void main() {
         db: db,
         syncMetadataRepo: syncMetadataRepo,
         httpClient: httpClient,
-        baseUrl: 'https://api.test/v1',
         connectivityMonitor: FakeOnlineMonitor(),
       );
 
@@ -270,7 +265,6 @@ void main() {
         db: db,
         syncMetadataRepo: syncMetadataRepo,
         httpClient: httpClient,
-        baseUrl: 'https://api.test/v1',
         connectivityMonitor: FakeOnlineMonitor(),
       );
 
@@ -313,7 +307,6 @@ void main() {
             };
           },
         ),
-        baseUrl: 'https://api.test/v1',
         connectivityMonitor: FakeOnlineMonitor(),
       );
 

@@ -20,7 +20,6 @@ class PushClient {
   PushClient({
     required AppDatabase db,
     required SyncHttpClient httpClient,
-    required String baseUrl,
     required SyncMetadataRepo syncMetadataRepo,
   })  : _db = db,
         _httpClient = httpClient,
@@ -84,7 +83,7 @@ class PushClient {
       final query = '''
         SELECT $columns
         FROM ${table.name}
-        WHERE sync_status IN ('local_only', 'pending_sync', 'sync_failed')
+        WHERE sync_status IN ('local_only', 'pending_sync')
           AND deleted_at IS NULL
       ''';
       final rows = await _db.customSelect(query).get();
@@ -146,8 +145,9 @@ class PushClient {
 
       for (final recordResult in tableResults) {
         final record = recordResult as Map<String, dynamic>;
-        final id = record['id'] as String;
-        final status = record['status'] as String;
+        final id = record['id'];
+        final status = record['status'];
+        if (id is! String || status is! String) continue;
 
         switch (status) {
           case 'applied':
@@ -168,7 +168,23 @@ class PushClient {
           case 'conflict':
             final serverRecord = record['server_record'] as Map<String, dynamic>?;
             if (serverRecord != null) {
-              await _replaceWithServerRecord(tableName, serverRecord);
+              final localRecord = await _getLocalRecord(tableName, id);
+              final serverUpdatedAt = _parseDateTime(serverRecord['updated_at']);
+              final localUpdatedAt = _parseDateTime(localRecord?['updated_at']);
+
+              if (serverUpdatedAt != null &&
+                  (localUpdatedAt == null ||
+                      !serverUpdatedAt.isBefore(localUpdatedAt))) {
+                await _replaceWithServerRecord(tableName, serverRecord);
+              } else {
+                await _db.customUpdate(
+                  'UPDATE $tableName SET sync_status = ? WHERE id = ?',
+                  variables: [
+                    Variable.withString('synced'),
+                    Variable.withString(id),
+                  ],
+                );
+              }
             }
             break;
 
@@ -208,51 +224,53 @@ class PushClient {
         ? DateTime.parse(updatedAtStr.toString())
         : now;
 
-    final valuesList = <String>[];
+    final valueParts = <String>[];
+    final valueVars = <Variable<Object>>[];
+    final setParts = <String>[];
+    final setVars = <Variable<Object>>[];
+
     for (final col in columns) {
       if (col == 'sync_status') {
-        valuesList.add("'synced'");
+        valueParts.add('?');
+        valueVars.add(Variable.withString('synced'));
+        setParts.add("$col = ?");
+        setVars.add(Variable.withString('synced'));
       } else if (col == 'last_synced_at') {
-        valuesList.add("'${lastSyncedAt.toUtc().toIso8601String()}'");
+        valueParts.add('?');
+        valueVars.add(Variable.withDateTime(lastSyncedAt.toUtc()));
+        setParts.add("$col = ?");
+        setVars.add(Variable.withDateTime(lastSyncedAt.toUtc()));
       } else {
         final val = serverRecord[col];
-        valuesList.add(_toSqlLiteral(val));
+        if (val == null) {
+          valueParts.add('NULL');
+          if (col != 'id') setParts.add("$col = NULL");
+        } else {
+          valueParts.add('?');
+          valueVars.add(_variableFor(val));
+          if (col != 'id') {
+            setParts.add("$col = ?");
+            setVars.add(_variableFor(val));
+          }
+        }
       }
     }
 
-    final setClauses = <String>[];
-    for (final col in columns) {
-      if (col == 'id') continue;
-      if (col == 'sync_status') {
-        setClauses.add("$col = 'synced'");
-      } else if (col == 'last_synced_at') {
-        setClauses.add("$col = '${lastSyncedAt.toUtc().toIso8601String()}'");
-      } else {
-        final val = serverRecord[col];
-        setClauses.add("$col = ${_toSqlLiteral(val)}");
-      }
-    }
+    final sql =
+        'INSERT INTO $tableName (${columns.join(', ')}) '
+        'VALUES (${valueParts.join(', ')}) '
+        'ON CONFLICT(id) DO UPDATE SET ${setParts.join(', ')}';
 
-    final sql = '''
-      INSERT INTO $tableName (${columns.join(', ')})
-      VALUES (${valuesList.join(', ')})
-      ON CONFLICT(id) DO UPDATE SET ${setClauses.join(', ')}
-    ''';
-
-    await _db.customStatement(sql);
+    await _db.customUpdate(
+        sql, variables: [...valueVars, ...setVars]);
   }
 
-  String _toSqlLiteral(dynamic value) {
-    if (value == null) return 'NULL';
-    if (value is int) return value.toString();
-    if (value is double) return value.toString();
-    if (value is bool) return value ? '1' : '0';
-    if (value is String) {
-      final escaped = value.replaceAll("'", "''");
-      return "'$escaped'";
-    }
-    final escaped = value.toString().replaceAll("'", "''");
-    return "'$escaped'";
+  Variable<Object> _variableFor(dynamic value) {
+    if (value is int) return Variable.withInt(value);
+    if (value is double) return Variable.withReal(value);
+    if (value is bool) return Variable.withInt(value ? 1 : 0);
+    if (value is DateTime) return Variable.withDateTime(value);
+    return Variable.withString(value.toString());
   }
 
   Future<void> _markAllPushedAsFailed(
@@ -271,5 +289,27 @@ class PushClient {
         );
       }
     }
+  }
+
+  Future<Map<String, dynamic>?> _getLocalRecord(
+      String tableName, String id) async {
+    try {
+      final query = 'SELECT * FROM $tableName WHERE id = ? LIMIT 1';
+      final rows = await _db
+          .customSelect(query, variables: [Variable.withString(id)])
+          .get();
+      if (rows.isEmpty) return null;
+      return rows.first.data;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    if (value is int) return DateTime.fromMillisecondsSinceEpoch(value);
+    if (value is String) return DateTime.tryParse(value);
+    return null;
   }
 }

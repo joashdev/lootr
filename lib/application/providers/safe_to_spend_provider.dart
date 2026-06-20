@@ -8,9 +8,10 @@ final safeToSpendProvider = StreamProvider<double>((ref) {
   final recurringRepo = ref.watch(recurringRepoProvider);
 
   return accountRepo.watchAll().asyncMap((accounts) async {
+    final active = accounts.where((a) => !a.isArchived && !a.isHidden).toList();
     double committedExpenses = 0;
 
-    for (final acc in accounts) {
+    for (final acc in active) {
       if (acc.accountType == AccountType.creditCard ||
           acc.accountType == AccountType.loan ||
           acc.accountType == AccountType.bnpl) {
@@ -35,7 +36,7 @@ final safeToSpendProvider = StreamProvider<double>((ref) {
       }
     }
 
-    final totalIncome = accounts
+    final totalIncome = active
         .where((a) =>
             a.accountType == AccountType.cash ||
             a.accountType == AccountType.bank ||

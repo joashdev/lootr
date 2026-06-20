@@ -93,7 +93,6 @@ void main() {
       pullClient = PullClient(
         db: db,
         httpClient: httpClient,
-        baseUrl: 'https://api.test/v1',
         syncMetadataRepo: syncMetadataRepo,
         conflictApplier: conflictApplier,
       );
@@ -148,7 +147,6 @@ void main() {
       pullClient = PullClient(
         db: db,
         httpClient: httpClient,
-        baseUrl: 'https://api.test/v1',
         syncMetadataRepo: syncMetadataRepo,
         conflictApplier: conflictApplier,
       );
@@ -216,7 +214,6 @@ void main() {
       pullClient = PullClient(
         db: db,
         httpClient: httpClient,
-        baseUrl: 'https://api.test/v1',
         syncMetadataRepo: syncMetadataRepo,
         conflictApplier: conflictApplier,
       );
@@ -313,7 +310,6 @@ void main() {
       pullClient = PullClient(
         db: db,
         httpClient: httpClient,
-        baseUrl: 'https://api.test/v1',
         syncMetadataRepo: syncMetadataRepo,
         conflictApplier: conflictApplier,
       );
@@ -373,7 +369,6 @@ void main() {
       pullClient = PullClient(
         db: db,
         httpClient: httpClient,
-        baseUrl: 'https://api.test/v1',
         syncMetadataRepo: syncMetadataRepo,
         conflictApplier: conflictApplier,
       );
@@ -422,7 +417,6 @@ void main() {
       pullClient = PullClient(
         db: db,
         httpClient: httpClient,
-        baseUrl: 'https://api.test/v1',
         syncMetadataRepo: syncMetadataRepo,
         conflictApplier: conflictApplier,
       );
@@ -451,7 +445,6 @@ void main() {
       pullClient = PullClient(
         db: db,
         httpClient: httpClient,
-        baseUrl: 'https://api.test/v1',
         syncMetadataRepo: syncMetadataRepo,
         conflictApplier: conflictApplier,
       );

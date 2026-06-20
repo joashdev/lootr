@@ -77,7 +77,6 @@ void main() {
       pushClient = PushClient(
         db: db,
         httpClient: httpClient,
-        baseUrl: 'https://api.test/v1',
         syncMetadataRepo: syncMetadataRepo,
       );
 
@@ -111,7 +110,6 @@ void main() {
       pushClient = PushClient(
         db: db,
         httpClient: httpClient,
-        baseUrl: 'https://api.test/v1',
         syncMetadataRepo: syncMetadataRepo,
       );
 
@@ -148,7 +146,6 @@ void main() {
       pushClient = PushClient(
         db: db,
         httpClient: httpClient,
-        baseUrl: 'https://api.test/v1',
         syncMetadataRepo: syncMetadataRepo,
       );
 
@@ -208,7 +205,6 @@ void main() {
       pushClient = PushClient(
         db: db,
         httpClient: httpClient,
-        baseUrl: 'https://api.test/v1',
         syncMetadataRepo: syncMetadataRepo,
       );
 
@@ -259,7 +255,6 @@ void main() {
       pushClient = PushClient(
         db: db,
         httpClient: httpClient,
-        baseUrl: 'https://api.test/v1',
         syncMetadataRepo: syncMetadataRepo,
       );
 
@@ -293,7 +288,6 @@ void main() {
       pushClient = PushClient(
         db: db,
         httpClient: httpClient,
-        baseUrl: 'https://api.test/v1',
         syncMetadataRepo: syncMetadataRepo,
       );
 
@@ -330,7 +324,6 @@ void main() {
       pushClient = PushClient(
         db: db,
         httpClient: httpClient,
-        baseUrl: 'https://api.test/v1',
         syncMetadataRepo: syncMetadataRepo,
       );
 

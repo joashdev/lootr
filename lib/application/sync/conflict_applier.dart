@@ -3,12 +3,4 @@ class ConflictApplier {
     if (localUpdatedAt == null) return true;
     return !serverUpdatedAt.isBefore(localUpdatedAt);
   }
-
-  bool shouldApplyServerRecord(
-    DateTime serverUpdatedAt,
-    DateTime? localUpdatedAt,
-  ) {
-    if (localUpdatedAt == null) return true;
-    return !serverUpdatedAt.isBefore(localUpdatedAt);
-  }
 }

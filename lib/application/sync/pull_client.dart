@@ -27,7 +27,6 @@ class PullClient {
   PullClient({
     required AppDatabase db,
     required SyncHttpClient httpClient,
-    required String baseUrl,
     required SyncMetadataRepo syncMetadataRepo,
     required ConflictApplier conflictApplier,
   })  : _db = db,
@@ -91,14 +90,13 @@ class PullClient {
         if (cursor == null) break;
       }
 
-      if (serverTime != null) {
-        await _syncMetadataRepo.set(
-          SyncMetadataRepo.keyLastSyncedAt,
-          serverTime.toUtc().toIso8601String(),
-        );
-      }
+      final effectiveServerTime = serverTime ?? DateTime.now().toUtc();
+      await _syncMetadataRepo.set(
+        SyncMetadataRepo.keyLastSyncedAt,
+        effectiveServerTime.toUtc().toIso8601String(),
+      );
 
-      return PullResult(success: true, newLastSyncedAt: serverTime);
+      return PullResult(success: true, newLastSyncedAt: effectiveServerTime);
     } catch (e) {
       return PullResult(success: false, error: e.toString());
     }
@@ -121,7 +119,7 @@ class PullClient {
 
     final localUpdatedAt = _parseDateTime(existing['updated_at']);
 
-    if (_conflictApplier.shouldApplyServerRecord(
+    if (_conflictApplier.serverWins(
         serverUpdatedAt, localUpdatedAt)) {
       final serverDeletedAt = serverRecord['deleted_at'] as String?;
       if (serverDeletedAt != null) {
@@ -135,16 +133,12 @@ class PullClient {
 
   Future<Map<String, dynamic>?> _getLocalRecord(
       String tableName, String id) async {
-    try {
-      final query = 'SELECT * FROM $tableName WHERE id = ? LIMIT 1';
-      final rows = await _db
-          .customSelect(query, variables: [Variable.withString(id)])
-          .get();
-      if (rows.isEmpty) return null;
-      return rows.first.data;
-    } catch (_) {
-      return null;
-    }
+    final query = 'SELECT * FROM $tableName WHERE id = ? LIMIT 1';
+    final rows = await _db
+        .customSelect(query, variables: [Variable.withString(id)])
+        .get();
+    if (rows.isEmpty) return null;
+    return rows.first.data;
   }
 
   Future<void> _insertRecord(
@@ -159,17 +153,43 @@ class PullClient {
     if (def == null) return;
 
     final columns = [...def.dataColumns, 'sync_status', 'last_synced_at'];
-    final valuesList = columns.map((col) {
-      if (col == 'sync_status') return "'synced'";
-      if (col == 'last_synced_at') {
-        return "'${serverUpdatedAt.toUtc().toIso8601String()}'";
+    final valueParts = <String>[];
+    final valueVars = <Variable<Object>>[];
+    final setParts = <String>[];
+    final setVars = <Variable<Object>>[];
+
+    for (final col in columns) {
+      if (col == 'sync_status') {
+        valueParts.add('?');
+        valueVars.add(Variable.withString('synced'));
+        setParts.add("$col = ?");
+        setVars.add(Variable.withString('synced'));
+      } else if (col == 'last_synced_at') {
+        valueParts.add('?');
+        valueVars.add(Variable.withDateTime(serverUpdatedAt.toUtc()));
+        setParts.add("$col = ?");
+        setVars.add(Variable.withDateTime(serverUpdatedAt.toUtc()));
+      } else {
+        final val = serverRecord[col];
+        if (val == null) {
+          valueParts.add('NULL');
+          if (col != 'id') setParts.add("$col = NULL");
+        } else {
+          valueParts.add('?');
+          valueVars.add(_variableFor(val));
+          if (col != 'id') {
+            setParts.add("$col = ?");
+            setVars.add(_variableFor(val));
+          }
+        }
       }
-      return _toSqlLiteral(serverRecord[col]);
-    }).join(', ');
+    }
 
     final sql =
-        'INSERT INTO $tableName (${columns.join(', ')}) VALUES ($valuesList)';
-    await _db.customStatement(sql);
+        'INSERT INTO $tableName (${columns.join(', ')}) VALUES (${valueParts.join(', ')}) '
+        'ON CONFLICT(id) DO UPDATE SET ${setParts.join(', ')}';
+    await _db.customUpdate(
+        sql, variables: [...valueVars, ...setVars]);
   }
 
   Future<void> _updateRecord(
@@ -177,19 +197,28 @@ class PullClient {
     Map<String, dynamic> serverRecord,
     DateTime serverUpdatedAt,
   ) async {
-    final id = serverRecord['id'] as String;
-    final updates = <String>[];
+    final id = serverRecord['id'];
+    final setClauses = <String>[];
+    final variables = <Variable<Object>>[];
+
     for (final entry in serverRecord.entries) {
       if (entry.key == 'id') continue;
-      updates.add("${entry.key} = ${_toSqlLiteral(entry.value)}");
+      if (entry.value == null) {
+        setClauses.add("${entry.key} = NULL");
+      } else {
+        setClauses.add("${entry.key} = ?");
+        variables.add(_variableFor(entry.value));
+      }
     }
-    updates.add("sync_status = 'synced'");
-    updates.add(
-        "last_synced_at = '${serverUpdatedAt.toUtc().toIso8601String()}'");
+    setClauses.add("sync_status = ?");
+    variables.add(Variable.withString('synced'));
+    setClauses.add("last_synced_at = ?");
+    variables.add(Variable.withDateTime(serverUpdatedAt.toUtc()));
 
     final sql =
-        'UPDATE $tableName SET ${updates.join(', ')} WHERE id = ${_toSqlLiteral(id)}';
-    await _db.customStatement(sql);
+        'UPDATE $tableName SET ${setClauses.join(', ')} WHERE id = ?';
+    variables.add(_variableFor(id));
+    await _db.customUpdate(sql, variables: variables);
   }
 
   Future<void> _softDeleteLocal(
@@ -216,16 +245,11 @@ class PullClient {
     return null;
   }
 
-  String _toSqlLiteral(dynamic value) {
-    if (value == null) return 'NULL';
-    if (value is int) return value.toString();
-    if (value is double) return value.toString();
-    if (value is bool) return value ? '1' : '0';
-    if (value is String) {
-      final escaped = value.replaceAll("'", "''");
-      return "'$escaped'";
-    }
-    final escaped = value.toString().replaceAll("'", "''");
-    return "'$escaped'";
+  Variable<Object> _variableFor(dynamic value) {
+    if (value is int) return Variable.withInt(value);
+    if (value is double) return Variable.withReal(value);
+    if (value is bool) return Variable.withInt(value ? 1 : 0);
+    if (value is DateTime) return Variable.withDateTime(value);
+    return Variable.withString(value.toString());
   }
 }

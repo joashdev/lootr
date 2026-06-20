@@ -18,6 +18,7 @@ class SyncManager {
 
   bool _syncInProgress = false;
   bool _pendingSync = false;
+  bool _disposed = false;
   final StreamController<void> _syncCompleteController =
       StreamController<void>.broadcast();
 
@@ -33,7 +34,6 @@ class SyncManager {
     required AppDatabase db,
     required SyncMetadataRepo syncMetadataRepo,
     required SyncHttpClient httpClient,
-    required String baseUrl,
     required ConnectivityMonitor connectivityMonitor,
     String? accessToken,
     String? Function()? onTokenExpired,
@@ -48,13 +48,11 @@ class SyncManager {
         _pushClient = PushClient(
           db: db,
           httpClient: httpClient,
-          baseUrl: baseUrl,
           syncMetadataRepo: syncMetadataRepo,
         ),
         _pullClient = PullClient(
           db: db,
           httpClient: httpClient,
-          baseUrl: baseUrl,
           syncMetadataRepo: syncMetadataRepo,
           conflictApplier: conflictApplier ?? ConflictApplier(),
         );
@@ -66,6 +64,7 @@ class SyncManager {
     String? Function()? onTokenExpired,
     Future<String?> Function()? onTokenExpiredAsync,
   }) async {
+    if (_disposed) return;
     final token = accessToken ?? _storedAccessToken;
     if (!_acquireLock()) return;
 
@@ -88,7 +87,8 @@ class SyncManager {
         return;
       }
 
-      final pushResult = await _pushClient.push(accessToken: token);
+      var effectiveToken = token;
+      final pushResult = await _pushClient.push(accessToken: effectiveToken);
       if (!pushResult.success) {
         await _syncMetadataRepo.set(
             SyncMetadataRepo.keyLastSyncStatus, 'failed');
@@ -108,7 +108,8 @@ class SyncManager {
             newToken = _onTokenExpiredSync!();
           }
           if (newToken != null) {
-            final retryPush = await _pushClient.push(accessToken: newToken);
+            effectiveToken = newToken;
+            final retryPush = await _pushClient.push(accessToken: effectiveToken);
             if (!retryPush.success) {
               await _scheduleRetry();
               return;
@@ -123,7 +124,7 @@ class SyncManager {
         }
       }
 
-      final pullResult = await _pullClient.pull(accessToken: token);
+      final pullResult = await _pullClient.pull(accessToken: effectiveToken);
       if (!pullResult.success) {
         await _syncMetadataRepo.set(
             SyncMetadataRepo.keyLastSyncStatus, 'partial');
@@ -134,12 +135,9 @@ class SyncManager {
 
       await _postSyncHooks();
 
-      await _updateSyncMetadata(true);
-
       _retryDelay = 30;
 
-      await _syncMetadataRepo.set(
-          SyncMetadataRepo.keyLastSyncStatus, 'success');
+      await _updateSyncMetadata(true);
     } catch (e) {
       await _syncMetadataRepo.set(
           SyncMetadataRepo.keyLastSyncStatus, 'failed');
@@ -163,7 +161,7 @@ class SyncManager {
 
   void _releaseLock() {
     _syncInProgress = false;
-    if (_pendingSync) {
+    if (_pendingSync && !_disposed) {
       _pendingSync = false;
       scheduleMicrotask(() => sync());
     }
@@ -171,34 +169,44 @@ class SyncManager {
 
   Future<void> _postSyncHooks() async {
     try {
-      await _countSyncFailedRecords();
+      await _countSyncRecords();
     } catch (_) {}
   }
 
-  Future<void> _countSyncFailedRecords() async {
-    int count = 0;
+  Future<void> _countSyncRecords() async {
+    int failedCount = 0;
+    int pendingCount = 0;
     for (final tableName in syncableTableNames) {
-      final query =
+      final failedQuery =
           "SELECT COUNT(*) as cnt FROM $tableName WHERE sync_status = 'sync_failed'";
-      final rows = await _db.customSelect(query).get();
-      if (rows.isNotEmpty) {
-        final cnt = rows.first.data['cnt'];
-        if (cnt is int) {
-          count += cnt;
-        } else if (cnt is String) {
-          count += int.tryParse(cnt) ?? 0;
-        } else if (cnt is double) {
-          count += cnt.toInt();
-        }
+      final failedRows = await _db.customSelect(failedQuery).get();
+      if (failedRows.isNotEmpty) {
+        failedCount += _parseCount(failedRows.first.data['cnt']);
+      }
+
+      final pendingQuery =
+          "SELECT COUNT(*) as cnt FROM $tableName WHERE sync_status IN ('pending_sync', 'local_only')";
+      final pendingRows = await _db.customSelect(pendingQuery).get();
+      if (pendingRows.isNotEmpty) {
+        pendingCount += _parseCount(pendingRows.first.data['cnt']);
       }
     }
     await _syncMetadataRepo.set(
-        SyncMetadataRepo.keySyncFailedCount, count.toString());
+        SyncMetadataRepo.keySyncFailedCount, failedCount.toString());
+    await _syncMetadataRepo.set(
+        SyncMetadataRepo.keySyncPendingCount, pendingCount.toString());
+  }
+
+  int _parseCount(dynamic cnt) {
+    if (cnt is int) return cnt;
+    if (cnt is String) return int.tryParse(cnt) ?? 0;
+    if (cnt is double) return cnt.toInt();
+    return 0;
   }
 
   Future<void> _updateSyncMetadata(bool success) async {
     try {
-      await _countSyncFailedRecords();
+      await _countSyncRecords();
 
       if (success) {
         final failedCount =
@@ -207,23 +215,28 @@ class SyncManager {
           if (int.parse(failedCount) > 0) {
             await _syncMetadataRepo.set(
                 SyncMetadataRepo.keyLastSyncStatus, 'partial');
+            return;
           }
         }
+        await _syncMetadataRepo.set(
+            SyncMetadataRepo.keyLastSyncStatus, 'success');
       }
     } catch (_) {}
   }
 
   Future<void> _scheduleRetry() async {
+    if (_disposed) return;
     _retryTimer?.cancel();
     final delay = _retryDelay;
     _retryDelay = (_retryDelay * 2).clamp(30, _maxRetryDelay);
 
     _retryTimer = Timer(Duration(seconds: delay), () {
-      sync();
+      if (!_disposed) sync();
     });
   }
 
   Future<void> dispose() async {
+    _disposed = true;
     _retryTimer?.cancel();
     await _syncCompleteController.close();
   }
