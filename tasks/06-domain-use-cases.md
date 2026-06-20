@@ -1,6 +1,6 @@
 # Task 06 — Domain Layer — Use Cases
 
-**Status:** [ ]
+**Status:** [x]
 
 ---
 
@@ -59,16 +59,16 @@ class Failure<T> extends Result<T> { final String message; final String? code; }
 
 ## Acceptance Criteria
 
-- [ ] All use cases are pure Dart (no Flutter, no Drift imports)
-- [ ] Use cases receive repositories via constructor injection (interfaces)
-- [ ] All errors return `Failure` with descriptive `message` + machine-readable `code`
-- [ ] `AddTransaction` validates amount > 0 before calling repo
-- [ ] `CreateTransfer` validates source_account != destination_account
-- [ ] `RecalcBalance` returns correct sum from transaction history
-- [ ] `ParseNL` correctly extracts "mcdo 250 gcash" → amount=250, payee=mcdo, account=gcash
-- [ ] `ParseNL` works with currency symbols (₱, $) and abbreviations (k, m)
-- [ ] `AdvanceRecurring` creates a transaction AND advances next_occurrence_at atomically
-- [ ] All use cases pass unit tests with mocked repositories
+- [x] All use cases are pure Dart (no Flutter, no Drift imports)
+- [x] Use cases receive repositories via constructor injection (interfaces)
+- [x] All errors return `Failure` with descriptive `message` + machine-readable `code`
+- [x] `AddTransaction` validates amount > 0 before calling repo
+- [x] `CreateTransfer` validates source_account != destination_account
+- [x] `RecalcBalance` returns correct sum from transaction history
+- [x] `ParseNL` correctly extracts "mcdo 250 gcash" → amount=250, payee=mcdo, account=gcash
+- [x] `ParseNL` works with currency symbols (₱, $) and abbreviations (k, m)
+- [x] `AdvanceRecurring` creates a transaction AND advances next_occurrence_at atomically
+- [x] All use cases pass unit tests with mocked repositories
 
 ## Files Likely Affected
 

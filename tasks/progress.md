@@ -2,6 +2,13 @@
 
 ---
 
+## 2026-06-19 — Task 06 Complete
+
+**Task:** 06 — Domain Layer — Use Cases ✅
+**Summary:** All 14 use cases implemented: AddTransaction, EditTransaction, DeleteTransaction, CreateTransfer, RecalcBalance, AddBudget, UpdateBudgetProgress, AddGoal, ContributeToGoal, SettleDebt, CreateRecurring, AdvanceRecurring, ParseNL, RunOCR. Result sealed class, ParsedTransaction and OcrPayload value objects. 75 unit tests pass with mocktail-mocked repositories. Barrel file at use_cases.dart.
+
+---
+
 ## 2026-06-18 — Task 01 Complete
 
 **Task:** 01 — Project Setup & Scaffolding ✅
@@ -36,7 +43,7 @@
 | 03 — Data Layer — Drift Schema & Database | ✅ Done | 2026-06-19 |
 | 04 — Data Layer — Repositories | ✅ Done | 2026-06-19 |
 | 05 — Domain Layer — Entities & Value Objects | ✅ Done | 2026-06-19 |
-| 06 — Domain Layer — Use Cases | [ ] Pending | — |
+| 06 — Domain Layer — Use Cases | ✅ Done | 2026-06-19 |
 | 07 — Application Layer — Riverpod Providers | [ ] Pending | — |
 | 08 — Application Layer — Sync Engine | [ ] Pending | — |
 | 09 — Application Layer — AI Layer | [ ] Pending | — |
