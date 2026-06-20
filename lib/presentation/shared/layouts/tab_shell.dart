@@ -34,6 +34,7 @@ class TabShell extends StatelessWidget {
 
   Widget _buildFloatingNav(BuildContext context, bool isDark) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Expanded(child: _buildNavPill(context, isDark)),
         const SizedBox(width: 8),
@@ -74,14 +75,14 @@ class TabShell extends StatelessWidget {
             children: [
               _NavTab(
                 icon: LucideIcons.home,
-                label: 'Dashboard',
+                label: 'Home',
                 isActive: navigationShell.currentIndex == 0,
                 onTap: () => navigationShell.goBranch(0),
                 isDark: isDark,
               ),
               _NavTab(
-                icon: LucideIcons.list,
-                label: 'Transactions',
+                  icon: LucideIcons.receiptText,
+                  label: 'Transactions',
                 isActive: navigationShell.currentIndex == 1,
                 onTap: () => navigationShell.goBranch(1),
                 isDark: isDark,
@@ -193,11 +194,12 @@ class _NavTab extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 label,
+                maxLines: 1,
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 10,
                   fontWeight: fontWeight,
                   color: color,
-                  height: 1.4,
+                  height: 1.3,
                 ),
               ),
             ],

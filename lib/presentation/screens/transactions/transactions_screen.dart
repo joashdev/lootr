@@ -9,6 +9,7 @@ class TransactionsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        centerTitle: false,
         title: const Text('Transactions'),
         actions: [
           IconButton(

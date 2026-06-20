@@ -9,6 +9,7 @@ class BudgetsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        centerTitle: false,
         title: const Text('Budgets'),
         actions: [
           IconButton(

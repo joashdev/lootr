@@ -9,7 +9,8 @@ class DashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dashboard'),
+        centerTitle: false,
+        title: const Text('Home'),
         actions: [
           IconButton(
             icon: Icon(LucideIcons.cloudCheck),
