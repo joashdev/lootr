@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 
 class TransactionsScreen extends StatelessWidget {
@@ -12,11 +12,11 @@ class TransactionsScreen extends StatelessWidget {
         title: const Text('Transactions'),
         actions: [
           IconButton(
-            icon: const Icon(PhosphorIconsRegular.slidersHorizontal),
+            icon: Icon(LucideIcons.slidersHorizontal),
             onPressed: () {},
           ),
           IconButton(
-            icon: const Icon(PhosphorIconsRegular.magnifyingGlass),
+            icon: Icon(LucideIcons.search),
             onPressed: () {},
           ),
         ],

@@ -38,8 +38,7 @@ dependencies:
   drift_flutter: 0.3.0
   path_provider: 2.1.6
 
-  phosphor_flutter:
-    path: packages/phosphor_flutter
+  lucide_icons_flutter: ^3.1.14
 
   intl: 0.20.2
 

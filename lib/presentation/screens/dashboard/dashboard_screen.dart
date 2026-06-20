@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 
 class DashboardScreen extends StatelessWidget {
@@ -12,11 +12,11 @@ class DashboardScreen extends StatelessWidget {
         title: const Text('Dashboard'),
         actions: [
           IconButton(
-            icon: const Icon(PhosphorIconsRegular.cloudCheck),
+            icon: Icon(LucideIcons.cloudCheck),
             onPressed: () {},
           ),
           IconButton(
-            icon: const Icon(PhosphorIconsRegular.magnifyingGlass),
+            icon: Icon(LucideIcons.search),
             onPressed: () {},
           ),
         ],
