@@ -90,6 +90,7 @@ class SafeToSpendHero extends ConsumerWidget {
   void _showBreakdown(BuildContext context, double safeToSpend) {
     showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(18)),

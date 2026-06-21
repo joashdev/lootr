@@ -65,6 +65,7 @@ Future<void> _showSheet({
 }) {
   return showModalBottomSheet<void>(
     context: context,
+    useRootNavigator: true,
     isScrollControlled: true,
     showDragHandle: true,
     builder: (sheetContext) {

@@ -118,6 +118,45 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             '/more/debts/${state.pathParameters['debtId']}',
       ),
 
+      // Modal / sheet routes (outside ShellRoute).
+      // Declared BEFORE the shell so the literal '/transactions/new' is
+      // matched ahead of the shell's '/transactions/:id' detail route
+      // (go_router matches in declaration order), and so these full-screen
+      // modals mount on the root navigator above the tab shell.
+      GoRoute(
+        path: '/transactions/new',
+        pageBuilder: (context, state) {
+          final extra = state.extra;
+          final args =
+              extra is AddTransactionSheetArgs ? extra : null;
+          final tx = extra is Transaction
+              ? extra
+              : args?.initialTransaction;
+          final transfer = extra is Transfer
+              ? extra
+              : args?.initialTransfer;
+          return _sheetPage(
+            AddTransactionSheet(
+              initialTransaction: tx,
+              initialTransfer: transfer,
+              startInQuickMode: args?.startInQuickMode ?? false,
+              initialParsedTransaction: args?.initialParsedTransaction,
+            ),
+            key: state.pageKey,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/scan',
+        pageBuilder: (context, state) =>
+            _pushPage(const OcrScanScreen(), key: state.pageKey),
+      ),
+      GoRoute(
+        path: '/onboarding',
+        pageBuilder: (context, state) =>
+            _pushPage(const OnboardingScreen(), key: state.pageKey),
+      ),
+
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
             TabShell(navigationShell: navigationShell),
@@ -364,43 +403,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ],
           ),
         ],
-      ),
-
-      // Modal / sheet routes (outside ShellRoute)
-      GoRoute(
-        path: '/transactions/new',
-        pageBuilder: (context, state) {
-          final extra = state.extra;
-          final args =
-              extra is AddTransactionSheetArgs ? extra : null;
-          final tx = extra is Transaction
-              ? extra
-              : args?.initialTransaction;
-          final transfer = extra is Transfer
-              ? extra
-              : args?.initialTransfer;
-          return _sheetPage(
-            AddTransactionSheet(
-              initialTransaction: tx,
-              initialTransfer: transfer,
-              startInQuickMode: args?.startInQuickMode ?? false,
-              initialParsedTransaction: args?.initialParsedTransaction,
-            ),
-            key: state.pageKey,
-          );
-        },
-      ),
-      GoRoute(
-        path: '/scan',
-        pageBuilder: (context, state) =>
-            _pushPage(const OcrScanScreen(), key: state.pageKey),
-      ),
-
-      // Onboarding
-      GoRoute(
-        path: '/onboarding',
-        pageBuilder: (context, state) =>
-            _pushPage(const OnboardingScreen(), key: state.pageKey),
       ),
     ],
   );

@@ -139,6 +139,7 @@ class TabShell extends StatelessWidget {
   void _showQuickActions(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(

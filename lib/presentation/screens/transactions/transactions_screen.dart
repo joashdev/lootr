@@ -205,6 +205,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   void _openFilterSheet() {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       useSafeArea: true,
       backgroundColor: Theme.of(context).colorScheme.surface,

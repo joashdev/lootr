@@ -295,6 +295,7 @@ class BudgetDetailScreen extends ConsumerWidget {
   void _showEditSheet(BuildContext context, Budget budget) {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
