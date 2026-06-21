@@ -2,6 +2,13 @@
 
 ---
 
+## 2026-06-21 — Task 14 Complete
+
+**Task:** 14 — Presentation — More Tab & Settings ✅
+**Summary:** Completed the More tab hub and pushed More flows with working create/detail actions across accounts, debts, goals, recurring items, categories, payees, households, and settings sub-screens. Replaced the household placeholder with data-backed list/detail/member management, added household providers/tests, preserved AI-gated Insights navigation, and fixed recurring edit hydration plus debt detail formatting. Regenerated Drift/JSON code with build_runner, repaired push conflict syncing so the suite verifies cleanly, and finished with `flutter test --no-pub` passing all 499 tests. `flutter analyze --no-pub --no-fatal-infos --no-fatal-warnings` reports no analyzer errors, though existing repo warnings/infos remain.
+
+---
+
 ## 2026-06-21 — Task 13 Complete
 
 **Task:** 13 — Presentation — Budgets Tab ✅
@@ -100,7 +107,7 @@
 | 11 — Presentation — Dashboard Tab | ✅ Done | 2026-06-21 |
 | 12 — Presentation — Transactions Tab | ✅ Done | 2026-06-21 |
 | 13 — Presentation — Budgets Tab | ✅ Done | 2026-06-21 |
-| 14 — Presentation — More Tab & Settings | [ ] Pending | — |
+| 14 — Presentation — More Tab & Settings | ✅ Done | 2026-06-21 |
 | 15 — Presentation — Add Transaction Sheet | [ ] Pending | — |
 | 16 — Presentation — Filter Sheet & Search | [ ] Pending | — |
 | 17 — Presentation — Onboarding | [ ] Pending | — |

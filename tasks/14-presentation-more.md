@@ -1,6 +1,6 @@
 # Task 14 — Presentation — More Tab & Settings
 
-**Status:** [ ]
+**Status:** [x]
 
 ---
 
@@ -111,21 +111,21 @@ Each item is a `ListTile`-style row: icon + label + chevron → navigates to res
 
 ## Acceptance Criteria
 
-- [ ] More screen shows 4 sections with correct items, navigates to each pushed screen
-- [ ] Accounts list — grouped by type, tap → detail, create sheet works
-- [ ] Account detail — shows balance + filtered transaction list
-- [ ] Debts list — grouped by status, debt direction shows "lent" vs "borrowed"
-- [ ] Debt detail — settle/partially-pay updates remaining balance correctly
-- [ ] Goals list — progress bars show correct %, tap → detail
-- [ ] Goal detail — contribution flow adds to currentAmount
-- [ ] Recurring list — sorted by next occurrence, status indicator
-- [ ] Recurring detail — generated transaction history visible
-- [ ] Reports hub — 5 report types listed, tap navigates to report
-- [ ] Categories — grouped by group, edit icon/color works
-- [ ] Payees — alphabetical, tap shows transactions
-- [ ] All settings sub-screens accessible from More → Settings
-- [ ] All routes resolve to correct screens
-- [ ] Empty states for all list screens
+- [x] More screen shows 4 sections with correct items, navigates to each pushed screen
+- [x] Accounts list — grouped by type, tap → detail, create sheet works
+- [x] Account detail — shows balance + filtered transaction list
+- [x] Debts list — grouped by status, debt direction shows "lent" vs "borrowed"
+- [x] Debt detail — settle/partially-pay updates remaining balance correctly
+- [x] Goals list — progress bars show correct %, tap → detail
+- [x] Goal detail — contribution flow adds to currentAmount
+- [x] Recurring list — sorted by next occurrence, status indicator
+- [x] Recurring detail — generated transaction history visible
+- [x] Reports hub — 5 report types listed, tap navigates to report
+- [x] Categories — grouped by group, edit icon/color works
+- [x] Payees — alphabetical, tap shows transactions
+- [x] All settings sub-screens accessible from More → Settings
+- [x] All routes resolve to correct screens
+- [x] Empty states for all list screens
 
 ## Files Likely Affected
 

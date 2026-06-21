@@ -10,8 +10,10 @@ import 'package:lootr/application/providers/debts_provider.dart';
 import 'package:lootr/application/providers/debt_detail_provider.dart';
 import 'package:lootr/application/providers/goals_provider.dart';
 import 'package:lootr/application/providers/goal_detail_provider.dart';
+import 'package:lootr/application/providers/households_provider.dart';
 import 'package:lootr/application/providers/recurring_provider.dart';
 import 'package:lootr/application/providers/more_tab_provider.dart';
+import 'package:lootr/application/providers/ai_settings_provider.dart';
 import 'package:lootr/application/providers/auth_provider.dart';
 import 'package:lootr/application/providers/onboarding_provider.dart';
 import 'package:lootr/application/providers/undo_stack_provider.dart';
@@ -414,14 +416,145 @@ void main() {
     });
   });
 
-  group('MoreTabProvider', () {
-    test('returns static sections', () {
+  group('HouseholdsProvider', () {
+    test('summarizes households with member counts', () async {
+      await db.users.insertOne(
+        UsersCompanion.insert(id: 'usr-1', displayName: const Value('Joash')),
+      );
+      await db.users.insertOne(
+        UsersCompanion.insert(id: 'usr-2', displayName: const Value('Casey')),
+      );
+      await db
+          .into(db.households)
+          .insert(
+            HouseholdsCompanion.insert(
+              id: 'hh-1',
+              name: 'Home Base',
+              createdByUserId: 'usr-1',
+            ),
+          );
+      await db
+          .into(db.householdMembers)
+          .insert(
+            HouseholdMembersCompanion.insert(
+              id: 'hm-1',
+              householdId: 'hh-1',
+              userId: 'usr-1',
+              role: 'owner',
+            ),
+          );
+      await db
+          .into(db.householdMembers)
+          .insert(
+            HouseholdMembersCompanion.insert(
+              id: 'hm-2',
+              householdId: 'hh-1',
+              userId: 'usr-2',
+              role: 'member',
+            ),
+          );
+
       final container = ProviderContainer(
         overrides: [databaseProvider.overrideWith((ref) => db)],
       );
       addTearDown(container.dispose);
+
+      final households = await readStream(householdsProvider, container);
+      expect(households, isNotNull);
+      expect(households!.single.household.name, 'Home Base');
+      expect(households.single.memberCount, 2);
+      expect(households.single.currentUserRole, 'owner');
+    });
+
+    test('detail resolves member display names', () async {
+      await db.users.insertOne(
+        UsersCompanion.insert(id: 'usr-1', displayName: const Value('Joash')),
+      );
+      await db.users.insertOne(
+        UsersCompanion.insert(id: 'usr-2', displayName: const Value('Casey')),
+      );
+      await db
+          .into(db.households)
+          .insert(
+            HouseholdsCompanion.insert(
+              id: 'hh-1',
+              name: 'Home Base',
+              createdByUserId: 'usr-1',
+            ),
+          );
+      await db
+          .into(db.householdMembers)
+          .insert(
+            HouseholdMembersCompanion.insert(
+              id: 'hm-1',
+              householdId: 'hh-1',
+              userId: 'usr-1',
+              role: 'owner',
+            ),
+          );
+      await db
+          .into(db.householdMembers)
+          .insert(
+            HouseholdMembersCompanion.insert(
+              id: 'hm-2',
+              householdId: 'hh-1',
+              userId: 'usr-2',
+              role: 'viewer',
+            ),
+          );
+
+      final container = ProviderContainer(
+        overrides: [databaseProvider.overrideWith((ref) => db)],
+      );
+      addTearDown(container.dispose);
+
+      final detail = await readStream(
+        householdDetailProvider('hh-1'),
+        container,
+      );
+      expect(detail, isNotNull);
+      expect(detail!.household.name, 'Home Base');
+      expect(detail.members.length, 2);
+      expect(detail.members.first.displayName, 'Joash (You)');
+      expect(detail.members.last.roleLabel, 'Viewer');
+    });
+  });
+
+  group('MoreTabProvider', () {
+    test('returns 4 sections when AI disabled', () {
+      final container = ProviderContainer(
+        overrides: [
+          databaseProvider.overrideWith((ref) => db),
+          aiEnabledProvider.overrideWith((ref) => false),
+        ],
+      );
+      addTearDown(container.dispose);
       final sections = container.read(moreTabProvider);
       expect(sections.length, 4);
+      expect(sections[0].header, 'Financial');
+      expect(sections[0].items.length, 4);
+      expect(sections[1].header, 'Insights');
+      expect(sections[1].items.length, 2);
+      expect(sections[1].items[0].label, 'Reports');
+      expect(sections[1].items[1].label, 'Insights');
+      expect(sections[1].items[1].enabled, isFalse);
+      expect(sections[2].header, 'Manage');
+      expect(sections[2].items.length, 3);
+      expect(sections[3].header, 'Settings');
+      expect(sections[3].items.length, 7);
+    });
+
+    test('Insights section includes Insights when AI enabled', () {
+      final container = ProviderContainer(
+        overrides: [
+          databaseProvider.overrideWith((ref) => db),
+          aiEnabledProvider.overrideWith((ref) => true),
+        ],
+      );
+      addTearDown(container.dispose);
+      final sections = container.read(moreTabProvider);
+      expect(sections[1].items.length, 2);
+      expect(sections[1].items.last.label, 'Insights');
     });
   });
 

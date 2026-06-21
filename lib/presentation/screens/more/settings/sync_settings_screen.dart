@@ -1,13 +1,61 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-class SyncSettingsScreen extends StatelessWidget {
+import '../../../../core/theme/colors.dart';
+import '../../../../core/theme/spacing.dart';
+import '../../../../core/theme/typography.dart';
+
+class SyncSettingsScreen extends ConsumerWidget {
   const SyncSettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lootrColors = context.lootrColors;
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Cloud Sync')),
-      body: const Center(child: Text('Sync Settings')),
+      appBar: AppBar(
+        centerTitle: false,
+        title: const Text('Cloud Sync'),
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.space8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                LucideIcons.cloud,
+                size: 64,
+                color: lootrColors.textTertiary,
+              ),
+              const SizedBox(height: AppSpacing.space6),
+              Text(
+                'Cloud sync coming soon',
+                style: AppTypography.h2.copyWith(
+                  color: colorScheme.onSurface,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: AppSpacing.space2),
+              Text(
+                'Your data stays on your device. Cloud sync and backup will be available in a future update.',
+                style: AppTypography.body.copyWith(
+                  color: lootrColors.textSecondary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: AppSpacing.space4),
+              OutlinedButton.icon(
+                onPressed: null,
+                icon: const Icon(LucideIcons.refreshCw, size: 18),
+                label: const Text('Sync Now'),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
