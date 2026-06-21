@@ -1,4 +1,4 @@
-package com.lootr.app.lootr
+package com.lootr.app
 
 import io.flutter.embedding.android.FlutterActivity
 
