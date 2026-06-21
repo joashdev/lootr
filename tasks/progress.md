@@ -2,6 +2,13 @@
 
 ---
 
+## 2026-06-21 — Task 11 Complete
+
+**Task:** 11 — Presentation — Dashboard Tab ✅
+**Summary:** Dashboard home screen implemented with all 10 sections: greeting/date header with reactive sync icon and SyncStatusSheet, safe-to-spend hero backed by provider data, net worth sparkline, horizontal account cards, monthly income-vs-expense strip, animated budget progress rings, top-5 spending donut with legend, recent transactions list, upcoming recurring list, optional AI insights, plus empty and loading states. Dashboard provider now aggregates accounts, budgets, transactions, recurring items, categories, payees, and user settings into a single screen model. Added focused provider coverage and dashboard widget tests. `dart run build_runner build`, targeted `flutter analyze`, and focused `flutter test` pass in the Task 11 worktree.
+
+---
+
 ## 2026-06-20 — Task 10 Complete
 
 **Task:** 10 — Presentation — Navigation Shell & Tab Bar ✅
@@ -76,7 +83,7 @@
 | 08 — Application Layer — Sync Engine | ✅ Done | 2026-06-20 |
 | 09 — Application Layer — AI Layer | ✅ Done | 2026-06-20 |
 | 10 — Presentation — Navigation Shell & Tab Bar | ✅ Done | 2026-06-20 |
-| 11 — Presentation — Dashboard Tab | [ ] Pending | — |
+| 11 — Presentation — Dashboard Tab | ✅ Done | 2026-06-21 |
 | 12 — Presentation — Transactions Tab | [ ] Pending | — |
 | 13 — Presentation — Budgets Tab | [ ] Pending | — |
 | 14 — Presentation — More Tab & Settings | [ ] Pending | — |

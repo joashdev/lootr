@@ -1,6 +1,6 @@
 # Task 11 — Presentation — Dashboard Tab
 
-**Status:** [ ]
+**Status:** [x]
 
 ---
 
@@ -90,20 +90,20 @@ When no transactions/accounts exist:
 
 ## Acceptance Criteria
 
-- [ ] All 10 sections render in correct order
-- [ ] Safe-to-Spend hero shows correct computed value from provider
-- [ ] Greeting changes by time of day (morning/afternoon/evening)
-- [ ] Sync icon updates reactively from sync provider
-- [ ] Account cards scroll horizontally with correct balances
-- [ ] Budget progress rings show correct spent/total per budget
-- [ ] Spending donut shows top 5 categories for current month
-- [ ] Recent transactions list shows last 10 entries
-- [ ] Upcoming recurring section shows next occurrences sorted by date
-- [ ] Empty state renders when no data exists
-- [ ] Loading skeleton renders while data fetches
-- [ ] All sections are scrollable and testable independently
-- [ ] Tapping account card navigates to account detail
-- [ ] Tapping budget ring navigates to budget detail
+- [x] All 10 sections render in correct order
+- [x] Safe-to-Spend hero shows correct computed value from provider
+- [x] Greeting changes by time of day (morning/afternoon/evening)
+- [x] Sync icon updates reactively from sync provider
+- [x] Account cards scroll horizontally with correct balances
+- [x] Budget progress rings show correct spent/total per budget
+- [x] Spending donut shows top 5 categories for current month
+- [x] Recent transactions list shows last 10 entries
+- [x] Upcoming recurring section shows next occurrences sorted by date
+- [x] Empty state renders when no data exists
+- [x] Loading skeleton renders while data fetches
+- [x] All sections are scrollable and testable independently
+- [x] Tapping account card navigates to account detail
+- [x] Tapping budget ring navigates to budget detail
 
 ## Files Likely Affected
 
