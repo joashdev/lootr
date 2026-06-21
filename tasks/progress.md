@@ -2,6 +2,13 @@
 
 ---
 
+## 2026-06-21 — Task 12 Complete
+
+**Task:** 12 — Presentation — Transactions Tab ✅
+**Summary:** Completed the unified Transactions tab with sticky date-grouped list, active filter chip bar, inline AppBar search, empty/loading states, swipe edit/delete actions, pull-to-refresh sync hook, and detail screen actions/metadata. Unified provider now merges transaction rows with transfer records so transfers appear in the same list and detail route. Edit flow now supports both transaction and transfer records with prefilled forms, and transfer delete/edit paths are wired through dedicated repo/use-case support. Transaction rows now render account/category/transfer icons instead of initials. Focused analyzer and transaction/transfer tests pass.
+
+---
+
 ## 2026-06-21 — Task 11 Complete
 
 **Task:** 11 — Presentation — Dashboard Tab ✅
@@ -84,7 +91,7 @@
 | 09 — Application Layer — AI Layer | ✅ Done | 2026-06-20 |
 | 10 — Presentation — Navigation Shell & Tab Bar | ✅ Done | 2026-06-20 |
 | 11 — Presentation — Dashboard Tab | ✅ Done | 2026-06-21 |
-| 12 — Presentation — Transactions Tab | [ ] Pending | — |
+| 12 — Presentation — Transactions Tab | ✅ Done | 2026-06-21 |
 | 13 — Presentation — Budgets Tab | [ ] Pending | — |
 | 14 — Presentation — More Tab & Settings | [ ] Pending | — |
 | 15 — Presentation — Add Transaction Sheet | [ ] Pending | — |

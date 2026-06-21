@@ -1,6 +1,6 @@
 # Task 12 — Presentation — Transactions Tab
 
-**Status:** [ ]
+**Status:** [x]
 
 ---
 
@@ -83,19 +83,19 @@ Pushed route at `/transactions/:id`.
 
 ## Acceptance Criteria
 
-- [ ] Transactions list shows all transaction types (one_time, recurring, installment, debt, transfer) in one unified list
-- [ ] List is grouped by date with sticky headers (Today, Yesterday, This Week, This Month, Earlier)
-- [ ] Filter button opens FilterSheet with all filter options
-- [ ] Active filter chips render below AppBar and can be individually removed
-- [ ] Search filters by payee, note, and amount in real time
-- [ ] TransactionRow shows correct icons, labels, and direction-colored amounts
-- [ ] Swipe right → edit, swipe left → delete with undo snackbar
-- [ ] TransactionDetailScreen shows all sections (header, details, metadata, actions)
-- [ ] Edit form pre-fills with existing transaction data
-- [ ] Delete triggers undo snackbar (5s); undo restores; expiry keeps soft-deleted
-- [ ] Pull-to-refresh triggers sync attempt
-- [ ] Empty state renders when no transactions exist
-- [ ] Loading skeleton matches transaction row shape
+- [x] Transactions list shows all transaction types (one_time, recurring, installment, debt, transfer) in one unified list
+- [x] List is grouped by date with sticky headers (Today, Yesterday, This Week, This Month, Earlier)
+- [x] Filter button opens FilterSheet with all filter options
+- [x] Active filter chips render below AppBar and can be individually removed
+- [x] Search filters by payee, note, and amount in real time
+- [x] TransactionRow shows correct icons, labels, and direction-colored amounts
+- [x] Swipe right → edit, swipe left → delete with undo snackbar
+- [x] TransactionDetailScreen shows all sections (header, details, metadata, actions)
+- [x] Edit form pre-fills with existing transaction data
+- [x] Delete triggers undo snackbar (5s); undo restores; expiry keeps soft-deleted
+- [x] Pull-to-refresh triggers sync attempt
+- [x] Empty state renders when no transactions exist
+- [x] Loading skeleton matches transaction row shape
 
 ## Files Likely Affected
 

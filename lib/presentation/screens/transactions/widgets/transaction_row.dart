@@ -1,0 +1,158 @@
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import '../../../../core/theme/colors.dart';
+import '../../../../core/theme/radius.dart';
+import '../../../../core/theme/spacing.dart';
+import '../../../../core/theme/typography.dart';
+import '../../../../domain/entities/transaction.dart';
+
+class TransactionRowWidget extends StatelessWidget {
+  const TransactionRowWidget({
+    super.key,
+    required this.transaction,
+    this.categoryName,
+    this.payeeName,
+    required this.accountName,
+    this.leading,
+    this.onTap,
+  });
+
+  final Transaction transaction;
+  final String? categoryName;
+  final String? payeeName;
+  final String accountName;
+  final Widget? leading;
+  final VoidCallback? onTap;
+
+  Color _directionColor(BuildContext context) {
+    final lotrColors = context.lootrColors;
+    switch (transaction.direction) {
+      case 'expense':
+        return lotrColors.expense;
+      case 'income':
+        return lotrColors.income;
+      case 'transfer':
+        return lotrColors.transfer;
+      default:
+        return lotrColors.expense;
+    }
+  }
+
+  String _amountPrefix() {
+    switch (transaction.direction) {
+      case 'expense':
+        return '-';
+      case 'income':
+        return '+';
+      case 'transfer':
+        return '';
+      default:
+        return '';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final lotrColors = context.lootrColors;
+    final directionColor = _directionColor(context);
+    final initials = accountName.isNotEmpty
+        ? accountName[0].toUpperCase()
+        : '?';
+    final time = DateFormat('h:mm a').format(transaction.occurredAt);
+
+    final parts = <String>[];
+    if (categoryName != null) parts.add(categoryName!);
+    parts.add(accountName);
+    final categoryLabel = parts.join(' \u00b7 ');
+    final title = transaction.direction == 'transfer'
+        ? payeeName == null
+              ? 'Transfer'
+              : 'Transfer to $payeeName'
+        : payeeName ?? transaction.note ?? accountName;
+
+    final row = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: Row(
+        children: [
+          leading ??
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainerHighest,
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  initials,
+                  style: AppTypography.captionMedium.copyWith(
+                    color: lotrColors.textSecondary,
+                  ),
+                ),
+              ),
+          const SizedBox(width: AppSpacing.space3),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: AppTypography.h3.copyWith(
+                    color: colorScheme.onSurface,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  categoryLabel,
+                  style: AppTypography.caption.copyWith(
+                    color: lotrColors.textSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.space2),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${_amountPrefix()}${NumberFormat("#,##0.00").format(transaction.amount)}',
+                style: AppTypography.h3.copyWith(color: directionColor),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                time,
+                style: AppTypography.caption.copyWith(
+                  color: lotrColors.textTertiary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    if (onTap != null) {
+      return Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          child: row,
+        ),
+      );
+    }
+    return row;
+  }
+}
