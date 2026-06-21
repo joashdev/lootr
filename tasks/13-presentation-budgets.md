@@ -1,6 +1,6 @@
 # Task 13 — Presentation — Budgets Tab
 
-**Status:** [ ]
+**Status:** [x]
 
 ---
 
@@ -28,7 +28,7 @@ References: `docs/navigation-arch.md §5`, `docs/design.md` (progress bars), `do
 **Summary header:**
 - Total budgeted this month vs total spent
 - Progress bar (full width): spent % of total budgeted
-- "₱{spent} of ₱{budgeted}" with percentage
+- "P{spent} of P{budgeted}" with percentage
 
 **Budget list:**
 - Card per budget category
@@ -36,7 +36,7 @@ References: `docs/navigation-arch.md §5`, `docs/design.md` (progress bars), `do
   - Category icon + name (left)
   - Spent amount / Budget amount (right)
   - Progress bar (8px height, radius-full): color by % (green <80%, amber 80-100%, red >100%)
-  - "₱{remaining} left" or "₱{over} over" text
+  - "P{remaining} left" or "P{over} over" text
 
 ### 13.2 Budget creation sheet
 Bottom sheet form:
@@ -75,26 +75,28 @@ Pushed route at `/budgets/:id`.
 
 ## Acceptance Criteria
 
-- [ ] Budgets list shows all budgets for selected month/year
-- [ ] Month navigation (arrows) changes displayed month correctly
-- [ ] Progress bars show correct spent/budgeted ratio per category
-- [ ] Total spent vs total budgeted header bar updates correctly
-- [ ] Budget creation sheet saves new budget and refreshes list
-- [ ] Budget detail shows related transactions for that category+period
-- [ ] Edit/delete works with correct balance updates
-- [ ] Empty state renders when no budgets exist
-- [ ] Loading shimmer matches card layout
+- [x] Budgets list shows all budgets for selected month/year
+- [x] Month navigation (arrows) changes displayed month correctly
+- [x] Progress bars show correct spent/budgeted ratio per category
+- [x] Total spent vs total budgeted header bar updates correctly
+- [x] Budget creation sheet saves new budget and refreshes list
+- [x] Budget detail shows related transactions for that category+period
+- [x] Edit/delete works with correct balance updates
+- [x] Empty state renders when no budgets exist
+- [x] Loading shimmer matches card layout
 
 ## Files Likely Affected
 
-- `lib/presentation/screens/budgets/budgets_screen.dart` (new)
-- `lib/presentation/screens/budgets/budget_detail_screen.dart` (new)
+- `lib/presentation/screens/budgets/budgets_screen.dart` (modified)
+- `lib/presentation/screens/budgets/budget_detail_screen.dart` (modified)
 - `lib/presentation/screens/budgets/widgets/budget_card.dart` (new)
-- `lib/presentation/screens/budgets/widgets/budget_progress_bar.dart` (new)
 - `lib/presentation/screens/budgets/widgets/budget_summary_header.dart` (new)
 - `lib/presentation/screens/budgets/widgets/month_navigator.dart` (new)
 - `lib/presentation/screens/budgets/widgets/budget_shimmer.dart` (new)
 - `lib/presentation/sheets/budget_create_sheet.dart` (new)
 - `lib/application/providers/budgets_tab_provider.dart` (extended)
-- `lib/application/providers/budget_detail_provider.dart` (extended)
-- `test/presentation/budgets/` (new)
+- `lib/application/providers/budget_detail_provider.dart` (unaltered)
+- `lib/core/extensions/async_value_x.dart` (new)
+- `pubspec.yaml` (added shimmer dependency)
+- `test/application/providers/budget_providers_test.dart` (new)
+- `test/presentation/sheets/budget_create_sheet_test.dart` (new)

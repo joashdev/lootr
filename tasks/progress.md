@@ -2,6 +2,13 @@
 
 ---
 
+## 2026-06-21 — Task 13 Complete
+
+**Task:** 13 — Presentation — Budgets Tab ✅
+**Summary:** Budgets tab implemented with month navigation, monthly summary header, category budget cards, empty/loading states, and create/edit/delete bottom-sheet flows. Budget detail now shows progress plus related transactions scoped to the selected category and period, with past-month budgets treated as read-only. The budget form now uses category autocomplete from `categoriesProvider`. Added focused provider coverage for month filtering, summary totals, and budget-detail transaction matching, plus widget coverage for the budget sheet autocomplete/edit prefill flow. `flutter analyze` passes for the Task 13 surface and targeted budget tests pass.
+
+---
+
 ## 2026-06-21 — Task 12 Complete
 
 **Task:** 12 — Presentation — Transactions Tab ✅
@@ -92,7 +99,7 @@
 | 10 — Presentation — Navigation Shell & Tab Bar | ✅ Done | 2026-06-20 |
 | 11 — Presentation — Dashboard Tab | ✅ Done | 2026-06-21 |
 | 12 — Presentation — Transactions Tab | ✅ Done | 2026-06-21 |
-| 13 — Presentation — Budgets Tab | [ ] Pending | — |
+| 13 — Presentation — Budgets Tab | ✅ Done | 2026-06-21 |
 | 14 — Presentation — More Tab & Settings | [ ] Pending | — |
 | 15 — Presentation — Add Transaction Sheet | [ ] Pending | — |
 | 16 — Presentation — Filter Sheet & Search | [ ] Pending | — |
