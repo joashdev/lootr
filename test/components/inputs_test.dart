@@ -53,6 +53,38 @@ void main() {
       ));
       expect(find.byIcon(Icons.search), findsOneWidget);
     });
+
+    testWidgets('shows clear button and debounces onChanged (300ms)',
+        (tester) async {
+      final controller = TextEditingController();
+      String? changed;
+      addTearDown(controller.dispose);
+
+      await tester.pumpWidget(
+        wrapWithTheme(
+          SearchInput(
+            controller: controller,
+            onChanged: (value) => changed = value,
+          ),
+        ),
+      );
+
+      await tester.enterText(find.byType(TextField), 'coffee');
+      await tester.pump();
+
+      // Clear button appears immediately, but onChanged is debounced.
+      expect(find.byIcon(Icons.close), findsOneWidget);
+      expect(changed, isNull);
+
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(changed, 'coffee');
+
+      // Tapping clear empties the field and fires an immediate empty callback.
+      await tester.tap(find.byIcon(Icons.close));
+      await tester.pump();
+      expect(controller.text, isEmpty);
+      expect(changed, '');
+    });
   });
 
   group('AmountInput', () {

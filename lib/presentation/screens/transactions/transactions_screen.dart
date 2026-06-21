@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -22,8 +21,9 @@ import '../../../domain/entities/payee.dart';
 import '../../../domain/entities/transaction.dart';
 import '../../../domain/use_cases/delete_transaction.dart';
 import '../../../domain/use_cases/delete_transfer.dart';
-import '../../../domain/value_objects/date_range.dart';
 import '../../../domain/value_objects/transaction_filters.dart';
+import '../../sheets/filter_sheet.dart';
+import '../../shared/components/inputs/search_input.dart';
 import 'widgets/date_group_header.dart';
 import 'widgets/filter_chip_bar.dart';
 import 'widgets/transaction_row.dart';
@@ -39,58 +39,23 @@ class TransactionsScreen extends ConsumerStatefulWidget {
 class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
-  String _searchQuery = '';
-  Timer? _debounce;
 
   @override
   void dispose() {
     _searchController.dispose();
-    _debounce?.cancel();
     super.dispose();
   }
 
+  /// Routes the (already debounced) query into the provider so search composes
+  /// with active filters via AND logic inside [filteredTransactionsProvider].
   void _onSearchChanged(String query) {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 300), () {
-      setState(() => _searchQuery = query.trim().toLowerCase());
-    });
+    ref.read(transactionSearchQueryProvider.notifier).setQuery(query);
   }
 
-  List<Transaction> _applySearch(
-    List<Transaction> transactions, {
-    required Map<String, String> accountNames,
-    required Map<String, String> categoryNames,
-    required Map<String, String> payeeNames,
-  }) {
-    if (_searchQuery.isEmpty) return transactions;
-    return transactions.where((t) {
-      if (t.note?.toLowerCase().contains(_searchQuery) == true) return true;
-      if (t.amount.toString().contains(_searchQuery)) return true;
-      if ((accountNames[t.accountId] ?? '').toLowerCase().contains(
-        _searchQuery,
-      )) {
-        return true;
-      }
-      if ((categoryNames[t.categoryId] ?? '').toLowerCase().contains(
-        _searchQuery,
-      )) {
-        return true;
-      }
-      if ((payeeNames[t.payeeId] ?? '').toLowerCase().contains(_searchQuery)) {
-        return true;
-      }
-      final destinationAccountId =
-          t.metadata?['destination_account_id']?.toString();
-      final destinationName =
-          (accountNames[destinationAccountId] ??
-                  t.metadata?['destination_account_name']?.toString() ??
-                  '')
-              .toLowerCase();
-      if (destinationName.contains(_searchQuery)) {
-        return true;
-      }
-      return false;
-    }).toList();
+  void _stopSearching() {
+    setState(() => _isSearching = false);
+    _searchController.clear();
+    ref.read(transactionSearchQueryProvider.notifier).clear();
   }
 
   Map<String, String> _accountNameMap(AsyncValue<List<Account>> accounts) =>
@@ -238,7 +203,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }
 
   void _openFilterSheet() {
-    final filters = ref.read(transactionFiltersProvider);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -247,7 +211,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
       ),
-      builder: (_) => _FilterSheetWidget(filters: filters),
+      builder: (_) => const FilterSheet(),
     );
   }
 
@@ -255,6 +219,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(transactionsTabProvider);
     final filters = ref.watch(transactionFiltersProvider);
+    final searchQuery = ref.watch(transactionSearchQueryProvider);
     final accounts = ref.watch(accountsProvider);
     final categories = ref.watch(categoriesProvider);
     final payees = ref.watch(payeesProvider);
@@ -265,7 +230,14 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         children: [
           if (!_isSearching) const FilterChipBar(),
           Expanded(
-            child: _buildBody(state, filters, accounts, categories, payees),
+            child: _buildBody(
+              state,
+              filters,
+              searchQuery,
+              accounts,
+              categories,
+              payees,
+            ),
           ),
         ],
       ),
@@ -297,27 +269,18 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
   PreferredSizeWidget _buildSearchAppBar() {
     return AppBar(
-      title: TextField(
-        controller: _searchController,
-        autofocus: true,
-        style: AppTypography.body.copyWith(
-          color: Theme.of(context).colorScheme.onSurface,
+      titleSpacing: 0,
+      title: Padding(
+        padding: const EdgeInsets.only(right: AppSpacing.space4),
+        child: SearchInput(
+          controller: _searchController,
+          autofocus: true,
+          onChanged: _onSearchChanged,
         ),
-        decoration: const InputDecoration(
-          hintText: 'Search transactions...',
-          border: InputBorder.none,
-        ),
-        onChanged: _onSearchChanged,
       ),
       leading: IconButton(
         icon: const Icon(Icons.arrow_back),
-        onPressed: () {
-          setState(() {
-            _isSearching = false;
-            _searchQuery = '';
-            _searchController.clear();
-          });
-        },
+        onPressed: _stopSearching,
       ),
     );
   }
@@ -325,6 +288,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   Widget _buildBody(
     TransactionsTabState state,
     TransactionFilters filters,
+    String searchQuery,
     AsyncValue<List<Account>> accounts,
     AsyncValue<List<Category>> categories,
     AsyncValue<List<Payee>> payees,
@@ -370,14 +334,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final payeeNames = _payeeNameMap(payees);
     final accountMap = _accountMap(accounts);
     final categoryMap = _categoryMap(categories);
-    final filtered = _applySearch(
-      state.transactions,
-      accountNames: accountNames,
-      categoryNames: categoryNames,
-      payeeNames: payeeNames,
-    );
+    // Search + filters are applied inside filteredTransactionsProvider.
+    final filtered = state.transactions;
 
-    final hasSearch = _searchQuery.isNotEmpty;
+    final hasSearch = searchQuery.isNotEmpty;
     final isFilterActive = !filters.isEmpty;
 
     if (filtered.isEmpty && (isFilterActive || hasSearch)) {
@@ -415,10 +375,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 if (hasSearch)
                   FilledButton(
                     onPressed: () {
-                      setState(() {
-                        _searchQuery = '';
-                        _searchController.clear();
-                      });
+                      _searchController.clear();
+                      ref
+                          .read(transactionSearchQueryProvider.notifier)
+                          .clear();
                     },
                     child: const Text('Clear Search'),
                   ),
@@ -646,393 +606,5 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       default:
         return Icons.category_outlined;
     }
-  }
-}
-
-class _FilterSheetWidget extends ConsumerStatefulWidget {
-  const _FilterSheetWidget({required this.filters});
-
-  final TransactionFilters filters;
-
-  @override
-  ConsumerState<_FilterSheetWidget> createState() => _FilterSheetWidgetState();
-}
-
-class _FilterSheetWidgetState extends ConsumerState<_FilterSheetWidget> {
-  String? _direction;
-  String? _mode;
-  String? _accountId;
-  String? _categoryId;
-  DateRange? _dateRange;
-  late final TextEditingController _minAmountController;
-  late final TextEditingController _maxAmountController;
-
-  @override
-  void initState() {
-    super.initState();
-    _direction = widget.filters.direction;
-    _mode = widget.filters.mode;
-    _accountId = widget.filters.accountId;
-    _categoryId = widget.filters.categoryId;
-    _dateRange = widget.filters.dateRange;
-    _minAmountController = TextEditingController(
-      text: widget.filters.minAmount?.toStringAsFixed(0) ?? '',
-    );
-    _maxAmountController = TextEditingController(
-      text: widget.filters.maxAmount?.toStringAsFixed(0) ?? '',
-    );
-  }
-
-  @override
-  void dispose() {
-    _minAmountController.dispose();
-    _maxAmountController.dispose();
-    super.dispose();
-  }
-
-  void _apply() {
-    final minText = _minAmountController.text.trim();
-    final maxText = _maxAmountController.text.trim();
-    ref
-        .read(transactionFiltersProvider.notifier)
-        .update(
-          TransactionFilters(
-            direction: _direction,
-            mode: _mode,
-            accountId: _accountId,
-            categoryId: _categoryId,
-            minAmount: minText.isEmpty ? null : double.tryParse(minText),
-            maxAmount: maxText.isEmpty ? null : double.tryParse(maxText),
-            dateRange: _dateRange,
-          ),
-        );
-    Navigator.pop(context);
-  }
-
-  void _clearAll() {
-    setState(() {
-      _direction = null;
-      _mode = null;
-      _accountId = null;
-      _categoryId = null;
-      _dateRange = null;
-      _minAmountController.clear();
-      _maxAmountController.clear();
-    });
-  }
-
-  Future<void> _pickDateRange() async {
-    final now = DateTime.now();
-    final picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(now.year - 10),
-      lastDate: DateTime(now.year + 10),
-      initialDateRange: _dateRange == null
-          ? null
-          : DateTimeRange(start: _dateRange!.start, end: _dateRange!.end),
-    );
-    if (picked == null) return;
-    setState(() => _dateRange = DateRange(picked.start, picked.end));
-  }
-
-  String _capitalize(String s) {
-    if (s.isEmpty) return s;
-    final normalized = s.replaceAll('_', ' ');
-    return normalized[0].toUpperCase() + normalized.substring(1);
-  }
-
-  String _formatDate(DateTime d) =>
-      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final accountsAsync = ref.watch(accountsProvider);
-    final categoriesAsync = ref.watch(categoriesProvider);
-    final accounts = accountsAsync is AsyncData<List<Account>>
-        ? accountsAsync.value
-        : const <Account>[];
-    final categories = categoriesAsync is AsyncData<List<Category>>
-        ? categoriesAsync.value
-        : const <Category>[];
-
-    return DraggableScrollableSheet(
-      initialChildSize: 0.75,
-      minChildSize: 0.3,
-      maxChildSize: 0.9,
-      expand: false,
-      builder: (context, scrollController) {
-        return Container(
-          decoration: BoxDecoration(
-            color: colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
-          ),
-          child: Column(
-            children: [
-              const SizedBox(height: 8),
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: context.lootrColors.textTertiary,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 12,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Filters', style: AppTypography.h2),
-                    GestureDetector(
-                      onTap: _clearAll,
-                      child: Text(
-                        'Clear All',
-                        style: AppTypography.captionMedium.copyWith(
-                          color: colorScheme.primary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: ListView(
-                  controller: scrollController,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  children: [
-                    _buildFilterSection(
-                      'Direction',
-                      ['expense', 'income', 'transfer'],
-                      _direction,
-                      (v) => setState(
-                        () => _direction = _direction == v ? null : v,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    _buildFilterSection(
-                      'Mode',
-                      ['one_time', 'recurring', 'installment', 'debt'],
-                      _mode,
-                      (v) => setState(() => _mode = _mode == v ? null : v),
-                    ),
-                    const SizedBox(height: 20),
-                    _buildIdFilterSection(
-                      'Account',
-                      {
-                        for (final account in accounts)
-                          account.id: account.name,
-                      },
-                      _accountId,
-                      (v) => setState(
-                        () => _accountId = _accountId == v ? null : v,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    _buildIdFilterSection(
-                      'Category',
-                      {
-                        for (final category in categories)
-                          category.id: category.name,
-                      },
-                      _categoryId,
-                      (v) => setState(
-                        () => _categoryId = _categoryId == v ? null : v,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    _buildAmountSection(),
-                    const SizedBox(height: 20),
-                    _buildDateSection(),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancel'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: _apply,
-                        child: const Text('Apply'),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildFilterSection(
-    String title,
-    List<String> options,
-    String? selected,
-    ValueChanged<String> onTap,
-  ) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: AppTypography.captionMedium.copyWith(
-            color: context.lootrColors.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: options.map((option) {
-            final isSelected = selected == option;
-            final label = _capitalize(option);
-            return ActionChip(
-              label: Text(label),
-              backgroundColor: isSelected
-                  ? AppColors.primary50
-                  : colorScheme.surface,
-              side: BorderSide(
-                color: isSelected ? AppColors.primary200 : colorScheme.outline,
-              ),
-              onPressed: () => onTap(option),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildIdFilterSection(
-    String title,
-    Map<String, String> options,
-    String? selected,
-    ValueChanged<String> onTap,
-  ) {
-    if (options.isEmpty) return const SizedBox.shrink();
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: AppTypography.captionMedium.copyWith(
-            color: context.lootrColors.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: options.entries.map((entry) {
-            final isSelected = selected == entry.key;
-            return ActionChip(
-              label: Text(entry.value),
-              backgroundColor: isSelected
-                  ? AppColors.primary50
-                  : colorScheme.surface,
-              side: BorderSide(
-                color: isSelected ? AppColors.primary200 : colorScheme.outline,
-              ),
-              onPressed: () => onTap(entry.key),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAmountSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Amount',
-          style: AppTypography.captionMedium.copyWith(
-            color: context.lootrColors.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _minAmountController,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                decoration: const InputDecoration(
-                  labelText: 'Min',
-                  prefixText: '₱',
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: TextField(
-                controller: _maxAmountController,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                decoration: const InputDecoration(
-                  labelText: 'Max',
-                  prefixText: '₱',
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDateSection() {
-    final label = _dateRange == null
-        ? 'Any date'
-        : '${_formatDate(_dateRange!.start)} - ${_formatDate(_dateRange!.end)}';
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Date',
-          style: AppTypography.captionMedium.copyWith(
-            color: context.lootrColors.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: _pickDateRange,
-                child: Text(label),
-              ),
-            ),
-            if (_dateRange != null) ...[
-              const SizedBox(width: 8),
-              IconButton(
-                onPressed: () => setState(() => _dateRange = null),
-                icon: const Icon(Icons.close),
-              ),
-            ],
-          ],
-        ),
-      ],
-    );
   }
 }

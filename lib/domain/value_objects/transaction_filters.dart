@@ -29,6 +29,18 @@ class TransactionFilters {
       maxAmount == null &&
       dateRange == null;
 
+  /// Number of active (non-null) filter groups. Amount min/max counts as one.
+  int get activeCount {
+    int count = 0;
+    if (direction != null) count++;
+    if (mode != null) count++;
+    if (accountId != null) count++;
+    if (categoryId != null) count++;
+    if (minAmount != null || maxAmount != null) count++;
+    if (dateRange != null) count++;
+    return count;
+  }
+
   List<Transaction> apply(List<Transaction> transactions) {
     return transactions.where((t) {
       if (direction != null && t.direction != direction) return false;

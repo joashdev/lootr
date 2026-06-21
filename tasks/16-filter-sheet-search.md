@@ -1,6 +1,6 @@
 # Task 16 — Presentation — Filter Sheet & Search
 
-**Status:** [ ]
+**Status:** [x]
 
 ---
 
@@ -66,16 +66,16 @@ Bottom sheet with sections:
 
 ## Acceptance Criteria
 
-- [ ] FilterSheet opens from Transactions screen filter button
-- [ ] All 6 filter sections render correctly
-- [ ] Direction and Mode segmented controls filter immediately
-- [ ] Account and Category lists filter immediately on tap
-- [ ] Amount range filter applies on "Apply" tap
-- [ ] Active filter chips render below AppBar with x dismiss
-- [ ] "Clear all" removes all filters and resets list
-- [ ] SearchInput filters transactions in real-time (debounced 300ms)
-- [ ] Search + filters compose with AND logic
-- [ ] Filters persist when switching tabs and returning
+- [x] FilterSheet opens from Transactions screen filter button
+- [x] All 6 filter sections render correctly
+- [x] Direction and Mode segmented controls filter immediately
+- [x] Account and Category lists filter immediately on tap
+- [x] Amount range filter applies on "Apply" tap
+- [x] Active filter chips render below AppBar with x dismiss
+- [x] "Clear all" removes all filters and resets list
+- [x] SearchInput filters transactions in real-time (debounced 300ms)
+- [x] Search + filters compose with AND logic
+- [x] Filters persist when switching tabs and returning
 
 ## Files Likely Affected
 

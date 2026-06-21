@@ -58,7 +58,24 @@ class TransactionFiltersNotifier extends Notifier<TransactionFilters> {
   }
 }
 
+/// Not autoDispose: filter state must persist across tab switches (Task 16.5).
+/// It is in-memory only and resets on app restart.
 final transactionFiltersProvider =
-    NotifierProvider.autoDispose<TransactionFiltersNotifier, TransactionFilters>(
+    NotifierProvider<TransactionFiltersNotifier, TransactionFilters>(
   TransactionFiltersNotifier.new,
+);
+
+/// Debounced search query applied to the transaction list (Task 16.4).
+/// Composes with [transactionFiltersProvider] via AND logic.
+class TransactionSearchQueryNotifier extends Notifier<String> {
+  @override
+  String build() => '';
+
+  void setQuery(String query) => state = query.trim();
+  void clear() => state = '';
+}
+
+final transactionSearchQueryProvider =
+    NotifierProvider<TransactionSearchQueryNotifier, String>(
+  TransactionSearchQueryNotifier.new,
 );

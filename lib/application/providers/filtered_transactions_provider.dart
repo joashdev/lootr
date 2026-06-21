@@ -3,7 +3,9 @@ import 'package:rxdart/rxdart.dart';
 import '../../data/database/app_database.dart';
 import '../../data/repositories/transaction_repo.dart';
 import '../../domain/entities/mappers.dart';
+import '../../domain/entities/payee.dart';
 import '../../domain/entities/transaction.dart';
+import 'payees_provider.dart';
 import 'repo_providers.dart';
 import 'transaction_entry_support.dart';
 import 'transaction_filters_provider.dart';
@@ -13,6 +15,10 @@ final filteredTransactionsProvider =
   final transactionRepo = ref.watch(transactionRepoProvider);
   final transferRepo = ref.watch(transferRepoProvider);
   final filters = ref.watch(transactionFiltersProvider);
+  final searchQuery = ref.watch(transactionSearchQueryProvider);
+  final payees = ref.watch(payeesProvider).asData?.value ?? const <Payee>[];
+  final payeesById = {for (final payee in payees) payee.id: payee};
+  final normalizedQuery = normalizeSearchText(searchQuery);
 
   final repoFilters = TransactionRepoFilters(
     direction: filters.direction,
@@ -63,8 +69,56 @@ final filteredTransactionsProvider =
       }).map(mapTransferToTransaction);
 
       txns = [...txns, ...filteredTransfers];
+
+      // Search composes with active filters via AND logic (Task 16.4).
+      if (normalizedQuery.isNotEmpty) {
+        txns = txns.where((t) {
+          final payee = t.payeeId == null ? null : payeesById[t.payeeId];
+          return _matchesSearch(t, payee, normalizedQuery);
+        }).toList();
+      }
+
       txns.sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
       return txns;
     },
   );
 });
+
+bool _matchesSearch(
+  Transaction transaction,
+  Payee? payee,
+  String normalizedQuery,
+) {
+  final values = <String?>[
+    transaction.note,
+    transaction.amount.toString(),
+    transaction.amount.toStringAsFixed(2),
+    payee?.displayName,
+    payee?.normalizedName,
+  ];
+
+  return values.any(
+    (value) =>
+        value != null && normalizeSearchText(value).contains(normalizedQuery),
+  );
+}
+
+/// Lower-cases and strips diacritics for accent-insensitive search (Task 16.4).
+String normalizeSearchText(String value) {
+  return value
+      .toLowerCase()
+      .replaceAll(RegExp('[àáâãäåāăą]'), 'a')
+      .replaceAll(RegExp('[çćč]'), 'c')
+      .replaceAll(RegExp('[ďđ]'), 'd')
+      .replaceAll(RegExp('[èéêëēĕėęě]'), 'e')
+      .replaceAll(RegExp('[ìíîïīĭįı]'), 'i')
+      .replaceAll(RegExp('[ñńň]'), 'n')
+      .replaceAll(RegExp('[òóôõöøōŏő]'), 'o')
+      .replaceAll(RegExp('[ŕř]'), 'r')
+      .replaceAll(RegExp('[śšş]'), 's')
+      .replaceAll(RegExp('[ťţ]'), 't')
+      .replaceAll(RegExp('[ùúûüūŭůűų]'), 'u')
+      .replaceAll(RegExp('[ýÿ]'), 'y')
+      .replaceAll(RegExp('[žźż]'), 'z')
+      .trim();
+}
