@@ -14,6 +14,12 @@
 
 **Task:** 16 — Presentation — Filter Sheet & Search ✅
 **Summary:** Layered the full filter sheet and search functionality onto Task 12's transactions screen. Built `FilterSheet` (`lib/presentation/sheets/filter_sheet.dart`) with all six sections — Direction and Mode segmented controls, single-select Account and Category lists (categories grouped by direction), Amount Range and Date Range inputs — where segmented/list controls apply immediately to `transactionFiltersProvider` and amount/date apply on their "Apply" buttons, with a footer "Clear all filters" button and a live "Apply {n} filters" count. Upgraded the `SearchInput` component (pill shape, leading search icon, clear button, 300ms debounce) and wired it into the transactions search AppBar. Moved search logic into `filteredTransactionsProvider`, matching payee displayName/normalizedName, note, and amount case- and accent-insensitively while composing with active filters via AND logic; transfer merging from Task 12 is preserved. Added `transactionSearchQueryProvider` and removed `autoDispose` from `transactionFiltersProvider` so filters persist across tab switches (in-memory only, reset on app restart). Added `activeCount` to the `TransactionFilters` value object. Added tests: `test/presentation/sheets/filter_sheet_test.dart` (2), `test/application/providers/filtered_transactions_provider_test.dart` (3 — search/accent/amount, AND composition, date+amount), and a SearchInput debounce/clear case in `test/components/inputs_test.dart`. `flutter pub get`, `dart run build_runner build`, `flutter analyze --no-pub` (0 errors, no new warnings — 44 pre-existing issues unchanged), and `flutter test --no-pub` (517 passing, up from 511) all succeed.
+---
+
+## 2026-06-21 — Task 17 Complete
+
+**Task:** 17 — Presentation — Onboarding ✅
+**Summary:** First-launch onboarding flow implemented as a full-screen modal at `/onboarding`. Four steps (Welcome, Track, Plan, Setup) with a PageView and animated dot step indicator. Setup step collects display name, currency (dropdown, default PHP), and a "Load demo data" toggle (on by default). "Get Started" persists the profile to the users table, optionally seeds demo data via `demoDataProvider.seed()`, marks onboarding completed, and navigates to the main app. "Skip" shows a "Start with empty app?" confirmation then completes without demo data. Back button disabled via `PopScope(canPop: false)`. Extended `onboardingProvider` to a status state machine (`notStarted` / `inProgress(step)` / `completed`) persisted via SharedPreferences through a new `sharedPreferencesProvider` (overridden in `main.dart`). Router redirect continues to send not-completed users to `/onboarding` and completed users away from it. Added 7 onboarding widget tests plus expanded provider persistence tests. `dart run build_runner build --delete-conflicting-outputs` and `flutter analyze --no-pub` (0 errors) pass; `flutter test --no-pub` passes the full suite (519 tests, up from 511).
 
 ---
 
@@ -125,7 +131,7 @@
 | 14 — Presentation — More Tab & Settings | ✅ Done | 2026-06-21 |
 | 15 — Presentation — Add Transaction Sheet | ✅ Done | 2026-06-21 |
 | 16 — Presentation — Filter Sheet & Search | ✅ Done | 2026-06-21 |
-| 17 — Presentation — Onboarding | [ ] Pending | — |
+| 17 — Presentation — Onboarding | ✅ Done | 2026-06-21 |
 | 18 — Demo Data & Seed Data | [ ] Pending | — |
 | 19 — Local Notifications | [ ] Pending | — |
 | 20 — Testing Infrastructure | [ ] Pending | — |
