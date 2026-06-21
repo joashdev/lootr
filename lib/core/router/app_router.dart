@@ -370,12 +370,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/transactions/new',
         pageBuilder: (context, state) {
-          final tx = state.extra is Transaction ? state.extra as Transaction : null;
-          final transfer = state.extra is Transfer ? state.extra as Transfer : null;
+          final extra = state.extra;
+          final args =
+              extra is AddTransactionSheetArgs ? extra : null;
+          final tx = extra is Transaction
+              ? extra
+              : args?.initialTransaction;
+          final transfer = extra is Transfer
+              ? extra
+              : args?.initialTransfer;
           return _sheetPage(
             AddTransactionSheet(
               initialTransaction: tx,
               initialTransfer: transfer,
+              startInQuickMode: args?.startInQuickMode ?? false,
+              initialParsedTransaction: args?.initialParsedTransaction,
             ),
             key: state.pageKey,
           );

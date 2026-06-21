@@ -22,7 +22,7 @@ Derived from `docs/solutions-arch.md`. Build order follows the dependency rule: 
 | 12 | Presentation — Transactions Tab | 10, 02, 07 | High | [x] |
 | 13 | Presentation — Budgets Tab | 10, 02, 07 | High | [x] |
 | 14 | Presentation — More Tab & Settings | 10, 02, 07 | High | [x] |
-| 15 | Presentation — Add Transaction Sheet | 10, 02, 07 | High |
+| 15 | Presentation — Add Transaction Sheet | 10, 02, 07 | High | [x] |
 | 16 | Presentation — Filter Sheet & Search | 10, 02, 07 | Medium | [x] |
 | 17 | Presentation — Onboarding | 10, 02 | Medium |
 | 18 | Demo Data & Seed Data | 04 | Medium |

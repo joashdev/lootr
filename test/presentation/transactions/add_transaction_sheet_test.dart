@@ -3,9 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lootr/application/providers/accounts_provider.dart';
 import 'package:lootr/application/providers/categories_provider.dart';
+import 'package:lootr/application/providers/debts_provider.dart';
+import 'package:lootr/application/providers/filtered_transactions_provider.dart';
 import 'package:lootr/application/providers/payees_provider.dart';
+import 'package:lootr/core/theme/theme.dart';
 import 'package:lootr/domain/entities/account.dart';
 import 'package:lootr/domain/entities/category.dart';
+import 'package:lootr/domain/entities/debt_record.dart';
 import 'package:lootr/domain/entities/payee.dart';
 import 'package:lootr/domain/entities/transaction.dart';
 import 'package:lootr/domain/entities/transfer.dart';
@@ -22,8 +26,12 @@ Widget _wrap(
       accountsProvider.overrideWith((ref) => Stream.value(accounts)),
       categoriesProvider.overrideWith((ref) => Stream.value(categories)),
       payeesProvider.overrideWith((ref) => Stream.value(payees)),
+      debtsProvider.overrideWith((ref) => Stream.value(const <DebtRecord>[])),
+      filteredTransactionsProvider
+          .overrideWith((ref) => Stream.value(const <Transaction>[])),
     ],
     child: MaterialApp(
+      theme: AppTheme.light,
       home: Scaffold(body: child),
     ),
   );

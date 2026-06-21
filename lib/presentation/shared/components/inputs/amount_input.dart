@@ -4,17 +4,23 @@ import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/radius.dart';
 import '../../../../core/theme/typography.dart';
 
+/// Reusable amount input with a monospace, direction-coloured field and a
+/// currency prefix.
 class AmountInput extends StatelessWidget {
   const AmountInput({
     super.key,
     required this.direction,
     this.controller,
     this.currency = 'PHP',
+    this.onChanged,
+    this.label,
   });
 
   final TransactionDirection direction;
   final TextEditingController? controller;
   final String currency;
+  final ValueChanged<String>? onChanged;
+  final String? label;
 
   Color _directionColor(BuildContext context) {
     final colors = Theme.of(context).extension<LootrColorScheme>()!;
@@ -31,43 +37,60 @@ class AmountInput extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final lootrColors = context.lootrColors;
     final directionColor = _directionColor(context);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: colorScheme.outline),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (label != null) ...[
           Text(
-            currency,
-            style: AppTypography.mono.copyWith(
-              color: directionColor,
+            label!,
+            style: AppTypography.captionMedium.copyWith(
+              color: lootrColors.textSecondary,
             ),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: TextField(
-              controller: controller,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              style: AppTypography.h3.copyWith(
-                color: directionColor,
-                fontFamily: AppTypography.mono.fontFamily,
-                fontFamilyFallback: AppTypography.mono.fontFamilyFallback,
-              ),
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
-                hintText: '0.00',
-              ),
-            ),
-          ),
+          const SizedBox(height: 8),
         ],
-      ),
+        Container(
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(color: colorScheme.outline),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              Text(
+                currency,
+                style: AppTypography.mono.copyWith(
+                  color: directionColor,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  onChanged: onChanged,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  style: AppTypography.h3.copyWith(
+                    color: directionColor,
+                    fontFamily: AppTypography.mono.fontFamily,
+                    fontFamilyFallback: AppTypography.mono.fontFamilyFallback,
+                  ),
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                    hintText: '0.00',
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
