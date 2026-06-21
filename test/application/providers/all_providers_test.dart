@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/drift.dart' hide isNull, isNotNull;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lootr/application/providers/database_provider.dart';
 import 'package:lootr/application/providers/transaction_filters_provider.dart';
@@ -569,17 +570,57 @@ void main() {
   });
 
   group('OnboardingProvider', () {
-    test('complete and skip toggles', () {
+    test('complete and skip transitions', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
       final container = ProviderContainer(
-        overrides: [databaseProvider.overrideWith((ref) => db)],
+        overrides: [
+          databaseProvider.overrideWith((ref) => db),
+          sharedPreferencesProvider.overrideWithValue(prefs),
+        ],
       );
       addTearDown(container.dispose);
 
+      expect(container.read(onboardingProvider).status,
+          OnboardingStatus.notStarted);
       expect(container.read(onboardingProvider).completed, isFalse);
-      container.read(onboardingProvider.notifier).complete();
+
+      await container.read(onboardingProvider.notifier).goToStep(2);
+      expect(container.read(onboardingProvider).status,
+          OnboardingStatus.inProgress);
+      expect(container.read(onboardingProvider).step, 2);
+
+      await container.read(onboardingProvider.notifier).complete();
       expect(container.read(onboardingProvider).completed, isTrue);
-      container.read(onboardingProvider.notifier).skip();
-      expect(container.read(onboardingProvider).skipped, isTrue);
+
+      await container.read(onboardingProvider.notifier).reset();
+      await container.read(onboardingProvider.notifier).skip();
+      expect(container.read(onboardingProvider).status,
+          OnboardingStatus.completed);
+    });
+
+    test('persists across notifier rebuilds', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [
+          databaseProvider.overrideWith((ref) => db),
+          sharedPreferencesProvider.overrideWithValue(prefs),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(onboardingProvider.notifier).complete();
+
+      // A fresh container backed by the same prefs should read completed.
+      final container2 = ProviderContainer(
+        overrides: [
+          databaseProvider.overrideWith((ref) => db),
+          sharedPreferencesProvider.overrideWithValue(prefs),
+        ],
+      );
+      addTearDown(container2.dispose);
+      expect(container2.read(onboardingProvider).completed, isTrue);
     });
   });
 

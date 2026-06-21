@@ -1,6 +1,6 @@
 # Task 17 — Presentation — Onboarding
 
-**Status:** [ ]
+**Status:** [x]
 
 ---
 
@@ -65,14 +65,14 @@ Full-screen modal at `/onboarding`. 4 steps with page indicator.
 
 ## Acceptance Criteria
 
-- [ ] Onboarding shows on first launch, not on subsequent launches
-- [ ] 4 steps with correct content and illustrations
-- [ ] Page indicator shows current step (dots)
-- [ ] "Get Started" saves display name, currency, and demo data preference
-- [ ] "Load demo data" toggle seeds database when enabled
-- [ ] "Skip" bypasses to empty app without demo data
-- [ ] Back button disabled during onboarding (cannot leave)
-- [ ] Onboarding transitions to main app after completion
+- [x] Onboarding shows on first launch, not on subsequent launches
+- [x] 4 steps with correct content and illustrations
+- [x] Page indicator shows current step (dots)
+- [x] "Get Started" saves display name, currency, and demo data preference
+- [x] "Load demo data" toggle seeds database when enabled
+- [x] "Skip" bypasses to empty app without demo data
+- [x] Back button disabled during onboarding (cannot leave)
+- [x] Onboarding transitions to main app after completion
 
 ## Files Likely Affected
 

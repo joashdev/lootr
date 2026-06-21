@@ -2,6 +2,13 @@
 
 ---
 
+## 2026-06-21 — Task 17 Complete
+
+**Task:** 17 — Presentation — Onboarding ✅
+**Summary:** First-launch onboarding flow implemented as a full-screen modal at `/onboarding`. Four steps (Welcome, Track, Plan, Setup) with a PageView and animated dot step indicator. Setup step collects display name, currency (dropdown, default PHP), and a "Load demo data" toggle (on by default). "Get Started" persists the profile to the users table, optionally seeds demo data via `demoDataProvider.seed()`, marks onboarding completed, and navigates to the main app. "Skip" shows a "Start with empty app?" confirmation then completes without demo data. Back button disabled via `PopScope(canPop: false)`. Extended `onboardingProvider` to a status state machine (`notStarted` / `inProgress(step)` / `completed`) persisted via SharedPreferences through a new `sharedPreferencesProvider` (overridden in `main.dart`). Router redirect continues to send not-completed users to `/onboarding` and completed users away from it. Added 7 onboarding widget tests plus expanded provider persistence tests. `dart run build_runner build --delete-conflicting-outputs` and `flutter analyze --no-pub` (0 errors) pass; `flutter test --no-pub` passes the full suite (519 tests, up from 511).
+
+---
+
 ## 2026-06-21 — Task 14 Complete
 
 **Task:** 14 — Presentation — More Tab & Settings ✅

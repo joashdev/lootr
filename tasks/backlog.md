@@ -24,7 +24,7 @@ Derived from `docs/solutions-arch.md`. Build order follows the dependency rule: 
 | 14 | Presentation — More Tab & Settings | 10, 02, 07 | High | [x] |
 | 15 | Presentation — Add Transaction Sheet | 10, 02, 07 | High |
 | 16 | Presentation — Filter Sheet & Search | 10, 02, 07 | Medium |
-| 17 | Presentation — Onboarding | 10, 02 | Medium |
+| 17 | Presentation — Onboarding | 10, 02 | Medium | [x] |
 | 18 | Demo Data & Seed Data | 04 | Medium |
 | 19 | Local Notifications | 04, 03 | Medium |
 | 20 | Testing Infrastructure | 01 | High |
