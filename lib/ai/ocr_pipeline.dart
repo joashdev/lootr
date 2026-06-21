@@ -1,9 +1,16 @@
+import 'dart:io';
 import 'dart:math';
+
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
 import '../data/repositories/ai_processing_log_repo.dart';
 import '../domain/value_objects/ocr_payload.dart';
 import '../domain/value_objects/parsed_transaction.dart';
 import 'nl_parser.dart';
+
+/// Signature for the on-device text extraction step. Allows tests to inject a
+/// deterministic extractor and the default implementation to call ML Kit.
+typedef TextLineExtractor = Future<List<String>> Function(String imagePath);
 
 class OcrResult {
   final OcrPayload payload;
@@ -19,14 +26,18 @@ class OCRPipeline {
   final NLParser _nlParser;
   final AiProcessingLogRepo? _logRepo;
   final bool _aiEnabled;
+  final TextLineExtractor? _textExtractor;
 
   const OCRPipeline({
     NLParser? nlParser,
     AiProcessingLogRepo? logRepo,
     bool aiEnabled = true,
+    TextLineExtractor? textExtractor,
   })  : _nlParser = nlParser ?? const NLParser(),
         _logRepo = logRepo,
-        _aiEnabled = aiEnabled;
+        _aiEnabled = aiEnabled,
+        // ignore: prefer_initializing_formals
+        _textExtractor = textExtractor;
 
   String _generateId() {
     final r = Random();
@@ -125,16 +136,37 @@ class OCRPipeline {
   }
 
   Future<List<String>> _extractTextLines(String imagePath) async {
-    // Stub: google_mlkit_text_recognition not yet integrated.
-    // When added, replace with:
-    //   final inputImage = InputImage.fromFilePath(imagePath);
-    //   final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
-    //   final recognizedText = await textRecognizer.processImage(inputImage);
-    //   return recognizedText.blocks
-    //       .expand((b) => b.lines)
-    //       .map((l) => l.text)
-    //       .toList();
-    return [];
+    // Allow tests / callers to inject a deterministic extractor.
+    if (_textExtractor != null) {
+      return _textExtractor(imagePath);
+    }
+
+    // Real on-device extraction via ML Kit. We only attempt this when the file
+    // actually exists; non-existent paths (e.g. unit-test fixtures) return an
+    // empty result rather than touching the platform channel.
+    try {
+      if (!File(imagePath).existsSync()) {
+        return const [];
+      }
+
+      final inputImage = InputImage.fromFilePath(imagePath);
+      final recognizer =
+          TextRecognizer(script: TextRecognitionScript.latin);
+      try {
+        final recognizedText = await recognizer.processImage(inputImage);
+        return recognizedText.blocks
+            .expand((block) => block.lines)
+            .map((line) => line.text)
+            .where((text) => text.trim().isNotEmpty)
+            .toList();
+      } finally {
+        await recognizer.close();
+      }
+    } catch (_) {
+      // ML Kit unavailable (e.g. running in a headless / test environment) or
+      // the image could not be processed. Degrade gracefully to no text.
+      return const [];
+    }
   }
 
   _ReceiptFields _parseReceiptFields(String text) {

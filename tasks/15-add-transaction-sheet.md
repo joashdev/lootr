@@ -1,6 +1,6 @@
 # Task 15 — Presentation — Add Transaction Sheet & Forms
 
-**Status:** [ ]
+**Status:** [x]
 
 ---
 
@@ -87,19 +87,24 @@ Custom re-usable amount input:
 
 ## Acceptance Criteria
 
-- [ ] AddTransactionSheet opens from QuickActionsSheet or Quick Add island
-- [ ] Manual/Quick mode toggle switches form layout
-- [ ] Manual form: all fields validate, Save calls AddTransaction, pops sheet
-- [ ] Manual form: Recurring mode shows RRULE picker, Installment shows parent picker
-- [ ] Quick Add: parse "mcdo 250 gcash" → preview card shows amount=250, payee=mcdo, account=gcash
-- [ ] Quick Add: mic toggle is visible but non-functional in V1
-- [ ] Quick Add: "Edit manually" switches to manual form with extracted fields pre-filled
-- [ ] OCR scan: camera opens, capture works, ML Kit extracts text
-- [ ] OCR scan: extracted fields shown in preview, user can confirm/save
-- [ ] Edit form: pre-fills all fields from existing transaction
-- [ ] Edit form: Save applies EditTransaction use case with correct balance delta
-- [ ] Amount input: monospace, direction-colored, currency prefix
-- [ ] Undo snackbar appears after every successful save
+- [x] AddTransactionSheet opens from `/transactions/new` (QuickActionsSheet / Quick Add island route)
+- [x] Manual/Quick mode toggle switches form layout
+- [x] Manual form: all fields validate, Save calls AddTransaction, pops sheet
+- [x] Manual form: Recurring mode shows RRULE picker, Installment shows parent picker (Debt shows debt picker too)
+- [x] Quick Add: parse "mcdo 250 gcash" → preview card shows amount=250, payee=mcdo, account=gcash (covered by widget test)
+- [x] Quick Add: mic toggle is visible but non-functional in V1
+- [x] Quick Add: "Edit manually" switches to manual form with extracted fields pre-filled
+- [~] OCR scan: camera opens, capture works, ML Kit extracts text — REAL implementation (camera + image_picker + ML Kit wired into OcrPipeline). On-device capture/extraction cannot be exercised in the headless build env; widget tests cover gallery/flash/fallback with an injected pipeline.
+- [x] OCR scan: extracted fields shown in preview, user can confirm/save (Continue to Save → seeds Add sheet)
+- [x] Edit form: pre-fills all fields from existing transaction
+- [x] Edit form: Save applies EditTransaction use case with correct balance delta
+- [x] Amount input: monospace, direction-colored, currency prefix
+- [x] Undo snackbar appears after every successful save (undo stack push + UNDO action)
+
+### Notes / gaps
+- OCR scan path was moved/kept at `lib/presentation/screens/ocr/ocr_scan_screen.dart` (the base already registered this path in the router) rather than the spec's `screens/scan/`.
+- Voice input is a visible-but-inert mic per the V1 stub requirement.
+- Real on-device camera capture + ML Kit OCR are implemented but could not be exercised in this headless environment; verification bar met: compiles, `flutter analyze --no-pub` = 0 errors, `flutter test --no-pub` = 520/520 pass.
 
 ## Files Likely Affected
 

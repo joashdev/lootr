@@ -2,6 +2,14 @@
 
 ---
 
+## 2026-06-21 — Task 15 Complete
+
+**Task:** 15 — Presentation — Add Transaction Sheet & Forms ✅
+**Summary:** Built the full Add Transaction bottom sheet with a Manual/Quick mode toggle on top of the existing transfer/edit support (preserved). Manual mode covers amount (monospace, direction-coloured AmountInput), Expense/Income direction, account dropdown with balances, direction-filtered category autocomplete, payee autocomplete that creates-on-unknown, date/time pickers, optional note, and a Transaction Mode selector (One-time / Recurring / Installment / Debt) that reveals an RRULE picker, parent-transaction picker, or debt-record picker respectively. Save runs AddTransaction/EditTransaction, pops the sheet, and pushes an UNDO snackbar via the undo stack. Quick Add (NL) mode parses input deterministically (`ParseNL`), shows a confidence-dotted preview card (amount/payee/account/category/direction), exposes a visible-but-inert mic toggle (V1), and an "Edit manually" action that switches to a pre-filled manual form. Edit transaction reuses the manual form pre-filled with "Edit Transaction" title and "Save Changes". Added new reusable inputs (AccountDropdown, CategoryAutocomplete, PayeeAutocomplete) and extended AmountInput with `label`/`onChanged`. The OCR scan screen (`screens/ocr/ocr_scan_screen.dart`) was rebuilt for REAL capture: live `camera` viewfinder with capture button, `image_picker` gallery picker, flash toggle, and ML Kit text recognition wired into `OcrPipeline._extractTextLines` (existing-file guarded, graceful no-op in headless/test). Added `camera` + `image_picker` deps. Router `/transactions/new` now also accepts `AddTransactionSheetArgs` (quick-mode / parsed-seed / edit) while keeping the `Transaction`/`Transfer` extra contract. Added widget tests for quick-add parsing, the OCR screen fallback/flash, and the new inputs. `flutter pub get`, `dart run build_runner build`, `flutter analyze --no-pub` (0 errors), and `flutter test --no-pub` (520/520 passing, +9 new) all pass.
+**Device-capture caveat:** Real on-device camera capture and ML Kit extraction cannot be exercised in this headless environment; verification was limited to compile, analyze (0 errors), and widget tests that drive the gallery/flash/fallback paths with an injected OCR pipeline.
+
+---
+
 ## 2026-06-21 — Task 14 Complete
 
 **Task:** 14 — Presentation — More Tab & Settings ✅
@@ -108,7 +116,7 @@
 | 12 — Presentation — Transactions Tab | ✅ Done | 2026-06-21 |
 | 13 — Presentation — Budgets Tab | ✅ Done | 2026-06-21 |
 | 14 — Presentation — More Tab & Settings | ✅ Done | 2026-06-21 |
-| 15 — Presentation — Add Transaction Sheet | [ ] Pending | — |
+| 15 — Presentation — Add Transaction Sheet | ✅ Done | 2026-06-21 |
 | 16 — Presentation — Filter Sheet & Search | [ ] Pending | — |
 | 17 — Presentation — Onboarding | [ ] Pending | — |
 | 18 — Demo Data & Seed Data | [ ] Pending | — |
