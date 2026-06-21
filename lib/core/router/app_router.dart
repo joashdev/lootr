@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/theme.dart';
+import '../../domain/entities/transaction.dart';
+import '../../domain/entities/transfer.dart';
 import '../../presentation/screens/budgets/budget_detail_screen.dart';
 import '../../presentation/screens/budgets/budgets_screen.dart';
 import '../../presentation/screens/dashboard/dashboard_screen.dart';
@@ -353,8 +355,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // Modal / sheet routes (outside ShellRoute)
       GoRoute(
         path: '/transactions/new',
-        pageBuilder: (context, state) =>
-            _sheetPage(const AddTransactionSheet(), key: state.pageKey),
+        pageBuilder: (context, state) {
+          final tx = state.extra is Transaction ? state.extra as Transaction : null;
+          final transfer = state.extra is Transfer ? state.extra as Transfer : null;
+          return _sheetPage(
+            AddTransactionSheet(
+              initialTransaction: tx,
+              initialTransfer: transfer,
+            ),
+            key: state.pageKey,
+          );
+        },
       ),
       GoRoute(
         path: '/scan',

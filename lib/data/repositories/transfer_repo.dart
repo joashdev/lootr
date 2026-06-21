@@ -26,6 +26,14 @@ class TransferRepo {
     return q.watch();
   }
 
+  Stream<TransferData?> watchById(String id) {
+    return (_db.select(_db.transfers)
+          ..where((t) => t.id.equals(id))
+          ..limit(1))
+        .watch()
+        .map((rows) => rows.isNotEmpty ? rows.first : null);
+  }
+
   Future<String> create(TransfersCompanion t) async {
     if (!t.id.present) throw ArgumentError('id is required for create');
     final id = t.id.value;
@@ -83,6 +91,125 @@ class TransferRepo {
       }
 
       return id;
+    });
+  }
+
+  Future<void> update(TransfersCompanion transferCompanion) async {
+    if (!transferCompanion.id.present) {
+      throw ArgumentError('id is required for update');
+    }
+
+    final id = transferCompanion.id.value;
+
+    await _db.transaction(() async {
+      final old = await (_db.select(_db.transfers)
+            ..where((t) => t.id.equals(id))
+            ..limit(1))
+          .getSingle();
+
+      final oldHasFee = (old.feeAmount ?? 0) > 0;
+      final oldSourceAccount = await (_db.select(_db.accounts)
+            ..where((a) => a.id.equals(old.sourceAccountId))
+            ..limit(1))
+          .getSingle();
+      final oldDestinationAccount = await (_db.select(_db.accounts)
+            ..where((a) => a.id.equals(old.destinationAccountId))
+            ..limit(1))
+          .getSingle();
+
+      await (_db.update(_db.accounts)
+            ..where((a) => a.id.equals(old.sourceAccountId)))
+          .write(AccountsCompanion(
+        balance: Value(
+          oldSourceAccount.balance + old.amount + (oldHasFee ? old.feeAmount! : 0),
+        ),
+        syncStatus: const Value('pending_sync'),
+        updatedAt: Value(DateTime.now()),
+      ));
+
+      await (_db.update(_db.accounts)
+            ..where((a) => a.id.equals(old.destinationAccountId)))
+          .write(AccountsCompanion(
+        balance: Value(oldDestinationAccount.balance - old.amount),
+        syncStatus: const Value('pending_sync'),
+        updatedAt: Value(DateTime.now()),
+      ));
+
+      await (_db.update(_db.transfers)..where((t) => t.id.equals(id)))
+          .write(transferCompanion);
+      await (_db.update(_db.transfers)..where((t) => t.id.equals(id)))
+          .write(TransfersCompanion(
+        syncStatus: const Value('pending_sync'),
+        updatedAt: Value(DateTime.now()),
+      ));
+
+      final updated = await (_db.select(_db.transfers)
+            ..where((t) => t.id.equals(id))
+            ..limit(1))
+          .getSingle();
+      final updatedHasFee = (updated.feeAmount ?? 0) > 0;
+      final newSourceAccount = await (_db.select(_db.accounts)
+            ..where((a) => a.id.equals(updated.sourceAccountId))
+            ..limit(1))
+          .getSingle();
+      final newDestinationAccount = await (_db.select(_db.accounts)
+            ..where((a) => a.id.equals(updated.destinationAccountId))
+            ..limit(1))
+          .getSingle();
+
+      await (_db.update(_db.accounts)
+            ..where((a) => a.id.equals(updated.sourceAccountId)))
+          .write(AccountsCompanion(
+        balance: Value(
+          newSourceAccount.balance -
+              updated.amount -
+              (updatedHasFee ? updated.feeAmount! : 0),
+        ),
+        syncStatus: const Value('pending_sync'),
+        updatedAt: Value(DateTime.now()),
+      ));
+
+      await (_db.update(_db.accounts)
+            ..where((a) => a.id.equals(updated.destinationAccountId)))
+          .write(AccountsCompanion(
+        balance: Value(newDestinationAccount.balance + updated.amount),
+        syncStatus: const Value('pending_sync'),
+        updatedAt: Value(DateTime.now()),
+      ));
+
+      final feeId = 'txn-fee-$id';
+      if (oldHasFee && updatedHasFee) {
+        await (_db.update(_db.transactions)..where((t) => t.id.equals(feeId)))
+            .write(TransactionsCompanion(
+          accountId: Value(updated.sourceAccountId),
+          amount: Value(updated.feeAmount!),
+          note: const Value('Transfer fee'),
+          occurredAt: Value(updated.occurredAt),
+          deletedAt: const Value(null),
+          syncStatus: const Value('pending_sync'),
+          updatedAt: Value(DateTime.now()),
+        ));
+      } else if (!oldHasFee && updatedHasFee) {
+        await _db.into(_db.transactions).insert(
+              TransactionsCompanion.insert(
+                id: feeId,
+                accountId: updated.sourceAccountId,
+                amount: updated.feeAmount!,
+                transactionDirection: 'expense',
+                transactionMode: 'one_time',
+                transactionSubtype: const Value('transfer_fee'),
+                note: const Value('Transfer fee'),
+                occurredAt: updated.occurredAt,
+              ),
+            );
+      } else if (oldHasFee && !updatedHasFee) {
+        await (_db.update(_db.transactions)..where((t) => t.id.equals(feeId)))
+            .write(TransactionsCompanion(
+          deletedAt: Value(DateTime.now()),
+          syncStatus: const Value('pending_sync'),
+          updatedAt: Value(DateTime.now()),
+        ));
+      }
     });
   }
 

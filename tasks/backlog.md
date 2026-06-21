@@ -19,7 +19,7 @@ Derived from `docs/solutions-arch.md`. Build order follows the dependency rule: 
 | 09 | Application Layer — AI Layer (Optional) | 06 | Medium | [x] |
 | 10 | Presentation — Navigation Shell & Tab Bar | 02, 07 | Critical | [x]
 | 11 | Presentation — Dashboard Tab | 10, 02, 07 | High |
-| 12 | Presentation — Transactions Tab | 10, 02, 07 | High |
+| 12 | Presentation — Transactions Tab | 10, 02, 07 | High | [x] |
 | 13 | Presentation — Budgets Tab | 10, 02, 07 | High |
 | 14 | Presentation — More Tab & Settings | 10, 02, 07 | High |
 | 15 | Presentation — Add Transaction Sheet | 10, 02, 07 | High |
