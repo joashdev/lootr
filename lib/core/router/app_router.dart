@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../application/providers/onboarding_provider.dart';
 import '../../core/theme/theme.dart';
 import '../../presentation/screens/budgets/budget_detail_screen.dart';
 import '../../presentation/screens/budgets/budgets_screen.dart';
@@ -85,6 +86,19 @@ Page<void> _sheetPage(Widget child, {LocalKey? key}) {
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/',
+    redirect: (context, state) {
+      final container = ProviderScope.containerOf(context);
+      final onboardingState = container.read(onboardingProvider);
+      final isOnboarding = state.matchedLocation == '/onboarding';
+
+      if (!onboardingState.completed && !isOnboarding) {
+        return '/onboarding';
+      }
+      if (onboardingState.completed && isOnboarding) {
+        return '/';
+      }
+      return null;
+    },
     routes: [
       // Deep-link redirects for spec paths → actual registered routes
       GoRoute(

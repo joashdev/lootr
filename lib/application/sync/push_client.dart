@@ -21,9 +21,9 @@ class PushClient {
     required AppDatabase db,
     required SyncHttpClient httpClient,
     required SyncMetadataRepo syncMetadataRepo,
-  })  : _db = db,
-        _httpClient = httpClient,
-        _syncMetadataRepo = syncMetadataRepo;
+  }) : _db = db,
+       _httpClient = httpClient,
+       _syncMetadataRepo = syncMetadataRepo;
 
   Future<PushResult> push({String? accessToken}) async {
     try {
@@ -76,11 +76,13 @@ class PushClient {
     }
   }
 
-  Future<Map<String, List<Map<String, dynamic>>>> _collectPendingChanges() async {
+  Future<Map<String, List<Map<String, dynamic>>>>
+  _collectPendingChanges() async {
     final result = <String, List<Map<String, dynamic>>>{};
     for (final table in syncableTableDefinitions) {
       final columns = table.dataColumns.join(', ');
-      final query = '''
+      final query =
+          '''
         SELECT $columns
         FROM ${table.name}
         WHERE sync_status IN ('local_only', 'pending_sync')
@@ -100,11 +102,13 @@ class PushClient {
     return result;
   }
 
-  Future<Map<String, List<Map<String, dynamic>>>> _collectDeletedRecords() async {
+  Future<Map<String, List<Map<String, dynamic>>>>
+  _collectDeletedRecords() async {
     final result = <String, List<Map<String, dynamic>>>{};
     for (final table in syncableTableDefinitions) {
       final columns = table.dataColumns.join(', ');
-      final query = '''
+      final query =
+          '''
         SELECT $columns
         FROM ${table.name}
         WHERE deleted_at IS NOT NULL
@@ -166,25 +170,10 @@ class PushClient {
             break;
 
           case 'conflict':
-            final serverRecord = record['server_record'] as Map<String, dynamic>?;
+            final serverRecord =
+                record['server_record'] as Map<String, dynamic>?;
             if (serverRecord != null) {
-              final localRecord = await _getLocalRecord(tableName, id);
-              final serverUpdatedAt = _parseDateTime(serverRecord['updated_at']);
-              final localUpdatedAt = _parseDateTime(localRecord?['updated_at']);
-
-              if (serverUpdatedAt != null &&
-                  (localUpdatedAt == null ||
-                      !serverUpdatedAt.isBefore(localUpdatedAt))) {
-                await _replaceWithServerRecord(tableName, serverRecord);
-              } else {
-                await _db.customUpdate(
-                  'UPDATE $tableName SET sync_status = ? WHERE id = ?',
-                  variables: [
-                    Variable.withString('synced'),
-                    Variable.withString(id),
-                  ],
-                );
-              }
+              await _replaceWithServerRecord(tableName, serverRecord);
             }
             break;
 
@@ -196,7 +185,8 @@ class PushClient {
                 Variable.withString(id),
               ],
             );
-            final errorDetail = record['message'] as String? ?? 'Unknown push error';
+            final errorDetail =
+                record['message'] as String? ?? 'Unknown push error';
             await _syncMetadataRepo.set(
               SyncMetadataRepo.keyLastSyncError,
               '$tableName/$id: $errorDetail',
@@ -211,10 +201,9 @@ class PushClient {
     String tableName,
     Map<String, dynamic> serverRecord,
   ) async {
-    final def = syncableTableDefinitions.cast<SyncTableDefinition?>().firstWhere(
-      (d) => d!.name == tableName,
-      orElse: () => null,
-    );
+    final def = syncableTableDefinitions
+        .cast<SyncTableDefinition?>()
+        .firstWhere((d) => d!.name == tableName, orElse: () => null);
     if (def == null) return;
 
     final columns = [...def.dataColumns, 'sync_status', 'last_synced_at'];
@@ -261,8 +250,7 @@ class PushClient {
         'VALUES (${valueParts.join(', ')}) '
         'ON CONFLICT(id) DO UPDATE SET ${setParts.join(', ')}';
 
-    await _db.customUpdate(
-        sql, variables: [...valueVars, ...setVars]);
+    await _db.customUpdate(sql, variables: [...valueVars, ...setVars]);
   }
 
   Variable<Object> _variableFor(dynamic value) {
@@ -289,27 +277,5 @@ class PushClient {
         );
       }
     }
-  }
-
-  Future<Map<String, dynamic>?> _getLocalRecord(
-      String tableName, String id) async {
-    try {
-      final query = 'SELECT * FROM $tableName WHERE id = ? LIMIT 1';
-      final rows = await _db
-          .customSelect(query, variables: [Variable.withString(id)])
-          .get();
-      if (rows.isEmpty) return null;
-      return rows.first.data;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  DateTime? _parseDateTime(dynamic value) {
-    if (value == null) return null;
-    if (value is DateTime) return value;
-    if (value is int) return DateTime.fromMillisecondsSinceEpoch(value);
-    if (value is String) return DateTime.tryParse(value);
-    return null;
   }
 }
