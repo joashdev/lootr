@@ -10,6 +10,7 @@ import '../../../core/theme/typography.dart';
 import '../../../domain/use_cases/run_ocr.dart';
 import '../../../domain/value_objects/ocr_payload.dart';
 import '../../sheets/add_transaction_sheet.dart';
+import '../../shared/components/app_snackbar.dart';
 import '../../shared/components/buttons/primary_button.dart';
 
 /// Full-screen receipt capture flow.
@@ -171,10 +172,7 @@ class _OcrScanScreenState extends State<OcrScanScreen>
   }
 
   void _showSnackBar(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
-      ..showSnackBar(SnackBar(content: Text(message)));
+    AppSnackBar.show(context, message, variant: AppSnackBarVariant.warning);
   }
 
   void _continueToSave() {
@@ -255,10 +253,7 @@ class _OcrScanScreenState extends State<OcrScanScreen>
                     margin: const EdgeInsets.all(32),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                        color: AppColors.primary500,
-                        width: 2,
-                      ),
+                      border: Border.all(color: AppColors.primary500, width: 2),
                     ),
                   ),
                 ),

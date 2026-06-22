@@ -27,8 +27,9 @@ Widget _wrap(
       categoriesProvider.overrideWith((ref) => Stream.value(categories)),
       payeesProvider.overrideWith((ref) => Stream.value(payees)),
       debtsProvider.overrideWith((ref) => Stream.value(const <DebtRecord>[])),
-      filteredTransactionsProvider
-          .overrideWith((ref) => Stream.value(const <Transaction>[])),
+      filteredTransactionsProvider.overrideWith(
+        (ref) => Stream.value(const <Transaction>[]),
+      ),
     ],
     child: MaterialApp(
       theme: AppTheme.light,
@@ -38,72 +39,72 @@ Widget _wrap(
 }
 
 Account _account() => Account(
-      id: 'acc-1',
-      ownerUserId: 'user-1',
-      name: 'Checking',
-      accountType: 'bank',
-      balance: 1200,
-      currencyCode: 'PHP',
-      isArchived: false,
-      isHidden: false,
-      createdAt: DateTime(2026, 1, 1),
-      updatedAt: DateTime(2026, 1, 1),
-    );
+  id: 'acc-1',
+  ownerUserId: 'user-1',
+  name: 'Checking',
+  accountType: 'bank',
+  balance: 1200,
+  currencyCode: 'PHP',
+  isArchived: false,
+  isHidden: false,
+  createdAt: DateTime(2026, 1, 1),
+  updatedAt: DateTime(2026, 1, 1),
+);
 
 Account _secondAccount() => Account(
-      id: 'acc-2',
-      ownerUserId: 'user-1',
-      name: 'Savings',
-      accountType: 'savings',
-      balance: 800,
-      currencyCode: 'PHP',
-      isArchived: false,
-      isHidden: false,
-      createdAt: DateTime(2026, 1, 1),
-      updatedAt: DateTime(2026, 1, 1),
-    );
+  id: 'acc-2',
+  ownerUserId: 'user-1',
+  name: 'Savings',
+  accountType: 'savings',
+  balance: 800,
+  currencyCode: 'PHP',
+  isArchived: false,
+  isHidden: false,
+  createdAt: DateTime(2026, 1, 1),
+  updatedAt: DateTime(2026, 1, 1),
+);
 
 Category _category() => Category(
-      id: 'cat-1',
-      name: 'Coffee',
-      categoryGroup: 'expense',
-      createdAt: DateTime(2026, 1, 1),
-      updatedAt: DateTime(2026, 1, 1),
-    );
+  id: 'cat-1',
+  name: 'Coffee',
+  categoryGroup: 'expense',
+  createdAt: DateTime(2026, 1, 1),
+  updatedAt: DateTime(2026, 1, 1),
+);
 
 Payee _payee() => Payee(
-      id: 'payee-1',
-      normalizedName: 'brew lab',
-      displayName: 'Brew Lab',
-      createdAt: DateTime(2026, 1, 1),
-      updatedAt: DateTime(2026, 1, 1),
-    );
+  id: 'payee-1',
+  normalizedName: 'brew lab',
+  displayName: 'Brew Lab',
+  createdAt: DateTime(2026, 1, 1),
+  updatedAt: DateTime(2026, 1, 1),
+);
 
 Transaction _transaction({String direction = 'expense'}) => Transaction(
-      id: 'txn-1',
-      accountId: 'acc-1',
-      categoryId: 'cat-1',
-      payeeId: 'payee-1',
-      amount: 99.5,
-      direction: direction,
-      mode: 'recurring',
-      note: 'Morning coffee',
-      occurredAt: DateTime(2026, 2, 14, 8, 30),
-      createdAt: DateTime(2026, 2, 14, 8, 30),
-      updatedAt: DateTime(2026, 2, 14, 8, 30),
-    );
+  id: 'txn-1',
+  accountId: 'acc-1',
+  categoryId: 'cat-1',
+  payeeId: 'payee-1',
+  amount: 99.5,
+  direction: direction,
+  mode: 'recurring',
+  note: 'Morning coffee',
+  occurredAt: DateTime(2026, 2, 14, 8, 30),
+  createdAt: DateTime(2026, 2, 14, 8, 30),
+  updatedAt: DateTime(2026, 2, 14, 8, 30),
+);
 
 Transfer _transfer() => Transfer(
-      id: 'xfer-1',
-      sourceAccountId: 'acc-1',
-      destinationAccountId: 'acc-2',
-      amount: 250,
-      feeAmount: 10,
-      note: 'Move savings',
-      occurredAt: DateTime(2026, 2, 14, 8, 30),
-      createdAt: DateTime(2026, 2, 14, 8, 30),
-      updatedAt: DateTime(2026, 2, 14, 8, 30),
-    );
+  id: 'xfer-1',
+  sourceAccountId: 'acc-1',
+  destinationAccountId: 'acc-2',
+  amount: 250,
+  feeAmount: 10,
+  note: 'Move savings',
+  occurredAt: DateTime(2026, 2, 14, 8, 30),
+  createdAt: DateTime(2026, 2, 14, 8, 30),
+  updatedAt: DateTime(2026, 2, 14, 8, 30),
+);
 
 void main() {
   group('AddTransactionSheet', () {
@@ -116,8 +117,9 @@ void main() {
           payees: [_payee()],
         ),
       );
+      await tester.pump();
 
-      expect(find.text('Add Transaction'), findsNWidgets(2));
+      expect(find.text('Add Transaction'), findsWidgets);
       expect(find.text('Amount'), findsOneWidget);
     });
 

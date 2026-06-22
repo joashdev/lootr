@@ -8,6 +8,7 @@ import '../../core/theme/colors.dart';
 import '../../core/theme/radius.dart';
 import '../../core/theme/spacing.dart';
 import '../../core/theme/typography.dart';
+import '../shared/components/app_snackbar.dart';
 
 class SyncStatusSheet extends ConsumerWidget {
   const SyncStatusSheet({super.key});
@@ -106,9 +107,7 @@ class SyncStatusSheet extends ConsumerWidget {
                     onPressed: () async {
                       await ref.read(syncManagerProvider).sync();
                       if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Sync requested')),
-                        );
+                        AppSnackBar.show(context, 'Sync requested');
                       }
                     },
                     icon: const Icon(LucideIcons.rotateCw),

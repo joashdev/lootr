@@ -7,6 +7,7 @@ import '../../../../application/providers/ai_settings_provider.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/typography.dart';
+import '../../../shared/components/buttons/primary_button.dart';
 
 class AiSettingsScreen extends ConsumerWidget {
   const AiSettingsScreen({super.key});
@@ -100,7 +101,8 @@ class AiSettingsScreen extends ConsumerWidget {
                 ),
                 trailing:
                     aiState.modelStatus == ModelDownloadStatus.notDownloaded
-                    ? FilledButton.tonalIcon(
+                    ? PrimaryButton(
+                        label: 'Download',
                         onPressed: () async {
                           final notifier = ref.read(
                             aiSettingsProvider.notifier,
@@ -120,7 +122,8 @@ class AiSettingsScreen extends ConsumerWidget {
                           );
                         },
                         icon: const Icon(LucideIcons.download, size: 16),
-                        label: const Text('Download'),
+                        isTonal: true,
+                        isExpanded: false,
                       )
                     : null,
               ),

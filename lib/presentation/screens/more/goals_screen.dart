@@ -18,12 +18,20 @@ class GoalsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final goalsAsync = ref.watch(goalsProvider);
+    final hasGoals = goalsAsync.asData?.value.isNotEmpty ?? false;
 
     return Scaffold(
-      appBar: AppBar(centerTitle: false, title: const Text('Goals')),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => showGoalSheet(context, ref),
-        child: const Icon(LucideIcons.plus),
+      appBar: AppBar(
+        centerTitle: false,
+        title: const Text('Goals'),
+        actions: [
+          if (hasGoals)
+            IconButton(
+              tooltip: 'Add goal',
+              onPressed: () => showGoalSheet(context, ref),
+              icon: const Icon(LucideIcons.plus),
+            ),
+        ],
       ),
       body: goalsAsync.when(
         data: (goals) {

@@ -31,6 +31,7 @@ import '../../domain/value_objects/field_types.dart' as fields;
 import '../../domain/value_objects/parsed_transaction.dart';
 import '../../domain/value_objects/undo_entry.dart';
 import '../shared/components/buttons/primary_button.dart';
+import '../shared/components/app_snackbar.dart';
 import '../shared/components/inputs/account_dropdown.dart';
 import '../shared/components/inputs/amount_input.dart';
 import '../shared/components/inputs/category_autocomplete.dart';
@@ -182,6 +183,17 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
         : ui.TransactionDirection.expense;
   }
 
+  String _directionLabel(String value) {
+    switch (value) {
+      case fields.TransactionDirection.income:
+        return 'Income';
+      case fields.TransactionDirection.transfer:
+        return 'Transfer';
+      default:
+        return 'Expense';
+    }
+  }
+
   String _modeLabel(String mode) {
     switch (mode) {
       case fields.TransactionMode.oneTime:
@@ -194,17 +206,6 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
         return 'Debt';
       default:
         return mode;
-    }
-  }
-
-  String _directionLabel(String value) {
-    switch (value) {
-      case fields.TransactionDirection.income:
-        return 'Income';
-      case fields.TransactionDirection.transfer:
-        return 'Transfer';
-      default:
-        return 'Expense';
     }
   }
 
@@ -528,23 +529,23 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   }
 
   void _showSnackBar(String message, {String? transactionId}) {
-    final messenger = ScaffoldMessenger.of(context);
-    messenger
-      ..clearSnackBars()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(message),
-          duration: const Duration(seconds: 3),
-          action: transactionId == null
-              ? null
-              : SnackBarAction(
-                  label: 'UNDO',
-                  onPressed: () {
-                    ref.read(undoStackProvider.notifier).undo(transactionId);
-                  },
-                ),
-        ),
-      );
+    final isError = switch (message) {
+      'Enter a valid amount.' || 'Select an account to continue.' ||
+      'Select both source and destination accounts.' ||
+      'Enter valid transfer amounts.' =>
+        true,
+      _ => false,
+    };
+    AppSnackBar.show(
+      context,
+      message,
+      variant: isError ? AppSnackBarVariant.warning : AppSnackBarVariant.success,
+      actionLabel: transactionId != null ? 'UNDO' : null,
+      onAction: transactionId != null
+          ? () => ref.read(undoStackProvider.notifier).undo(transactionId)
+          : null,
+      duration: const Duration(seconds: 4),
+    );
   }
 
   Future<void> _runQuickAdd(List<Account> accounts, List<Payee> payees) async {
@@ -591,6 +592,18 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     });
   }
 
+  void _openScan() {
+    final router = GoRouter.of(context);
+    context.pop();
+    router.push('/scan');
+  }
+
+  void _openAccounts() {
+    final router = GoRouter.of(context);
+    context.pop();
+    router.push('/more/accounts');
+  }
+
   // ---------------------------------------------------------------------------
   // Build
   // ---------------------------------------------------------------------------
@@ -627,25 +640,37 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
       child: Material(
         color: colorScheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 16, 12),
+              child: Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleLarge,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          title,
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        if (_isTransactionEditing) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            'Mode: ${_modeLabel(widget.initialTransaction!.mode)}',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                   if (!_isTransactionEditing && !_isTransferEditing)
-                    _ModeToggle(
+                    _EntryModeMenu(
                       isQuickMode: _isQuickMode,
                       onManual: () => setState(() => _isQuickMode = false),
                       onQuick: () => setState(() => _isQuickMode = true),
+                      onScan: _openScan,
                     ),
                   IconButton(
                     onPressed: () => context.pop(),
@@ -653,32 +678,45 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                   ),
                 ],
               ),
-              if (_isTransactionEditing) ...[
-                const SizedBox(height: 4),
-                Text(
-                  'Mode: ${_modeLabel(widget.initialTransaction!.mode)}',
-                  style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const Divider(height: 1),
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Form(
+                  key: _formKey,
+                  child: _isTransferEditing
+                      ? _buildTransferEntryForm(accounts)
+                      : (_isQuickMode && !_isTransactionEditing)
+                      ? _buildQuickAdd(accounts, categories, payees)
+                      : _direction == fields.TransactionDirection.transfer
+                      ? _buildTransferEntryForm(accounts)
+                      : _buildTransactionForm(
+                          accounts,
+                          categories,
+                          payees,
+                          debts,
+                          parentTransactions,
+                        ),
                 ),
-              ],
-              const SizedBox(height: 16),
-              Form(
-                key: _formKey,
-                child: _isTransferEditing
-                    ? _buildTransferForm(accounts)
-                    : (_isQuickMode && !_isTransactionEditing)
-                    ? _buildQuickAdd(accounts, categories, payees)
-                    : _buildTransactionForm(
-                        accounts,
-                        categories,
-                        payees,
-                        debts,
-                        parentTransactions,
-                      ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _buildTransferEntryForm(List<Account> accounts) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (!_isTransferEditing) ...[
+          _buildTransactionTypeTabs(),
+          const SizedBox(height: 16),
+        ],
+        _buildTransferForm(accounts),
+      ],
     );
   }
 
@@ -692,33 +730,12 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _buildTransactionTypeTabs(),
+        const SizedBox(height: 16),
         AmountInput(
           direction: _amountDirection(),
           controller: _amountController,
           label: 'Amount',
-        ),
-        const SizedBox(height: 16),
-        SegmentedButton<String>(
-          segments: const [
-            ButtonSegment(
-              value: fields.TransactionDirection.expense,
-              label: Text('Expense'),
-              icon: Icon(Icons.arrow_upward),
-            ),
-            ButtonSegment(
-              value: fields.TransactionDirection.income,
-              label: Text('Income'),
-              icon: Icon(Icons.arrow_downward),
-            ),
-          ],
-          selected: {_direction},
-          onSelectionChanged: (selection) {
-            setState(() {
-              _direction = selection.first;
-              _categoryId = null;
-              _categoryDraft = null;
-            });
-          },
         ),
         const SizedBox(height: 16),
         _buildLabel('Account'),
@@ -728,57 +745,62 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
           selectedAccountId: _accountId,
           onChanged: (value) => setState(() => _accountId = value),
         ),
-        const SizedBox(height: 16),
-        _buildLabel('Category'),
-        const SizedBox(height: 8),
-        CategoryAutocomplete(
-          categories: categories,
-          selectedCategoryId: _categoryId,
-          groupFilter: _direction == fields.TransactionDirection.income
-              ? fields.CategoryGroup.income
-              : fields.CategoryGroup.expense,
-          initialText: _categoryDraft,
-          onChanged: (value) => setState(() => _categoryId = value),
-        ),
-        const SizedBox(height: 16),
-        _buildLabel('Payee'),
-        const SizedBox(height: 8),
-        PayeeAutocomplete(
-          payees: payees,
-          selectedPayeeId: _payeeId,
-          initialText: _payeeDraft.isEmpty ? null : _payeeDraft,
-          onChanged: (value) => setState(() => _payeeId = value),
-          onTextChanged: (value) => _payeeDraft = value,
-        ),
-        const SizedBox(height: 16),
-        _noteField(),
-        const SizedBox(height: 16),
-        _dateTimeSection(),
-        const SizedBox(height: 16),
-        _buildLabel('Transaction Mode'),
-        const SizedBox(height: 8),
-        _buildTransactionModeToggle(),
-        if (_mode == fields.TransactionMode.recurring) ...[
+        if (accounts.isEmpty) ...[
+          const SizedBox(height: 12),
+          _buildNoAccountsPrompt(),
+        ] else ...[
           const SizedBox(height: 16),
-          _buildRecurrencePicker(),
-        ],
-        if (_mode == fields.TransactionMode.installment) ...[
-          const SizedBox(height: 16),
-          _buildParentTransactionPicker(parentTransactions),
-        ],
-        if (_mode == fields.TransactionMode.debt) ...[
-          const SizedBox(height: 16),
-          _buildDebtPicker(debts),
-        ],
-        const SizedBox(height: 24),
-        SizedBox(
-          width: double.infinity,
-          child: PrimaryButton(
-            label: _isTransactionEditing ? 'Save Changes' : 'Add Transaction',
-            onPressed: _isSaving ? null : _saveTransaction,
-            isLoading: _isSaving,
+          _buildLabel('Category'),
+          const SizedBox(height: 8),
+          CategoryAutocomplete(
+            categories: categories,
+            selectedCategoryId: _categoryId,
+            groupFilter: _direction == fields.TransactionDirection.income
+                ? fields.CategoryGroup.income
+                : fields.CategoryGroup.expense,
+            initialText: _categoryDraft,
+            onChanged: (value) => setState(() => _categoryId = value),
           ),
-        ),
+          const SizedBox(height: 16),
+          _buildLabel('Payee'),
+          const SizedBox(height: 8),
+          PayeeAutocomplete(
+            payees: payees,
+            selectedPayeeId: _payeeId,
+            initialText: _payeeDraft.isEmpty ? null : _payeeDraft,
+            onChanged: (value) => setState(() => _payeeId = value),
+            onTextChanged: (value) => _payeeDraft = value,
+          ),
+          const SizedBox(height: 16),
+          _noteField(),
+          const SizedBox(height: 16),
+          _dateTimeSection(),
+          const SizedBox(height: 16),
+          _buildLabel('Transaction Mode'),
+          const SizedBox(height: 8),
+          _buildTransactionModeToggle(),
+          if (_mode == fields.TransactionMode.recurring) ...[
+            const SizedBox(height: 16),
+            _buildRecurrencePicker(),
+          ],
+          if (_mode == fields.TransactionMode.installment) ...[
+            const SizedBox(height: 16),
+            _buildParentTransactionPicker(parentTransactions),
+          ],
+          if (_mode == fields.TransactionMode.debt) ...[
+            const SizedBox(height: 16),
+            _buildDebtPicker(debts),
+          ],
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: PrimaryButton(
+              label: _isTransactionEditing ? 'Save Changes' : 'Add Transaction',
+              onPressed: _isSaving ? null : _saveTransaction,
+              isLoading: _isSaving,
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -985,6 +1007,80 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     );
   }
 
+  Widget _buildTransactionTypeTabs() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadius.full),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _TransactionTypeTab(
+            label: 'Expense',
+            isSelected: _direction == fields.TransactionDirection.expense,
+            onTap: () => _selectDirection(fields.TransactionDirection.expense),
+          ),
+          _TransactionTypeTab(
+            label: 'Income',
+            isSelected: _direction == fields.TransactionDirection.income,
+            onTap: () => _selectDirection(fields.TransactionDirection.income),
+          ),
+          _TransactionTypeTab(
+            label: 'Transfer',
+            isSelected: _direction == fields.TransactionDirection.transfer,
+            onTap: () => _selectDirection(fields.TransactionDirection.transfer),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _selectDirection(String direction) {
+    setState(() {
+      _direction = direction;
+      _categoryId = null;
+      _categoryDraft = null;
+    });
+  }
+
+  Widget _buildNoAccountsPrompt() {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.primaryContainer.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: colorScheme.primary.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Add an account first',
+            style: AppTypography.bodyMedium.copyWith(
+              color: colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Transactions need an account so Lootr knows where the money moved.',
+            style: AppTypography.caption.copyWith(
+              color: context.lootrColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          PrimaryButton(
+            label: 'Add Account',
+            onPressed: _openAccounts,
+            isExpanded: false,
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildRecurrencePicker() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1088,82 +1184,127 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _amountField(labelText: 'Transfer Amount'),
-        const SizedBox(height: 16),
-        TextFormField(
-          controller: _feeController,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(
-            labelText: 'Fee',
-            prefixText: 'PHP ',
+        if (accounts.length < 2) ...[
+          const SizedBox(height: 12),
+          _buildTransferAccountsPrompt(accounts.length),
+        ] else ...[
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _feeController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              labelText: 'Fee',
+              prefixText: 'PHP ',
+            ),
+            validator: (value) {
+              if ((value ?? '').trim().isEmpty) return null;
+              final parsed = double.tryParse(value!.trim());
+              if (parsed == null || parsed < 0) {
+                return 'Enter a valid fee';
+              }
+              return null;
+            },
           ),
-          validator: (value) {
-            if ((value ?? '').trim().isEmpty) return null;
-            final parsed = double.tryParse(value!.trim());
-            if (parsed == null || parsed < 0) {
-              return 'Enter a valid fee';
-            }
-            return null;
-          },
-        ),
-        const SizedBox(height: 16),
-        DropdownButtonFormField<String>(
-          key: ValueKey(
-            'source-${_sourceAccountId ?? 'none'}-${accounts.length}',
+          const SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            key: ValueKey(
+              'source-${_sourceAccountId ?? 'none'}-${accounts.length}',
+            ),
+            initialValue:
+                accounts.any((account) => account.id == _sourceAccountId)
+                ? _sourceAccountId
+                : null,
+            decoration: const InputDecoration(labelText: 'From account'),
+            items: [
+              for (final account in accounts)
+                DropdownMenuItem<String>(
+                  value: account.id,
+                  child: Text(account.name),
+                ),
+            ],
+            onChanged: accounts.isEmpty
+                ? null
+                : (value) => setState(() => _sourceAccountId = value),
+            validator: (value) =>
+                value == null ? 'Select a source account' : null,
           ),
-          initialValue:
-              accounts.any((account) => account.id == _sourceAccountId)
-              ? _sourceAccountId
-              : null,
-          decoration: const InputDecoration(labelText: 'From account'),
-          items: [
-            for (final account in accounts)
-              DropdownMenuItem<String>(
-                value: account.id,
-                child: Text(account.name),
-              ),
-          ],
-          onChanged: accounts.isEmpty
-              ? null
-              : (value) => setState(() => _sourceAccountId = value),
-          validator: (value) =>
-              value == null ? 'Select a source account' : null,
-        ),
-        const SizedBox(height: 16),
-        DropdownButtonFormField<String>(
-          key: ValueKey(
-            'destination-${_destinationAccountId ?? 'none'}-${accounts.length}',
+          const SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            key: ValueKey(
+              'destination-${_destinationAccountId ?? 'none'}-${accounts.length}',
+            ),
+            initialValue:
+                accounts.any((account) => account.id == _destinationAccountId)
+                ? _destinationAccountId
+                : null,
+            decoration: const InputDecoration(labelText: 'To account'),
+            items: [
+              for (final account in accounts)
+                DropdownMenuItem<String>(
+                  value: account.id,
+                  child: Text(account.name),
+                ),
+            ],
+            onChanged: accounts.isEmpty
+                ? null
+                : (value) => setState(() => _destinationAccountId = value),
+            validator: (value) =>
+                value == null ? 'Select a destination account' : null,
           ),
-          initialValue:
-              accounts.any((account) => account.id == _destinationAccountId)
-              ? _destinationAccountId
-              : null,
-          decoration: const InputDecoration(labelText: 'To account'),
-          items: [
-            for (final account in accounts)
-              DropdownMenuItem<String>(
-                value: account.id,
-                child: Text(account.name),
-              ),
-          ],
-          onChanged: accounts.isEmpty
-              ? null
-              : (value) => setState(() => _destinationAccountId = value),
-          validator: (value) =>
-              value == null ? 'Select a destination account' : null,
-        ),
-        const SizedBox(height: 16),
-        _noteField(hintText: 'Optional transfer note'),
-        const SizedBox(height: 16),
-        _dateTimeSection(),
-        const SizedBox(height: 24),
-        SizedBox(
-          width: double.infinity,
-          child: FilledButton(
-            onPressed: _isSaving ? null : _saveTransfer,
-            child: Text(_isSaving ? 'Saving...' : 'Save Transfer'),
+          const SizedBox(height: 16),
+          _noteField(hintText: 'Optional transfer note'),
+          const SizedBox(height: 16),
+          _dateTimeSection(),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: _isSaving ? null : _saveTransfer,
+              child: Text(_isSaving ? 'Saving...' : 'Save Transfer'),
+            ),
           ),
-        ),
+        ],
       ],
+    );
+  }
+
+  Widget _buildTransferAccountsPrompt(int accountCount) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final copy = accountCount == 0
+        ? 'Transfers need a source and destination account.'
+        : 'Transfers need a second account for the destination.';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.primaryContainer.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: colorScheme.primary.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            accountCount == 0 ? 'Add accounts first' : 'Add another account',
+            style: AppTypography.bodyMedium.copyWith(
+              color: colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            copy,
+            style: AppTypography.caption.copyWith(
+              color: context.lootrColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          PrimaryButton(
+            label: accountCount == 0 ? 'Add Account' : 'Add Another Account',
+            onPressed: _openAccounts,
+            isExpanded: false,
+          ),
+        ],
+      ),
     );
   }
 
@@ -1227,47 +1368,75 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   }
 }
 
-class _ModeToggle extends StatelessWidget {
-  const _ModeToggle({
+enum _EntryMode { manual, quick, scan }
+
+class _EntryModeMenu extends StatelessWidget {
+  const _EntryModeMenu({
     required this.isQuickMode,
     required this.onManual,
     required this.onQuick,
+    required this.onScan,
   });
 
   final bool isQuickMode;
   final VoidCallback onManual;
   final VoidCallback onQuick;
+  final VoidCallback onScan;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final selected = isQuickMode ? _EntryMode.quick : _EntryMode.manual;
+    final label = isQuickMode ? 'Quick' : 'Manual';
 
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(AppRadius.full),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _ModeToggleTab(
-            label: 'Manual',
-            isSelected: !isQuickMode,
-            onTap: onManual,
-          ),
-          _ModeToggleTab(
-            label: 'Quick',
-            isSelected: isQuickMode,
-            onTap: onQuick,
-          ),
-        ],
+    return PopupMenuButton<_EntryMode>(
+      initialValue: selected,
+      onSelected: (mode) {
+        switch (mode) {
+          case _EntryMode.manual:
+            onManual();
+          case _EntryMode.quick:
+            onQuick();
+          case _EntryMode.scan:
+            onScan();
+        }
+      },
+      itemBuilder: (context) => const [
+        PopupMenuItem(value: _EntryMode.manual, child: Text('Manual')),
+        PopupMenuItem(value: _EntryMode.quick, child: Text('Quick')),
+        PopupMenuItem(value: _EntryMode.scan, child: Text('Scan')),
+      ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(AppRadius.full),
+          border: Border.all(color: colorScheme.outlineVariant),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: AppTypography.captionMedium.copyWith(
+                color: colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              LucideIcons.chevronDown,
+              size: 16,
+              color: context.lootrColors.textSecondary,
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _ModeToggleTab extends StatelessWidget {
-  const _ModeToggleTab({
+class _TransactionTypeTab extends StatelessWidget {
+  const _TransactionTypeTab({
     required this.label,
     required this.isSelected,
     required this.onTap,
@@ -1281,19 +1450,21 @@ class _ModeToggleTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      borderRadius: BorderRadius.circular(AppRadius.full),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? colorScheme.surface : Colors.transparent,
+          color: isSelected ? colorScheme.primaryContainer : Colors.transparent,
           borderRadius: BorderRadius.circular(AppRadius.full),
         ),
         child: Text(
           label,
-          style: AppTypography.captionMedium.copyWith(
+          style: AppTypography.bodyMedium.copyWith(
             color: isSelected
-                ? colorScheme.onSurface
+                ? colorScheme.onPrimaryContainer
                 : context.lootrColors.textSecondary,
           ),
         ),

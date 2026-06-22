@@ -22,13 +22,13 @@ import '../../../domain/entities/transaction.dart';
 import '../../../domain/entities/transfer.dart';
 import '../../../domain/use_cases/delete_transaction.dart';
 import '../../../domain/use_cases/delete_transfer.dart';
+import '../../shared/components/buttons/ghost_button.dart';
+import '../../shared/components/buttons/secondary_button.dart';
+import '../../shared/components/app_snackbar.dart';
 import 'widgets/transaction_detail_card.dart';
 
 class _TransactionDetailEntry {
-  const _TransactionDetailEntry({
-    required this.transaction,
-    this.transfer,
-  });
+  const _TransactionDetailEntry({required this.transaction, this.transfer});
 
   final Transaction transaction;
   final Transfer? transfer;
@@ -166,16 +166,16 @@ class _TransactionDetailScreenState
               : 'Are you sure you want to delete this transaction?',
         ),
         actions: [
-          TextButton(
+          GhostButton(
+            label: 'Cancel',
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            isExpanded: false,
           ),
-          TextButton(
+          GhostButton(
+            label: 'Delete',
             onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(ctx).colorScheme.error,
-            ),
-            child: const Text('Delete'),
+            isDanger: true,
+            isExpanded: false,
           ),
         ],
       ),
@@ -183,32 +183,37 @@ class _TransactionDetailScreenState
     if (confirmed != true) return;
 
     final result = isTransfer
-        ? await DeleteTransfer(ref.read(transferRepoProvider)).call(entry.transfer!.id)
-        : await DeleteTransaction(ref.read(transactionRepoProvider))
-            .call(entry.transaction.id);
+        ? await DeleteTransfer(
+            ref.read(transferRepoProvider),
+          ).call(entry.transfer!.id)
+        : await DeleteTransaction(
+            ref.read(transactionRepoProvider),
+          ).call(entry.transaction.id);
 
     result.fold(
       onSuccess: (undoEntry) {
         ref.read(undoStackProvider.notifier).push(undoEntry);
         if (mounted) {
           context.pop();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(undoEntry.message),
-              duration: const Duration(seconds: 5),
-              action: SnackBarAction(
-                label: 'UNDO',
-                onPressed: () => ref
-                    .read(undoStackProvider.notifier)
-                    .undo(undoEntry.transactionId),
-              ),
-            ),
+          AppSnackBar.show(
+            context,
+            undoEntry.message,
+            variant: AppSnackBarVariant.success,
+            actionLabel: 'UNDO',
+            onAction: () => ref
+                .read(undoStackProvider.notifier)
+                .undo(undoEntry.transactionId),
+            duration: const Duration(seconds: 5),
           );
         }
       },
       onFailure: (message, _) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+          AppSnackBar.show(
+            context,
+            message,
+            variant: AppSnackBarVariant.error,
+          );
         }
       },
     );
@@ -314,7 +319,9 @@ class _TransactionDetailScreenState
             TransactionDetailCard(
               transaction: transaction,
               accountName: _accountName(transaction.accountId, accounts),
-              categoryName: isTransfer ? null : _categoryName(transaction, categories),
+              categoryName: isTransfer
+                  ? null
+                  : _categoryName(transaction, categories),
               payeeName: isTransfer
                   ? transferDestinationName
                   : _payeeName(transaction, payees),
@@ -334,28 +341,28 @@ class _TransactionDetailScreenState
             ),
             const SizedBox(height: AppSpacing.space4),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space4),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.space4,
+              ),
               child: Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton.icon(
+                    child: SecondaryButton(
+                      label: 'Edit',
                       onPressed: () => context.push(
                         '/transactions/new',
                         extra: isTransfer ? transfer : transaction,
                       ),
                       icon: const Icon(Icons.edit_outlined, size: 18),
-                      label: const Text('Edit'),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.space3),
                   Expanded(
-                    child: OutlinedButton.icon(
+                    child: SecondaryButton(
+                      label: 'Delete',
                       onPressed: () => _onDelete(entry),
                       icon: const Icon(Icons.delete_outline, size: 18),
-                      label: const Text('Delete'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Theme.of(context).colorScheme.error,
-                      ),
+                      isDanger: true,
                     ),
                   ),
                 ],
@@ -374,7 +381,9 @@ class _TransactionDetailScreenState
     String amountStr, {
     required bool isTransfer,
   }) {
-    final dateStr = DateFormat('MMM d, yyyy \u00b7 h:mm a').format(transaction.occurredAt);
+    final dateStr = DateFormat(
+      'MMM d, yyyy \u00b7 h:mm a',
+    ).format(transaction.occurredAt);
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.space4,
@@ -393,7 +402,10 @@ class _TransactionDetailScreenState
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _LocalBadge(label: _directionLabel(transaction), color: directionColor),
+              _LocalBadge(
+                label: _directionLabel(transaction),
+                color: directionColor,
+              ),
               const SizedBox(width: 8),
               _LocalBadge(
                 label: _modeLabel(transaction, isTransfer: isTransfer),

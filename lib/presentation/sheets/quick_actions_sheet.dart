@@ -6,6 +6,7 @@ import '../../core/theme/colors.dart';
 import '../../core/theme/radius.dart';
 import '../../core/theme/typography.dart';
 import '../shared/components/sheet_handle.dart';
+import '../shared/components/app_snackbar.dart';
 import 'add_transaction_sheet.dart';
 
 class QuickActionsSheet extends StatelessWidget {
@@ -115,11 +116,11 @@ class _QuickActionsSheetBodyState extends State<_QuickActionsSheetBody> {
                   ),
                   IconButton(
                     onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Voice input is not available in V1'),
-                          duration: Duration(seconds: 2),
-                        ),
+                      AppSnackBar.show(
+                        context,
+                        'Voice input is not available in V1',
+                        variant: AppSnackBarVariant.neutral,
+                        duration: const Duration(seconds: 2),
                       );
                     },
                     icon: Icon(

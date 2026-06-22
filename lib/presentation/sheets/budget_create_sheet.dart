@@ -16,6 +16,7 @@ import '../../application/providers/budgets_tab_provider.dart';
 import '../../application/providers/categories_provider.dart';
 import '../../application/providers/repo_providers.dart';
 import '../shared/components/sheet_handle.dart';
+import '../shared/components/app_snackbar.dart';
 
 String _generateId() {
   final r = Random();
@@ -64,8 +65,10 @@ class _BudgetCreateSheetState extends ConsumerState<BudgetCreateSheet> {
 
     final amount = double.tryParse(amountText);
     if (amount == null || amount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid amount')),
+      AppSnackBar.show(
+        context,
+        'Please enter a valid amount',
+        variant: AppSnackBarVariant.warning,
       );
       return;
     }
@@ -137,10 +140,7 @@ class _BudgetCreateSheetState extends ConsumerState<BudgetCreateSheet> {
   }
 
   void _showError(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    AppSnackBar.show(context, message, variant: AppSnackBarVariant.error);
   }
 
   @override

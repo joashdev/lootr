@@ -13,6 +13,7 @@ import '../../../domain/entities/household.dart';
 import '../../../domain/entities/recurring_template.dart';
 import '../../../domain/value_objects/field_types.dart';
 import '../../shared/category_visuals.dart';
+import '../../shared/components/app_snackbar.dart';
 
 String _makeId(String prefix) =>
     '$prefix-${DateTime.now().microsecondsSinceEpoch}';
@@ -94,9 +95,12 @@ InputDecoration _fieldDecoration(String label) {
   return InputDecoration(labelText: label, border: const OutlineInputBorder());
 }
 
-void _showMessage(BuildContext context, String message) {
-  if (!context.mounted) return;
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+void _showMessage(
+  BuildContext context,
+  String message, {
+  AppSnackBarVariant variant = AppSnackBarVariant.neutral,
+}) {
+  AppSnackBar.show(context, message, variant: variant);
 }
 
 Future<void> showAccountSheet(
@@ -177,7 +181,11 @@ Future<void> showAccountSheet(
                 final name = nameController.text.trim();
                 final balance = _parseAmount(balanceController.text) ?? 0;
                 if (name.isEmpty) {
-                  _showMessage(context, 'Account name is required.');
+                  _showMessage(
+                    context,
+                    'Account name is required.',
+                    variant: AppSnackBarVariant.error,
+                  );
                   return;
                 }
 
@@ -208,6 +216,7 @@ Future<void> showAccountSheet(
                 _showMessage(
                   context,
                   initial == null ? 'Account created.' : 'Account updated.',
+                  variant: AppSnackBarVariant.success,
                 );
               },
               child: Text(initial == null ? 'Save Account' : 'Save Changes'),
@@ -237,26 +246,33 @@ Future<void> showDebtSheet(BuildContext context, WidgetRef ref) async {
           const SizedBox(height: AppSpacing.space4),
           TextField(
             controller: counterpartyController,
-            decoration: _fieldDecoration('Counterparty'),
+            decoration: _fieldDecoration('Who is this with?'),
             textCapitalization: TextCapitalization.words,
           ),
           const SizedBox(height: AppSpacing.space3),
-          DropdownButtonFormField<String>(
-            value: direction,
-            decoration: _fieldDecoration('Direction'),
-            items: const [
-              DropdownMenuItem(
-                value: DebtDirection.borrowed,
-                child: Text('You borrowed'),
+          Text(
+            'Did you lend or borrow?',
+            style: Theme.of(sheetContext).textTheme.labelLarge,
+          ),
+          const SizedBox(height: AppSpacing.space2),
+          Wrap(
+            spacing: AppSpacing.space2,
+            children: [
+              ChoiceChip(
+                label: const Text('Borrowed'),
+                selected: direction == DebtDirection.borrowed,
+                showCheckmark: false,
+                onSelected: (_) =>
+                    setState(() => direction = DebtDirection.borrowed),
               ),
-              DropdownMenuItem(
-                value: DebtDirection.lent,
-                child: Text('You lent'),
+              ChoiceChip(
+                label: const Text('Lent'),
+                selected: direction == DebtDirection.lent,
+                showCheckmark: false,
+                onSelected: (_) =>
+                    setState(() => direction = DebtDirection.lent),
               ),
             ],
-            onChanged: (value) {
-              if (value != null) setState(() => direction = value);
-            },
           ),
           const SizedBox(height: AppSpacing.space3),
           TextField(
@@ -288,7 +304,7 @@ Future<void> showDebtSheet(BuildContext context, WidgetRef ref) async {
                 if (counterparty.isEmpty || amount == null || amount <= 0) {
                   _showMessage(
                     context,
-                    'Enter a counterparty and valid amount.',
+                    'Enter who this is with and a valid amount.',
                   );
                   return;
                 }

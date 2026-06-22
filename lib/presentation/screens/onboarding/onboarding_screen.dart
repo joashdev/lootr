@@ -76,9 +76,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Skip to setup?'),
         content: const Text(
-          'You can skip the intro and finish with your name and preferences. '
-          'Demo data will be turned off, but you can still change it before '
-          'you get started.',
+          'You will skip the intro and go straight to setup. You can still '
+          'enter your name, choose a currency, and decide whether to start '
+          'with demo data before continuing.',
         ),
         actions: [
           TextButton(

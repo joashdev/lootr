@@ -34,19 +34,21 @@ class EmptyState extends StatelessWidget {
             SizedBox(
               width: 120,
               height: 120,
-              child: illustration ??
-                  Icon(
-                    Icons.inbox_outlined,
-                    size: 64,
-                    color: lootrColors.textTertiary,
-                  ),
+              child: IconTheme.merge(
+                data: IconThemeData(color: lootrColors.textTertiary),
+                child:
+                    illustration ??
+                    Icon(
+                      Icons.inbox_outlined,
+                      size: 64,
+                      color: lootrColors.textTertiary,
+                    ),
+              ),
             ),
             const SizedBox(height: AppSpacing.space4),
             Text(
               headline,
-              style: AppTypography.h2.copyWith(
-                color: colorScheme.onSurface,
-              ),
+              style: AppTypography.h2.copyWith(color: colorScheme.onSurface),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.space2),
@@ -58,10 +60,13 @@ class EmptyState extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.space4),
-            PrimaryButton(
-              label: ctaLabel,
-              onPressed: onCtaPressed,
-              isExpanded: false,
+            ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 220),
+              child: PrimaryButton(
+                label: ctaLabel,
+                onPressed: onCtaPressed,
+                isExpanded: false,
+              ),
             ),
           ],
         ),

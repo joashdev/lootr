@@ -8,6 +8,7 @@ import '../../../application/providers/dashboard_provider.dart';
 import '../../../application/providers/sync_providers.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
+import '../../shared/components/app_snackbar.dart';
 import '../../shared/components/empty_state.dart';
 import '../../shared/components/primary_screen_header.dart';
 import '../../sheets/sync_status_sheet.dart';
@@ -40,7 +41,7 @@ class DashboardScreen extends ConsumerWidget {
         data: (data) {
           if (data.isEmpty) {
             return _EmptyDashboard(
-              onAddTransaction: () => context.push('/transactions/new'),
+              onAddAccount: () => context.push('/more/accounts'),
             );
           }
 
@@ -140,9 +141,7 @@ class _DashboardHeader extends ConsumerWidget implements PreferredSizeWidget {
             color: Theme.of(context).colorScheme.onSurface,
           ),
           onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Global search is coming soon')),
-            );
+            AppSnackBar.show(context, 'Global search is coming soon');
           },
         ),
       ],
@@ -183,17 +182,17 @@ class _DashboardHeader extends ConsumerWidget implements PreferredSizeWidget {
 }
 
 class _EmptyDashboard extends StatelessWidget {
-  const _EmptyDashboard({required this.onAddTransaction});
+  const _EmptyDashboard({required this.onAddAccount});
 
-  final VoidCallback onAddTransaction;
+  final VoidCallback onAddAccount;
 
   @override
   Widget build(BuildContext context) {
     return EmptyState(
       headline: 'Welcome to Lootr',
-      subtext: 'Start by adding your accounts and transactions',
-      ctaLabel: 'Add your first transaction',
-      onCtaPressed: onAddTransaction,
+      subtext: 'Start by adding an account. Transactions come next.',
+      ctaLabel: 'Add your first account',
+      onCtaPressed: onAddAccount,
       illustration: const Icon(Icons.wallet_outlined, size: 72),
     );
   }

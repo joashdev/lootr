@@ -131,7 +131,8 @@ class TabShell extends StatelessWidget {
                   icon: LucideIcons.grid2X2,
                   label: 'More',
                   isActive: navigationShell.currentIndex == 3,
-                  onTap: () => navigationShell.goBranch(3),
+                  onTap: () =>
+                      navigationShell.goBranch(3, initialLocation: true),
                   isDark: isDark,
                 ),
               ],

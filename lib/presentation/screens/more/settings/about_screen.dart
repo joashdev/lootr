@@ -5,6 +5,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/typography.dart';
+import '../../../shared/components/buttons/ghost_button.dart';
+import '../../../shared/components/buttons/secondary_button.dart';
 
 class AboutScreen extends ConsumerWidget {
   const AboutScreen({super.key});
@@ -54,20 +56,21 @@ class AboutScreen extends ConsumerWidget {
               const SizedBox(height: AppSpacing.space6),
               SizedBox(
                 width: double.infinity,
-                child: OutlinedButton.icon(
+                child: SecondaryButton(
+                  label: 'Licenses',
                   onPressed: () => showLicensePage(
                     context: context,
                     applicationName: 'Lootr',
                     applicationVersion: '1.0.0',
                   ),
                   icon: const Icon(LucideIcons.scrollText, size: 18),
-                  label: const Text('Licenses'),
                 ),
               ),
               const SizedBox(height: AppSpacing.space3),
               SizedBox(
                 width: double.infinity,
-                child: OutlinedButton.icon(
+                child: SecondaryButton(
+                  label: 'Privacy Policy',
                   onPressed: () => showDialog<void>(
                     context: context,
                     builder: (dialogContext) => AlertDialog(
@@ -76,15 +79,15 @@ class AboutScreen extends ConsumerWidget {
                         'Lootr keeps your data on-device in V1. Sync, backup, and data sharing stay opt-in as future features.',
                       ),
                       actions: [
-                        TextButton(
+                        GhostButton(
+                          label: 'Close',
                           onPressed: () => Navigator.of(dialogContext).pop(),
-                          child: const Text('Close'),
+                          isExpanded: false,
                         ),
                       ],
                     ),
                   ),
                   icon: const Icon(LucideIcons.shield, size: 18),
-                  label: const Text('Privacy Policy'),
                 ),
               ),
             ],

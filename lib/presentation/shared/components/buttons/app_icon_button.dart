@@ -35,11 +35,7 @@ class AppIconButton extends StatelessWidget {
             child: Semantics(
               label: semanticLabel ?? tooltip ?? '',
               button: true,
-              child: Icon(
-                icon,
-                size: 24,
-                color: lootrColors.textSecondary,
-              ),
+              child: Icon(icon, size: 24, color: lootrColors.textSecondary),
             ),
           ),
         ),

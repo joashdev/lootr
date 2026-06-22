@@ -22,8 +22,12 @@ import '../../../domain/entities/transaction.dart';
 import '../../../domain/use_cases/delete_transaction.dart';
 import '../../../domain/use_cases/delete_transfer.dart';
 import '../../../domain/value_objects/transaction_filters.dart';
+import '../more/more_form_sheets.dart';
 import '../../sheets/filter_sheet.dart';
+import '../../shared/components/app_snackbar.dart';
 import '../../shared/components/primary_screen_header.dart';
+import '../../shared/components/buttons/ghost_button.dart';
+import '../../shared/components/buttons/primary_button.dart';
 import '../../shared/components/inputs/search_input.dart';
 import 'widgets/date_group_header.dart';
 import 'widgets/filter_chip_bar.dart';
@@ -147,16 +151,16 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               : 'Are you sure you want to delete this transaction?',
         ),
         actions: [
-          TextButton(
+          GhostButton(
+            label: 'Cancel',
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            isExpanded: false,
           ),
-          TextButton(
+          GhostButton(
+            label: 'Delete',
             onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(ctx).colorScheme.error,
-            ),
-            child: const Text('Delete'),
+            isDanger: true,
+            isExpanded: false,
           ),
         ],
       ),
@@ -172,25 +176,25 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       onSuccess: (undoEntry) {
         ref.read(undoStackProvider.notifier).push(undoEntry);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(undoEntry.message),
-              duration: const Duration(seconds: 5),
-              action: SnackBarAction(
-                label: 'UNDO',
-                onPressed: () {
-                  ref.read(undoStackProvider.notifier).undo(id);
-                },
-              ),
-            ),
+          AppSnackBar.show(
+            context,
+            undoEntry.message,
+            variant: AppSnackBarVariant.success,
+            actionLabel: 'UNDO',
+            onAction: () {
+              ref.read(undoStackProvider.notifier).undo(id);
+            },
+            duration: const Duration(seconds: 5),
           );
         }
       },
       onFailure: (message, _) {
         if (mounted) {
-          ScaffoldMessenger.of(
+          AppSnackBar.show(
             context,
-          ).showSnackBar(SnackBar(content: Text(message)));
+            message,
+            variant: AppSnackBarVariant.error,
+          );
         }
       },
     );
@@ -338,6 +342,13 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final accountMap = _accountMap(accounts);
     final categoryMap = _categoryMap(categories);
     final filtered = state.transactions;
+    final activeAccounts =
+        accounts.asData?.value
+            .where(
+              (account) => account.deletedAt == null && !account.isArchived,
+            )
+            .toList() ??
+        const <Account>[];
 
     final hasSearch = searchQuery.isNotEmpty;
     final isFilterActive = !filters.isEmpty;
@@ -375,18 +386,20 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               alignment: WrapAlignment.center,
               children: [
                 if (hasSearch)
-                  FilledButton(
+                  PrimaryButton(
+                    label: 'Clear Search',
                     onPressed: () {
                       _searchController.clear();
                       ref.read(transactionSearchQueryProvider.notifier).clear();
                     },
-                    child: const Text('Clear Search'),
+                    isExpanded: false,
                   ),
                 if (isFilterActive)
-                  FilledButton(
+                  PrimaryButton(
+                    label: 'Clear Filters',
                     onPressed: () =>
                         ref.read(transactionFiltersProvider.notifier).reset(),
-                    child: const Text('Clear Filters'),
+                    isExpanded: false,
                   ),
               ],
             ),
@@ -396,6 +409,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     }
 
     if (filtered.isEmpty) {
+      final needsAccount =
+          accounts is AsyncData<List<Account>> && activeAccounts.isEmpty;
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -414,16 +429,26 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             ),
             const SizedBox(height: AppSpacing.space2),
             Text(
-              'Add your first transaction to start tracking',
+              needsAccount
+                  ? 'Add an account first, then track transactions.'
+                  : 'Add your first transaction to start tracking',
               style: AppTypography.body.copyWith(
                 color: context.lootrColors.textSecondary,
               ),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.space4),
-            FilledButton.icon(
-              onPressed: () => context.push('/transactions/new'),
+            PrimaryButton(
+              label: needsAccount ? 'Add Account' : 'Add Transaction',
+              onPressed: () {
+                if (needsAccount) {
+                  showAccountSheet(context, ref);
+                } else {
+                  context.push('/transactions/new');
+                }
+              },
               icon: const Icon(Icons.add, size: 18),
-              label: const Text('Add Transaction'),
+              isExpanded: false,
             ),
           ],
         ),

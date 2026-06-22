@@ -55,9 +55,8 @@ class _AppTextFieldState extends State<AppTextField> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final lootrColors = context.lootrColors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final effectiveBgColor = _isFocused
-        ? (isDark ? colorScheme.surface : AppColors.primary50)
+        ? colorScheme.primaryContainer
         : colorScheme.surface;
     final effectiveBorderColor = _isFocused
         ? colorScheme.primary

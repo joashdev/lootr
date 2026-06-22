@@ -47,16 +47,14 @@ class OnboardingStep extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.space8),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: AppTypography.h1,
-          ),
+          Text(title, textAlign: TextAlign.center, style: AppTypography.h1),
           const SizedBox(height: AppSpacing.space3),
           Text(
             description,
             textAlign: TextAlign.center,
-            style: AppTypography.body.copyWith(color: lootrColors.textSecondary),
+            style: AppTypography.body.copyWith(
+              color: lootrColors.textSecondary,
+            ),
           ),
           if (child != null) ...[
             const SizedBox(height: AppSpacing.space8),

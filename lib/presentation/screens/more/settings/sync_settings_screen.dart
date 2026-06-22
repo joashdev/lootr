@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/typography.dart';
+import '../../../shared/components/buttons/secondary_button.dart';
 
 class SyncSettingsScreen extends ConsumerWidget {
   const SyncSettingsScreen({super.key});
@@ -15,10 +16,7 @@ class SyncSettingsScreen extends ConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        centerTitle: false,
-        title: const Text('Cloud Sync'),
-      ),
+      appBar: AppBar(centerTitle: false, title: const Text('Cloud Sync')),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.space8),
@@ -33,9 +31,7 @@ class SyncSettingsScreen extends ConsumerWidget {
               const SizedBox(height: AppSpacing.space6),
               Text(
                 'Cloud sync coming soon',
-                style: AppTypography.h2.copyWith(
-                  color: colorScheme.onSurface,
-                ),
+                style: AppTypography.h2.copyWith(color: colorScheme.onSurface),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppSpacing.space2),
@@ -47,10 +43,10 @@ class SyncSettingsScreen extends ConsumerWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppSpacing.space4),
-              OutlinedButton.icon(
+              SecondaryButton(
+                label: 'Sync Now',
                 onPressed: null,
                 icon: const Icon(LucideIcons.refreshCw, size: 18),
-                label: const Text('Sync Now'),
               ),
             ],
           ),

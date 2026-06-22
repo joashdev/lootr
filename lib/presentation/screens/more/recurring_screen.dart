@@ -20,6 +20,7 @@ class RecurringScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final recurringAsync = ref.watch(recurringProvider);
+    final hasRecurring = recurringAsync.asData?.value.isNotEmpty ?? false;
     final accounts = ref.watch(accountsProvider).asData?.value ?? const [];
     final payees = ref.watch(payeesProvider).asData?.value ?? const <Payee>[];
     final payeeNames = {
@@ -28,10 +29,18 @@ class RecurringScreen extends ConsumerWidget {
     };
 
     return Scaffold(
-      appBar: AppBar(centerTitle: false, title: const Text('Recurring')),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => showRecurringSheet(context, ref, accounts: accounts),
-        child: const Icon(LucideIcons.plus),
+      appBar: AppBar(
+        centerTitle: false,
+        title: const Text('Recurring'),
+        actions: [
+          if (hasRecurring)
+            IconButton(
+              tooltip: 'Add recurring item',
+              onPressed: () =>
+                  showRecurringSheet(context, ref, accounts: accounts),
+              icon: const Icon(LucideIcons.plus),
+            ),
+        ],
       ),
       body: recurringAsync.when(
         data: (templates) {

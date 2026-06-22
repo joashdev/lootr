@@ -16,14 +16,22 @@ class HouseholdsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final householdsAsync = ref.watch(householdsProvider);
+    final hasHouseholds = householdsAsync.asData?.value.isNotEmpty ?? false;
     final lootrColors = context.lootrColors;
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(centerTitle: false, title: const Text('Households')),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => showHouseholdSheet(context, ref),
-        child: const Icon(LucideIcons.plus),
+      appBar: AppBar(
+        centerTitle: false,
+        title: const Text('Households'),
+        actions: [
+          if (hasHouseholds)
+            IconButton(
+              tooltip: 'Add household',
+              onPressed: () => showHouseholdSheet(context, ref),
+              icon: const Icon(LucideIcons.plus),
+            ),
+        ],
       ),
       body: householdsAsync.when(
         data: (households) {

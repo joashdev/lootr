@@ -32,9 +32,7 @@ class StepIndicator extends StatelessWidget {
           height: 8,
           width: isActive ? 24 : 8,
           decoration: BoxDecoration(
-            color: isActive
-                ? colorScheme.primary
-                : colorScheme.outlineVariant,
+            color: isActive ? colorScheme.primary : colorScheme.outlineVariant,
             borderRadius: BorderRadius.circular(4),
           ),
         );

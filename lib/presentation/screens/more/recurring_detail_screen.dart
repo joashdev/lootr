@@ -16,6 +16,7 @@ import '../../../domain/entities/account.dart';
 import '../../../domain/entities/category.dart';
 import '../../../domain/entities/payee.dart';
 import 'more_form_sheets.dart';
+import '../../shared/components/app_snackbar.dart';
 
 class RecurringDetailScreen extends ConsumerWidget {
   const RecurringDetailScreen({super.key, required this.id});
@@ -69,14 +70,11 @@ class RecurringDetailScreen extends ConsumerWidget {
                       ),
                     );
                 if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      template.autoCreateDisabled
-                          ? 'Recurring item enabled.'
-                          : 'Recurring item disabled.',
-                    ),
-                  ),
+                AppSnackBar.show(
+                  context,
+                  template.autoCreateDisabled
+                      ? 'Recurring item enabled.'
+                      : 'Recurring item disabled.',
                 );
                 return;
               }
@@ -89,9 +87,7 @@ class RecurringDetailScreen extends ConsumerWidget {
                     ),
                   );
               if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Recurring item deleted.')),
-              );
+              AppSnackBar.show(context, 'Recurring item deleted.');
               Navigator.of(context).pop();
             },
             itemBuilder: (_) => [

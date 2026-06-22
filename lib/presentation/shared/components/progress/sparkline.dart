@@ -18,8 +18,7 @@ class Sparkline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveColor =
-        color ?? Theme.of(context).colorScheme.primary;
+    final effectiveColor = color ?? Theme.of(context).colorScheme.primary;
 
     return Semantics(
       label: semanticLabel ?? 'Sparkline chart',
@@ -64,10 +63,7 @@ class _SparklinePainter extends CustomPainter {
       ..shader = LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [
-          color.withAlpha(25),
-          Colors.transparent,
-        ],
+        colors: [color.withAlpha(25), Colors.transparent],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
 
     final minY = data.reduce((a, b) => a < b ? a : b);

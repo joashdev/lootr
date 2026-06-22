@@ -8,6 +8,7 @@ import '../../../../application/providers/sync_providers.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/typography.dart';
+import '../../../shared/components/app_snackbar.dart';
 import '../../../sheets/sync_status_sheet.dart';
 
 class GreetingHeader extends ConsumerWidget {
@@ -62,9 +63,7 @@ class GreetingHeader extends ConsumerWidget {
           icon: LucideIcons.search,
           color: lootrColors.textSecondary,
           onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Global search is coming soon')),
-            );
+            AppSnackBar.show(context, 'Global search is coming soon');
           },
         ),
       ],

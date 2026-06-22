@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../application/providers/budgets_tab_provider.dart';
+import '../../../../core/theme/colors.dart';
 
 const _monthNames = [
   'January',
@@ -97,25 +98,117 @@ class MonthNavigator extends ConsumerWidget {
     final month = ref.read(budgetMonthProvider);
     final year = ref.read(budgetYearProvider);
     final now = DateTime.now();
+    final colorScheme = Theme.of(context).colorScheme;
+    final lootrColors = context.lootrColors;
     showDialog(
       context: context,
       builder: (ctx) {
-        return AlertDialog(
-          title: const Text('Select Month'),
-          content: SizedBox(
-            width: 200,
-            height: 300,
-            child: YearPicker(
-              firstDate: DateTime(2020),
-              lastDate: DateTime(now.year + 5),
-              selectedDate: DateTime(year, month),
-              onChanged: (date) {
-                ref.read(budgetMonthProvider.notifier).goTo(date.month);
-                ref.read(budgetYearProvider.notifier).goTo(date.year);
-                Navigator.of(ctx).pop();
-              },
-            ),
-          ),
+        var selectedYear = year;
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Column(
+                children: [
+                  Text(
+                    'Select Month',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        icon: const Icon(LucideIcons.chevronLeft, size: 20),
+                        onPressed: selectedYear <= 2020
+                            ? null
+                            : () => setState(() => selectedYear--),
+                        splashRadius: 20,
+                      ),
+                      SizedBox(
+                        width: 72,
+                        child: Text(
+                          '$selectedYear',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w600,
+                            color: colorScheme.onSurface,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(LucideIcons.chevronRight, size: 20),
+                        onPressed: selectedYear >= now.year + 5
+                            ? null
+                            : () => setState(() => selectedYear++),
+                        splashRadius: 20,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: 280,
+                child: GridView.count(
+                  crossAxisCount: 3,
+                  mainAxisSpacing: 8,
+                  crossAxisSpacing: 8,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  childAspectRatio: 2.4,
+                  children: List.generate(12, (index) {
+                    final m = index + 1;
+                    final isSelected =
+                        m == month && selectedYear == year;
+                    final isDisabled = selectedYear == now.year + 5 &&
+                        m > now.month;
+                    return InkWell(
+                      onTap: isDisabled
+                          ? null
+                          : () {
+                              ref
+                                  .read(budgetMonthProvider.notifier)
+                                  .goTo(m);
+                              ref
+                                  .read(budgetYearProvider.notifier)
+                                  .goTo(selectedYear);
+                              Navigator.of(ctx).pop();
+                            },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? colorScheme.primary.withValues(alpha: 0.15)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Center(
+                          child: Text(
+                            _compactMonthNames[index],
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: isSelected
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
+                              color: isDisabled
+                                  ? lootrColors.textTertiary
+                                  : isSelected
+                                      ? colorScheme.primary
+                                      : colorScheme.onSurface,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+            );
+          },
         );
       },
     );

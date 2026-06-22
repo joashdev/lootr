@@ -3,11 +3,7 @@ import '../../../../core/theme/radius.dart';
 import '../../../../core/theme/shadows.dart';
 
 class HeroCard extends StatelessWidget {
-  const HeroCard({
-    super.key,
-    required this.child,
-    this.margin,
-  });
+  const HeroCard({super.key, required this.child, this.margin});
 
   final Widget child;
   final EdgeInsetsGeometry? margin;

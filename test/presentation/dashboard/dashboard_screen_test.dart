@@ -51,7 +51,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Welcome to Lootr'), findsOneWidget);
-    expect(find.text('Add your first transaction'), findsOneWidget);
+    expect(find.text('Add your first account'), findsOneWidget);
   });
 
   testWidgets('renders dashboard sections in order when data exists', (

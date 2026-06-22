@@ -19,14 +19,12 @@ class InsightsScreen extends ConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        centerTitle: false,
-        title: const Text('Insights'),
-      ),
+      appBar: AppBar(centerTitle: false, title: const Text('Insights')),
       body: !aiEnabled
           ? EmptyState(
               headline: 'AI is not enabled',
-              subtext: 'Enable AI in Settings to get spending insights and smart suggestions.',
+              subtext:
+                  'Enable AI in Settings to get spending insights and smart suggestions.',
               ctaLabel: 'Enable AI',
               onCtaPressed: () => context.push('/more/settings/ai'),
             )
@@ -92,7 +90,8 @@ class InsightsScreen extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(12),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(12),
-                    onTap: () => context.push('/more/insights/unusual-activity'),
+                    onTap: () =>
+                        context.push('/more/insights/unusual-activity'),
                     child: Padding(
                       padding: const EdgeInsets.all(AppSpacing.space4),
                       child: Row(

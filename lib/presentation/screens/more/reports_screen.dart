@@ -63,10 +63,7 @@ class ReportsScreen extends ConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        centerTitle: false,
-        title: const Text('Reports'),
-      ),
+      appBar: AppBar(centerTitle: false, title: const Text('Reports')),
       body: ListView.separated(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.pagePaddingMobile,
@@ -81,7 +78,8 @@ class ReportsScreen extends ConsumerWidget {
             borderRadius: BorderRadius.circular(12),
             child: InkWell(
               borderRadius: BorderRadius.circular(12),
-              onTap: () => context.push('/more/reports/${report.type}?period=month'),
+              onTap: () =>
+                  context.push('/more/reports/${report.type}?period=month'),
               child: Padding(
                 padding: const EdgeInsets.all(AppSpacing.space4),
                 child: Row(

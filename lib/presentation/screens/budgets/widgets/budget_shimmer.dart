@@ -9,8 +9,12 @@ class BudgetShimmer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final baseColor = isDark ? const Color(0xFF2E2E33) : const Color(0xFFE2E4E8);
-    final highlightColor = isDark ? const Color(0xFF3E3E44) : const Color(0xFFF2F4F7);
+    final baseColor = isDark
+        ? const Color(0xFF2E2E33)
+        : const Color(0xFFE2E4E8);
+    final highlightColor = isDark
+        ? const Color(0xFF3E3E44)
+        : const Color(0xFFF2F4F7);
 
     return Shimmer.fromColors(
       baseColor: baseColor,

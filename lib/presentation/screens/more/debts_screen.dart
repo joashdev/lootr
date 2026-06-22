@@ -19,12 +19,20 @@ class DebtsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final debtsAsync = ref.watch(debtsProvider);
+    final hasDebts = debtsAsync.asData?.value.isNotEmpty ?? false;
 
     return Scaffold(
-      appBar: AppBar(centerTitle: false, title: const Text('Debts & Lending')),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => showDebtSheet(context, ref),
-        child: const Icon(LucideIcons.plus),
+      appBar: AppBar(
+        centerTitle: false,
+        title: const Text('Debts & Lending'),
+        actions: [
+          if (hasDebts)
+            IconButton(
+              tooltip: 'Add debt',
+              onPressed: () => showDebtSheet(context, ref),
+              icon: const Icon(LucideIcons.plus),
+            ),
+        ],
       ),
       body: debtsAsync.when(
         data: (debts) {

@@ -11,6 +11,7 @@ import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
 import '../../../domain/entities/transaction.dart';
 import '../../../domain/value_objects/field_types.dart';
+import '../../shared/components/app_snackbar.dart';
 import '../../shared/components/empty_state.dart';
 import 'more_form_sheets.dart';
 
@@ -71,9 +72,7 @@ class AccountDetailScreen extends ConsumerWidget {
                         .read(accountRepoProvider)
                         .archive(detailAsync.value!.account.id);
                     if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Account archived.')),
-                    );
+                    AppSnackBar.show(context, 'Account archived.');
                     context.pop();
                   },
           ),

@@ -10,6 +10,7 @@ import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
 import '../../../domain/entities/transaction.dart';
 import '../../shared/components/empty_state.dart';
+import '../../shared/components/buttons/primary_button.dart';
 import 'more_form_sheets.dart';
 
 class GoalDetailScreen extends ConsumerWidget {
@@ -167,7 +168,8 @@ class GoalDetailScreen extends ConsumerWidget {
                 const SizedBox(height: AppSpacing.space6),
                 SizedBox(
                   width: double.infinity,
-                  child: FilledButton.icon(
+                  child: PrimaryButton(
+                    label: 'Add Contribution',
                     onPressed: () => showGoalContributionSheet(
                       context,
                       ref,
@@ -175,7 +177,6 @@ class GoalDetailScreen extends ConsumerWidget {
                       accounts: accounts,
                     ),
                     icon: const Icon(LucideIcons.plus, size: 20),
-                    label: const Text('Add Contribution'),
                   ),
                 ),
               ],

@@ -49,9 +49,6 @@ class StandardCard extends StatelessWidget {
       );
     }
 
-    return Padding(
-      padding: margin ?? EdgeInsets.zero,
-      child: card,
-    );
+    return Padding(padding: margin ?? EdgeInsets.zero, child: card);
   }
 }

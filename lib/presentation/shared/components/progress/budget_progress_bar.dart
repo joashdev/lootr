@@ -43,13 +43,10 @@ class _BudgetProgressBarState extends State<BudgetProgressBar>
   void didUpdateWidget(BudgetProgressBar oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.progress != widget.progress) {
-      _animation = Tween<double>(
-        begin: _animation.value,
-        end: widget.progress,
-      ).animate(CurvedAnimation(
-        parent: _controller,
-        curve: AppTheme.progressCurve,
-      ));
+      _animation = Tween<double>(begin: _animation.value, end: widget.progress)
+          .animate(
+            CurvedAnimation(parent: _controller, curve: AppTheme.progressCurve),
+          );
       _controller.forward(from: 0);
     }
   }
@@ -84,9 +81,7 @@ class _BudgetProgressBarState extends State<BudgetProgressBar>
               height: widget.height,
               child: Stack(
                 children: [
-                  Container(
-                    color: colorScheme.surfaceContainerLow,
-                  ),
+                  Container(color: colorScheme.surfaceContainerLow),
                   FractionallySizedBox(
                     widthFactor: _animation.value.clamp(0.0, 1.0),
                     child: Container(

@@ -63,17 +63,16 @@ class AmountInput extends StatelessWidget {
             children: [
               Text(
                 currency,
-                style: AppTypography.mono.copyWith(
-                  color: directionColor,
-                ),
+                style: AppTypography.mono.copyWith(color: directionColor),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: TextField(
                   controller: controller,
                   onChanged: onChanged,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   style: AppTypography.h3.copyWith(
                     color: directionColor,
                     fontFamily: AppTypography.mono.fontFamily,

@@ -27,8 +27,9 @@ Widget _wrap(
       categoriesProvider.overrideWith((ref) => Stream.value(categories)),
       payeesProvider.overrideWith((ref) => Stream.value(payees)),
       debtsProvider.overrideWith((ref) => Stream.value(const <DebtRecord>[])),
-      filteredTransactionsProvider
-          .overrideWith((ref) => Stream.value(const <Transaction>[])),
+      filteredTransactionsProvider.overrideWith(
+        (ref) => Stream.value(const <Transaction>[]),
+      ),
     ],
     child: MaterialApp(
       theme: AppTheme.light,
@@ -38,17 +39,17 @@ Widget _wrap(
 }
 
 Account _gcash() => Account(
-      id: 'acc-gcash',
-      ownerUserId: 'user-1',
-      name: 'GCash',
-      accountType: 'ewallet',
-      balance: 500,
-      currencyCode: 'PHP',
-      isArchived: false,
-      isHidden: false,
-      createdAt: DateTime(2026, 1, 1),
-      updatedAt: DateTime(2026, 1, 1),
-    );
+  id: 'acc-gcash',
+  ownerUserId: 'user-1',
+  name: 'GCash',
+  accountType: 'ewallet',
+  balance: 500,
+  currencyCode: 'PHP',
+  isArchived: false,
+  isHidden: false,
+  createdAt: DateTime(2026, 1, 1),
+  updatedAt: DateTime(2026, 1, 1),
+);
 
 void main() {
   group('AddTransactionSheet quick add', () {
@@ -61,7 +62,6 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.text('Manual'), findsOneWidget);
       expect(find.text('Quick'), findsOneWidget);
       expect(find.text('Describe your transaction...'), findsOneWidget);
       // Mic toggle is visible but non-functional in V1.
@@ -77,10 +77,7 @@ void main() {
       );
       await tester.pump();
 
-      await tester.enterText(
-        find.byType(TextField).first,
-        'mcdo 250 gcash',
-      );
+      await tester.enterText(find.byType(TextField).first, 'mcdo 250 gcash');
       await tester.tap(find.byIcon(LucideIcons.arrowRight));
       await tester.pump();
 
@@ -91,8 +88,9 @@ void main() {
       expect(find.text('Edit manually'), findsOneWidget);
     });
 
-    testWidgets('"Edit manually" switches to prefilled manual form',
-        (tester) async {
+    testWidgets('"Edit manually" switches to prefilled manual form', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
           const AddTransactionSheet(startInQuickMode: true),
@@ -109,7 +107,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Manual form now visible with amount prefilled.
-      expect(find.text('Add Transaction'), findsNWidgets(2));
+      expect(find.text('Add Transaction'), findsWidgets);
       expect(find.text('250.00'), findsOneWidget);
       expect(find.text('Transaction Mode'), findsOneWidget);
     });

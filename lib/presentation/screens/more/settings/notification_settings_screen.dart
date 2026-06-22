@@ -14,39 +14,55 @@ class NotificationSettingsScreen extends ConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        centerTitle: false,
-        title: const Text('Notifications'),
-      ),
+      appBar: AppBar(centerTitle: false, title: const Text('Notifications')),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.space2),
         children: [
-          _SettingsSection(header: 'Reminders', children: [
-            _SwitchTile(
-              leading: Icon(LucideIcons.repeat, size: 20, color: colorScheme.primary),
-              title: 'Recurring Reminders',
-              subtitle: 'Get notified before recurring transactions',
-              value: true,
-            ),
-            _SwitchTile(
-              leading: Icon(LucideIcons.creditCard, size: 20, color: colorScheme.primary),
-              title: 'Bill Due',
-              subtitle: 'Get notified before bills are due',
-              value: true,
-            ),
-            _SwitchTile(
-              leading: Icon(LucideIcons.calendar, size: 20, color: colorScheme.primary),
-              title: 'Installment Due',
-              subtitle: 'Get notified for upcoming installments',
-              value: false,
-            ),
-            _SwitchTile(
-              leading: Icon(LucideIcons.handCoins, size: 20, color: colorScheme.primary),
-              title: 'Debt Reminders',
-              subtitle: 'Get notified about debt deadlines',
-              value: true,
-            ),
-          ]),
+          _SettingsSection(
+            header: 'Reminders',
+            children: [
+              _SwitchTile(
+                leading: Icon(
+                  LucideIcons.repeat,
+                  size: 20,
+                  color: colorScheme.primary,
+                ),
+                title: 'Recurring Reminders',
+                subtitle: 'Get notified before recurring transactions',
+                value: true,
+              ),
+              _SwitchTile(
+                leading: Icon(
+                  LucideIcons.creditCard,
+                  size: 20,
+                  color: colorScheme.primary,
+                ),
+                title: 'Bill Due',
+                subtitle: 'Get notified before bills are due',
+                value: true,
+              ),
+              _SwitchTile(
+                leading: Icon(
+                  LucideIcons.calendar,
+                  size: 20,
+                  color: colorScheme.primary,
+                ),
+                title: 'Installment Due',
+                subtitle: 'Get notified for upcoming installments',
+                value: false,
+              ),
+              _SwitchTile(
+                leading: Icon(
+                  LucideIcons.handCoins,
+                  size: 20,
+                  color: colorScheme.primary,
+                ),
+                title: 'Debt Reminders',
+                subtitle: 'Get notified about debt deadlines',
+                value: true,
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -126,15 +142,11 @@ class _SwitchTileState extends State<_SwitchTile> {
       secondary: widget.leading,
       title: Text(
         widget.title,
-        style: AppTypography.bodyMedium.copyWith(
-          color: colorScheme.onSurface,
-        ),
+        style: AppTypography.bodyMedium.copyWith(color: colorScheme.onSurface),
       ),
       subtitle: Text(
         widget.subtitle,
-        style: AppTypography.caption.copyWith(
-          color: lootrColors.textSecondary,
-        ),
+        style: AppTypography.caption.copyWith(color: lootrColors.textSecondary),
       ),
       value: _value,
       onChanged: (v) {

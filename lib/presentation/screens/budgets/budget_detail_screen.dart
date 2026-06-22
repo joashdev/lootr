@@ -15,6 +15,8 @@ import '../../../core/theme/typography.dart';
 import '../../../domain/entities/budget.dart';
 import '../../../domain/entities/payee.dart';
 import '../../shared/components/progress/budget_progress_bar.dart';
+import '../../shared/components/buttons/ghost_button.dart';
+import '../../shared/components/buttons/secondary_button.dart';
 import '../../sheets/budget_create_sheet.dart';
 
 class BudgetDetailScreen extends ConsumerWidget {
@@ -255,31 +257,19 @@ class BudgetDetailScreen extends ConsumerWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: OutlinedButton.icon(
+                      child: SecondaryButton(
+                        label: 'Edit',
                         onPressed: () => _showEditSheet(context, data.budget),
                         icon: const Icon(LucideIcons.pencil, size: 18),
-                        label: const Text('Edit'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.full),
-                          ),
-                        ),
                       ),
                     ),
                     const SizedBox(width: AppSpacing.space3),
                     Expanded(
-                      child: OutlinedButton.icon(
+                      child: SecondaryButton(
+                        label: 'Delete',
                         onPressed: () => _confirmDelete(context, ref, budget),
                         icon: const Icon(LucideIcons.trash2, size: 18),
-                        label: const Text('Delete'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: lootrColors.danger,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.full),
-                          ),
-                        ),
+                        isDanger: true,
                       ),
                     ),
                   ],
@@ -314,11 +304,13 @@ class BudgetDetailScreen extends ConsumerWidget {
           'This budget will be permanently removed. This action cannot be undone.',
         ),
         actions: [
-          TextButton(
+          GhostButton(
+            label: 'Cancel',
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
+            isExpanded: false,
           ),
-          TextButton(
+          GhostButton(
+            label: 'Delete',
             onPressed: () async {
               final repo = ref.read(budgetRepoProvider);
               await repo.softDelete(budget.id);
@@ -327,10 +319,8 @@ class BudgetDetailScreen extends ConsumerWidget {
                 if (context.mounted) Navigator.of(context).pop();
               }
             },
-            style: TextButton.styleFrom(
-              foregroundColor: context.lootrColors.danger,
-            ),
-            child: const Text('Delete'),
+            isDanger: true,
+            isExpanded: false,
           ),
         ],
       ),

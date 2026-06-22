@@ -51,27 +51,18 @@ class ReportDetailScreen extends ConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        centerTitle: false,
-        title: Text(_title),
-      ),
+      appBar: AppBar(centerTitle: false, title: Text(_title)),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.space8),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                _icon,
-                size: 64,
-                color: lootrColors.textTertiary,
-              ),
+              Icon(_icon, size: 64, color: lootrColors.textTertiary),
               const SizedBox(height: AppSpacing.space6),
               Text(
                 _title,
-                style: AppTypography.h2.copyWith(
-                  color: colorScheme.onSurface,
-                ),
+                style: AppTypography.h2.copyWith(color: colorScheme.onSurface),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppSpacing.space2),

@@ -10,6 +10,8 @@ import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
 import '../../../domain/value_objects/field_types.dart';
 import '../../shared/components/empty_state.dart';
+import '../../shared/components/buttons/primary_button.dart';
+import '../../shared/components/app_snackbar.dart';
 import 'more_form_sheets.dart';
 
 class HouseholdDetailScreen extends ConsumerWidget {
@@ -83,11 +85,11 @@ class HouseholdDetailScreen extends ConsumerWidget {
                       const SizedBox(height: AppSpacing.space4),
                       SizedBox(
                         width: double.infinity,
-                        child: FilledButton.icon(
+                        child: PrimaryButton(
+                          label: 'Invite Member',
                           onPressed: () =>
                               showHouseholdMemberSheet(context, ref, household),
                           icon: const Icon(LucideIcons.userPlus, size: 18),
-                          label: const Text('Invite Member'),
                         ),
                       ),
                     ],
@@ -135,12 +137,9 @@ class HouseholdDetailScreen extends ConsumerWidget {
                             .read(householdRepoProvider)
                             .updateMemberRole(member.member.id, role);
                         if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              '${member.displayName} is now ${roleLabel(role).toLowerCase()}.',
-                            ),
-                          ),
+                        AppSnackBar.show(
+                          context,
+                          '${member.displayName} is now ${roleLabel(role).toLowerCase()}.',
                         );
                       },
                     );

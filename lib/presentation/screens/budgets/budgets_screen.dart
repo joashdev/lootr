@@ -8,6 +8,8 @@ import '../../../application/providers/categories_provider.dart';
 import '../../../core/extensions/async_value_x.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
+import '../../shared/components/buttons/primary_button.dart';
+import '../../shared/components/primary_screen_header.dart';
 import '../../sheets/budget_create_sheet.dart';
 import 'widgets/budget_card.dart';
 import 'widgets/budget_shimmer.dart';
@@ -39,29 +41,25 @@ class BudgetsScreen extends ConsumerWidget {
     final month = ref.watch(budgetMonthProvider);
     final year = ref.watch(budgetYearProvider);
     final isReadOnly = isPastBudgetPeriod(month, year);
+    final hasBudgets = budgetsAsync.asData?.value.isNotEmpty ?? false;
 
     return Scaffold(
-      appBar: AppBar(
-        centerTitle: false,
-        titleSpacing: AppSpacing.pagePaddingMobile,
-        title: Row(
-          children: [
-            Text('Budgets', style: Theme.of(context).textTheme.headlineMedium),
-            const Spacer(),
-            const MonthNavigator(compact: true),
-          ],
-        ),
+      appBar: PrimaryScreenHeader(
+        title: 'Budgets',
         actions: [
-          IconButton(
-            tooltip: isReadOnly ? 'Past months are read-only' : 'Create budget',
-            icon: const Icon(LucideIcons.plus),
-            onPressed: isReadOnly ? null : () => _showCreateSheet(context),
-          ),
-          const SizedBox(width: AppSpacing.space2),
+          if (hasBudgets)
+            IconButton(
+              tooltip: isReadOnly
+                  ? 'Past months are read-only'
+                  : 'Create budget',
+              icon: const Icon(LucideIcons.plus),
+              onPressed: isReadOnly ? null : () => _showCreateSheet(context),
+            ),
         ],
       ),
       body: Column(
         children: [
+          const _BudgetPeriodBar(),
           Expanded(
             child: budgetsAsync.when(
               loading: () => const Padding(
@@ -148,6 +146,28 @@ class BudgetsScreen extends ConsumerWidget {
   }
 }
 
+class _BudgetPeriodBar extends StatelessWidget {
+  const _BudgetPeriodBar();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      color: Theme.of(context).colorScheme.surface,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.pagePaddingMobile,
+        0,
+        AppSpacing.pagePaddingMobile,
+        AppSpacing.space2,
+      ),
+      child: const Align(
+        alignment: Alignment.centerLeft,
+        child: MonthNavigator(),
+      ),
+    );
+  }
+}
+
 class _EmptyBudgetsState extends StatelessWidget {
   const _EmptyBudgetsState({
     required this.month,
@@ -162,7 +182,6 @@ class _EmptyBudgetsState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lootrColors = context.lootrColors;
-    final colorScheme = Theme.of(context).colorScheme;
 
     return Center(
       child: Padding(
@@ -198,23 +217,10 @@ class _EmptyBudgetsState extends StatelessWidget {
                 style: TextStyle(color: lootrColors.textTertiary),
               )
             else
-              ElevatedButton(
+              PrimaryButton(
+                label: 'Create Budget',
                 onPressed: onCreateBudget,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colorScheme.primary,
-                  foregroundColor: colorScheme.onPrimary,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 14,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(9999),
-                  ),
-                ),
-                child: const Text(
-                  'Create Budget',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                ),
+                isExpanded: false,
               ),
           ],
         ),

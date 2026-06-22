@@ -3,11 +3,7 @@ import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/typography.dart';
 
 class SectionHeader extends StatelessWidget {
-  const SectionHeader({
-    super.key,
-    required this.title,
-    this.padding,
-  });
+  const SectionHeader({super.key, required this.title, this.padding});
 
   final String title;
   final EdgeInsetsGeometry? padding;
@@ -22,7 +18,8 @@ class SectionHeader extends StatelessWidget {
         title: title,
         bgColor: colorScheme.surfaceContainerLow,
         textColor: lootrColors.textSecondary,
-        padding: padding ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding:
+            padding ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       ),
     );
   }
@@ -42,16 +39,18 @@ class _SectionHeaderDelegate extends SliverPersistentHeaderDelegate {
   final EdgeInsetsGeometry padding;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
     return Container(
       color: bgColor,
       padding: padding,
       alignment: Alignment.centerLeft,
       child: Text(
         title,
-        style: AppTypography.captionMedium.copyWith(
-          color: textColor,
-        ),
+        style: AppTypography.captionMedium.copyWith(color: textColor),
       ),
     );
   }
@@ -59,7 +58,8 @@ class _SectionHeaderDelegate extends SliverPersistentHeaderDelegate {
   @override
   double get maxExtent =>
       padding.resolve(TextDirection.ltr).vertical +
-      AppTypography.captionMedium.fontSize! * AppTypography.captionMedium.height!;
+      AppTypography.captionMedium.fontSize! *
+          AppTypography.captionMedium.height!;
 
   @override
   double get minExtent => maxExtent;

@@ -42,12 +42,20 @@ class AccountsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final accountsAsync = ref.watch(accountsProvider);
+    final hasAccounts = accountsAsync.asData?.value.isNotEmpty ?? false;
 
     return Scaffold(
-      appBar: AppBar(centerTitle: false, title: const Text('Accounts')),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => showAccountSheet(context, ref),
-        child: const Icon(LucideIcons.plus),
+      appBar: AppBar(
+        centerTitle: false,
+        title: const Text('Accounts'),
+        actions: [
+          if (hasAccounts)
+            IconButton(
+              tooltip: 'Add account',
+              onPressed: () => showAccountSheet(context, ref),
+              icon: const Icon(LucideIcons.plus),
+            ),
+        ],
       ),
       body: accountsAsync.when(
         data: (accounts) {

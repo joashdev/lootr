@@ -30,10 +30,14 @@ class AppFilterChip extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: isActive ? AppColors.primary50 : colorScheme.surface,
+            color: isActive
+                ? colorScheme.primaryContainer
+                : colorScheme.surface,
             borderRadius: BorderRadius.circular(AppRadius.full),
             border: Border.all(
-              color: isActive ? AppColors.primary200 : colorScheme.outline,
+              color: isActive
+                  ? colorScheme.primary.withValues(alpha: 0.3)
+                  : colorScheme.outline,
             ),
           ),
           child: Text(

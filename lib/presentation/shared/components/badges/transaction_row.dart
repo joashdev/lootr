@@ -88,7 +88,9 @@ class TransactionRow extends StatelessWidget {
               children: [
                 Text(
                   payee,
-                  style: AppTypography.h3.copyWith(color: colorScheme.onSurface),
+                  style: AppTypography.h3.copyWith(
+                    color: colorScheme.onSurface,
+                  ),
                 ),
                 if (category != null) ...[
                   const SizedBox(height: 2),
