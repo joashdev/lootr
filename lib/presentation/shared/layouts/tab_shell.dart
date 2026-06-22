@@ -38,15 +38,17 @@ class TabShell extends StatelessWidget {
             bottom: 0,
             child: IgnorePointer(
               child: Container(
-                height: reservedBottomSpace + 36,
+                height: _navBottomGap + _pillHeight + bottomPadding + 8,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
                       surface.withValues(alpha: 0),
-                      surface.withValues(alpha: isDark ? 0.98 : 0.95),
+                      surface.withValues(alpha: isDark ? 0.50 : 0.50),
+                      surface,
                     ],
+                    stops: const [0.0, 0.5, 1.0],
                   ),
                 ),
               ),
@@ -203,7 +205,7 @@ class _NavTab extends StatelessWidget {
         ? AppColors.darkTextTertiary
         : AppColors.lightTextTertiary;
     final color = isActive ? activeColor : inactiveColor;
-    final fontWeight = isActive ? FontWeight.w600 : FontWeight.w400;
+    final fontWeight = isActive ? FontWeight.w500 : FontWeight.w400;
 
     return Expanded(
       child: GestureDetector(
@@ -228,7 +230,7 @@ class _NavTab extends StatelessWidget {
                 label,
                 maxLines: 1,
                 style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: fontWeight,
                   color: color,
                   height: 1.1,

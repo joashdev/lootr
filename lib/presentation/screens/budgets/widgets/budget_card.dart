@@ -45,21 +45,32 @@ class BudgetCard extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.space2),
-      child: Material(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
-          child: Container(
-            padding: const EdgeInsets.all(AppSpacing.cardPaddingStandard),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              border: Theme.of(context).brightness == Brightness.dark
-                  ? Border.all(color: colorScheme.outline)
-                  : null,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 2,
+              offset: const Offset(0, 1),
             ),
-            child: Column(
+          ],
+        ),
+        child: Material(
+          color: colorScheme.surface,
+          borderRadius: BorderRadius.circular(14),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(14),
+            child: Container(
+              padding: const EdgeInsets.all(AppSpacing.cardPaddingStandard),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                border: Theme.of(context).brightness == Brightness.dark
+                    ? Border.all(color: colorScheme.outline)
+                    : null,
+              ),
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
@@ -133,7 +144,8 @@ class BudgetCard extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   Color _parseCategoryColor(String? hexColor) => parseCategoryColor(hexColor);

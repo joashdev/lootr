@@ -825,9 +825,19 @@ Future<void> showCategorySheet(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            initial == null ? 'New Category' : 'Edit Category',
-            style: Theme.of(sheetContext).textTheme.titleLarge,
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  initial == null ? 'New Category' : 'Edit Category',
+                  style: Theme.of(sheetContext).textTheme.titleLarge,
+                ),
+              ),
+              IconButton(
+                onPressed: () => Navigator.of(sheetContext).pop(),
+                icon: const Icon(Icons.close),
+              ),
+            ],
           ),
           const SizedBox(height: AppSpacing.space4),
           TextField(

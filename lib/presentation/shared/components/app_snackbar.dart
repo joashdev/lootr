@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import '../../../core/theme/colors.dart';
 import '../../../core/theme/radius.dart';
 import '../../../core/theme/typography.dart';
 
@@ -31,11 +30,19 @@ class AppSnackBar extends StatelessWidget {
   }) {
     if (!context.mounted) return;
 
+    final colorScheme = Theme.of(context).colorScheme;
+
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(
       SnackBar(
-        content: _SnackBarContent(message: message, variant: variant),
+        content: _SnackBarContent(
+          message: message,
+          variant: variant,
+          surfaceColor: colorScheme.surface,
+          onSurfaceColor: colorScheme.onSurface,
+        ),
+        backgroundColor: colorScheme.surface,
         behavior: SnackBarBehavior.floating,
         dismissDirection: DismissDirection.horizontal,
         shape: RoundedRectangleBorder(
@@ -45,7 +52,11 @@ class AppSnackBar extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         duration: duration,
         action: actionLabel != null
-            ? SnackBarAction(label: actionLabel, onPressed: onAction!)
+            ? SnackBarAction(
+                label: actionLabel,
+                textColor: colorScheme.primary,
+                onPressed: onAction!,
+              )
             : null,
       ),
     );
@@ -88,10 +99,17 @@ class AppSnackBar extends StatelessWidget {
 }
 
 class _SnackBarContent extends StatelessWidget {
-  const _SnackBarContent({required this.message, required this.variant});
+  const _SnackBarContent({
+    required this.message,
+    required this.variant,
+    required this.surfaceColor,
+    required this.onSurfaceColor,
+  });
 
   final String message;
   final AppSnackBarVariant variant;
+  final Color surfaceColor;
+  final Color onSurfaceColor;
 
   IconData _icon() {
     switch (variant) {
@@ -106,23 +124,22 @@ class _SnackBarContent extends StatelessWidget {
     }
   }
 
-  Color _color(BuildContext context) {
-    final lootrColors = context.lootrColors;
+  Color _color() {
     switch (variant) {
       case AppSnackBarVariant.success:
-        return lootrColors.success;
+        return const Color(0xFF059669);
       case AppSnackBarVariant.warning:
-        return lootrColors.warning;
+        return const Color(0xFFD97706);
       case AppSnackBarVariant.error:
-        return lootrColors.danger;
+        return const Color(0xFFDC2626);
       case AppSnackBarVariant.neutral:
-        return Theme.of(context).colorScheme.primary;
+        return const Color(0xFF2563EB);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final color = _color(context);
+    final color = _color();
 
     return Row(
       children: [
@@ -131,9 +148,7 @@ class _SnackBarContent extends StatelessWidget {
         Expanded(
           child: Text(
             message,
-            style: AppTypography.body.copyWith(
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
+            style: AppTypography.body.copyWith(color: onSurfaceColor),
           ),
         ),
       ],

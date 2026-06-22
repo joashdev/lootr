@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../application/providers/accounts_provider.dart';
 import '../../../application/providers/categories_provider.dart';
@@ -92,41 +93,24 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       : const <String, Category>{};
 
   Map<String, List<Transaction>> _groupByDate(List<Transaction> transactions) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-    final weekAgo = today.subtract(const Duration(days: 7));
-    final monthStart = DateTime(now.year, now.month, 1);
-
-    final groups = <String, List<Transaction>>{
-      'Today': [],
-      'Yesterday': [],
-      'This Week': [],
-      'This Month': [],
-      'Earlier': [],
-    };
+    final grouped = <String, List<Transaction>>{};
 
     for (final txn in transactions) {
-      final date = DateTime(
-        txn.occurredAt.year,
-        txn.occurredAt.month,
-        txn.occurredAt.day,
-      );
-      if (date == today) {
-        groups['Today']!.add(txn);
-      } else if (date == yesterday) {
-        groups['Yesterday']!.add(txn);
-      } else if (date.isAfter(weekAgo)) {
-        groups['This Week']!.add(txn);
-      } else if (date.isAfter(monthStart.subtract(const Duration(days: 1)))) {
-        groups['This Month']!.add(txn);
-      } else {
-        groups['Earlier']!.add(txn);
-      }
+      final dateKey = DateFormat('dd/MM/yyyy').format(txn.occurredAt);
+      grouped.putIfAbsent(dateKey, () => []);
+      grouped[dateKey]!.add(txn);
     }
 
-    groups.removeWhere((_, list) => list.isEmpty);
-    return groups;
+    final sorted = Map<String, List<Transaction>>.fromEntries(
+      grouped.entries.toList()
+        ..sort((a, b) {
+          final dateA = DateFormat('dd/MM/yyyy').parse(a.key);
+          final dateB = DateFormat('dd/MM/yyyy').parse(b.key);
+          return dateB.compareTo(dateA);
+        }),
+    );
+
+    return sorted;
   }
 
   Future<void> _onDelete(String id) async {

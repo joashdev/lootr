@@ -45,6 +45,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   void initState() {
     super.initState();
     Future.microtask(() => ref.read(onboardingProvider.notifier).start());
+    _nameController.addListener(() => setState(() {}));
   }
 
   @override
@@ -70,38 +71,16 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     }
   }
 
-  Future<void> _confirmSkip() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Skip to setup?'),
-        content: const Text(
-          'You will skip the intro and go straight to setup. You can still '
-          'enter your name, choose a currency, and decide whether to start '
-          'with demo data before continuing.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Continue'),
-          ),
-        ],
-      ),
+  void _skipToSetup() {
+    setState(() {
+      _currentStep = _setupStepIndex;
+      _loadDemoData = false;
+    });
+    _pageController.animateToPage(
+      _setupStepIndex,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOut,
     );
-    if (confirmed == true) {
-      setState(() {
-        _loadDemoData = false;
-      });
-      _pageController.animateToPage(
-        _setupStepIndex,
-        duration: const Duration(milliseconds: 280),
-        curve: Curves.easeOut,
-      );
-    }
   }
 
   Future<void> _finish({required bool loadDemoData}) async {
@@ -166,6 +145,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     return '${trimmed[0].toUpperCase()}${trimmed.substring(1)}';
   }
 
+  bool _canProceed() {
+    if (_currentStep == _setupStepIndex) {
+      return _nameController.text.trim().isNotEmpty;
+    }
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     final loadingMessage = _isSubmittingDemoData
@@ -182,7 +168,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 absorbing: _isSubmitting,
                 child: Column(
                   children: [
-                    _TopBar(showSkip: !_isSubmitting, onSkip: _confirmSkip),
+                    _TopBar(
+                      showSkip: !_isSubmitting && _currentStep != _setupStepIndex,
+                      onSkip: _skipToSetup,
+                    ),
                     Expanded(
                       child: PageView(
                         controller: _pageController,
@@ -255,7 +244,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                                 ? 'Get Started'
                                 : 'Next',
                             isLoading: _isSubmitting,
-                            onPressed: _isSubmitting ? null : _next,
+                            onPressed:
+                                _isSubmitting || !_canProceed() ? null : _next,
                           ),
                         ],
                       ),

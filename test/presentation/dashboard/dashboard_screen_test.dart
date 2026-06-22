@@ -172,6 +172,8 @@ DashboardData _sampleDashboardData() {
         payeeName: 'McDo',
         accountName: 'GCash',
         categoryName: 'Dining Out',
+        categoryIcon: 'utensils',
+        categoryColor: '#FF0000',
         amount: 2500,
         direction: 'expense',
         occurredAt: now.subtract(const Duration(days: 1)),

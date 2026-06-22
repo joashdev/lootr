@@ -55,6 +55,8 @@ class DashboardTransactionItem {
     required this.payeeName,
     required this.accountName,
     required this.categoryName,
+    required this.categoryIcon,
+    required this.categoryColor,
     required this.amount,
     required this.direction,
     required this.occurredAt,
@@ -64,6 +66,8 @@ class DashboardTransactionItem {
   final String payeeName;
   final String accountName;
   final String categoryName;
+  final String? categoryIcon;
+  final String? categoryColor;
   final double amount;
   final String direction;
   final DateTime occurredAt;
@@ -361,6 +365,8 @@ final dashboardProvider = StreamProvider<DashboardData>((ref) {
         payeeName: payee?.displayName ?? payee?.normalizedName ?? 'Transaction',
         accountName: account?.name ?? 'Account',
         categoryName: category?.name ?? _fallbackCategoryName(txn.direction),
+        categoryIcon: category?.icon,
+        categoryColor: category?.color,
         amount: txn.amount,
         direction: txn.direction,
         occurredAt: txn.occurredAt,

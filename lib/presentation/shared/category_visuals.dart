@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+
 import '../../core/theme/colors.dart';
 
 class CategoryIconOption {
@@ -147,6 +149,77 @@ const categoryIconOptions = <CategoryIconOption>[
   CategoryIconOption(value: 'emoji:🏠', label: 'House', emoji: '🏠'),
   CategoryIconOption(value: 'emoji:💼', label: 'Office', emoji: '💼'),
   CategoryIconOption(value: 'emoji:🧾', label: 'Bills', emoji: '🧾'),
+  CategoryIconOption(
+    value: 'subscriptions',
+    label: 'Subscriptions',
+    icon: LucideIcons.repeat,
+  ),
+  CategoryIconOption(
+    value: 'education',
+    label: 'Education',
+    icon: LucideIcons.graduationCap,
+  ),
+  CategoryIconOption(
+    value: 'fitness',
+    label: 'Fitness',
+    icon: LucideIcons.dumbbell,
+  ),
+  CategoryIconOption(
+    value: 'health',
+    label: 'Health',
+    icon: LucideIcons.heartPulse,
+  ),
+  CategoryIconOption(
+    value: 'savings',
+    label: 'Savings',
+    icon: LucideIcons.piggyBank,
+  ),
+  CategoryIconOption(
+    value: 'insurance',
+    label: 'Insurance',
+    icon: LucideIcons.shieldCheck,
+  ),
+  CategoryIconOption(
+    value: 'investment',
+    label: 'Investment',
+    icon: LucideIcons.trendingUp,
+  ),
+  CategoryIconOption(
+    value: 'clothing',
+    label: 'Clothing',
+    icon: LucideIcons.shirt,
+  ),
+  CategoryIconOption(
+    value: 'charity',
+    label: 'Charity',
+    icon: LucideIcons.heartHandshake,
+  ),
+  CategoryIconOption(
+    value: 'taxes',
+    label: 'Taxes',
+    icon: LucideIcons.receiptText,
+  ),
+  CategoryIconOption(
+    value: 'childcare',
+    label: 'Childcare',
+    icon: LucideIcons.baby,
+  ),
+  CategoryIconOption(
+    value: 'electronics',
+    label: 'Electronics',
+    icon: LucideIcons.smartphone,
+  ),
+  CategoryIconOption(emoji: '💊', value: 'emoji:💊', label: 'Pharmacy'),
+  CategoryIconOption(emoji: '🏥', value: 'emoji:🏥', label: 'Hospital'),
+  CategoryIconOption(emoji: '✈️', value: 'emoji:✈️', label: 'Flight'),
+  CategoryIconOption(emoji: '🏨', value: 'emoji:🏨', label: 'Hotel'),
+  CategoryIconOption(emoji: '🎓', value: 'emoji:🎓', label: 'School'),
+  CategoryIconOption(emoji: '🧹', value: 'emoji:🧹', label: 'Cleaning'),
+  CategoryIconOption(emoji: '🔧', value: 'emoji:🔧', label: 'Repairs'),
+  CategoryIconOption(emoji: '🎉', value: 'emoji:🎉', label: 'Party'),
+  CategoryIconOption(emoji: '🌿', value: 'emoji:🌿', label: 'Plants'),
+  CategoryIconOption(emoji: '🧘', value: 'emoji:🧘', label: 'Wellness'),
+  CategoryIconOption(emoji: '🎨', value: 'emoji:🎨', label: 'Art'),
 ];
 
 const categoryColorOptions = <CategoryColorOption>[

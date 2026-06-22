@@ -137,17 +137,13 @@ void main() {
     expect(accounts, isEmpty);
   });
 
-  testWidgets('Skip confirms then jumps to setup with demo data off', (
+  testWidgets('Skip jumps straight to setup with demo data off', (
     tester,
   ) async {
     await tester.pumpWidget(buildApp());
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Skip'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Skip to setup?'), findsOneWidget);
-    await tester.tap(find.text('Continue'));
     await tester.pumpAndSettle();
 
     expect(find.text('Set up your profile'), findsOneWidget);
@@ -157,18 +153,6 @@ void main() {
       find.byKey(const ValueKey('demo-data-toggle')),
     );
     expect(switchWidget.value, isFalse);
-  });
-
-  testWidgets('Skip cancel keeps user on onboarding', (tester) async {
-    await tester.pumpWidget(buildApp());
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Skip'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Cancel'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Welcome to Lootr'), findsOneWidget);
   });
 
   testWidgets('completion persists onboarding completed flag', (tester) async {
@@ -185,8 +169,6 @@ void main() {
     await tester.pumpWidget(buildApp());
     await tester.pumpAndSettle();
     await tester.tap(find.text('Skip'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Continue'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Get Started'));
     await tester.pumpAndSettle();

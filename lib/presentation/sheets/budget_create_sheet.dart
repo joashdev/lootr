@@ -212,17 +212,27 @@ class _BudgetCreateSheetState extends ConsumerState<BudgetCreateSheet> {
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.sheetPaddingHorizontal,
               0,
-              AppSpacing.sheetPaddingHorizontal,
+              8,
               AppSpacing.sheetPaddingHorizontal,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  isEditing ? 'Edit Budget' : 'Create Budget',
-                  style: AppTypography.h2.copyWith(
-                    color: colorScheme.onSurface,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        isEditing ? 'Edit Budget' : 'Create Budget',
+                        style: AppTypography.h2.copyWith(
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: AppSpacing.space5),
                 Text(
