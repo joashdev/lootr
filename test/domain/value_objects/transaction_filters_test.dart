@@ -38,22 +38,22 @@ void main() {
       });
 
       test('should return false when direction is set', () {
-        const filters = TransactionFilters(direction: 'expense');
+        const filters = TransactionFilters(directions: ['expense']);
         expect(filters.isEmpty, isFalse);
       });
 
       test('should return false when mode is set', () {
-        const filters = TransactionFilters(mode: 'recurring');
+        const filters = TransactionFilters(modes: ['recurring']);
         expect(filters.isEmpty, isFalse);
       });
 
       test('should return false when accountId is set', () {
-        const filters = TransactionFilters(accountId: 'acc-1');
+        const filters = TransactionFilters(accountIds: ['acc-1']);
         expect(filters.isEmpty, isFalse);
       });
 
       test('should return false when categoryId is set', () {
-        const filters = TransactionFilters(categoryId: 'cat-1');
+        const filters = TransactionFilters(categoryIds: ['cat-1']);
         expect(filters.isEmpty, isFalse);
       });
 
@@ -63,9 +63,7 @@ void main() {
       });
 
       test('should return false when dateRange is set', () {
-        final filters = TransactionFilters(
-          dateRange: DateRange(jan1, jan31),
-        );
+        final filters = TransactionFilters(dateRange: DateRange(jan1, jan31));
         expect(filters.isEmpty, isFalse);
       });
     });
@@ -86,7 +84,7 @@ void main() {
           makeTx(id: '2', direction: 'income'),
           makeTx(id: '3', direction: 'expense'),
         ];
-        const filters = TransactionFilters(direction: 'expense');
+        const filters = TransactionFilters(directions: ['expense']);
         final result = filters.apply(txs);
         expect(result.length, 2);
         expect(result.every((t) => t.direction == 'expense'), isTrue);
@@ -98,7 +96,7 @@ void main() {
           makeTx(id: '2', mode: 'recurring'),
           makeTx(id: '3', mode: 'one_time'),
         ];
-        const filters = TransactionFilters(mode: 'recurring');
+        const filters = TransactionFilters(modes: ['recurring']);
         final result = filters.apply(txs);
         expect(result.length, 1);
         expect(result.first.id, '2');
@@ -109,7 +107,7 @@ void main() {
           makeTx(id: '1', accountId: 'acc-1'),
           makeTx(id: '2', accountId: 'acc-2'),
         ];
-        const filters = TransactionFilters(accountId: 'acc-1');
+        const filters = TransactionFilters(accountIds: ['acc-1']);
         final result = filters.apply(txs);
         expect(result.length, 1);
         expect(result.first.accountId, 'acc-1');
@@ -121,7 +119,7 @@ void main() {
           makeTx(id: '2', categoryId: 'cat-2'),
           makeTx(id: '3', categoryId: null),
         ];
-        const filters = TransactionFilters(categoryId: 'cat-1');
+        const filters = TransactionFilters(categoryIds: ['cat-1']);
         final result = filters.apply(txs);
         expect(result.length, 1);
         expect(result.first.categoryId, 'cat-1');
@@ -157,9 +155,7 @@ void main() {
           makeTx(id: '2', occurredAt: DateTime(2026, 1, 15)),
           makeTx(id: '3', occurredAt: DateTime(2026, 2, 1)),
         ];
-        final filters = TransactionFilters(
-          dateRange: DateRange(jan1, jan31),
-        );
+        final filters = TransactionFilters(dateRange: DateRange(jan1, jan31));
         final result = filters.apply(txs);
         expect(result.length, 2);
         expect(result.map((t) => t.id).toList(), ['1', '2']);
@@ -173,8 +169,8 @@ void main() {
           makeTx(id: '4', direction: 'expense', mode: 'one_time', amount: 150),
         ];
         const filters = TransactionFilters(
-          direction: 'expense',
-          mode: 'one_time',
+          directions: ['expense'],
+          modes: ['one_time'],
           minAmount: 50,
           maxAmount: 150,
         );
@@ -186,15 +182,31 @@ void main() {
 
     group('equality', () {
       test('should equal same filters', () {
-        const a = TransactionFilters(direction: 'expense', mode: 'one_time');
-        const b = TransactionFilters(direction: 'expense', mode: 'one_time');
+        const a = TransactionFilters(
+          directions: ['expense'],
+          modes: ['one_time'],
+        );
+        const b = TransactionFilters(
+          directions: ['expense'],
+          modes: ['one_time'],
+        );
         expect(a, equals(b));
       });
 
       test('should not equal different filters', () {
-        const a = TransactionFilters(direction: 'expense');
-        const b = TransactionFilters(direction: 'income');
+        const a = TransactionFilters(directions: ['expense']);
+        const b = TransactionFilters(directions: ['income']);
         expect(a, isNot(equals(b)));
+      });
+
+      test('should support multiple selections per group', () {
+        const filters = TransactionFilters(
+          directions: ['expense', 'income'],
+          accountIds: ['acc-1', 'acc-2'],
+        );
+        expect(filters.direction, 'expense');
+        expect(filters.accountId, 'acc-1');
+        expect(filters.activeCount, 4);
       });
     });
   });

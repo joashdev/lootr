@@ -88,84 +88,84 @@ void main() {
     expect(find.text('Wallet Transfer'), findsOneWidget);
   });
 
-  testWidgets('segmented and list controls update filters immediately', (
-    tester,
-  ) async {
-    final container = ProviderContainer(
-      overrides: [
-        accountsProvider.overrideWith((ref) => Stream.value(accounts)),
-        categoriesProvider.overrideWith((ref) => Stream.value(categories)),
-      ],
-    );
-    addTearDown(container.dispose);
+  testWidgets(
+    'pill controls update filters immediately and allow multiselect',
+    (tester) async {
+      final container = ProviderContainer(
+        overrides: [
+          accountsProvider.overrideWith((ref) => Stream.value(accounts)),
+          categoriesProvider.overrideWith((ref) => Stream.value(categories)),
+        ],
+      );
+      addTearDown(container.dispose);
 
-    tester.view.physicalSize = const Size(1200, 2400);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
+      tester.view.physicalSize = const Size(1200, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(buildSheet(container));
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(buildSheet(container));
+      await tester.pumpAndSettle();
 
-    final expenseSegment = find.descendant(
-      of: find.byType(SegmentedButton<String>),
-      matching: find.text('Expense'),
-    );
-    await tester.ensureVisible(expenseSegment.first);
-    await tester.tap(expenseSegment.first);
-    await tester.pump();
-    expect(container.read(transactionFiltersProvider).direction, 'expense');
+      await tester.tap(find.text('Expense').first);
+      await tester.pump();
+      expect(container.read(transactionFiltersProvider).directions, [
+        'expense',
+      ]);
 
-    final walletTile = find.widgetWithText(InkWell, 'Wallet');
-    await tester.ensureVisible(walletTile);
-    await tester.tap(walletTile);
-    await tester.pump();
-    expect(container.read(transactionFiltersProvider).accountId, 'acc-1');
+      await tester.tap(find.text('Income').first);
+      await tester.pump();
+      expect(container.read(transactionFiltersProvider).directions, [
+        'expense',
+        'income',
+      ]);
 
-    final groceriesTile = find.widgetWithText(InkWell, 'Groceries');
-    await tester.ensureVisible(groceriesTile);
-    await tester.tap(groceriesTile);
-    await tester.pump();
-    expect(
-      container.read(transactionFiltersProvider).categoryId,
-      'cat-expense',
-    );
-  });
+      await tester.tap(find.text('Wallet').first);
+      await tester.pump();
+      expect(container.read(transactionFiltersProvider).accountIds, ['acc-1']);
 
-  testWidgets('mode control stays usable on standard phone width', (
-    tester,
-  ) async {
-    final container = ProviderContainer(
-      overrides: [
-        accountsProvider.overrideWith((ref) => Stream.value(accounts)),
-        categoriesProvider.overrideWith((ref) => Stream.value(categories)),
-      ],
-    );
-    addTearDown(container.dispose);
+      await tester.tap(find.text('Groceries').first);
+      await tester.pump();
+      expect(container.read(transactionFiltersProvider).categoryIds, [
+        'cat-expense',
+      ]);
+    },
+  );
 
-    tester.view.physicalSize = const Size(360, 800);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
+  testWidgets(
+    'filter groups stay horizontally scrollable on standard phone width',
+    (tester) async {
+      final container = ProviderContainer(
+        overrides: [
+          accountsProvider.overrideWith((ref) => Stream.value(accounts)),
+          categoriesProvider.overrideWith((ref) => Stream.value(categories)),
+        ],
+      );
+      addTearDown(container.dispose);
 
-    await tester.pumpWidget(buildSheet(container));
-    await tester.pumpAndSettle();
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-    expect(find.text('Recurring'), findsOneWidget);
-    expect(find.text('Installment'), findsOneWidget);
+      await tester.pumpWidget(buildSheet(container));
+      await tester.pumpAndSettle();
 
-    final horizontalModeScroller = find.byWidgetPredicate(
-      (widget) =>
-          widget is SingleChildScrollView &&
-          widget.scrollDirection == Axis.horizontal,
-    );
+      expect(find.text('Recurring'), findsOneWidget);
 
-    expect(horizontalModeScroller, findsNWidgets(2));
-    await tester.drag(horizontalModeScroller.last, const Offset(-180, 0));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Installment'));
-    await tester.pump();
+      final horizontalLists = find.byWidgetPredicate(
+        (widget) =>
+            widget is ListView && widget.scrollDirection == Axis.horizontal,
+      );
+      await tester.drag(horizontalLists.at(1), const Offset(-240, 0));
+      await tester.pumpAndSettle();
 
-    expect(container.read(transactionFiltersProvider).mode, 'installment');
-  });
+      expect(find.text('Installment'), findsOneWidget);
+
+      await tester.tap(find.text('Installment'));
+      await tester.pump();
+
+      expect(container.read(transactionFiltersProvider).modes, ['installment']);
+    },
+  );
 }

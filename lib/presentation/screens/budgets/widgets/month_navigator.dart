@@ -5,12 +5,39 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../application/providers/budgets_tab_provider.dart';
 
 const _monthNames = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+const _compactMonthNames = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'June',
+  'July',
+  'Aug',
+  'Sept',
+  'Oct',
+  'Nov',
+  'Dec',
 ];
 
 class MonthNavigator extends ConsumerWidget {
-  const MonthNavigator({super.key});
+  const MonthNavigator({super.key, this.compact = false});
+
+  final bool compact;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -37,12 +64,12 @@ class MonthNavigator extends ConsumerWidget {
         GestureDetector(
           onTap: () => _showMonthPicker(context, ref),
           child: SizedBox(
-            width: 140,
+            width: compact ? 108 : 140,
             child: Text(
-              '${_monthNames[month - 1]} $year',
+              '${(compact ? _compactMonthNames : _monthNames)[month - 1]} $year',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 14,
+                fontSize: compact ? 16 : 14,
                 fontWeight: FontWeight.w600,
                 color: colorScheme.onSurface,
               ),

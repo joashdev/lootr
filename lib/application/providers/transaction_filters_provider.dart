@@ -11,49 +11,129 @@ class TransactionFiltersNotifier extends Notifier<TransactionFilters> {
 
   void setDirection(String? direction) {
     state = TransactionFilters(
-      direction: direction, mode: state.mode, accountId: state.accountId,
-      categoryId: state.categoryId, minAmount: state.minAmount,
-      maxAmount: state.maxAmount, dateRange: state.dateRange,
+      directions: direction == null ? const [] : [direction],
+      modes: state.modes,
+      accountIds: state.accountIds,
+      categoryIds: state.categoryIds,
+      minAmount: state.minAmount,
+      maxAmount: state.maxAmount,
+      dateRange: state.dateRange,
+    );
+  }
+
+  void toggleDirection(String direction) {
+    final next = [...state.directions];
+    next.contains(direction) ? next.remove(direction) : next.add(direction);
+    state = TransactionFilters(
+      directions: next,
+      modes: state.modes,
+      accountIds: state.accountIds,
+      categoryIds: state.categoryIds,
+      minAmount: state.minAmount,
+      maxAmount: state.maxAmount,
+      dateRange: state.dateRange,
     );
   }
 
   void setMode(String? mode) {
     state = TransactionFilters(
-      direction: state.direction, mode: mode, accountId: state.accountId,
-      categoryId: state.categoryId, minAmount: state.minAmount,
-      maxAmount: state.maxAmount, dateRange: state.dateRange,
+      directions: state.directions,
+      modes: mode == null ? const [] : [mode],
+      accountIds: state.accountIds,
+      categoryIds: state.categoryIds,
+      minAmount: state.minAmount,
+      maxAmount: state.maxAmount,
+      dateRange: state.dateRange,
+    );
+  }
+
+  void toggleMode(String mode) {
+    final next = [...state.modes];
+    next.contains(mode) ? next.remove(mode) : next.add(mode);
+    state = TransactionFilters(
+      directions: state.directions,
+      modes: next,
+      accountIds: state.accountIds,
+      categoryIds: state.categoryIds,
+      minAmount: state.minAmount,
+      maxAmount: state.maxAmount,
+      dateRange: state.dateRange,
     );
   }
 
   void setAccountId(String? accountId) {
     state = TransactionFilters(
-      direction: state.direction, mode: state.mode, accountId: accountId,
-      categoryId: state.categoryId, minAmount: state.minAmount,
-      maxAmount: state.maxAmount, dateRange: state.dateRange,
+      directions: state.directions,
+      modes: state.modes,
+      accountIds: accountId == null ? const [] : [accountId],
+      categoryIds: state.categoryIds,
+      minAmount: state.minAmount,
+      maxAmount: state.maxAmount,
+      dateRange: state.dateRange,
+    );
+  }
+
+  void toggleAccountId(String accountId) {
+    final next = [...state.accountIds];
+    next.contains(accountId) ? next.remove(accountId) : next.add(accountId);
+    state = TransactionFilters(
+      directions: state.directions,
+      modes: state.modes,
+      accountIds: next,
+      categoryIds: state.categoryIds,
+      minAmount: state.minAmount,
+      maxAmount: state.maxAmount,
+      dateRange: state.dateRange,
     );
   }
 
   void setCategoryId(String? categoryId) {
     state = TransactionFilters(
-      direction: state.direction, mode: state.mode, accountId: state.accountId,
-      categoryId: categoryId, minAmount: state.minAmount,
-      maxAmount: state.maxAmount, dateRange: state.dateRange,
+      directions: state.directions,
+      modes: state.modes,
+      accountIds: state.accountIds,
+      categoryIds: categoryId == null ? const [] : [categoryId],
+      minAmount: state.minAmount,
+      maxAmount: state.maxAmount,
+      dateRange: state.dateRange,
+    );
+  }
+
+  void toggleCategoryId(String categoryId) {
+    final next = [...state.categoryIds];
+    next.contains(categoryId) ? next.remove(categoryId) : next.add(categoryId);
+    state = TransactionFilters(
+      directions: state.directions,
+      modes: state.modes,
+      accountIds: state.accountIds,
+      categoryIds: next,
+      minAmount: state.minAmount,
+      maxAmount: state.maxAmount,
+      dateRange: state.dateRange,
     );
   }
 
   void setAmountRange(double? minAmount, double? maxAmount) {
     state = TransactionFilters(
-      direction: state.direction, mode: state.mode, accountId: state.accountId,
-      categoryId: state.categoryId, minAmount: minAmount,
-      maxAmount: maxAmount, dateRange: state.dateRange,
+      directions: state.directions,
+      modes: state.modes,
+      accountIds: state.accountIds,
+      categoryIds: state.categoryIds,
+      minAmount: minAmount,
+      maxAmount: maxAmount,
+      dateRange: state.dateRange,
     );
   }
 
   void setDateRange(DateRange? dateRange) {
     state = TransactionFilters(
-      direction: state.direction, mode: state.mode, accountId: state.accountId,
-      categoryId: state.categoryId, minAmount: state.minAmount,
-      maxAmount: state.maxAmount, dateRange: dateRange,
+      directions: state.directions,
+      modes: state.modes,
+      accountIds: state.accountIds,
+      categoryIds: state.categoryIds,
+      minAmount: state.minAmount,
+      maxAmount: state.maxAmount,
+      dateRange: dateRange,
     );
   }
 }
@@ -62,8 +142,8 @@ class TransactionFiltersNotifier extends Notifier<TransactionFilters> {
 /// It is in-memory only and resets on app restart.
 final transactionFiltersProvider =
     NotifierProvider<TransactionFiltersNotifier, TransactionFilters>(
-  TransactionFiltersNotifier.new,
-);
+      TransactionFiltersNotifier.new,
+    );
 
 /// Debounced search query applied to the transaction list (Task 16.4).
 /// Composes with [transactionFiltersProvider] via AND logic.
@@ -77,5 +157,5 @@ class TransactionSearchQueryNotifier extends Notifier<String> {
 
 final transactionSearchQueryProvider =
     NotifierProvider<TransactionSearchQueryNotifier, String>(
-  TransactionSearchQueryNotifier.new,
-);
+      TransactionSearchQueryNotifier.new,
+    );

@@ -28,9 +28,13 @@ class DemoDataNotifier extends AsyncNotifier<DemoDataState> {
     final now = DateTime.now();
 
     const userId = 'demo-user-1';
-    await db.into(db.users).insert(
+    await db
+        .into(db.users)
+        .insert(
           UsersCompanion.insert(
-              id: userId, email: const Value('demo@lootr.app')),
+            id: userId,
+            email: const Value('demo@lootr.app'),
+          ),
         );
 
     const cashId = 'demo-acc-cash';
@@ -40,29 +44,33 @@ class DemoDataNotifier extends AsyncNotifier<DemoDataState> {
 
     for (final acc in [
       AccountsCompanion.insert(
-          id: cashId,
-          ownerUserId: userId,
-          name: 'Cash',
-          accountType: 'cash',
-          balance: const Value(2500.0)),
+        id: cashId,
+        ownerUserId: userId,
+        name: 'Cash',
+        accountType: 'cash',
+        balance: const Value(2500.0),
+      ),
       AccountsCompanion.insert(
-          id: bankId,
-          ownerUserId: userId,
-          name: 'Bank',
-          accountType: 'bank',
-          balance: const Value(15000.0)),
+        id: bankId,
+        ownerUserId: userId,
+        name: 'Bank',
+        accountType: 'bank',
+        balance: const Value(15000.0),
+      ),
       AccountsCompanion.insert(
-          id: ewalletId,
-          ownerUserId: userId,
-          name: 'E-Wallet',
-          accountType: 'ewallet',
-          balance: const Value(800.0)),
+        id: ewalletId,
+        ownerUserId: userId,
+        name: 'E-Wallet',
+        accountType: 'ewallet',
+        balance: const Value(800.0),
+      ),
       AccountsCompanion.insert(
-          id: creditId,
-          ownerUserId: userId,
-          name: 'Credit Card',
-          accountType: 'credit_card',
-          balance: const Value(-3500.0)),
+        id: creditId,
+        ownerUserId: userId,
+        name: 'Credit Card',
+        accountType: 'credit_card',
+        balance: const Value(-3500.0),
+      ),
     ]) {
       await db.into(db.accounts).insert(acc);
     }
@@ -76,19 +84,47 @@ class DemoDataNotifier extends AsyncNotifier<DemoDataState> {
 
     for (final cat in [
       CategoriesCompanion.insert(
-          id: catFood, name: 'Food & Dining', categoryGroup: 'expense'),
+        id: catFood,
+        name: 'Food & Dining',
+        categoryGroup: 'expense',
+        icon: const Value('utensils'),
+        color: const Value('#059669'),
+      ),
       CategoriesCompanion.insert(
-          id: catTransport, name: 'Transport', categoryGroup: 'expense'),
+        id: catTransport,
+        name: 'Transport',
+        categoryGroup: 'expense',
+        icon: const Value('transport'),
+        color: const Value('#D97757'),
+      ),
       CategoriesCompanion.insert(
-          id: catSalary, name: 'Salary', categoryGroup: 'income'),
+        id: catSalary,
+        name: 'Salary',
+        categoryGroup: 'income',
+        icon: const Value('salary'),
+        color: const Value('#059669'),
+      ),
       CategoriesCompanion.insert(
-          id: catEntertainment,
-          name: 'Entertainment',
-          categoryGroup: 'expense'),
+        id: catEntertainment,
+        name: 'Entertainment',
+        categoryGroup: 'expense',
+        icon: const Value('entertainment'),
+        color: const Value('#7C3AED'),
+      ),
       CategoriesCompanion.insert(
-          id: catUtilities, name: 'Utilities', categoryGroup: 'expense'),
+        id: catUtilities,
+        name: 'Utilities',
+        categoryGroup: 'expense',
+        icon: const Value('utilities'),
+        color: const Value('#0F766E'),
+      ),
       CategoriesCompanion.insert(
-          id: catShopping, name: 'Shopping', categoryGroup: 'expense'),
+        id: catShopping,
+        name: 'Shopping',
+        categoryGroup: 'expense',
+        icon: const Value('shopping-bag'),
+        color: const Value('#2563EB'),
+      ),
     ]) {
       await db.into(db.categories).insert(cat);
     }
@@ -99,12 +135,13 @@ class DemoDataNotifier extends AsyncNotifier<DemoDataState> {
     const payeeElectric = 'demo-pay-electric';
 
     for (final pay in [
-      PayeesCompanion.insert(
-          id: payeeGrocery, normalizedName: 'grocery-store'),
+      PayeesCompanion.insert(id: payeeGrocery, normalizedName: 'grocery-store'),
       PayeesCompanion.insert(id: payeeEmployer, normalizedName: 'acme-corp'),
       PayeesCompanion.insert(id: payeeNetflix, normalizedName: 'netflix'),
       PayeesCompanion.insert(
-          id: payeeElectric, normalizedName: 'electric-company'),
+        id: payeeElectric,
+        normalizedName: 'electric-company',
+      ),
     ]) {
       await db.into(db.payees).insert(pay);
     }
@@ -157,64 +194,63 @@ class DemoDataNotifier extends AsyncNotifier<DemoDataState> {
       await db.into(db.transactions).insert(txn);
     }
 
-    final currentMonth = now.month;
-    final currentYear = now.year;
+    final budgetPeriods = [
+      DateTime(now.year, now.month - 1, 1),
+      DateTime(now.year, now.month, 1),
+      DateTime(now.year, now.month + 1, 1),
+    ];
+    final budgetConfigs = [
+      ('food', catFood, 4000.0),
+      ('transport', catTransport, 2000.0),
+      ('entertainment', catEntertainment, 1500.0),
+      ('shopping', catShopping, 3000.0),
+    ];
 
-    for (final budget in [
-      BudgetsCompanion.insert(
-        id: 'demo-budget-food',
-        ownerUserId: userId,
-        categoryId: catFood,
-        amount: 4000.0,
-        month: currentMonth,
-        year: currentYear,
-      ),
-      BudgetsCompanion.insert(
-        id: 'demo-budget-transport',
-        ownerUserId: userId,
-        categoryId: catTransport,
-        amount: 2000.0,
-        month: currentMonth,
-        year: currentYear,
-      ),
-      BudgetsCompanion.insert(
-        id: 'demo-budget-entertainment',
-        ownerUserId: userId,
-        categoryId: catEntertainment,
-        amount: 1500.0,
-        month: currentMonth,
-        year: currentYear,
-      ),
-      BudgetsCompanion.insert(
-        id: 'demo-budget-shopping',
-        ownerUserId: userId,
-        categoryId: catShopping,
-        amount: 3000.0,
-        month: currentMonth,
-        year: currentYear,
-      ),
-    ]) {
-      await db.into(db.budgets).insert(budget);
+    for (final period in budgetPeriods) {
+      for (final budget in budgetConfigs) {
+        await db
+            .into(db.budgets)
+            .insert(
+              BudgetsCompanion.insert(
+                id: 'demo-budget-${budget.$1}-${period.year}-${period.month}',
+                ownerUserId: userId,
+                categoryId: budget.$2,
+                amount: budget.$3,
+                month: period.month,
+                year: period.year,
+              ),
+            );
+      }
     }
 
-    await db.into(db.goals).insert(GoalsCompanion.insert(
-          id: 'demo-goal-emergency',
-          ownerUserId: userId,
-          name: 'Emergency Fund',
-          goalType: 'emergency_fund',
-          targetAmount: 50000.0,
-          currentAmount: const Value(12000.0),
-        ));
-    await db.into(db.goals).insert(GoalsCompanion.insert(
-          id: 'demo-goal-travel',
-          ownerUserId: userId,
-          name: 'Vacation Fund',
-          goalType: 'travel',
-          targetAmount: 30000.0,
-          currentAmount: const Value(5000.0),
-        ));
+    await db
+        .into(db.goals)
+        .insert(
+          GoalsCompanion.insert(
+            id: 'demo-goal-emergency',
+            ownerUserId: userId,
+            name: 'Emergency Fund',
+            goalType: 'emergency_fund',
+            targetAmount: 50000.0,
+            currentAmount: const Value(12000.0),
+          ),
+        );
+    await db
+        .into(db.goals)
+        .insert(
+          GoalsCompanion.insert(
+            id: 'demo-goal-travel',
+            ownerUserId: userId,
+            name: 'Vacation Fund',
+            goalType: 'travel',
+            targetAmount: 30000.0,
+            currentAmount: const Value(5000.0),
+          ),
+        );
 
-    await db.into(db.recurringTemplates).insert(
+    await db
+        .into(db.recurringTemplates)
+        .insert(
           RecurringTemplatesCompanion.insert(
             id: 'demo-rec-netflix',
             accountId: creditId,
@@ -225,7 +261,9 @@ class DemoDataNotifier extends AsyncNotifier<DemoDataState> {
             nextOccurrenceAt: Value(now.add(const Duration(days: 3))),
           ),
         );
-    await db.into(db.recurringTemplates).insert(
+    await db
+        .into(db.recurringTemplates)
+        .insert(
           RecurringTemplatesCompanion.insert(
             id: 'demo-rec-electric',
             accountId: bankId,
@@ -237,15 +275,19 @@ class DemoDataNotifier extends AsyncNotifier<DemoDataState> {
           ),
         );
 
-    await db.into(db.debtRecords).insert(DebtRecordsCompanion.insert(
-          id: 'demo-debt-friend',
-          ownerUserId: userId,
-          counterpartyName: 'Friend',
-          debtDirection: 'borrowed',
-          amount: 5000.0,
-          remainingBalance: 3000.0,
-          status: 'active',
-        ));
+    await db
+        .into(db.debtRecords)
+        .insert(
+          DebtRecordsCompanion.insert(
+            id: 'demo-debt-friend',
+            ownerUserId: userId,
+            counterpartyName: 'Friend',
+            debtDirection: 'borrowed',
+            amount: 5000.0,
+            remainingBalance: 3000.0,
+            status: 'active',
+          ),
+        );
 
     final syncRepo = ref.read(syncMetadataRepoProvider);
     await syncRepo.set('demo_data_seeded', 'true');
@@ -262,7 +304,9 @@ class DemoDataNotifier extends AsyncNotifier<DemoDataState> {
     await (db.delete(db.payees)..where((t) => t.id.like('demo-%'))).go();
     await (db.delete(db.budgets)..where((t) => t.id.like('demo-%'))).go();
     await (db.delete(db.goals)..where((t) => t.id.like('demo-%'))).go();
-    await (db.delete(db.recurringTemplates)..where((t) => t.id.like('demo-%'))).go();
+    await (db.delete(
+      db.recurringTemplates,
+    )..where((t) => t.id.like('demo-%'))).go();
     await (db.delete(db.debtRecords)..where((t) => t.id.like('demo-%'))).go();
     await (db.delete(db.users)..where((t) => t.id.like('demo-%'))).go();
 
@@ -279,7 +323,6 @@ class DemoDataNotifier extends AsyncNotifier<DemoDataState> {
   }
 }
 
-final demoDataProvider =
-    AsyncNotifierProvider<DemoDataNotifier, DemoDataState>(
+final demoDataProvider = AsyncNotifierProvider<DemoDataNotifier, DemoDataState>(
   DemoDataNotifier.new,
 );

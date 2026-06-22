@@ -8,7 +8,6 @@ import '../../../application/providers/categories_provider.dart';
 import '../../../core/extensions/async_value_x.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
-import '../../shared/components/primary_screen_header.dart';
 import '../../sheets/budget_create_sheet.dart';
 import 'widgets/budget_card.dart';
 import 'widgets/budget_shimmer.dart';
@@ -42,19 +41,27 @@ class BudgetsScreen extends ConsumerWidget {
     final isReadOnly = isPastBudgetPeriod(month, year);
 
     return Scaffold(
-      appBar: PrimaryScreenHeader(
-        title: 'Budgets',
+      appBar: AppBar(
+        centerTitle: false,
+        titleSpacing: AppSpacing.pagePaddingMobile,
+        title: Row(
+          children: [
+            Text('Budgets', style: Theme.of(context).textTheme.headlineMedium),
+            const Spacer(),
+            const MonthNavigator(compact: true),
+          ],
+        ),
         actions: [
           IconButton(
             tooltip: isReadOnly ? 'Past months are read-only' : 'Create budget',
             icon: const Icon(LucideIcons.plus),
             onPressed: isReadOnly ? null : () => _showCreateSheet(context),
           ),
+          const SizedBox(width: AppSpacing.space2),
         ],
       ),
       body: Column(
         children: [
-          const _BudgetPeriodBar(),
           Expanded(
             child: budgetsAsync.when(
               loading: () => const Padding(
@@ -137,28 +144,6 @@ class BudgetsScreen extends ConsumerWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
       ),
       builder: (_) => const BudgetCreateSheet(),
-    );
-  }
-}
-
-class _BudgetPeriodBar extends StatelessWidget {
-  const _BudgetPeriodBar();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      color: Theme.of(context).colorScheme.surface,
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.pagePaddingMobile,
-        0,
-        AppSpacing.pagePaddingMobile,
-        AppSpacing.space2,
-      ),
-      child: const Align(
-        alignment: Alignment.centerLeft,
-        child: MonthNavigator(),
-      ),
     );
   }
 }

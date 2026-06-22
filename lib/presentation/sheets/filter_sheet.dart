@@ -292,37 +292,23 @@ class _DirectionControl extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        width: 520,
-        child: SegmentedButton<String>(
-          showSelectedIcon: false,
-          segments: const [
-            ButtonSegment(value: '', label: Text('All', softWrap: false)),
-            ButtonSegment(
-              value: 'expense',
-              label: Text('Expense', softWrap: false),
-            ),
-            ButtonSegment(
-              value: 'income',
-              label: Text('Income', softWrap: false),
-            ),
-            ButtonSegment(
-              value: 'transfer',
-              label: Text('Transfer', softWrap: false),
-            ),
-          ],
-          selected: {filters.direction ?? ''},
-          onSelectionChanged: (selected) {
-            final value = selected.first;
-            ref
-                .read(transactionFiltersProvider.notifier)
-                .setDirection(value.isEmpty ? null : value);
-          },
-          style: const ButtonStyle(visualDensity: VisualDensity.compact),
+    return _PillScroller(
+      children: [
+        _PillChip(
+          label: 'All',
+          isSelected: filters.directions.isEmpty,
+          onTap: () =>
+              ref.read(transactionFiltersProvider.notifier).setDirection(null),
         ),
-      ),
+        for (final value in const ['expense', 'income', 'transfer'])
+          _PillChip(
+            label: _titleCase(value),
+            isSelected: filters.directions.contains(value),
+            onTap: () => ref
+                .read(transactionFiltersProvider.notifier)
+                .toggleDirection(value),
+          ),
+      ],
     );
   }
 }
@@ -334,85 +320,28 @@ class _ModeControl extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        width: 640,
-        child: SegmentedButton<String>(
-          showSelectedIcon: false,
-          segments: const [
-            ButtonSegment(value: '', label: Text('All', softWrap: false)),
-            ButtonSegment(
-              value: 'one_time',
-              label: Text('One-time', softWrap: false),
-            ),
-            ButtonSegment(
-              value: 'recurring',
-              label: Text('Recurring', softWrap: false),
-            ),
-            ButtonSegment(
-              value: 'installment',
-              label: Text('Installment', softWrap: false),
-            ),
-            ButtonSegment(value: 'debt', label: Text('Debt', softWrap: false)),
-          ],
-          selected: {filters.mode ?? ''},
-          onSelectionChanged: (selected) {
-            final value = selected.first;
-            ref
+    return _PillScroller(
+      children: [
+        _PillChip(
+          label: 'All',
+          isSelected: filters.modes.isEmpty,
+          onTap: () =>
+              ref.read(transactionFiltersProvider.notifier).setMode(null),
+        ),
+        for (final entry in const {
+          'one_time': 'One-time',
+          'recurring': 'Recurring',
+          'installment': 'Installment',
+          'debt': 'Debt',
+        }.entries)
+          _PillChip(
+            label: entry.value,
+            isSelected: filters.modes.contains(entry.key),
+            onTap: () => ref
                 .read(transactionFiltersProvider.notifier)
-                .setMode(value.isEmpty ? null : value);
-          },
-          style: const ButtonStyle(visualDensity: VisualDensity.compact),
-        ),
-      ),
-    );
-  }
-}
-
-class _SelectableTile extends StatelessWidget {
-  const _SelectableTile({
-    required this.title,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  final String title;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.md),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.space2),
-        child: Row(
-          children: [
-            Icon(
-              isSelected
-                  ? Icons.radio_button_checked
-                  : Icons.radio_button_off_outlined,
-              size: 20,
-              color: isSelected
-                  ? colorScheme.primary
-                  : context.lootrColors.textTertiary,
-            ),
-            const SizedBox(width: AppSpacing.space3),
-            Expanded(
-              child: Text(
-                title,
-                style: AppTypography.body.copyWith(
-                  color: colorScheme.onSurface,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+                .toggleMode(entry.key),
+          ),
+      ],
     );
   }
 }
@@ -427,29 +356,24 @@ class _AccountList extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return accounts.when(
       data: (items) {
-        return SizedBox(
-          height: _heightForRows(items.length + 1, maxHeight: 264),
-          child: ListView(
-            children: [
-              _SelectableTile(
-                title: 'All',
-                isSelected: filters.accountId == null,
+        return _PillScroller(
+          children: [
+            _PillChip(
+              label: 'All',
+              isSelected: filters.accountIds.isEmpty,
+              onTap: () => ref
+                  .read(transactionFiltersProvider.notifier)
+                  .setAccountId(null),
+            ),
+            for (final account in items)
+              _PillChip(
+                label: account.name,
+                isSelected: filters.accountIds.contains(account.id),
                 onTap: () => ref
                     .read(transactionFiltersProvider.notifier)
-                    .setAccountId(null),
+                    .toggleAccountId(account.id),
               ),
-              for (final account in items)
-                _SelectableTile(
-                  title: account.name,
-                  isSelected: filters.accountId == account.id,
-                  onTap: () => ref
-                      .read(transactionFiltersProvider.notifier)
-                      .setAccountId(
-                        filters.accountId == account.id ? null : account.id,
-                      ),
-                ),
-            ],
-          ),
+          ],
         );
       },
       loading: () => const Padding(
@@ -471,68 +395,25 @@ class _CategoryList extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return categories.when(
       data: (items) {
-        final grouped = <String, List<Category>>{
-          'expense': items
-              .where((item) => item.categoryGroup == 'expense')
-              .toList(),
-          'income': items
-              .where((item) => item.categoryGroup == 'income')
-              .toList(),
-          'transfer': items
-              .where((item) => item.categoryGroup == 'transfer')
-              .toList(),
-        };
-
-        final tiles = <Widget>[
-          _SelectableTile(
-            title: 'All',
-            isSelected: filters.categoryId == null,
-            onTap: () => ref
-                .read(transactionFiltersProvider.notifier)
-                .setCategoryId(null),
-          ),
-        ];
-
-        for (final entry in grouped.entries) {
-          if (entry.value.isEmpty) {
-            continue;
-          }
-
-          tiles.add(
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.space4,
-                AppSpacing.space2,
-                0,
-                AppSpacing.space1,
-              ),
-              child: Text(
-                _titleCase(entry.key),
-                style: AppTypography.micro.copyWith(
-                  color: _groupColor(context, entry.key),
-                ),
-              ),
+        return _PillScroller(
+          children: [
+            _PillChip(
+              label: 'All',
+              isSelected: filters.categoryIds.isEmpty,
+              onTap: () => ref
+                  .read(transactionFiltersProvider.notifier)
+                  .setCategoryId(null),
             ),
-          );
-
-          for (final category in entry.value) {
-            tiles.add(
-              _SelectableTile(
-                title: category.name,
-                isSelected: filters.categoryId == category.id,
+            for (final category in items)
+              _PillChip(
+                label: category.name,
+                isSelected: filters.categoryIds.contains(category.id),
+                accent: _groupColor(context, category.categoryGroup),
                 onTap: () => ref
                     .read(transactionFiltersProvider.notifier)
-                    .setCategoryId(
-                      filters.categoryId == category.id ? null : category.id,
-                    ),
+                    .toggleCategoryId(category.id),
               ),
-            );
-          }
-        }
-
-        return SizedBox(
-          height: _heightForRows(tiles.length, maxHeight: 360),
-          child: ListView(children: tiles),
+          ],
         );
       },
       loading: () => const Padding(
@@ -754,14 +635,69 @@ InputDecoration _rangeInputDecoration({
   );
 }
 
-double _heightForRows(int count, {required double maxHeight}) {
-  return (count * 44.0).clamp(0, maxHeight);
-}
-
 String _titleCase(String value) {
   if (value.isEmpty) {
     return value;
   }
 
   return value[0].toUpperCase() + value.substring(1);
+}
+
+class _PillScroller extends StatelessWidget {
+  const _PillScroller({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 42,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: children.length,
+        separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.space2),
+        itemBuilder: (context, index) => children[index],
+      ),
+    );
+  }
+}
+
+class _PillChip extends StatelessWidget {
+  const _PillChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+    this.accent,
+  });
+
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final Color? accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = accent ?? Theme.of(context).colorScheme.primary;
+
+    return FilterChip(
+      label: Text(label, softWrap: false),
+      selected: isSelected,
+      showCheckmark: false,
+      onSelected: (_) => onTap(),
+      selectedColor: primary.withValues(alpha: 0.14),
+      side: BorderSide(
+        color: isSelected
+            ? primary
+            : Theme.of(context).colorScheme.outlineVariant,
+      ),
+      labelStyle: AppTypography.captionMedium.copyWith(
+        color: isSelected ? primary : Theme.of(context).colorScheme.onSurface,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.full),
+      ),
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
+    );
+  }
 }

@@ -8,6 +8,7 @@ import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
 import '../../../domain/entities/category.dart';
 import '../../../domain/value_objects/field_types.dart';
+import '../../shared/category_visuals.dart';
 import '../../shared/components/empty_state.dart';
 import 'more_form_sheets.dart';
 
@@ -101,30 +102,6 @@ class _CategorySection extends StatelessWidget {
   final List<Category> allCategories;
   final WidgetRef ref;
 
-  static IconData? _iconForName(String? iconName) {
-    if (iconName == null) return LucideIcons.tag;
-    final map = <String, IconData>{
-      'food': LucideIcons.utensils,
-      'transport': LucideIcons.car,
-      'shopping': LucideIcons.shoppingBag,
-      'utilities': LucideIcons.zap,
-      'health': LucideIcons.heart,
-      'entertainment': LucideIcons.gamepad2,
-      'salary': LucideIcons.banknote,
-      'freelance': LucideIcons.laptop,
-      'transfer': LucideIcons.arrowLeftRight,
-    };
-    return map[iconName] ?? LucideIcons.tag;
-  }
-
-  static Color _colorForHex(BuildContext context, String? hex) {
-    if (hex == null) return Theme.of(context).colorScheme.primary;
-    final stripped = hex.replaceFirst('#', '');
-    final parsed = int.tryParse('FF$stripped', radix: 16);
-    if (parsed == null) return Theme.of(context).colorScheme.primary;
-    return Color(parsed);
-  }
-
   @override
   Widget build(BuildContext context) {
     final lootrColors = context.lootrColors;
@@ -156,16 +133,12 @@ class _CategorySection extends StatelessWidget {
             _CategoryTile(
               category: category,
               lootrColors: lootrColors,
-              iconForName: _iconForName,
-              colorForHex: _colorForHex,
               onEdit: () => showCategorySheet(context, ref, initial: category),
             ),
             ...children.map(
               (child) => _CategoryTile(
                 category: child,
                 lootrColors: lootrColors,
-                iconForName: _iconForName,
-                colorForHex: _colorForHex,
                 onEdit: () => showCategorySheet(context, ref, initial: child),
                 isChild: true,
               ),
@@ -181,21 +154,19 @@ class _CategoryTile extends StatelessWidget {
   const _CategoryTile({
     required this.category,
     required this.lootrColors,
-    required this.iconForName,
-    required this.colorForHex,
     required this.onEdit,
     this.isChild = false,
   });
 
   final Category category;
   final LootrColorScheme lootrColors;
-  final IconData? Function(String?) iconForName;
-  final Color Function(BuildContext, String?) colorForHex;
   final VoidCallback onEdit;
   final bool isChild;
 
   @override
   Widget build(BuildContext context) {
+    final color = parseCategoryColor(category.color);
+
     return ListTile(
       contentPadding: EdgeInsets.only(
         left: AppSpacing.pagePaddingMobile + (isChild ? AppSpacing.space5 : 0),
@@ -216,13 +187,11 @@ class _CategoryTile extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: colorForHex(context, category.color).withOpacity(0.15),
+              color: color.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(
-              iconForName(category.icon),
-              size: 18,
-              color: colorForHex(context, category.color),
+            child: Center(
+              child: buildCategoryVisual(category.icon, color: color, size: 18),
             ),
           ),
         ],

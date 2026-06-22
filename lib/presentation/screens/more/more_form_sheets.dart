@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../application/providers/repo_providers.dart';
-import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../data/database/app_database.dart';
 import '../../../domain/entities/account.dart';
@@ -13,6 +12,7 @@ import '../../../domain/entities/goal.dart';
 import '../../../domain/entities/household.dart';
 import '../../../domain/entities/recurring_template.dart';
 import '../../../domain/value_objects/field_types.dart';
+import '../../shared/category_visuals.dart';
 
 String _makeId(String prefix) =>
     '$prefix-${DateTime.now().microsecondsSinceEpoch}';
@@ -98,27 +98,6 @@ void _showMessage(BuildContext context, String message) {
   if (!context.mounted) return;
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 }
-
-const _categoryIconOptions = <_CategoryIconOption>[
-  _CategoryIconOption('shopping-cart', 'Shopping', Icons.shopping_bag_outlined),
-  _CategoryIconOption('utensils', 'Food', Icons.restaurant_outlined),
-  _CategoryIconOption('transport', 'Transport', Icons.directions_bus_rounded),
-  _CategoryIconOption('house', 'Home', Icons.home_outlined),
-  _CategoryIconOption('medical', 'Medical', Icons.local_hospital_outlined),
-  _CategoryIconOption('salary', 'Work', Icons.work_outline),
-  _CategoryIconOption('tag', 'General', Icons.sell_outlined),
-  _CategoryIconOption('entertainment', 'Fun', Icons.movie_outlined),
-  _CategoryIconOption('utilities', 'Utilities', Icons.bolt_outlined),
-];
-
-const _categoryColorOptions = <_CategoryColorOption>[
-  _CategoryColorOption('Ocean Blue', '#2563EB', AppColors.primary600),
-  _CategoryColorOption('Mint', '#059669', AppColors.success600),
-  _CategoryColorOption('Amber', '#D97706', AppColors.warning600),
-  _CategoryColorOption('Coral', '#D97757', AppColors.danger600),
-  _CategoryColorOption('Violet', '#7C3AED', Color(0xFF7C3AED)),
-  _CategoryColorOption('Slate', '#64748B', Color(0xFF64748B)),
-];
 
 Future<void> showAccountSheet(
   BuildContext context,
@@ -863,55 +842,87 @@ Future<void> showCategorySheet(
             },
           ),
           const SizedBox(height: AppSpacing.space3),
-          DropdownButtonFormField<String>(
-            value: selectedIcon,
-            decoration: _fieldDecoration('Icon'),
-            items: _categoryIconOptions
-                .map(
-                  (option) => DropdownMenuItem(
-                    value: option.value,
-                    child: Row(
-                      children: [
-                        Icon(option.icon, size: 18),
-                        const SizedBox(width: 10),
-                        Text(option.label),
-                      ],
+          Text('Icon', style: Theme.of(sheetContext).textTheme.labelLarge),
+          const SizedBox(height: AppSpacing.space2),
+          Wrap(
+            spacing: AppSpacing.space2,
+            runSpacing: AppSpacing.space2,
+            children: categoryIconOptions.map((option) {
+              final isSelected = selectedIcon == option.value;
+              return InkWell(
+                onTap: () => setState(() => selectedIcon = option.value),
+                borderRadius: BorderRadius.circular(16),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? parseCategoryColor(
+                            selectedColor,
+                          ).withValues(alpha: 0.14)
+                        : Theme.of(
+                            sheetContext,
+                          ).colorScheme.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isSelected
+                          ? parseCategoryColor(selectedColor)
+                          : Theme.of(sheetContext).colorScheme.outlineVariant,
                     ),
                   ),
-                )
-                .toList(),
-            onChanged: (value) {
-              if (value != null) setState(() => selectedIcon = value);
-            },
+                  child: Center(
+                    child: buildCategoryVisual(
+                      option.value,
+                      color: isSelected
+                          ? parseCategoryColor(selectedColor)
+                          : Theme.of(sheetContext).colorScheme.onSurfaceVariant,
+                      size: 22,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
           ),
           const SizedBox(height: AppSpacing.space3),
-          DropdownButtonFormField<String>(
-            value: selectedColor,
-            decoration: _fieldDecoration('Color'),
-            items: _categoryColorOptions
-                .map(
-                  (option) => DropdownMenuItem(
-                    value: option.hex,
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 18,
-                          height: 18,
-                          decoration: BoxDecoration(
-                            color: option.color,
-                            shape: BoxShape.circle,
-                          ),
+          Text('Color', style: Theme.of(sheetContext).textTheme.labelLarge),
+          const SizedBox(height: AppSpacing.space2),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: categoryColorOptions.map((option) {
+                final isSelected = selectedColor == option.hex;
+                return Padding(
+                  padding: const EdgeInsets.only(right: AppSpacing.space2),
+                  child: InkWell(
+                    onTap: () => setState(() => selectedColor = option.hex),
+                    borderRadius: BorderRadius.circular(9999),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 160),
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: option.color,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isSelected
+                              ? Theme.of(sheetContext).colorScheme.onSurface
+                              : Colors.transparent,
+                          width: 3,
                         ),
-                        const SizedBox(width: 10),
-                        Text(option.label),
-                      ],
+                        boxShadow: [
+                          BoxShadow(
+                            color: option.color.withValues(alpha: 0.28),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                )
-                .toList(),
-            onChanged: (value) {
-              if (value != null) setState(() => selectedColor = value);
-            },
+                );
+              }).toList(),
+            ),
           ),
           const SizedBox(height: AppSpacing.space4),
           SizedBox(
@@ -963,33 +974,17 @@ Future<void> showCategorySheet(
 }
 
 String _iconValueOrFallback(String? value) {
-  if (value == null || value.isEmpty) return _categoryIconOptions.first.value;
-  return _categoryIconOptions.any((option) => option.value == value)
+  if (value == null || value.isEmpty) return categoryIconOptions.first.value;
+  return categoryIconOptions.any((option) => option.value == value)
       ? value
-      : _categoryIconOptions.first.value;
+      : categoryIconOptions.first.value;
 }
 
 String _colorValueOrFallback(String? value) {
-  if (value == null || value.isEmpty) return _categoryColorOptions.first.hex;
-  return _categoryColorOptions.any((option) => option.hex == value)
+  if (value == null || value.isEmpty) return categoryColorOptions.first.hex;
+  return categoryColorOptions.any((option) => option.hex == value)
       ? value
-      : _categoryColorOptions.first.hex;
-}
-
-class _CategoryIconOption {
-  const _CategoryIconOption(this.value, this.label, this.icon);
-
-  final String value;
-  final String label;
-  final IconData icon;
-}
-
-class _CategoryColorOption {
-  const _CategoryColorOption(this.label, this.hex, this.color);
-
-  final String label;
-  final String hex;
-  final Color color;
+      : categoryColorOptions.first.hex;
 }
 
 Future<void> showHouseholdSheet(

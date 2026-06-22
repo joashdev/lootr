@@ -10,7 +10,7 @@ class DateGroupHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       color: colorScheme.surfaceContainerLow,
       alignment: Alignment.centerLeft,
       child: Text(
@@ -29,10 +29,10 @@ class DateGroupHeaderDelegate extends SliverPersistentHeaderDelegate {
   final String title;
 
   @override
-  double get minExtent => 28;
+  double get minExtent => 40;
 
   @override
-  double get maxExtent => 28;
+  double get maxExtent => 40;
 
   @override
   Widget build(

@@ -32,57 +32,42 @@ class SafeToSpendHero extends ConsumerWidget {
             : remainingShare > 0.2
             ? lootrColors.warning
             : lootrColors.danger;
-        final surface = Theme.of(context).colorScheme.surface;
-        final bgColor = Theme.of(
-          context,
-        ).colorScheme.primary.withValues(alpha: 0.06);
-
         return InkWell(
           borderRadius: BorderRadius.circular(AppRadius.xl),
           onTap: () => _showBreakdown(context, value),
           child: HeroCard(
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(AppRadius.xl),
-                gradient: LinearGradient(
-                  colors: [bgColor, surface, surface],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  NumberFormat.currency(
+                    locale: 'en_PH',
+                    symbol: '₱',
+                  ).format(value),
+                  style: AppTypography.display.copyWith(color: semanticColor),
                 ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    NumberFormat.currency(
-                      locale: 'en_PH',
-                      symbol: '₱',
-                    ).format(value),
-                    style: AppTypography.display.copyWith(color: semanticColor),
+                const SizedBox(height: AppSpacing.space2),
+                Text('Safe to spend', style: AppTypography.h2),
+                const SizedBox(height: AppSpacing.space1),
+                Text(
+                  'out of ${NumberFormat.currency(locale: 'en_PH', symbol: '₱').format(data.monthlyIncome)} monthly income',
+                  style: AppTypography.body.copyWith(
+                    color: lootrColors.textSecondary,
                   ),
-                  const SizedBox(height: AppSpacing.space2),
-                  Text('Safe to spend', style: AppTypography.h2),
-                  const SizedBox(height: AppSpacing.space1),
-                  Text(
-                    'out of ${NumberFormat.currency(locale: 'en_PH', symbol: '₱').format(data.monthlyIncome)} monthly income',
-                    style: AppTypography.body.copyWith(
-                      color: lootrColors.textSecondary,
-                    ),
+                ),
+                const SizedBox(height: AppSpacing.space4),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(AppRadius.full),
+                  child: LinearProgressIndicator(
+                    minHeight: 10,
+                    value: remainingShare.clamp(0, 1),
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerLow,
+                    valueColor: AlwaysStoppedAnimation<Color>(semanticColor),
                   ),
-                  const SizedBox(height: AppSpacing.space4),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(AppRadius.full),
-                    child: LinearProgressIndicator(
-                      minHeight: 10,
-                      value: remainingShare.clamp(0, 1),
-                      backgroundColor: Theme.of(
-                        context,
-                      ).colorScheme.surfaceContainerLow,
-                      valueColor: AlwaysStoppedAnimation<Color>(semanticColor),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         );

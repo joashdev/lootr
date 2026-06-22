@@ -438,10 +438,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           for (final entry in groups.entries) ...[
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: DateGroupHeaderDelegate(title: entry.key),
-            ),
+            SliverToBoxAdapter(child: DateGroupHeader(title: entry.key)),
             SliverList(
               delegate: SliverChildBuilderDelegate((context, index) {
                 final txn = entry.value[index];

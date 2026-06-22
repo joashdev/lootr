@@ -73,7 +73,7 @@ void main() {
 
       container
           .read(transactionFiltersProvider.notifier)
-          .update(const TransactionFilters(direction: 'expense'));
+          .update(const TransactionFilters(directions: ['expense']));
       expect(container.read(transactionFiltersProvider).direction, 'expense');
 
       container.read(transactionFiltersProvider.notifier).reset();
@@ -581,13 +581,17 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      expect(container.read(onboardingProvider).status,
-          OnboardingStatus.notStarted);
+      expect(
+        container.read(onboardingProvider).status,
+        OnboardingStatus.notStarted,
+      );
       expect(container.read(onboardingProvider).completed, isFalse);
 
       await container.read(onboardingProvider.notifier).goToStep(2);
-      expect(container.read(onboardingProvider).status,
-          OnboardingStatus.inProgress);
+      expect(
+        container.read(onboardingProvider).status,
+        OnboardingStatus.inProgress,
+      );
       expect(container.read(onboardingProvider).step, 2);
 
       await container.read(onboardingProvider.notifier).complete();
@@ -595,8 +599,10 @@ void main() {
 
       await container.read(onboardingProvider.notifier).reset();
       await container.read(onboardingProvider.notifier).skip();
-      expect(container.read(onboardingProvider).status,
-          OnboardingStatus.completed);
+      expect(
+        container.read(onboardingProvider).status,
+        OnboardingStatus.completed,
+      );
     });
 
     test('persists across notifier rebuilds', () async {

@@ -9,6 +9,7 @@ import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/theme.dart';
 import '../../../../core/theme/typography.dart';
+import '../../../shared/category_visuals.dart';
 import '../../../shared/components/cards/cards.dart';
 
 class BudgetProgressRings extends StatelessWidget {
@@ -156,8 +157,8 @@ class _AnimatedProgressRingState extends State<_AnimatedProgressRing>
             width: 80,
             height: 80,
             child: Center(
-              child: Icon(
-                _iconForName(widget.iconName),
+              child: buildCategoryVisual(
+                widget.iconName,
                 color: widget.color,
                 size: 28,
               ),
@@ -166,33 +167,6 @@ class _AnimatedProgressRingState extends State<_AnimatedProgressRing>
         );
       },
     );
-  }
-
-  IconData _iconForName(String? iconName) {
-    switch (iconName) {
-      case 'shopping-cart':
-      case 'cart':
-        return Icons.shopping_bag_outlined;
-      case 'utensils':
-      case 'food':
-        return Icons.restaurant_outlined;
-      case 'transport':
-        return Icons.directions_bus_rounded;
-      case 'house':
-        return Icons.home_outlined;
-      case 'medical':
-        return Icons.local_hospital_outlined;
-      case 'salary':
-        return Icons.work_outline;
-      case 'tag':
-        return Icons.sell_outlined;
-      case 'entertainment':
-        return Icons.movie_outlined;
-      case 'utilities':
-        return Icons.bolt_outlined;
-      default:
-        return Icons.pie_chart_outline_rounded;
-    }
   }
 }
 

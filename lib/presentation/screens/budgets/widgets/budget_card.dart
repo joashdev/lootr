@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
-
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/spacing.dart';
 import '../../../../domain/entities/budget.dart';
 import '../../../../domain/entities/category.dart';
+import '../../../shared/category_visuals.dart';
 import '../../../shared/components/progress/budget_progress_bar.dart';
 
 class BudgetCard extends StatelessWidget {
@@ -38,10 +37,11 @@ class BudgetCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final lootrColors = context.lootrColors;
-    final progress = budget.amount > 0 ? (budget.spent / budget.amount).clamp(0.0, 1.5) : 0.0;
+    final progress = budget.amount > 0
+        ? (budget.spent / budget.amount).clamp(0.0, 1.5)
+        : 0.0;
 
     final iconName = category?.icon ?? 'shopping-bag';
-    final iconData = _iconForName(iconName);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.space2),
@@ -68,11 +68,18 @@ class BudgetCard extends StatelessWidget {
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color: _parseCategoryColor(category?.color)
-                            .withValues(alpha: 0.15),
+                        color: _parseCategoryColor(
+                          category?.color,
+                        ).withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Icon(iconData, size: 18, color: _progressColor(context)),
+                      child: Center(
+                        child: buildCategoryVisual(
+                          iconName,
+                          color: _progressColor(context),
+                          size: 18,
+                        ),
+                      ),
                     ),
                     const SizedBox(width: AppSpacing.space3),
                     Expanded(
@@ -129,41 +136,5 @@ class BudgetCard extends StatelessWidget {
     );
   }
 
-  Color _parseCategoryColor(String? hexColor) {
-    if (hexColor == null) return AppColors.primary600;
-    try {
-      final hex = hexColor.replaceFirst('#', '');
-      return Color(int.parse('FF$hex', radix: 16));
-    } catch (_) {
-      return AppColors.primary600;
-    }
-  }
-}
-
-IconData _iconForName(String name) {
-  switch (name) {
-    case 'home': return LucideIcons.home;
-    case 'car': return LucideIcons.car;
-    case 'utensils': return LucideIcons.utensils;
-    case 'shopping-cart': return LucideIcons.shoppingCart;
-    case 'shopping-bag': return LucideIcons.shoppingBag;
-    case 'film': return LucideIcons.film;
-    case 'tv': return LucideIcons.tv;
-    case 'phone': return LucideIcons.phone;
-    case 'heart': return LucideIcons.heart;
-    case 'gift': return LucideIcons.gift;
-    case 'wifi': return LucideIcons.wifi;
-    case 'book': return LucideIcons.book;
-    case 'music': return LucideIcons.music;
-    case 'camera': return LucideIcons.camera;
-    case 'briefcase': return LucideIcons.briefcase;
-    case 'credit-card': return LucideIcons.creditCard;
-    case 'dollar-sign': return LucideIcons.dollarSign;
-    case 'trending-up': return LucideIcons.trendingUp;
-    case 'trending-down': return LucideIcons.trendingDown;
-    case 'zap': return LucideIcons.zap;
-    case 'coffee': return LucideIcons.coffee;
-    case 'smartphone': return LucideIcons.smartphone;
-    default: return LucideIcons.shoppingBag;
-  }
+  Color _parseCategoryColor(String? hexColor) => parseCategoryColor(hexColor);
 }

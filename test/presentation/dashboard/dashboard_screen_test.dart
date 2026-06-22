@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lootr/application/providers/dashboard_provider.dart';
 import 'package:lootr/application/providers/safe_to_spend_provider.dart';
+import 'package:lootr/application/providers/sync_providers.dart';
 import 'package:lootr/core/theme/theme.dart';
 import 'package:lootr/domain/entities/account.dart';
 import 'package:lootr/presentation/screens/dashboard/dashboard_screen.dart';
@@ -122,6 +123,7 @@ Widget _wrapWithDashboardStream(
     overrides: [
       dashboardProvider.overrideWith((ref) => stream),
       safeToSpendProvider.overrideWith((ref) => Stream.value(safeToSpend)),
+      syncStatusIconProvider.overrideWith((ref) => SyncIconState.synced),
     ],
     child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
   );

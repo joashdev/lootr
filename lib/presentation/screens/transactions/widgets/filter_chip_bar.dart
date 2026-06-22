@@ -29,13 +29,17 @@ class FilterChipBar extends ConsumerWidget {
           Expanded(
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.pagePaddingMobile),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.pagePaddingMobile,
+              ),
               itemCount: chips.length + 1,
-              separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.space2),
+              separatorBuilder: (_, _) =>
+                  const SizedBox(width: AppSpacing.space2),
               itemBuilder: (context, index) {
                 if (index < chips.length) return chips[index];
                 return _ClearAllChip(
-                  onTap: () => ref.read(transactionFiltersProvider.notifier).reset(),
+                  onTap: () =>
+                      ref.read(transactionFiltersProvider.notifier).reset(),
                 );
               },
             ),
@@ -45,46 +49,73 @@ class FilterChipBar extends ConsumerWidget {
     );
   }
 
-  List<Widget> _buildChips(TransactionFilters filters, AsyncValue<List<Account>> accounts,
-      AsyncValue<List<Category>> categories, WidgetRef ref) {
+  List<Widget> _buildChips(
+    TransactionFilters filters,
+    AsyncValue<List<Account>> accounts,
+    AsyncValue<List<Category>> categories,
+    WidgetRef ref,
+  ) {
     final chips = <Widget>[];
 
-    if (filters.direction != null) {
-      chips.add(_FilterChip(
-        label: 'Direction: ${_directionLabel(filters.direction!)}',
-        onRemove: () => ref.read(transactionFiltersProvider.notifier).setDirection(null),
-      ));
+    for (final direction in filters.directions) {
+      chips.add(
+        _FilterChip(
+          label: _directionLabel(direction),
+          onRemove: () => ref
+              .read(transactionFiltersProvider.notifier)
+              .toggleDirection(direction),
+        ),
+      );
     }
 
-    if (filters.mode != null) {
-      chips.add(_FilterChip(
-        label: 'Mode: ${_modeLabel(filters.mode!)}',
-        onRemove: () => ref.read(transactionFiltersProvider.notifier).setMode(null),
-      ));
+    for (final mode in filters.modes) {
+      chips.add(
+        _FilterChip(
+          label: _modeLabel(mode),
+          onRemove: () =>
+              ref.read(transactionFiltersProvider.notifier).toggleMode(mode),
+        ),
+      );
     }
 
-    if (filters.accountId != null && accounts is AsyncData) {
+    if (filters.accountIds.isNotEmpty && accounts is AsyncData) {
       final value = accounts.value;
       if (value != null) {
-        final name = value.where((a) => a.id == filters.accountId).map((a) => a.name).firstOrNull;
-        if (name != null) {
-          chips.add(_FilterChip(
-            label: 'Account: $name',
-            onRemove: () => ref.read(transactionFiltersProvider.notifier).setAccountId(null),
-          ));
+        for (final accountId in filters.accountIds) {
+          final name = value
+              .where((a) => a.id == accountId)
+              .map((a) => a.name)
+              .firstOrNull;
+          if (name == null) continue;
+          chips.add(
+            _FilterChip(
+              label: name,
+              onRemove: () => ref
+                  .read(transactionFiltersProvider.notifier)
+                  .toggleAccountId(accountId),
+            ),
+          );
         }
       }
     }
 
-    if (filters.categoryId != null && categories is AsyncData) {
+    if (filters.categoryIds.isNotEmpty && categories is AsyncData) {
       final value = categories.value;
       if (value != null) {
-        final name = value.where((c) => c.id == filters.categoryId).map((c) => c.name).firstOrNull;
-        if (name != null) {
-          chips.add(_FilterChip(
-            label: 'Category: $name',
-            onRemove: () => ref.read(transactionFiltersProvider.notifier).setCategoryId(null),
-          ));
+        for (final categoryId in filters.categoryIds) {
+          final name = value
+              .where((c) => c.id == categoryId)
+              .map((c) => c.name)
+              .firstOrNull;
+          if (name == null) continue;
+          chips.add(
+            _FilterChip(
+              label: name,
+              onRemove: () => ref
+                  .read(transactionFiltersProvider.notifier)
+                  .toggleCategoryId(categoryId),
+            ),
+          );
         }
       }
     }
@@ -92,19 +123,26 @@ class FilterChipBar extends ConsumerWidget {
     if (filters.minAmount != null || filters.maxAmount != null) {
       final min = filters.minAmount?.toStringAsFixed(0) ?? '';
       final max = filters.maxAmount?.toStringAsFixed(0) ?? '';
-      chips.add(_FilterChip(
-        label: 'Amount: \u20B1$min\u2014\u20B1$max',
-        onRemove: () => ref.read(transactionFiltersProvider.notifier).setAmountRange(null, null),
-      ));
+      chips.add(
+        _FilterChip(
+          label: 'Amount: \u20B1$min\u2014\u20B1$max',
+          onRemove: () => ref
+              .read(transactionFiltersProvider.notifier)
+              .setAmountRange(null, null),
+        ),
+      );
     }
 
     if (filters.dateRange != null) {
       final start = _formatDate(filters.dateRange!.start);
       final end = _formatDate(filters.dateRange!.end);
-      chips.add(_FilterChip(
-        label: 'Date: $start \u2014 $end',
-        onRemove: () => ref.read(transactionFiltersProvider.notifier).setDateRange(null),
-      ));
+      chips.add(
+        _FilterChip(
+          label: 'Date: $start \u2014 $end',
+          onRemove: () =>
+              ref.read(transactionFiltersProvider.notifier).setDateRange(null),
+        ),
+      );
     }
 
     return chips;
@@ -112,20 +150,29 @@ class FilterChipBar extends ConsumerWidget {
 
   String _directionLabel(String d) {
     switch (d) {
-      case 'expense': return 'Expense';
-      case 'income': return 'Income';
-      case 'transfer': return 'Transfer';
-      default: return d;
+      case 'expense':
+        return 'Expense';
+      case 'income':
+        return 'Income';
+      case 'transfer':
+        return 'Transfer';
+      default:
+        return d;
     }
   }
 
   String _modeLabel(String m) {
     switch (m) {
-      case 'one_time': return 'One-time';
-      case 'recurring': return 'Recurring';
-      case 'installment': return 'Installment';
-      case 'debt': return 'Debt';
-      default: return m;
+      case 'one_time':
+        return 'One-time';
+      case 'recurring':
+        return 'Recurring';
+      case 'installment':
+        return 'Installment';
+      case 'debt':
+        return 'Debt';
+      default:
+        return m;
     }
   }
 
@@ -141,7 +188,10 @@ class _FilterChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space3, vertical: AppSpacing.space1),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space3,
+        vertical: AppSpacing.space1,
+      ),
       decoration: BoxDecoration(
         color: AppColors.primary50,
         border: Border.all(color: AppColors.primary200),
@@ -150,11 +200,20 @@ class _FilterChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label, style: AppTypography.captionMedium.copyWith(color: AppColors.primary700)),
+          Text(
+            label,
+            style: AppTypography.captionMedium.copyWith(
+              color: AppColors.primary700,
+            ),
+          ),
           const SizedBox(width: AppSpacing.space1),
           GestureDetector(
             onTap: onRemove,
-            child: const Icon(Icons.close, size: 14, color: AppColors.primary700),
+            child: const Icon(
+              Icons.close,
+              size: 14,
+              color: AppColors.primary700,
+            ),
           ),
         ],
       ),
@@ -171,10 +230,16 @@ class _ClearAllChip extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space2, vertical: AppSpacing.space1),
-        child: Text('Clear all',
-            style: AppTypography.captionMedium.copyWith(
-                color: Theme.of(context).colorScheme.primary)),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space2,
+          vertical: AppSpacing.space1,
+        ),
+        child: Text(
+          'Clear all',
+          style: AppTypography.captionMedium.copyWith(
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
       ),
     );
   }

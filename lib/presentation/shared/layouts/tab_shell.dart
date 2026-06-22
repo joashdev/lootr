@@ -21,6 +21,7 @@ class TabShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surface = Theme.of(context).colorScheme.surface;
     final reservedBottomSpace =
         _addButtonSize + _navBottomGap + bottomPadding + 12;
 
@@ -30,6 +31,26 @@ class TabShell extends StatelessWidget {
           Padding(
             padding: EdgeInsets.only(bottom: reservedBottomSpace),
             child: navigationShell,
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: IgnorePointer(
+              child: Container(
+                height: reservedBottomSpace + 36,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      surface.withValues(alpha: 0),
+                      surface.withValues(alpha: isDark ? 0.98 : 0.95),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
           Positioned(
             left: _navHorizontalInset,
@@ -61,7 +82,7 @@ class TabShell extends StatelessWidget {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
           child: Container(
-            padding: const EdgeInsets.all(6),
+            padding: const EdgeInsets.all(5),
             decoration: BoxDecoration(
               color: isDark
                   ? const Color(0xFF1A1A1E).withValues(alpha: 0.95)
@@ -195,7 +216,7 @@ class _NavTab extends StatelessWidget {
                 : null,
             borderRadius: BorderRadius.circular(14),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 3),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
@@ -209,7 +230,7 @@ class _NavTab extends StatelessWidget {
                   fontSize: 10,
                   fontWeight: fontWeight,
                   color: color,
-                  height: 1.3,
+                  height: 1.1,
                 ),
               ),
             ],
