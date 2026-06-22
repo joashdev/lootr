@@ -47,7 +47,7 @@ class BudgetProgressRings extends StatelessWidget {
                       _AnimatedProgressRing(
                         progress: budget.progress.clamp(0, 1),
                         color: _budgetColor(context, budget.progress),
-                        label: budget.icon,
+                        iconName: budget.icon,
                       ),
                       Column(
                         children: [
@@ -94,12 +94,12 @@ class _AnimatedProgressRing extends StatefulWidget {
   const _AnimatedProgressRing({
     required this.progress,
     required this.color,
-    required this.label,
+    required this.iconName,
   });
 
   final double progress;
   final Color color;
-  final String label;
+  final String? iconName;
 
   @override
   State<_AnimatedProgressRing> createState() => _AnimatedProgressRingState();
@@ -155,11 +155,44 @@ class _AnimatedProgressRingState extends State<_AnimatedProgressRing>
           child: SizedBox(
             width: 80,
             height: 80,
-            child: Center(child: Text(widget.label, style: AppTypography.h2)),
+            child: Center(
+              child: Icon(
+                _iconForName(widget.iconName),
+                color: widget.color,
+                size: 28,
+              ),
+            ),
           ),
         );
       },
     );
+  }
+
+  IconData _iconForName(String? iconName) {
+    switch (iconName) {
+      case 'shopping-cart':
+      case 'cart':
+        return Icons.shopping_bag_outlined;
+      case 'utensils':
+      case 'food':
+        return Icons.restaurant_outlined;
+      case 'transport':
+        return Icons.directions_bus_rounded;
+      case 'house':
+        return Icons.home_outlined;
+      case 'medical':
+        return Icons.local_hospital_outlined;
+      case 'salary':
+        return Icons.work_outline;
+      case 'tag':
+        return Icons.sell_outlined;
+      case 'entertainment':
+        return Icons.movie_outlined;
+      case 'utilities':
+        return Icons.bolt_outlined;
+      default:
+        return Icons.pie_chart_outline_rounded;
+    }
   }
 }
 

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:lootr/application/providers/database_provider.dart';
 import 'package:lootr/application/providers/onboarding_provider.dart';
 import 'package:lootr/core/theme/theme.dart';
@@ -9,7 +11,6 @@ import 'package:lootr/data/database/app_database.dart';
 import 'package:lootr/data/repositories/user_repo.dart';
 import 'package:lootr/presentation/screens/onboarding/onboarding_screen.dart';
 import 'package:lootr/presentation/screens/onboarding/widgets/step_indicator.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   late AppDatabase db;
@@ -46,10 +47,7 @@ void main() {
         databaseProvider.overrideWith((ref) => db),
         sharedPreferencesProvider.overrideWithValue(prefs),
       ],
-      child: MaterialApp.router(
-        theme: AppTheme.light,
-        routerConfig: router,
-      ),
+      child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
     );
   }
 
@@ -60,8 +58,9 @@ void main() {
     }
   }
 
-  testWidgets('shows first step welcome content with step indicator',
-      (tester) async {
+  testWidgets('shows first step welcome content with step indicator', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildApp());
     await tester.pumpAndSettle();
 
@@ -71,8 +70,9 @@ void main() {
     expect(find.text('Skip'), findsOneWidget);
   });
 
-  testWidgets('Next advances through all four steps to Get Started',
-      (tester) async {
+  testWidgets('Next advances through all four steps to Get Started', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildApp());
     await tester.pumpAndSettle();
 
@@ -93,8 +93,9 @@ void main() {
     expect(find.byKey(const ValueKey('demo-data-toggle')), findsOneWidget);
   });
 
-  testWidgets('Get Started saves profile, seeds demo data, navigates home',
-      (tester) async {
+  testWidgets('Get Started saves profile, seeds demo data, navigates home', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildApp());
     await tester.pumpAndSettle();
     await advanceToLastStep(tester);
@@ -105,21 +106,19 @@ void main() {
     await tester.tap(find.text('Get Started'));
     await tester.pumpAndSettle();
 
-    // Navigated to main app.
     expect(find.text('MAIN APP HOME'), findsOneWidget);
 
-    // Profile persisted.
     final user = await db.userRepoCheck();
     expect(user?.displayName, 'Alice');
     expect(user?.currencyCode, 'PHP');
 
-    // Demo data seeded (toggle defaults on).
     final accounts = await db.select(db.accounts).get();
     expect(accounts, isNotEmpty);
   });
 
-  testWidgets('demo toggle off skips seeding but still completes',
-      (tester) async {
+  testWidgets('demo toggle off skips seeding but still completes', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildApp());
     await tester.pumpAndSettle();
     await advanceToLastStep(tester);
@@ -138,22 +137,26 @@ void main() {
     expect(accounts, isEmpty);
   });
 
-  testWidgets('Skip confirms then completes without demo data',
-      (tester) async {
+  testWidgets('Skip confirms then jumps to setup with demo data off', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildApp());
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Skip'));
     await tester.pumpAndSettle();
 
-    // Confirmation dialog.
-    expect(find.text('Start with empty app?'), findsOneWidget);
-    await tester.tap(find.text('Start empty'));
+    expect(find.text('Skip to setup?'), findsOneWidget);
+    await tester.tap(find.text('Continue'));
     await tester.pumpAndSettle();
 
-    expect(find.text('MAIN APP HOME'), findsOneWidget);
-    final accounts = await db.select(db.accounts).get();
-    expect(accounts, isEmpty);
+    expect(find.text('Set up your profile'), findsOneWidget);
+    expect(find.byKey(const ValueKey('demo-data-toggle')), findsOneWidget);
+
+    final switchWidget = tester.widget<Switch>(
+      find.byKey(const ValueKey('demo-data-toggle')),
+    );
+    expect(switchWidget.value, isFalse);
   });
 
   testWidgets('Skip cancel keeps user on onboarding', (tester) async {
@@ -183,10 +186,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Skip'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Start empty'));
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Get Started'));
     await tester.pumpAndSettle();
 
-    // A fresh container backed by the same prefs reads completed.
     final container2 = ProviderContainer(
       overrides: [
         databaseProvider.overrideWith((ref) => db),
@@ -195,6 +199,22 @@ void main() {
     );
     addTearDown(container2.dispose);
     expect(container2.read(onboardingProvider).completed, isTrue);
+  });
+
+  testWidgets('display name is saved with uppercase first letter', (
+    tester,
+  ) async {
+    await tester.pumpWidget(buildApp());
+    await tester.pumpAndSettle();
+    await advanceToLastStep(tester);
+
+    await tester.enterText(find.byType(TextField), 'alice');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Get Started'));
+    await tester.pumpAndSettle();
+
+    final user = await db.userRepoCheck();
+    expect(user?.displayName, 'Alice');
   });
 }
 

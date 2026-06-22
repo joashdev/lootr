@@ -14,12 +14,6 @@ import '../../domain/value_objects/date_range.dart';
 import '../../domain/value_objects/transaction_filters.dart';
 import '../shared/components/sheet_handle.dart';
 
-/// Bottom sheet with all transaction filter controls (Task 16.1).
-///
-/// Segmented (Direction/Mode) and list (Account/Category) controls apply
-/// immediately to [transactionFiltersProvider]. Amount and Date ranges apply
-/// only when their "Apply" button is tapped. The footer shows a live count of
-/// active filters.
 class FilterSheet extends ConsumerStatefulWidget {
   const FilterSheet({super.key});
 
@@ -228,9 +222,9 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
               const SizedBox(height: AppSpacing.space3),
               const Divider(height: 1),
               const SizedBox(height: AppSpacing.space3),
-              Row(
-                children: [
-                  TextButton(
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final clearButton = TextButton(
                     onPressed: _clearAll,
                     child: Text(
                       'Clear all filters',
@@ -238,9 +232,8 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                         color: colorScheme.primary,
                       ),
                     ),
-                  ),
-                  const Spacer(),
-                  FilledButton(
+                  );
+                  final applyButton = FilledButton(
                     onPressed: () => Navigator.of(context).pop(),
                     style: FilledButton.styleFrom(
                       shape: RoundedRectangleBorder(
@@ -250,8 +243,23 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                     child: Text(
                       'Apply ${filters.activeCount} filter${filters.activeCount == 1 ? '' : 's'}',
                     ),
-                  ),
-                ],
+                  );
+
+                  if (constraints.maxWidth < 360) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        applyButton,
+                        const SizedBox(height: AppSpacing.space2),
+                        Align(alignment: Alignment.center, child: clearButton),
+                      ],
+                    );
+                  }
+
+                  return Row(
+                    children: [clearButton, const Spacer(), applyButton],
+                  );
+                },
               ),
             ],
           ),
@@ -284,21 +292,37 @@ class _DirectionControl extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return SegmentedButton<String>(
-      segments: const [
-        ButtonSegment(value: '', label: Text('All')),
-        ButtonSegment(value: 'expense', label: Text('Expense')),
-        ButtonSegment(value: 'income', label: Text('Income')),
-        ButtonSegment(value: 'transfer', label: Text('Transfer')),
-      ],
-      selected: {filters.direction ?? ''},
-      onSelectionChanged: (selected) {
-        final value = selected.first;
-        ref
-            .read(transactionFiltersProvider.notifier)
-            .setDirection(value.isEmpty ? null : value);
-      },
-      style: const ButtonStyle(visualDensity: VisualDensity.compact),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: SizedBox(
+        width: 520,
+        child: SegmentedButton<String>(
+          showSelectedIcon: false,
+          segments: const [
+            ButtonSegment(value: '', label: Text('All', softWrap: false)),
+            ButtonSegment(
+              value: 'expense',
+              label: Text('Expense', softWrap: false),
+            ),
+            ButtonSegment(
+              value: 'income',
+              label: Text('Income', softWrap: false),
+            ),
+            ButtonSegment(
+              value: 'transfer',
+              label: Text('Transfer', softWrap: false),
+            ),
+          ],
+          selected: {filters.direction ?? ''},
+          onSelectionChanged: (selected) {
+            final value = selected.first;
+            ref
+                .read(transactionFiltersProvider.notifier)
+                .setDirection(value.isEmpty ? null : value);
+          },
+          style: const ButtonStyle(visualDensity: VisualDensity.compact),
+        ),
+      ),
     );
   }
 }
@@ -310,22 +334,38 @@ class _ModeControl extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return SegmentedButton<String>(
-      segments: const [
-        ButtonSegment(value: '', label: Text('All')),
-        ButtonSegment(value: 'one_time', label: Text('One-time')),
-        ButtonSegment(value: 'recurring', label: Text('Recurring')),
-        ButtonSegment(value: 'installment', label: Text('Installment')),
-        ButtonSegment(value: 'debt', label: Text('Debt')),
-      ],
-      selected: {filters.mode ?? ''},
-      onSelectionChanged: (selected) {
-        final value = selected.first;
-        ref
-            .read(transactionFiltersProvider.notifier)
-            .setMode(value.isEmpty ? null : value);
-      },
-      style: const ButtonStyle(visualDensity: VisualDensity.compact),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: SizedBox(
+        width: 640,
+        child: SegmentedButton<String>(
+          showSelectedIcon: false,
+          segments: const [
+            ButtonSegment(value: '', label: Text('All', softWrap: false)),
+            ButtonSegment(
+              value: 'one_time',
+              label: Text('One-time', softWrap: false),
+            ),
+            ButtonSegment(
+              value: 'recurring',
+              label: Text('Recurring', softWrap: false),
+            ),
+            ButtonSegment(
+              value: 'installment',
+              label: Text('Installment', softWrap: false),
+            ),
+            ButtonSegment(value: 'debt', label: Text('Debt', softWrap: false)),
+          ],
+          selected: {filters.mode ?? ''},
+          onSelectionChanged: (selected) {
+            final value = selected.first;
+            ref
+                .read(transactionFiltersProvider.notifier)
+                .setMode(value.isEmpty ? null : value);
+          },
+          style: const ButtonStyle(visualDensity: VisualDensity.compact),
+        ),
+      ),
     );
   }
 }

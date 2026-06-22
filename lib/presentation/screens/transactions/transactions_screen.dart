@@ -23,6 +23,7 @@ import '../../../domain/use_cases/delete_transaction.dart';
 import '../../../domain/use_cases/delete_transfer.dart';
 import '../../../domain/value_objects/transaction_filters.dart';
 import '../../sheets/filter_sheet.dart';
+import '../../shared/components/primary_screen_header.dart';
 import '../../shared/components/inputs/search_input.dart';
 import 'widgets/date_group_header.dart';
 import 'widgets/filter_chip_bar.dart';
@@ -46,8 +47,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     super.dispose();
   }
 
-  /// Routes the (already debounced) query into the provider so search composes
-  /// with active filters via AND logic inside [filteredTransactionsProvider].
   void _onSearchChanged(String query) {
     ref.read(transactionSearchQueryProvider.notifier).setQuery(query);
   }
@@ -127,7 +126,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }
 
   Future<void> _onDelete(String id) async {
-    final transactionAsync = await ref.read(filteredTransactionsProvider.future);
+    final transactionAsync = await ref.read(
+      filteredTransactionsProvider.future,
+    );
     if (!mounted) return;
     final transaction = transactionAsync.cast<Transaction?>().firstWhere(
       (item) => item?.id == id,
@@ -245,22 +246,23 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     );
   }
 
-  AppBar _buildNormalAppBar(dynamic filters) {
+  PreferredSizeWidget _buildNormalAppBar(TransactionFilters filters) {
     final theme = Theme.of(context);
-    return AppBar(
-      centerTitle: false,
-      leading: IconButton(
-        icon: Icon(
-          LucideIcons.slidersHorizontal,
-          color: filters.isEmpty
-              ? theme.colorScheme.onSurface
-              : theme.colorScheme.primary,
-        ),
-        onPressed: _openFilterSheet,
-      ),
-      title: const Text('Transactions'),
+    return PrimaryScreenHeader(
+      title: 'Transactions',
       actions: [
         IconButton(
+          tooltip: 'Filter transactions',
+          icon: Icon(
+            LucideIcons.slidersHorizontal,
+            color: filters.isEmpty
+                ? theme.colorScheme.onSurface
+                : theme.colorScheme.primary,
+          ),
+          onPressed: _openFilterSheet,
+        ),
+        IconButton(
+          tooltip: 'Search transactions',
           icon: Icon(LucideIcons.search, color: theme.colorScheme.onSurface),
           onPressed: () => setState(() => _isSearching = true),
         ),
@@ -335,7 +337,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final payeeNames = _payeeNameMap(payees);
     final accountMap = _accountMap(accounts);
     final categoryMap = _categoryMap(categories);
-    // Search + filters are applied inside filteredTransactionsProvider.
     final filtered = state.transactions;
 
     final hasSearch = searchQuery.isNotEmpty;
@@ -377,9 +378,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   FilledButton(
                     onPressed: () {
                       _searchController.clear();
-                      ref
-                          .read(transactionSearchQueryProvider.notifier)
-                          .clear();
+                      ref.read(transactionSearchQueryProvider.notifier).clear();
                     },
                     child: const Text('Clear Search'),
                   ),
@@ -493,9 +492,11 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                           ? null
                           : categoryNames[txn.categoryId] ?? txn.categoryId,
                       payeeName: isTransferEntry(txn)
-                          ? (txn.metadata?['destination_account_name']?.toString() ??
-                              accountNames[
-                                  txn.metadata?['destination_account_id']?.toString()])
+                          ? (txn.metadata?['destination_account_name']
+                                    ?.toString() ??
+                                accountNames[txn
+                                    .metadata?['destination_account_id']
+                                    ?.toString()])
                           : txn.payeeId == null
                           ? null
                           : payeeNames[txn.payeeId] ?? txn.payeeId,
@@ -513,6 +514,19 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               }, childCount: entry.value.length),
             ),
           ],
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 148),
+              child: Center(
+                child: Text(
+                  'No more transactions',
+                  style: AppTypography.caption.copyWith(
+                    color: context.lootrColors.textTertiary,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -532,7 +546,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       foregroundColor = context.lootrColors.transfer;
       icon = Icons.swap_horiz_rounded;
     } else if (category != null) {
-      backgroundColor = _categoryGroupColor(category.categoryGroup).withValues(alpha: 0.12);
+      backgroundColor = _categoryGroupColor(
+        category.categoryGroup,
+      ).withValues(alpha: 0.12);
       foregroundColor = _categoryGroupColor(category.categoryGroup);
       icon = _categoryIcon(category.icon);
     } else {
@@ -544,10 +560,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     return Container(
       width: 40,
       height: 40,
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        shape: BoxShape.circle,
-      ),
+      decoration: BoxDecoration(color: backgroundColor, shape: BoxShape.circle),
       child: Icon(icon, color: foregroundColor, size: 18),
     );
   }

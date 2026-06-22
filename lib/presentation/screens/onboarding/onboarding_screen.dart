@@ -18,12 +18,6 @@ import '../../shared/components/inputs/app_text_field.dart';
 import 'widgets/onboarding_step.dart';
 import 'widgets/step_indicator.dart';
 
-/// Full-screen first-launch onboarding walkthrough.
-///
-/// Four steps: Welcome, Track, Plan, Setup. The user cannot leave via the
-/// system back button — they must complete or skip. On completion the display
-/// name, currency, and (optionally) demo data are persisted before navigating
-/// to the main app.
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -43,11 +37,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   String _currency = 'PHP';
   bool _loadDemoData = true;
   bool _isSubmitting = false;
+  bool _isSubmittingDemoData = false;
+
+  static const _setupStepIndex = _stepCount - 1;
 
   @override
   void initState() {
     super.initState();
-    // Mark onboarding as started on first build.
     Future.microtask(() => ref.read(onboardingProvider.notifier).start());
   }
 
@@ -78,10 +74,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Start with empty app?'),
+        title: const Text('Skip to setup?'),
         content: const Text(
-          'You can add accounts and transactions yourself. '
-          'Demo data will not be loaded.',
+          'You can skip the intro and finish with your name and preferences. '
+          'Demo data will be turned off, but you can still change it before '
+          'you get started.',
         ),
         actions: [
           TextButton(
@@ -90,19 +87,29 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Start empty'),
+            child: const Text('Continue'),
           ),
         ],
       ),
     );
     if (confirmed == true) {
-      await _finish(loadDemoData: false);
+      setState(() {
+        _loadDemoData = false;
+      });
+      _pageController.animateToPage(
+        _setupStepIndex,
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOut,
+      );
     }
   }
 
   Future<void> _finish({required bool loadDemoData}) async {
     if (_isSubmitting) return;
-    setState(() => _isSubmitting = true);
+    setState(() {
+      _isSubmitting = true;
+      _isSubmittingDemoData = loadDemoData;
+    });
 
     try {
       await _saveProfile();
@@ -114,110 +121,203 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       if (!mounted) return;
       context.go('/');
     } finally {
-      if (mounted) setState(() => _isSubmitting = false);
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+          _isSubmittingDemoData = false;
+        });
+      }
     }
   }
 
   Future<void> _saveProfile() async {
     final repo = ref.read(userRepoProvider);
-    final name = _nameController.text.trim();
+    final name = _normalizeDisplayName(_nameController.text);
     final existing = await repo.getCurrentUser();
 
+    _nameController.value = _nameController.value.copyWith(
+      text: name,
+      selection: TextSelection.collapsed(offset: name.length),
+      composing: TextRange.empty,
+    );
+
     if (existing == null) {
-      await repo.create(UsersCompanion.insert(
-        id: 'local-user-1',
-        displayName: Value(name.isEmpty ? null : name),
-        currencyCode: Value(_currency),
-      ));
+      await repo.create(
+        UsersCompanion.insert(
+          id: 'local-user-1',
+          displayName: Value(name.isEmpty ? null : name),
+          currencyCode: Value(_currency),
+        ),
+      );
     } else {
-      await repo.update(UsersCompanion(
-        id: Value(existing.id),
-        displayName: Value(name.isEmpty ? existing.displayName : name),
-        currencyCode: Value(_currency),
-      ));
+      await repo.update(
+        UsersCompanion(
+          id: Value(existing.id),
+          displayName: Value(name.isEmpty ? existing.displayName : name),
+          currencyCode: Value(_currency),
+        ),
+      );
     }
+  }
+
+  String _normalizeDisplayName(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return '';
+    return '${trimmed[0].toUpperCase()}${trimmed.substring(1)}';
   }
 
   @override
   Widget build(BuildContext context) {
+    final loadingMessage = _isSubmittingDemoData
+        ? 'Setting up your demo workspace...'
+        : 'Setting up your empty workspace...';
+
     return PopScope(
-      // Back button disabled during onboarding — user must complete or skip.
       canPop: false,
       child: Scaffold(
         body: SafeArea(
-          child: Column(
+          child: Stack(
             children: [
-              _TopBar(
-                showSkip: !_isSubmitting,
-                onSkip: _confirmSkip,
-              ),
-              Expanded(
-                child: PageView(
-                  controller: _pageController,
-                  onPageChanged: _onPageChanged,
+              AbsorbPointer(
+                absorbing: _isSubmitting,
+                child: Column(
                   children: [
-                    const OnboardingStep(
-                      key: ValueKey('onboarding-step-0'),
-                      icon: LucideIcons.wallet,
-                      title: 'Welcome to Lootr',
-                      description:
-                          'Your personal finance tracker. Private, '
-                          'offline-first, always in control.',
+                    _TopBar(showSkip: !_isSubmitting, onSkip: _confirmSkip),
+                    Expanded(
+                      child: PageView(
+                        controller: _pageController,
+                        onPageChanged: _onPageChanged,
+                        children: [
+                          const OnboardingStep(
+                            key: ValueKey('onboarding-step-0'),
+                            icon: LucideIcons.wallet,
+                            title: 'Welcome to Lootr',
+                            description:
+                                'Your personal finance tracker. Private, '
+                                'offline-first, always in control.',
+                          ),
+                          const OnboardingStep(
+                            key: ValueKey('onboarding-step-1'),
+                            icon: LucideIcons.receiptText,
+                            title: 'Track every peso',
+                            description:
+                                'Quick-add transactions with text or voice. '
+                                'No bank connections needed.',
+                          ),
+                          const OnboardingStep(
+                            key: ValueKey('onboarding-step-2'),
+                            icon: LucideIcons.pieChart,
+                            title: 'Plan your spending',
+                            description:
+                                'Set budgets, track goals, and see where your '
+                                'money goes.',
+                          ),
+                          OnboardingStep(
+                            key: const ValueKey('onboarding-step-3'),
+                            icon: LucideIcons.userRound,
+                            title: 'Set up your profile',
+                            description:
+                                'A couple of details to get you started.',
+                            child: _SetupForm(
+                              nameController: _nameController,
+                              currency: _currency,
+                              loadDemoData: _loadDemoData,
+                              onNameChanged: (value) {
+                                final normalized = _normalizeDisplayName(value);
+                                if (normalized == value) return;
+                                _nameController.value = TextEditingValue(
+                                  text: normalized,
+                                  selection: TextSelection.collapsed(
+                                    offset: normalized.length,
+                                  ),
+                                );
+                              },
+                              onCurrencyChanged: (value) =>
+                                  setState(() => _currency = value),
+                              onDemoDataChanged: (value) =>
+                                  setState(() => _loadDemoData = value),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    const OnboardingStep(
-                      key: ValueKey('onboarding-step-1'),
-                      icon: LucideIcons.receiptText,
-                      title: 'Track every peso',
-                      description:
-                          'Quick-add transactions with text or voice. '
-                          'No bank connections needed.',
-                    ),
-                    const OnboardingStep(
-                      key: ValueKey('onboarding-step-2'),
-                      icon: LucideIcons.pieChart,
-                      title: 'Plan your spending',
-                      description:
-                          'Set budgets, track goals, and see where your '
-                          'money goes.',
-                    ),
-                    OnboardingStep(
-                      key: const ValueKey('onboarding-step-3'),
-                      icon: LucideIcons.userRound,
-                      title: 'Set up your profile',
-                      description: 'A couple of details to get you started.',
-                      child: _SetupForm(
-                        nameController: _nameController,
-                        currency: _currency,
-                        loadDemoData: _loadDemoData,
-                        onCurrencyChanged: (value) =>
-                            setState(() => _currency = value),
-                        onDemoDataChanged: (value) =>
-                            setState(() => _loadDemoData = value),
+                    Padding(
+                      padding: const EdgeInsets.all(AppSpacing.space6),
+                      child: Column(
+                        children: [
+                          StepIndicator(
+                            count: _stepCount,
+                            currentIndex: _currentStep,
+                          ),
+                          const SizedBox(height: AppSpacing.space6),
+                          PrimaryButton(
+                            label: _currentStep == _stepCount - 1
+                                ? 'Get Started'
+                                : 'Next',
+                            isLoading: _isSubmitting,
+                            onPressed: _isSubmitting ? null : _next,
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(AppSpacing.space6),
-                child: Column(
-                  children: [
-                    StepIndicator(
-                      count: _stepCount,
-                      currentIndex: _currentStep,
-                    ),
-                    const SizedBox(height: AppSpacing.space6),
-                    PrimaryButton(
-                      label: _currentStep == _stepCount - 1
-                          ? 'Get Started'
-                          : 'Next',
-                      isLoading: _isSubmitting,
-                      onPressed: _isSubmitting ? null : _next,
-                    ),
-                  ],
-                ),
-              ),
+              if (_isSubmitting) _SubmissionOverlay(message: loadingMessage),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SubmissionOverlay extends StatelessWidget {
+  const _SubmissionOverlay({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final lootrColors = context.lootrColors;
+
+    return Positioned.fill(
+      child: ColoredBox(
+        color: colorScheme.surface.withValues(alpha: 0.88),
+        child: Center(
+          child: Container(
+            margin: const EdgeInsets.all(AppSpacing.space6),
+            padding: const EdgeInsets.all(AppSpacing.space6),
+            decoration: BoxDecoration(
+              color: colorScheme.surface,
+              borderRadius: BorderRadius.circular(AppRadius.xl),
+              border: Border.all(color: colorScheme.outlineVariant),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: CircularProgressIndicator(strokeWidth: 3),
+                ),
+                const SizedBox(height: AppSpacing.space4),
+                Text(
+                  message,
+                  style: AppTypography.bodyMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: AppSpacing.space2),
+                Text(
+                  'This should only take a moment.',
+                  style: AppTypography.caption.copyWith(
+                    color: lootrColors.textSecondary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -241,11 +341,7 @@ class _TopBar extends StatelessWidget {
       child: Align(
         alignment: Alignment.centerRight,
         child: showSkip
-            ? GhostButton(
-                label: 'Skip',
-                isExpanded: false,
-                onPressed: onSkip,
-              )
+            ? GhostButton(label: 'Skip', isExpanded: false, onPressed: onSkip)
             : const SizedBox(height: 44),
       ),
     );
@@ -257,6 +353,7 @@ class _SetupForm extends StatelessWidget {
     required this.nameController,
     required this.currency,
     required this.loadDemoData,
+    required this.onNameChanged,
     required this.onCurrencyChanged,
     required this.onDemoDataChanged,
   });
@@ -264,6 +361,7 @@ class _SetupForm extends StatelessWidget {
   final TextEditingController nameController;
   final String currency;
   final bool loadDemoData;
+  final ValueChanged<String> onNameChanged;
   final ValueChanged<String> onCurrencyChanged;
   final ValueChanged<bool> onDemoDataChanged;
 
@@ -280,6 +378,8 @@ class _SetupForm extends StatelessWidget {
         AppTextField(
           controller: nameController,
           hintText: 'Your name',
+          onChanged: onNameChanged,
+          textCapitalization: TextCapitalization.words,
         ),
         const SizedBox(height: AppSpacing.space5),
         const _Label('Currency'),
@@ -325,8 +425,9 @@ class _SetupForm extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       'Explore the app with sample accounts and transactions.',
-                      style: AppTypography.caption
-                          .copyWith(color: lootrColors.textSecondary),
+                      style: AppTypography.caption.copyWith(
+                        color: lootrColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),

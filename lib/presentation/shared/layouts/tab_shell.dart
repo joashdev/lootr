@@ -10,21 +10,31 @@ import '../../sheets/quick_actions_sheet.dart';
 class TabShell extends StatelessWidget {
   const TabShell({super.key, required this.navigationShell});
 
+  static const _pillHeight = 56.0;
+  static const _addButtonSize = 56.0;
+  static const _navBottomGap = 16.0;
+  static const _navHorizontalInset = 16.0;
+
   final StatefulNavigationShell navigationShell;
 
   @override
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final reservedBottomSpace =
+        _addButtonSize + _navBottomGap + bottomPadding + 12;
 
     return Scaffold(
       body: Stack(
         children: [
-          navigationShell,
+          Padding(
+            padding: EdgeInsets.only(bottom: reservedBottomSpace),
+            child: navigationShell,
+          ),
           Positioned(
-            left: 16,
-            right: 16,
-            bottom: 20 + bottomPadding,
+            left: _navHorizontalInset,
+            right: _navHorizontalInset,
+            bottom: _navBottomGap + bottomPadding,
             child: _buildFloatingNav(context, isDark),
           ),
         ],
@@ -44,64 +54,67 @@ class TabShell extends StatelessWidget {
   }
 
   Widget _buildNavPill(BuildContext context, bool isDark) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: isDark
-                ? const Color(0xFF1A1A1E).withValues(alpha: 0.95)
-                : const Color(0xFFFFFFFF).withValues(alpha: 0.95),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
+    return SizedBox(
+      height: _pillHeight,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
               color: isDark
-                  ? const Color(0x14FFFFFF)
-                  : const Color(0x0D000000),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
+                  ? const Color(0xFF1A1A1E).withValues(alpha: 0.95)
+                  : const Color(0xFFFFFFFF).withValues(alpha: 0.95),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
                 color: isDark
-                    ? const Color(0x66000000)
-                    : const Color(0x1F000000),
-                blurRadius: 20,
-                offset: const Offset(0, 4),
+                    ? const Color(0x14FFFFFF)
+                    : const Color(0x0D000000),
+                width: 1,
               ),
-            ],
-          ),
-          child: Row(
-            children: [
-              _NavTab(
-                icon: LucideIcons.home,
-                label: 'Home',
-                isActive: navigationShell.currentIndex == 0,
-                onTap: () => navigationShell.goBranch(0),
-                isDark: isDark,
-              ),
-              _NavTab(
+              boxShadow: [
+                BoxShadow(
+                  color: isDark
+                      ? const Color(0x66000000)
+                      : const Color(0x1F000000),
+                  blurRadius: 20,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                _NavTab(
+                  icon: LucideIcons.home,
+                  label: 'Home',
+                  isActive: navigationShell.currentIndex == 0,
+                  onTap: () => navigationShell.goBranch(0),
+                  isDark: isDark,
+                ),
+                _NavTab(
                   icon: LucideIcons.receiptText,
                   label: 'Transactions',
-                isActive: navigationShell.currentIndex == 1,
-                onTap: () => navigationShell.goBranch(1),
-                isDark: isDark,
-              ),
-              _NavTab(
-                icon: LucideIcons.pieChart,
-                label: 'Budgets',
-                isActive: navigationShell.currentIndex == 2,
-                onTap: () => navigationShell.goBranch(2),
-                isDark: isDark,
-              ),
-              _NavTab(
-                icon: LucideIcons.grid2X2,
-                label: 'More',
-                isActive: navigationShell.currentIndex == 3,
-                onTap: () => navigationShell.goBranch(3),
-                isDark: isDark,
-              ),
-            ],
+                  isActive: navigationShell.currentIndex == 1,
+                  onTap: () => navigationShell.goBranch(1),
+                  isDark: isDark,
+                ),
+                _NavTab(
+                  icon: LucideIcons.pieChart,
+                  label: 'Budgets',
+                  isActive: navigationShell.currentIndex == 2,
+                  onTap: () => navigationShell.goBranch(2),
+                  isDark: isDark,
+                ),
+                _NavTab(
+                  icon: LucideIcons.grid2X2,
+                  label: 'More',
+                  isActive: navigationShell.currentIndex == 3,
+                  onTap: () => navigationShell.goBranch(3),
+                  isDark: isDark,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -112,26 +125,20 @@ class TabShell extends StatelessWidget {
     return GestureDetector(
       onTap: () => _showQuickActions(context),
       child: Container(
-        width: 52,
-        height: 52,
+        width: _addButtonSize,
+        height: _addButtonSize,
         decoration: BoxDecoration(
           color: isDark ? AppColors.darkPrimary600 : AppColors.primary600,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: isDark
-                  ? const Color(0x593B82F6)
-                  : const Color(0x662563EB),
+              color: isDark ? const Color(0x593B82F6) : const Color(0x662563EB),
               blurRadius: 16,
               offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: const Icon(
-          LucideIcons.plus,
-          color: Colors.white,
-          size: 28,
-        ),
+        child: const Icon(LucideIcons.plus, color: Colors.white, size: 28),
       ),
     );
   }
@@ -167,9 +174,12 @@ class _NavTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeColor = isDark ? AppColors.darkPrimary600 : AppColors.primary600;
-    final inactiveColor =
-        isDark ? AppColors.darkTextTertiary : AppColors.lightTextTertiary;
+    final activeColor = isDark
+        ? AppColors.darkPrimary600
+        : AppColors.primary600;
+    final inactiveColor = isDark
+        ? AppColors.darkTextTertiary
+        : AppColors.lightTextTertiary;
     final color = isActive ? activeColor : inactiveColor;
     final fontWeight = isActive ? FontWeight.w600 : FontWeight.w400;
 
@@ -178,15 +188,14 @@ class _NavTab extends StatelessWidget {
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
         child: Container(
+          height: double.infinity,
           decoration: BoxDecoration(
             color: isActive
-                ? (isDark
-                    ? const Color(0x263B82F6)
-                    : const Color(0x1A2563EB))
+                ? (isDark ? const Color(0x263B82F6) : const Color(0x1A2563EB))
                 : null,
             borderRadius: BorderRadius.circular(14),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,

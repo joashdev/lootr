@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../application/providers/repo_providers.dart';
+import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../data/database/app_database.dart';
 import '../../../domain/entities/account.dart';
@@ -97,6 +98,27 @@ void _showMessage(BuildContext context, String message) {
   if (!context.mounted) return;
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 }
+
+const _categoryIconOptions = <_CategoryIconOption>[
+  _CategoryIconOption('shopping-cart', 'Shopping', Icons.shopping_bag_outlined),
+  _CategoryIconOption('utensils', 'Food', Icons.restaurant_outlined),
+  _CategoryIconOption('transport', 'Transport', Icons.directions_bus_rounded),
+  _CategoryIconOption('house', 'Home', Icons.home_outlined),
+  _CategoryIconOption('medical', 'Medical', Icons.local_hospital_outlined),
+  _CategoryIconOption('salary', 'Work', Icons.work_outline),
+  _CategoryIconOption('tag', 'General', Icons.sell_outlined),
+  _CategoryIconOption('entertainment', 'Fun', Icons.movie_outlined),
+  _CategoryIconOption('utilities', 'Utilities', Icons.bolt_outlined),
+];
+
+const _categoryColorOptions = <_CategoryColorOption>[
+  _CategoryColorOption('Ocean Blue', '#2563EB', AppColors.primary600),
+  _CategoryColorOption('Mint', '#059669', AppColors.success600),
+  _CategoryColorOption('Amber', '#D97706', AppColors.warning600),
+  _CategoryColorOption('Coral', '#D97757', AppColors.danger600),
+  _CategoryColorOption('Violet', '#7C3AED', Color(0xFF7C3AED)),
+  _CategoryColorOption('Slate', '#64748B', Color(0xFF64748B)),
+];
 
 Future<void> showAccountSheet(
   BuildContext context,
@@ -797,9 +819,9 @@ Future<void> showCategorySheet(
   String? initialGroup,
 }) async {
   final nameController = TextEditingController(text: initial?.name ?? '');
-  final iconController = TextEditingController(text: initial?.icon ?? '');
-  final colorController = TextEditingController(text: initial?.color ?? '');
   var group = initial?.categoryGroup ?? initialGroup ?? CategoryGroup.expense;
+  var selectedIcon = _iconValueOrFallback(initial?.icon);
+  var selectedColor = _colorValueOrFallback(initial?.color);
 
   await _showSheet(
     context: context,
@@ -841,14 +863,55 @@ Future<void> showCategorySheet(
             },
           ),
           const SizedBox(height: AppSpacing.space3),
-          TextField(
-            controller: iconController,
-            decoration: _fieldDecoration('Icon Name'),
+          DropdownButtonFormField<String>(
+            value: selectedIcon,
+            decoration: _fieldDecoration('Icon'),
+            items: _categoryIconOptions
+                .map(
+                  (option) => DropdownMenuItem(
+                    value: option.value,
+                    child: Row(
+                      children: [
+                        Icon(option.icon, size: 18),
+                        const SizedBox(width: 10),
+                        Text(option.label),
+                      ],
+                    ),
+                  ),
+                )
+                .toList(),
+            onChanged: (value) {
+              if (value != null) setState(() => selectedIcon = value);
+            },
           ),
           const SizedBox(height: AppSpacing.space3),
-          TextField(
-            controller: colorController,
-            decoration: _fieldDecoration('Color Hex'),
+          DropdownButtonFormField<String>(
+            value: selectedColor,
+            decoration: _fieldDecoration('Color'),
+            items: _categoryColorOptions
+                .map(
+                  (option) => DropdownMenuItem(
+                    value: option.hex,
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 18,
+                          height: 18,
+                          decoration: BoxDecoration(
+                            color: option.color,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(option.label),
+                      ],
+                    ),
+                  ),
+                )
+                .toList(),
+            onChanged: (value) {
+              if (value != null) setState(() => selectedColor = value);
+            },
           ),
           const SizedBox(height: AppSpacing.space4),
           SizedBox(
@@ -868,16 +931,8 @@ Future<void> showCategorySheet(
                       id: _makeId('cat'),
                       name: name,
                       categoryGroup: group,
-                      icon: Value(
-                        iconController.text.trim().isEmpty
-                            ? null
-                            : iconController.text.trim(),
-                      ),
-                      color: Value(
-                        colorController.text.trim().isEmpty
-                            ? null
-                            : colorController.text.trim(),
-                      ),
+                      icon: Value(selectedIcon),
+                      color: Value(selectedColor),
                     ),
                   );
                 } else {
@@ -886,16 +941,8 @@ Future<void> showCategorySheet(
                       id: Value(initial.id),
                       name: Value(name),
                       categoryGroup: Value(group),
-                      icon: Value(
-                        iconController.text.trim().isEmpty
-                            ? null
-                            : iconController.text.trim(),
-                      ),
-                      color: Value(
-                        colorController.text.trim().isEmpty
-                            ? null
-                            : colorController.text.trim(),
-                      ),
+                      icon: Value(selectedIcon),
+                      color: Value(selectedColor),
                     ),
                   );
                 }
@@ -913,6 +960,36 @@ Future<void> showCategorySheet(
       );
     },
   );
+}
+
+String _iconValueOrFallback(String? value) {
+  if (value == null || value.isEmpty) return _categoryIconOptions.first.value;
+  return _categoryIconOptions.any((option) => option.value == value)
+      ? value
+      : _categoryIconOptions.first.value;
+}
+
+String _colorValueOrFallback(String? value) {
+  if (value == null || value.isEmpty) return _categoryColorOptions.first.hex;
+  return _categoryColorOptions.any((option) => option.hex == value)
+      ? value
+      : _categoryColorOptions.first.hex;
+}
+
+class _CategoryIconOption {
+  const _CategoryIconOption(this.value, this.label, this.icon);
+
+  final String value;
+  final String label;
+  final IconData icon;
+}
+
+class _CategoryColorOption {
+  const _CategoryColorOption(this.label, this.hex, this.color);
+
+  final String label;
+  final String hex;
+  final Color color;
 }
 
 Future<void> showHouseholdSheet(

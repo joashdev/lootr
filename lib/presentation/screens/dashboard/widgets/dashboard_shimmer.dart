@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/radius.dart';
 import '../../../../core/theme/spacing.dart';
+import '../../../../core/theme/typography.dart';
 
 class DashboardShimmer extends StatelessWidget {
   const DashboardShimmer({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final baseColor = Theme.of(context).colorScheme.surfaceContainerLow;
+    final colorScheme = Theme.of(context).colorScheme;
+    final lootrColors = context.lootrColors;
+    final baseColor = colorScheme.outlineVariant;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(
@@ -18,6 +22,23 @@ class DashboardShimmer extends StatelessWidget {
         120,
       ),
       children: [
+        Row(
+          children: [
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            const SizedBox(width: AppSpacing.space3),
+            Text(
+              'Loading your dashboard...',
+              style: AppTypography.bodyMedium.copyWith(
+                color: lootrColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.space4),
         _ShimmerBlock(height: 60, color: baseColor),
         const SizedBox(height: AppSpacing.space4),
         _ShimmerBlock(height: 180, color: baseColor),

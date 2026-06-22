@@ -7,6 +7,7 @@ import '../../../application/providers/more_tab_provider.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
+import '../../shared/components/primary_screen_header.dart';
 
 class MoreScreen extends ConsumerWidget {
   const MoreScreen({super.key});
@@ -37,7 +38,7 @@ class MoreScreen extends ConsumerWidget {
     final lootrColors = context.lootrColors;
 
     return Scaffold(
-      appBar: AppBar(centerTitle: false, title: const Text('More')),
+      appBar: const PrimaryScreenHeader(title: 'More'),
       body: ListView.separated(
         padding: const EdgeInsets.only(bottom: AppSpacing.space8),
         itemCount: sections.fold<int>(0, (sum, g) => sum + 1 + g.items.length),

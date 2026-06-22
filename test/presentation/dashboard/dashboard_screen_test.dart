@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,6 +11,19 @@ import 'package:lootr/domain/entities/account.dart';
 import 'package:lootr/presentation/screens/dashboard/dashboard_screen.dart';
 
 void main() {
+  testWidgets('renders loading affordance before dashboard data arrives', (
+    tester,
+  ) async {
+    final controller = StreamController<DashboardData>();
+    addTearDown(controller.close);
+
+    await tester.pumpWidget(_wrapWithDashboardStream(controller.stream));
+    await tester.pump();
+
+    expect(find.text('Loading your dashboard...'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsWidgets);
+  });
+
   testWidgets('renders empty state when there is no data', (tester) async {
     await tester.pumpWidget(
       _wrapWithApp(
@@ -78,6 +93,16 @@ void main() {
 }
 
 Widget _wrapWithApp(DashboardData data) {
+  return _wrapWithDashboardStream(
+    Stream.value(data),
+    safeToSpend: data.safeToSpend,
+  );
+}
+
+Widget _wrapWithDashboardStream(
+  Stream<DashboardData> stream, {
+  double safeToSpend = 0,
+}) {
   final router = GoRouter(
     initialLocation: '/',
     routes: [
@@ -95,8 +120,8 @@ Widget _wrapWithApp(DashboardData data) {
 
   return ProviderScope(
     overrides: [
-      dashboardProvider.overrideWith((ref) => Stream.value(data)),
-      safeToSpendProvider.overrideWith((ref) => Stream.value(data.safeToSpend)),
+      dashboardProvider.overrideWith((ref) => stream),
+      safeToSpendProvider.overrideWith((ref) => Stream.value(safeToSpend)),
     ],
     child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
   );

@@ -15,6 +15,7 @@ class AppTextField extends StatefulWidget {
     this.keyboardType,
     this.maxLines = 1,
     this.autofocus = false,
+    this.textCapitalization = TextCapitalization.none,
   });
 
   final TextEditingController? controller;
@@ -26,6 +27,7 @@ class AppTextField extends StatefulWidget {
   final TextInputType? keyboardType;
   final int maxLines;
   final bool autofocus;
+  final TextCapitalization textCapitalization;
 
   @override
   State<AppTextField> createState() => _AppTextFieldState();
@@ -57,7 +59,9 @@ class _AppTextFieldState extends State<AppTextField> {
     final effectiveBgColor = _isFocused
         ? (isDark ? colorScheme.surface : AppColors.primary50)
         : colorScheme.surface;
-    final effectiveBorderColor = _isFocused ? colorScheme.primary : colorScheme.outline;
+    final effectiveBorderColor = _isFocused
+        ? colorScheme.primary
+        : colorScheme.outline;
 
     return Container(
       decoration: BoxDecoration(
@@ -81,9 +85,8 @@ class _AppTextFieldState extends State<AppTextField> {
               keyboardType: widget.keyboardType,
               maxLines: widget.maxLines,
               autofocus: widget.autofocus,
-              style: AppTypography.body.copyWith(
-                color: colorScheme.onSurface,
-              ),
+              textCapitalization: widget.textCapitalization,
+              style: AppTypography.body.copyWith(color: colorScheme.onSurface),
               decoration: InputDecoration(
                 hintText: widget.hintText,
                 hintStyle: AppTypography.body.copyWith(

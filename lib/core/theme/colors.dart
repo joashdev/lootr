@@ -22,9 +22,9 @@ abstract class AppColors {
   static const Color warning600 = Color(0xFFD97706);
 
   // Semantic — Danger
-  static const Color danger50 = Color(0xFFFEF2F2);
-  static const Color danger500 = Color(0xFFEF4444);
-  static const Color danger600 = Color(0xFFDC2626);
+  static const Color danger50 = Color(0xFFFFF4EF);
+  static const Color danger500 = Color(0xFFE98B73);
+  static const Color danger600 = Color(0xFFD97757);
 
   // Neutral — Light
   static const Color lightBg = Color(0xFFFAFAFA);
@@ -58,17 +58,17 @@ abstract class AppColors {
   static const Color darkWarning50 = Color(0xFF78350F);
   static const Color darkWarning500 = Color(0xFFFBBF24);
   static const Color darkWarning600 = Color(0xFFF59E0B);
-  static const Color darkDanger50 = Color(0xFF7F1D1D);
-  static const Color darkDanger500 = Color(0xFFF87171);
-  static const Color darkDanger600 = Color(0xFFEF4444);
+  static const Color darkDanger50 = Color(0xFF5E2F24);
+  static const Color darkDanger500 = Color(0xFFF0A189);
+  static const Color darkDanger600 = Color(0xFFE98B73);
 
   // Transaction direction — Light
-  static const Color expense = Color(0xFFDC2626);
+  static const Color expense = Color(0xFFD97757);
   static const Color income = Color(0xFF059669);
   static const Color transfer = Color(0xFF2563EB);
 
   // Transaction direction — Dark
-  static const Color darkExpense = Color(0xFFEF4444);
+  static const Color darkExpense = Color(0xFFF0A189);
   static const Color darkIncome = Color(0xFF10B981);
   static const Color darkTransfer = Color(0xFF3B82F6);
 }

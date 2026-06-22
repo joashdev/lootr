@@ -32,7 +32,10 @@ class SafeToSpendHero extends ConsumerWidget {
             : remainingShare > 0.2
             ? lootrColors.warning
             : lootrColors.danger;
-        final bgColor = semanticColor.withValues(alpha: 0.10);
+        final surface = Theme.of(context).colorScheme.surface;
+        final bgColor = Theme.of(
+          context,
+        ).colorScheme.primary.withValues(alpha: 0.06);
 
         return InkWell(
           borderRadius: BorderRadius.circular(AppRadius.xl),
@@ -42,7 +45,7 @@ class SafeToSpendHero extends ConsumerWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(AppRadius.xl),
                 gradient: LinearGradient(
-                  colors: [bgColor, Theme.of(context).colorScheme.surface],
+                  colors: [bgColor, surface, surface],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),

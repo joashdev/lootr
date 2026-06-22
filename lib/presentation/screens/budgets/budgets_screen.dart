@@ -3,11 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../application/providers/budgets_tab_provider.dart';
+import '../../../application/providers/categories_provider.dart';
 import '../../../core/extensions/async_value_x.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
-import '../../../application/providers/budgets_tab_provider.dart';
-import '../../../application/providers/categories_provider.dart';
+import '../../shared/components/primary_screen_header.dart';
 import '../../sheets/budget_create_sheet.dart';
 import 'widgets/budget_card.dart';
 import 'widgets/budget_shimmer.dart';
@@ -41,78 +42,87 @@ class BudgetsScreen extends ConsumerWidget {
     final isReadOnly = isPastBudgetPeriod(month, year);
 
     return Scaffold(
-      appBar: AppBar(
-        centerTitle: false,
-        leading: const MonthNavigator(),
-        leadingWidth: 250,
-        title: const Text('Budgets'),
-        titleSpacing: 0,
+      appBar: PrimaryScreenHeader(
+        title: 'Budgets',
         actions: [
           IconButton(
+            tooltip: isReadOnly ? 'Past months are read-only' : 'Create budget',
             icon: const Icon(LucideIcons.plus),
             onPressed: isReadOnly ? null : () => _showCreateSheet(context),
-            tooltip: isReadOnly ? 'Past months are read-only' : 'Create budget',
           ),
         ],
       ),
-      body: budgetsAsync.when(
-        loading: () => const Padding(
-          padding: EdgeInsets.all(AppSpacing.pagePaddingMobile),
-          child: BudgetShimmer(),
-        ),
-        error: (error, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(LucideIcons.alertCircle, size: 48, color: Colors.red),
-              const SizedBox(height: AppSpacing.space3),
-              Text(
-                'Failed to load budgets',
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+      body: Column(
+        children: [
+          const _BudgetPeriodBar(),
+          Expanded(
+            child: budgetsAsync.when(
+              loading: () => const Padding(
+                padding: EdgeInsets.all(AppSpacing.pagePaddingMobile),
+                child: BudgetShimmer(),
               ),
-              const SizedBox(height: AppSpacing.space2),
-              TextButton(
-                onPressed: () => ref.invalidate(budgetsTabProvider),
-                child: const Text('Retry'),
+              error: (error, _) => Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      LucideIcons.alertCircle,
+                      size: 48,
+                      color: Colors.red,
+                    ),
+                    const SizedBox(height: AppSpacing.space3),
+                    Text(
+                      'Failed to load budgets',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.space2),
+                    TextButton(
+                      onPressed: () => ref.invalidate(budgetsTabProvider),
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
               ),
-            ],
-          ),
-        ),
-        data: (budgets) {
-          if (budgets.isEmpty) {
-            return _EmptyBudgetsState(
-              month: month,
-              year: year,
-              onCreateBudget: isReadOnly
-                  ? null
-                  : () => _showCreateSheet(context),
-            );
-          }
+              data: (budgets) {
+                if (budgets.isEmpty) {
+                  return _EmptyBudgetsState(
+                    month: month,
+                    year: year,
+                    onCreateBudget: isReadOnly
+                        ? null
+                        : () => _showCreateSheet(context),
+                  );
+                }
 
-          final categories = categoriesAsync.valueOrNull ?? [];
-          final categoryMap = {for (final c in categories) c.id: c};
+                final categories = categoriesAsync.valueOrNull ?? [];
+                final categoryMap = {for (final c in categories) c.id: c};
 
-          return ListView.builder(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.pagePaddingMobile,
-              AppSpacing.space2,
-              AppSpacing.pagePaddingMobile,
-              AppSpacing.pagePaddingMobile + 80,
+                return ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.pagePaddingMobile,
+                    AppSpacing.space2,
+                    AppSpacing.pagePaddingMobile,
+                    AppSpacing.pagePaddingMobile + 80,
+                  ),
+                  itemCount: budgets.length + 1,
+                  itemBuilder: (context, index) {
+                    if (index == 0) return const BudgetSummaryHeader();
+
+                    final budget = budgets[index - 1];
+                    final category = categoryMap[budget.categoryId];
+                    return BudgetCard(
+                      budget: budget,
+                      category: category,
+                      onTap: () => context.push('/budgets/${budget.id}'),
+                    );
+                  },
+                );
+              },
             ),
-            itemCount: budgets.length + 1,
-            itemBuilder: (context, index) {
-              if (index == 0) return const BudgetSummaryHeader();
-
-              final budget = budgets[index - 1];
-              final category = categoryMap[budget.categoryId];
-              return BudgetCard(
-                budget: budget,
-                category: category,
-                onTap: () => context.push('/budgets/${budget.id}'),
-              );
-            },
-          );
-        },
+          ),
+        ],
       ),
     );
   }
@@ -127,6 +137,28 @@ class BudgetsScreen extends ConsumerWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
       ),
       builder: (_) => const BudgetCreateSheet(),
+    );
+  }
+}
+
+class _BudgetPeriodBar extends StatelessWidget {
+  const _BudgetPeriodBar();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      color: Theme.of(context).colorScheme.surface,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.pagePaddingMobile,
+        0,
+        AppSpacing.pagePaddingMobile,
+        AppSpacing.space2,
+      ),
+      child: const Align(
+        alignment: Alignment.centerLeft,
+        child: MonthNavigator(),
+      ),
     );
   }
 }

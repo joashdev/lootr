@@ -48,13 +48,10 @@ Page<void> _pushPage(Widget child, {LocalKey? key}) {
     child: child,
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
       return SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(1.0, 0.0),
-          end: Offset.zero,
-        ).animate(CurvedAnimation(
-          parent: animation,
-          curve: AppTheme.pagePushCurve,
-        )),
+        position: Tween<Offset>(begin: const Offset(1.0, 0.0), end: Offset.zero)
+            .animate(
+              CurvedAnimation(parent: animation, curve: AppTheme.pagePushCurve),
+            ),
         child: child,
       );
     },
@@ -68,13 +65,13 @@ Page<void> _sheetPage(Widget child, {LocalKey? key}) {
     child: child,
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
       return SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(0.0, 1.0),
-          end: Offset.zero,
-        ).animate(CurvedAnimation(
-          parent: animation,
-          curve: AppTheme.sheetEnterCurve,
-        )),
+        position: Tween<Offset>(begin: const Offset(0.0, 1.0), end: Offset.zero)
+            .animate(
+              CurvedAnimation(
+                parent: animation,
+                curve: AppTheme.sheetEnterCurve,
+              ),
+            ),
         child: child,
       );
     },
@@ -102,7 +99,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      // Deep-link redirects for spec paths → actual registered routes
       GoRoute(
         path: '/settings/sync',
         redirect: (context, state) => '/more/settings/sync',
@@ -117,30 +113,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         redirect: (context, state) =>
             '/more/debts/${state.pathParameters['debtId']}',
       ),
-
-      // Modal / sheet routes (outside ShellRoute).
-      // Declared BEFORE the shell so the literal '/transactions/new' is
-      // matched ahead of the shell's '/transactions/:id' detail route
-      // (go_router matches in declaration order), and so these full-screen
-      // modals mount on the root navigator above the tab shell.
       GoRoute(
         path: '/transactions/new',
         pageBuilder: (context, state) {
           final extra = state.extra;
-          final args =
-              extra is AddTransactionSheetArgs ? extra : null;
-          final tx = extra is Transaction
-              ? extra
-              : args?.initialTransaction;
-          final transfer = extra is Transfer
-              ? extra
-              : args?.initialTransfer;
+          final args = extra is AddTransactionSheetArgs ? extra : null;
+          final tx = extra is Transaction ? extra : args?.initialTransaction;
+          final transfer = extra is Transfer ? extra : args?.initialTransfer;
           return _sheetPage(
             AddTransactionSheet(
               initialTransaction: tx,
               initialTransfer: transfer,
               startInQuickMode: args?.startInQuickMode ?? false,
               initialParsedTransaction: args?.initialParsedTransaction,
+              initialQuickText: args?.initialQuickText,
             ),
             key: state.pageKey,
           );
@@ -153,15 +139,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/onboarding',
-        pageBuilder: (context, state) =>
-            _pushPage(const OnboardingScreen(), key: state.pageKey),
+        pageBuilder: (context, state) => NoTransitionPage<void>(
+          key: state.pageKey,
+          child: const OnboardingScreen(),
+        ),
       ),
-
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
             TabShell(navigationShell: navigationShell),
         branches: [
-          // Tab 1 — Dashboard
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -170,8 +156,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
-
-          // Tab 2 — Transactions
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -189,8 +173,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
-
-          // Tab 3 — Budgets
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -208,8 +190,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
-
-          // Tab 4 — More
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -298,9 +278,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                       GoRoute(
                         path: ':id',
                         pageBuilder: (context, state) => _pushPage(
-                          InsightDetailScreen(
-                            id: state.pathParameters['id']!,
-                          ),
+                          InsightDetailScreen(id: state.pathParameters['id']!),
                           key: state.pageKey,
                         ),
                       ),
@@ -327,10 +305,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   ),
                   GoRoute(
                     path: 'households',
-                    pageBuilder: (context, state) => _pushPage(
-                      const HouseholdsScreen(),
-                      key: state.pageKey,
-                    ),
+                    pageBuilder: (context, state) =>
+                        _pushPage(const HouseholdsScreen(), key: state.pageKey),
                     routes: [
                       GoRoute(
                         path: ':id',
@@ -344,59 +320,48 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     ],
                   ),
                   GoRoute(
-                    path: 'settings',
+                    path: 'settings/profile',
                     pageBuilder: (context, state) =>
                         _pushPage(const ProfileScreen(), key: state.pageKey),
-                    routes: [
-                      GoRoute(
-                        path: 'notifications',
-                        pageBuilder: (context, state) => _pushPage(
-                          const NotificationSettingsScreen(),
-                          key: state.pageKey,
-                        ),
-                      ),
-                      GoRoute(
-                        path: 'ai',
-                        pageBuilder: (context, state) =>
-                            _pushPage(const AiSettingsScreen(),
-                                key: state.pageKey),
-                        routes: [
-                          GoRoute(
-                            path: 'logs',
-                            pageBuilder: (context, state) => _pushPage(
-                              const AiLogsScreen(),
-                              key: state.pageKey,
-                            ),
-                          ),
-                        ],
-                      ),
-                      GoRoute(
-                        path: 'sync',
-                        pageBuilder: (context, state) => _pushPage(
-                          const SyncSettingsScreen(),
-                          key: state.pageKey,
-                        ),
-                      ),
-                      GoRoute(
-                        path: 'appearance',
-                        pageBuilder: (context, state) => _pushPage(
-                          const AppearanceScreen(),
-                          key: state.pageKey,
-                        ),
-                      ),
-                      GoRoute(
-                        path: 'security',
-                        pageBuilder: (context, state) => _pushPage(
-                          const SecurityScreen(),
-                          key: state.pageKey,
-                        ),
-                      ),
-                      GoRoute(
-                        path: 'about',
-                        pageBuilder: (context, state) =>
-                            _pushPage(const AboutScreen(), key: state.pageKey),
-                      ),
-                    ],
+                  ),
+                  GoRoute(
+                    path: 'settings/notifications',
+                    pageBuilder: (context, state) => _pushPage(
+                      const NotificationSettingsScreen(),
+                      key: state.pageKey,
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'settings/ai',
+                    pageBuilder: (context, state) =>
+                        _pushPage(const AiSettingsScreen(), key: state.pageKey),
+                  ),
+                  GoRoute(
+                    path: 'settings/ai-logs',
+                    pageBuilder: (context, state) =>
+                        _pushPage(const AiLogsScreen(), key: state.pageKey),
+                  ),
+                  GoRoute(
+                    path: 'settings/sync',
+                    pageBuilder: (context, state) => _pushPage(
+                      const SyncSettingsScreen(),
+                      key: state.pageKey,
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'settings/appearance',
+                    pageBuilder: (context, state) =>
+                        _pushPage(const AppearanceScreen(), key: state.pageKey),
+                  ),
+                  GoRoute(
+                    path: 'settings/security',
+                    pageBuilder: (context, state) =>
+                        _pushPage(const SecurityScreen(), key: state.pageKey),
+                  ),
+                  GoRoute(
+                    path: 'settings/about',
+                    pageBuilder: (context, state) =>
+                        _pushPage(const AboutScreen(), key: state.pageKey),
                   ),
                 ],
               ),

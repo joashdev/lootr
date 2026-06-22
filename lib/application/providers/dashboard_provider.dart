@@ -25,7 +25,7 @@ class DashboardBudgetSummary {
 
   final String id;
   final String name;
-  final String icon;
+  final String? icon;
   final Color color;
   final double budgeted;
   final double spent;
@@ -444,9 +444,8 @@ String _resolveRecurringLabel(
   return 'Recurring payment';
 }
 
-String _categoryBadge(Category? category) {
-  final name = category?.name ?? 'Category';
-  return name.substring(0, 1).toUpperCase();
+String? _categoryBadge(Category? category) {
+  return category?.icon;
 }
 
 Color _categoryColor(String? rawColor) {

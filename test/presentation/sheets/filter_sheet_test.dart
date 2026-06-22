@@ -131,4 +131,41 @@ void main() {
       'cat-expense',
     );
   });
+
+  testWidgets('mode control stays usable on standard phone width', (
+    tester,
+  ) async {
+    final container = ProviderContainer(
+      overrides: [
+        accountsProvider.overrideWith((ref) => Stream.value(accounts)),
+        categoriesProvider.overrideWith((ref) => Stream.value(categories)),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(buildSheet(container));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Recurring'), findsOneWidget);
+    expect(find.text('Installment'), findsOneWidget);
+
+    final horizontalModeScroller = find.byWidgetPredicate(
+      (widget) =>
+          widget is SingleChildScrollView &&
+          widget.scrollDirection == Axis.horizontal,
+    );
+
+    expect(horizontalModeScroller, findsNWidgets(2));
+    await tester.drag(horizontalModeScroller.last, const Offset(-180, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Installment'));
+    await tester.pump();
+
+    expect(container.read(transactionFiltersProvider).mode, 'installment');
+  });
 }

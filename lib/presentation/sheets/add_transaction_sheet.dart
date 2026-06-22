@@ -45,12 +45,14 @@ class AddTransactionSheetArgs {
     this.initialTransfer,
     this.startInQuickMode = false,
     this.initialParsedTransaction,
+    this.initialQuickText,
   });
 
   final Transaction? initialTransaction;
   final Transfer? initialTransfer;
   final bool startInQuickMode;
   final ParsedTransaction? initialParsedTransaction;
+  final String? initialQuickText;
 }
 
 class AddTransactionSheet extends ConsumerStatefulWidget {
@@ -60,12 +62,14 @@ class AddTransactionSheet extends ConsumerStatefulWidget {
     this.initialTransfer,
     this.startInQuickMode = false,
     this.initialParsedTransaction,
+    this.initialQuickText,
   });
 
   final Transaction? initialTransaction;
   final Transfer? initialTransfer;
   final bool startInQuickMode;
   final ParsedTransaction? initialParsedTransaction;
+  final String? initialQuickText;
 
   @override
   ConsumerState<AddTransactionSheet> createState() =>
@@ -109,15 +113,21 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     final initialTransaction = widget.initialTransaction;
     final initialTransfer = widget.initialTransfer;
 
-    _isQuickMode = widget.startInQuickMode &&
+    _isQuickMode =
+        widget.startInQuickMode &&
         !_isTransactionEditing &&
         !_isTransferEditing;
+    if ((widget.initialQuickText ?? '').trim().isNotEmpty) {
+      _quickAddController.text = widget.initialQuickText!.trim();
+    }
 
-    _direction = initialTransaction?.direction == fields.TransactionDirection.income
+    _direction =
+        initialTransaction?.direction == fields.TransactionDirection.income
         ? fields.TransactionDirection.income
         : fields.TransactionDirection.expense;
     _mode = initialTransaction?.mode ?? fields.TransactionMode.oneTime;
-    _occurredAt = initialTransaction?.occurredAt ??
+    _occurredAt =
+        initialTransaction?.occurredAt ??
         initialTransfer?.occurredAt ??
         DateTime.now();
     _accountId = initialTransaction?.accountId;
@@ -130,13 +140,13 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     _amountController.text = initialTransaction != null
         ? initialTransaction.amount.toStringAsFixed(2)
         : initialTransfer != null
-            ? initialTransfer.amount.toStringAsFixed(2)
-            : '';
+        ? initialTransfer.amount.toStringAsFixed(2)
+        : '';
     _feeController.text = initialTransfer == null
         ? ''
         : initialTransfer.feeAmount == 0
-            ? ''
-            : initialTransfer.feeAmount.toStringAsFixed(2);
+        ? ''
+        : initialTransfer.feeAmount.toStringAsFixed(2);
     _noteController.text =
         initialTransaction?.note ?? initialTransfer?.note ?? '';
 
@@ -201,23 +211,23 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   String? _matchAccountId(String label, List<Account> accounts) {
     final normalized = _normalize(label);
     final exactMatch = accounts.cast<Account?>().firstWhere(
-          (account) => _normalize(account!.name) == normalized,
-          orElse: () => null,
-        );
+      (account) => _normalize(account!.name) == normalized,
+      orElse: () => null,
+    );
     if (exactMatch != null) return exactMatch.id;
     final fuzzyMatch = accounts.cast<Account?>().firstWhere(
-          (account) => _normalize(account!.name).contains(normalized),
-          orElse: () => null,
-        );
+      (account) => _normalize(account!.name).contains(normalized),
+      orElse: () => null,
+    );
     return fuzzyMatch?.id;
   }
 
   String? _matchCategoryId(String label, List<Category> categories) {
     final normalized = _normalize(label);
     final match = categories.cast<Category?>().firstWhere(
-          (category) => _normalize(category!.name) == normalized,
-          orElse: () => null,
-        );
+      (category) => _normalize(category!.name) == normalized,
+      orElse: () => null,
+    );
     return match?.id;
   }
 
@@ -281,6 +291,17 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     });
   }
 
+  void _ensureQuickTextParsed(List<Account> accounts, List<Payee> payees) {
+    if (_seededInitialParsed || _quickAddController.text.trim().isEmpty) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _seededInitialParsed) return;
+      _seededInitialParsed = true;
+      _runQuickAdd(accounts, payees);
+    });
+  }
+
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -339,8 +360,9 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     if (_payeeId != null) return _payeeId;
     final payeeName = _payeeDraft.trim();
     if (payeeName.isEmpty) return null;
-    final payee =
-        await ref.read(payeeRepoProvider).createOrGet(_normalize(payeeName));
+    final payee = await ref
+        .read(payeeRepoProvider)
+        .createOrGet(_normalize(payeeName));
     return payee.id;
   }
 
@@ -392,8 +414,10 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
       );
 
       if (_isTransactionEditing) {
-        final result =
-            await EditTransaction(transactionRepo, accountRepo).call(transaction);
+        final result = await EditTransaction(
+          transactionRepo,
+          accountRepo,
+        ).call(transaction);
         if (!mounted) return;
         result.fold(
           onSuccess: (_) => _handleSaveSuccess(
@@ -404,8 +428,10 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
           onFailure: (message, _) => _showSnackBar(message),
         );
       } else {
-        final result =
-            await AddTransaction(transactionRepo, accountRepo).call(transaction);
+        final result = await AddTransaction(
+          transactionRepo,
+          accountRepo,
+        ).call(transaction);
         if (!mounted) return;
         result.fold(
           onSuccess: (transactionId) =>
@@ -478,7 +504,9 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   }) {
     final message = isEdit ? 'Transaction updated' : 'Transaction saved';
 
-    ref.read(undoStackProvider.notifier).push(
+    ref
+        .read(undoStackProvider.notifier)
+        .push(
           UndoEntry(
             transactionId: transactionId,
             message: message,
@@ -506,25 +534,20 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
       ..showSnackBar(
         SnackBar(
           content: Text(message),
-          duration: const Duration(seconds: 5),
+          duration: const Duration(seconds: 3),
           action: transactionId == null
               ? null
               : SnackBarAction(
                   label: 'UNDO',
                   onPressed: () {
-                    ref
-                        .read(undoStackProvider.notifier)
-                        .undo(transactionId);
+                    ref.read(undoStackProvider.notifier).undo(transactionId);
                   },
                 ),
         ),
       );
   }
 
-  Future<void> _runQuickAdd(
-    List<Account> accounts,
-    List<Payee> payees,
-  ) async {
+  Future<void> _runQuickAdd(List<Account> accounts, List<Payee> payees) async {
     final input = _quickAddController.text.trim();
     if (input.isEmpty) {
       setState(() {
@@ -576,7 +599,9 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   Widget build(BuildContext context) {
     final accounts =
         (ref.watch(accountsProvider).asData?.value ?? const <Account>[])
-            .where((account) => account.deletedAt == null && !account.isArchived)
+            .where(
+              (account) => account.deletedAt == null && !account.isArchived,
+            )
             .toList()
           ..sort((left, right) => left.name.compareTo(right.name));
     final categories =
@@ -586,15 +611,16 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
         ref.watch(debtsProvider).asData?.value ?? const <DebtRecord>[];
     final parentTransactions =
         ref.watch(filteredTransactionsProvider).asData?.value ??
-            const <Transaction>[];
+        const <Transaction>[];
 
     _ensureSeededFromInitialParsed(accounts, categories, payees);
+    _ensureQuickTextParsed(accounts, payees);
 
     final title = _isTransferEditing
         ? 'Edit Transfer'
         : _isTransactionEditing
-            ? 'Edit Transaction'
-            : 'Add Transaction';
+        ? 'Edit Transaction'
+        : 'Add Transaction';
     final colorScheme = Theme.of(context).colorScheme;
 
     return SafeArea(
@@ -640,14 +666,14 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                 child: _isTransferEditing
                     ? _buildTransferForm(accounts)
                     : (_isQuickMode && !_isTransactionEditing)
-                        ? _buildQuickAdd(accounts, categories, payees)
-                        : _buildTransactionForm(
-                            accounts,
-                            categories,
-                            payees,
-                            debts,
-                            parentTransactions,
-                          ),
+                    ? _buildQuickAdd(accounts, categories, payees)
+                    : _buildTransactionForm(
+                        accounts,
+                        categories,
+                        payees,
+                        debts,
+                        parentTransactions,
+                      ),
               ),
             ],
           ),
@@ -816,8 +842,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
             ),
             child: Text(
               _parseError!,
-              style:
-                  AppTypography.caption.copyWith(color: lootrColors.warning),
+              style: AppTypography.caption.copyWith(color: lootrColors.warning),
             ),
           ),
         ],
@@ -994,8 +1019,10 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
         _buildLabel('Parent Transaction'),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          initialValue: available
-                  .any((transaction) => transaction.id == _parentTransactionId)
+          initialValue:
+              available.any(
+                (transaction) => transaction.id == _parentTransactionId,
+              )
               ? _parentTransactionId
               : null,
           items: available
@@ -1029,8 +1056,9 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
         _buildLabel('Debt Record'),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          initialValue:
-              debts.any((debt) => debt.id == _debtRecordId) ? _debtRecordId : null,
+          initialValue: debts.any((debt) => debt.id == _debtRecordId)
+              ? _debtRecordId
+              : null,
           items: debts
               .map(
                 (debt) => DropdownMenuItem<String>(
@@ -1046,7 +1074,9 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
               ? null
               : (value) => setState(() => _debtRecordId = value),
           decoration: InputDecoration(
-            hintText: debts.isEmpty ? 'No debt records yet' : 'Select debt record',
+            hintText: debts.isEmpty
+                ? 'No debt records yet'
+                : 'Select debt record',
           ),
         ),
       ],
@@ -1077,8 +1107,11 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
         ),
         const SizedBox(height: 16),
         DropdownButtonFormField<String>(
-          key: ValueKey('source-${_sourceAccountId ?? 'none'}-${accounts.length}'),
-          initialValue: accounts.any((account) => account.id == _sourceAccountId)
+          key: ValueKey(
+            'source-${_sourceAccountId ?? 'none'}-${accounts.length}',
+          ),
+          initialValue:
+              accounts.any((account) => account.id == _sourceAccountId)
               ? _sourceAccountId
               : null,
           decoration: const InputDecoration(labelText: 'From account'),
@@ -1092,16 +1125,18 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
           onChanged: accounts.isEmpty
               ? null
               : (value) => setState(() => _sourceAccountId = value),
-          validator: (value) => value == null ? 'Select a source account' : null,
+          validator: (value) =>
+              value == null ? 'Select a source account' : null,
         ),
         const SizedBox(height: 16),
         DropdownButtonFormField<String>(
           key: ValueKey(
-              'destination-${_destinationAccountId ?? 'none'}-${accounts.length}'),
+            'destination-${_destinationAccountId ?? 'none'}-${accounts.length}',
+          ),
           initialValue:
               accounts.any((account) => account.id == _destinationAccountId)
-                  ? _destinationAccountId
-                  : null,
+              ? _destinationAccountId
+              : null,
           decoration: const InputDecoration(labelText: 'To account'),
           items: [
             for (final account in accounts)
@@ -1136,10 +1171,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     return TextFormField(
       controller: _amountController,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      decoration: InputDecoration(
-        labelText: labelText,
-        prefixText: 'PHP ',
-      ),
+      decoration: InputDecoration(labelText: labelText, prefixText: 'PHP '),
       validator: (value) {
         final parsed = double.tryParse((value ?? '').trim());
         if (parsed == null || parsed <= 0) {
@@ -1155,10 +1187,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
       controller: _noteController,
       minLines: 2,
       maxLines: 4,
-      decoration: InputDecoration(
-        labelText: 'Note',
-        hintText: hintText,
-      ),
+      decoration: InputDecoration(labelText: 'Note', hintText: hintText),
     );
   }
 
@@ -1166,10 +1195,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Date & time',
-          style: Theme.of(context).textTheme.labelLarge,
-        ),
+        Text('Date & time', style: Theme.of(context).textTheme.labelLarge),
         const SizedBox(height: 8),
         Wrap(
           spacing: 12,
@@ -1297,8 +1323,9 @@ class _ModePill extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color:
-              isSelected ? colorScheme.primaryContainer : colorScheme.surface,
+          color: isSelected
+              ? colorScheme.primaryContainer
+              : colorScheme.surface,
           borderRadius: BorderRadius.circular(AppRadius.full),
           border: Border.all(
             color: isSelected ? colorScheme.primary : colorScheme.outline,
@@ -1327,8 +1354,8 @@ class _ConfidenceDot extends StatelessWidget {
     final color = confidence >= 0.7
         ? AppColors.success500
         : confidence >= 0.4
-            ? AppColors.warning500
-            : AppColors.danger500;
+        ? AppColors.warning500
+        : AppColors.danger500;
 
     return Container(
       width: 8,
