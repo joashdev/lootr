@@ -339,55 +339,68 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
     if (filtered.isEmpty && (isFilterActive || hasSearch)) {
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.search_off,
-              size: 64,
-              color: context.lootrColors.textTertiary,
-            ),
-            const SizedBox(height: AppSpacing.space4),
-            Text(
-              'No results',
-              style: AppTypography.h2.copyWith(
-                color: Theme.of(context).colorScheme.onSurface,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.space4),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 120,
+                height: 120,
+                child: Icon(
+                  Icons.search_off,
+                  size: 64,
+                  color: context.lootrColors.textTertiary,
+                ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.space2),
-            Text(
-              hasSearch
-                  ? 'Try adjusting your search'
-                  : 'Try adjusting your filters',
-              style: AppTypography.body.copyWith(
-                color: context.lootrColors.textSecondary,
+              const SizedBox(height: AppSpacing.space4),
+              Text(
+                'No results',
+                style: AppTypography.h2.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.space4),
-            Wrap(
-              spacing: AppSpacing.space2,
-              runSpacing: AppSpacing.space2,
-              alignment: WrapAlignment.center,
-              children: [
-                if (hasSearch)
-                  PrimaryButton(
-                    label: 'Clear Search',
-                    onPressed: () {
-                      _searchController.clear();
-                      ref.read(transactionSearchQueryProvider.notifier).clear();
-                    },
-                    isExpanded: false,
-                  ),
-                if (isFilterActive)
-                  PrimaryButton(
-                    label: 'Clear Filters',
-                    onPressed: () =>
-                        ref.read(transactionFiltersProvider.notifier).reset(),
-                    isExpanded: false,
-                  ),
-              ],
-            ),
-          ],
+              const SizedBox(height: AppSpacing.space2),
+              Text(
+                hasSearch
+                    ? 'Try adjusting your search'
+                    : 'Try adjusting your filters',
+                style: AppTypography.body.copyWith(
+                  color: context.lootrColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.space4),
+              Wrap(
+                spacing: AppSpacing.space2,
+                runSpacing: AppSpacing.space2,
+                alignment: WrapAlignment.center,
+                children: [
+                  if (hasSearch)
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(minWidth: 220),
+                      child: PrimaryButton(
+                        label: 'Clear Search',
+                        onPressed: () {
+                          _searchController.clear();
+                          ref.read(transactionSearchQueryProvider.notifier).clear();
+                        },
+                        isExpanded: false,
+                      ),
+                    ),
+                  if (isFilterActive)
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(minWidth: 220),
+                      child: PrimaryButton(
+                        label: 'Clear Filters',
+                        onPressed: () =>
+                            ref.read(transactionFiltersProvider.notifier).reset(),
+                        isExpanded: false,
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -396,45 +409,55 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       final needsAccount =
           accounts is AsyncData<List<Account>> && activeAccounts.isEmpty;
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.receipt_long_outlined,
-              size: 64,
-              color: context.lootrColors.textTertiary,
-            ),
-            const SizedBox(height: AppSpacing.space4),
-            Text(
-              'No transactions yet',
-              style: AppTypography.h2.copyWith(
-                color: Theme.of(context).colorScheme.onSurface,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.space4),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 120,
+                height: 120,
+                child: Icon(
+                  Icons.receipt_long_outlined,
+                  size: 64,
+                  color: context.lootrColors.textTertiary,
+                ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.space2),
-            Text(
-              needsAccount
-                  ? 'Add an account first, then track transactions.'
-                  : 'Add your first transaction to start tracking',
-              style: AppTypography.body.copyWith(
-                color: context.lootrColors.textSecondary,
+              const SizedBox(height: AppSpacing.space4),
+              Text(
+                'No transactions yet',
+                style: AppTypography.h2.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
               ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSpacing.space4),
-            PrimaryButton(
-              label: needsAccount ? 'Add Account' : 'Add Transaction',
-              onPressed: () {
-                if (needsAccount) {
-                  showAccountSheet(context, ref);
-                } else {
-                  context.push('/transactions/new');
-                }
-              },
-              icon: const Icon(Icons.add, size: 18),
-              isExpanded: false,
-            ),
-          ],
+              const SizedBox(height: AppSpacing.space2),
+              Text(
+                needsAccount
+                    ? 'Add an account first, then track transactions.'
+                    : 'Add your first transaction to start tracking',
+                style: AppTypography.body.copyWith(
+                  color: context.lootrColors.textSecondary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: AppSpacing.space4),
+              ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: 220),
+                child: PrimaryButton(
+                  label: needsAccount ? 'Add Account' : 'Add Transaction',
+                  onPressed: () {
+                    if (needsAccount) {
+                      showAccountSheet(context, ref);
+                    } else {
+                      context.push('/transactions/new');
+                    }
+                  },
+                  icon: const Icon(Icons.add, size: 18),
+                  isExpanded: false,
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }

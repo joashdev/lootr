@@ -8,6 +8,7 @@ import '../../../application/providers/categories_provider.dart';
 import '../../../core/extensions/async_value_x.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
+import '../../../core/theme/typography.dart';
 import '../../shared/components/buttons/primary_button.dart';
 import '../../sheets/budget_create_sheet.dart';
 import 'widgets/budget_card.dart';
@@ -180,25 +181,27 @@ class _EmptyBudgetsState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              LucideIcons.pieChart,
-              size: 64,
-              color: lootrColors.textTertiary,
+            SizedBox(
+              width: 120,
+              height: 120,
+              child: Icon(
+                LucideIcons.pieChart,
+                size: 64,
+                color: lootrColors.textTertiary,
+              ),
             ),
             const SizedBox(height: AppSpacing.space4),
             Text(
               'No budgets set for ${_monthNames[month - 1]} $year',
-              style: const TextStyle(
-                fontSize: 21,
-                fontWeight: FontWeight.w600,
-                height: 1.3,
-              ),
+              style: AppTypography.h2,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.space2),
             Text(
               'Set spending limits to stay on track',
-              style: TextStyle(fontSize: 15, color: lootrColors.textSecondary),
+              style: AppTypography.body.copyWith(
+                color: lootrColors.textSecondary,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.space4),
@@ -208,10 +211,13 @@ class _EmptyBudgetsState extends StatelessWidget {
                 style: TextStyle(color: lootrColors.textTertiary),
               )
             else
-              PrimaryButton(
-                label: 'Create Budget',
-                onPressed: onCreateBudget,
-                isExpanded: false,
+              ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: 220),
+                child: PrimaryButton(
+                  label: 'Create Budget',
+                  onPressed: onCreateBudget,
+                  isExpanded: false,
+                ),
               ),
           ],
         ),

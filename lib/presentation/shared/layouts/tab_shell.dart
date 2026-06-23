@@ -22,38 +22,38 @@ class TabShell extends StatelessWidget {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surface = Theme.of(context).colorScheme.surface;
-    final reservedBottomSpace =
-        _addButtonSize + _navBottomGap + bottomPadding + 12;
+
+    final navOverlayHeight =
+        _navBottomGap + _pillHeight + bottomPadding + 48;
 
     return Scaffold(
       body: Stack(
         children: [
-          Padding(
-            padding: EdgeInsets.only(bottom: reservedBottomSpace),
-            child: navigationShell,
-          ),
+          navigationShell,
+
           Positioned(
             left: 0,
             right: 0,
             bottom: 0,
             child: IgnorePointer(
               child: Container(
-                height: _navBottomGap + _pillHeight + bottomPadding + 8,
+                height: navOverlayHeight,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      surface.withValues(alpha: 0),
-                      surface.withValues(alpha: isDark ? 0.50 : 0.50),
-                      surface,
+                      surface.withValues(alpha: 0.0),
+                      surface.withValues(alpha: 0.75),
+                      surface.withValues(alpha: 1.0),
                     ],
-                    stops: const [0.0, 0.5, 1.0],
+                    stops: const [0.0, 0.3, 1.0],
                   ),
                 ),
               ),
             ),
           ),
+
           Positioned(
             left: _navHorizontalInset,
             right: _navHorizontalInset,
