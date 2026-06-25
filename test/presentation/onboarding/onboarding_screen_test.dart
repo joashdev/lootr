@@ -129,6 +129,9 @@ void main() {
     await tester.tap(toggle);
     await tester.pumpAndSettle();
 
+    await tester.enterText(find.byType(TextField), 'Test');
+    await tester.pumpAndSettle();
+
     await tester.tap(find.text('Get Started'));
     await tester.pumpAndSettle();
 
@@ -169,6 +172,8 @@ void main() {
     await tester.pumpWidget(buildApp());
     await tester.pumpAndSettle();
     await tester.tap(find.text('Skip'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Test');
     await tester.pumpAndSettle();
     await tester.tap(find.text('Get Started'));
     await tester.pumpAndSettle();
