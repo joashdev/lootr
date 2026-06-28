@@ -2,6 +2,13 @@
 
 ---
 
+## 2026-06-28 — Task 18 Complete
+
+**Task:** 18 — Demo Data & Seed Data ✅
+**Summary:** Implemented demo data seeding with realistic Philippine sample data. `CategorySeeds` provides 17 default categories (10 expense, 6 income, 1 transfer) with Phosphor icon names and hex colors, seeded on first launch if the categories table is empty. `DemoDataLoader` generates 4 accounts (BDO Savings 45k, GCash 3.2k, BPI Checking 120k, Cash 1.5k), 15 Philippine payees (Jollibee, Grab, Meralco, Shopee, etc.), 43 transactions across May—June 2026 with realistic PHP amounts and recurring patterns (weekly groceries, bi-monthly salary, monthly bills), 4 budgets (Food 15k/mo, Transport 5k/mo, Shopping 8k/mo, Entertainment 3k/mo), and 2 goals (Emergency Fund 100k/45k, Vacation to Japan 80k/20k). All insertions use `db.batch()` for atomicity and `insertOnConflictUpdate` for idempotency. All entity IDs prefixed `demo-` for clean clearing via `id LIKE 'demo-%'`. Refactored `DemoDataNotifier` to delegate to `DemoDataLoader`, keeping `clear()` and `hasDemoData()` as-is. Added `categorySeedProvider` (FutureProvider) wired into `App.build()`. Added 3 test files (category_seeds, demo_data_loader, demo_data_provider) with 31 tests passing. `flutter analyze` clean for changed files.
+
+---
+
 ## 2026-06-28 — Task 20 Complete
 
 **Task:** 20 — Testing Infrastructure ✅
@@ -139,7 +146,7 @@
 | 15 — Presentation — Add Transaction Sheet | ✅ Done | 2026-06-21 |
 | 16 — Presentation — Filter Sheet & Search | ✅ Done | 2026-06-21 |
 | 17 — Presentation — Onboarding | ✅ Done | 2026-06-21 |
-| 18 — Demo Data & Seed Data | [ ] Pending | — |
+| 18 — Demo Data & Seed Data | ✅ Done | 2026-06-28 |
 | 19 — Local Notifications | [ ] Pending | — |
 | 20 — Testing Infrastructure | ✅ Done | 2026-06-28 |
 | 21 — Backend — NestJS Setup & Auth | [ ] Pending | — |
