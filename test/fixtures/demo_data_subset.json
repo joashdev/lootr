@@ -1,0 +1,36 @@
+{
+  "users": [
+    {
+      "id": "usr-test-demo",
+      "displayName": "Demo User",
+      "currencyCode": "PHP"
+    }
+  ],
+  "accounts": [
+    {
+      "id": "acc-test-wallet",
+      "ownerUserId": "usr-test-demo",
+      "name": "Wallet",
+      "accountType": "cash",
+      "balance": 1500
+    },
+    {
+      "id": "acc-test-bank",
+      "ownerUserId": "usr-test-demo",
+      "name": "Bank",
+      "accountType": "bank",
+      "balance": 10000
+    }
+  ],
+  "transactions": [
+    {
+      "id": "txn-test-grocery",
+      "accountId": "acc-test-wallet",
+      "categoryId": "cat-test-food",
+      "payeeId": "pay-test-grocery",
+      "amount": 250,
+      "direction": "expense",
+      "mode": "one_time"
+    }
+  ]
+}

@@ -1,6 +1,5 @@
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:drift/drift.dart';
 import 'package:lootr/data/repositories/debt_repo.dart';
 import 'package:lootr/data/database/app_database.dart';
 import 'package:lootr/domain/use_cases/settle_debt.dart';
@@ -32,8 +31,9 @@ void main() {
 
   group('SettleDebt', () {
     test('should return Success on valid settlement', () async {
-      when(() => mockRepo.watchById('dbt-1'))
-          .thenAnswer((_) => Stream.value(testDebt));
+      when(
+        () => mockRepo.watchById('dbt-1'),
+      ).thenAnswer((_) => Stream.value(testDebt));
       when(() => mockRepo.settle('dbt-1')).thenAnswer((_) async {});
 
       final result = await useCase('dbt-1');
@@ -42,8 +42,9 @@ void main() {
     });
 
     test('should return Failure when debt not found', () async {
-      when(() => mockRepo.watchById('dbt-1'))
-          .thenAnswer((_) => Stream.value(null));
+      when(
+        () => mockRepo.watchById('dbt-1'),
+      ).thenAnswer((_) => Stream.value(null));
 
       final result = await useCase('dbt-1');
 
@@ -53,10 +54,10 @@ void main() {
     });
 
     test('should return Failure when settle throws', () async {
-      when(() => mockRepo.watchById('dbt-1'))
-          .thenAnswer((_) => Stream.value(testDebt));
-      when(() => mockRepo.settle('dbt-1'))
-          .thenThrow(Exception('Not found'));
+      when(
+        () => mockRepo.watchById('dbt-1'),
+      ).thenAnswer((_) => Stream.value(testDebt));
+      when(() => mockRepo.settle('dbt-1')).thenThrow(Exception('Not found'));
 
       final result = await useCase('dbt-1');
 

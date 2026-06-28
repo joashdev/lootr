@@ -1,4 +1,4 @@
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:lootr/data/repositories/budget_repo.dart';
 import 'package:lootr/domain/use_cases/get_budget_spent.dart';
@@ -17,8 +17,9 @@ void main() {
 
   group('GetBudgetSpent', () {
     test('should return Success with spent amount', () async {
-      when(() => mockRepo.watchSpentForBudget('bdg-1'))
-          .thenAnswer((_) => Stream.value(3500.0));
+      when(
+        () => mockRepo.watchSpentForBudget('bdg-1'),
+      ).thenAnswer((_) => Stream.value(3500.0));
 
       final result = await useCase('bdg-1');
 
@@ -28,8 +29,9 @@ void main() {
     });
 
     test('should return Success with zero when no spending', () async {
-      when(() => mockRepo.watchSpentForBudget('bdg-1'))
-          .thenAnswer((_) => Stream.value(0.0));
+      when(
+        () => mockRepo.watchSpentForBudget('bdg-1'),
+      ).thenAnswer((_) => Stream.value(0.0));
 
       final result = await useCase('bdg-1');
 
@@ -39,8 +41,9 @@ void main() {
     });
 
     test('should return Failure when stream errors', () async {
-      when(() => mockRepo.watchSpentForBudget('bdg-1'))
-          .thenAnswer((_) => Stream.error(Exception('DB error')));
+      when(
+        () => mockRepo.watchSpentForBudget('bdg-1'),
+      ).thenAnswer((_) => Stream.error(Exception('DB error')));
 
       final result = await useCase('bdg-1');
 

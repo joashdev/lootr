@@ -1,4 +1,4 @@
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:drift/drift.dart';
 import 'package:lootr/data/repositories/transfer_repo.dart';
@@ -18,13 +18,15 @@ void main() {
   late CreateTransfer useCase;
 
   setUpAll(() {
-    registerFallbackValue(TransfersCompanion(
-      id: const Value(''),
-      sourceAccountId: const Value(''),
-      destinationAccountId: const Value(''),
-      amount: const Value(0),
-      occurredAt: Value(DateTime.now()),
-    ));
+    registerFallbackValue(
+      TransfersCompanion(
+        id: const Value(''),
+        sourceAccountId: const Value(''),
+        destinationAccountId: const Value(''),
+        amount: const Value(0),
+        occurredAt: Value(DateTime.now()),
+      ),
+    );
   });
 
   final testTransfer = Transfer(
@@ -96,8 +98,9 @@ void main() {
     });
 
     test('should return Failure when source account not found', () async {
-      when(() => mockAccountRepo.watchById('acc-1'))
-          .thenAnswer((_) => Stream.value(null));
+      when(
+        () => mockAccountRepo.watchById('acc-1'),
+      ).thenAnswer((_) => Stream.value(null));
 
       final result = await useCase(testTransfer);
 
@@ -108,10 +111,12 @@ void main() {
 
     test('should return Failure when source account is archived', () async {
       final archived = sourceAccount.copyWith(isArchived: true);
-      when(() => mockAccountRepo.watchById('acc-1'))
-          .thenAnswer((_) => Stream.value(archived));
-      when(() => mockAccountRepo.watchById('acc-2'))
-          .thenAnswer((_) => Stream.value(destAccount));
+      when(
+        () => mockAccountRepo.watchById('acc-1'),
+      ).thenAnswer((_) => Stream.value(archived));
+      when(
+        () => mockAccountRepo.watchById('acc-2'),
+      ).thenAnswer((_) => Stream.value(destAccount));
 
       final result = await useCase(testTransfer);
 
@@ -120,12 +125,13 @@ void main() {
       expect(failure.code, 'source_archived');
     });
 
-    test('should return Failure when destination account not found',
-        () async {
-      when(() => mockAccountRepo.watchById('acc-1'))
-          .thenAnswer((_) => Stream.value(sourceAccount));
-      when(() => mockAccountRepo.watchById('acc-2'))
-          .thenAnswer((_) => Stream.value(null));
+    test('should return Failure when destination account not found', () async {
+      when(
+        () => mockAccountRepo.watchById('acc-1'),
+      ).thenAnswer((_) => Stream.value(sourceAccount));
+      when(
+        () => mockAccountRepo.watchById('acc-2'),
+      ).thenAnswer((_) => Stream.value(null));
 
       final result = await useCase(testTransfer);
 
@@ -134,14 +140,16 @@ void main() {
       expect(failure.code, 'dest_not_found');
     });
 
-    test('should return Failure when destination account is deleted',
-        () async {
-      final deleted =
-          destAccount.copyWith(deletedAt: Value(DateTime(2026, 1, 1)));
-      when(() => mockAccountRepo.watchById('acc-1'))
-          .thenAnswer((_) => Stream.value(sourceAccount));
-      when(() => mockAccountRepo.watchById('acc-2'))
-          .thenAnswer((_) => Stream.value(deleted));
+    test('should return Failure when destination account is deleted', () async {
+      final deleted = destAccount.copyWith(
+        deletedAt: Value(DateTime(2026, 1, 1)),
+      );
+      when(
+        () => mockAccountRepo.watchById('acc-1'),
+      ).thenAnswer((_) => Stream.value(sourceAccount));
+      when(
+        () => mockAccountRepo.watchById('acc-2'),
+      ).thenAnswer((_) => Stream.value(deleted));
 
       final result = await useCase(testTransfer);
 
@@ -151,12 +159,15 @@ void main() {
     });
 
     test('should return Success with id on valid transfer', () async {
-      when(() => mockAccountRepo.watchById('acc-1'))
-          .thenAnswer((_) => Stream.value(sourceAccount));
-      when(() => mockAccountRepo.watchById('acc-2'))
-          .thenAnswer((_) => Stream.value(destAccount));
-      when(() => mockTransferRepo.create(any()))
-          .thenAnswer((_) async => 'trf-1');
+      when(
+        () => mockAccountRepo.watchById('acc-1'),
+      ).thenAnswer((_) => Stream.value(sourceAccount));
+      when(
+        () => mockAccountRepo.watchById('acc-2'),
+      ).thenAnswer((_) => Stream.value(destAccount));
+      when(
+        () => mockTransferRepo.create(any()),
+      ).thenAnswer((_) async => 'trf-1');
 
       final result = await useCase(testTransfer);
 

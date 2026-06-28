@@ -1,4 +1,4 @@
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:lootr/data/repositories/goal_repo.dart';
 import 'package:lootr/data/database/app_database.dart';
@@ -46,8 +46,9 @@ void main() {
     });
 
     test('should return Failure when goal not found', () async {
-      when(() => mockRepo.watchById('gol-1'))
-          .thenAnswer((_) => Stream.value(null));
+      when(
+        () => mockRepo.watchById('gol-1'),
+      ).thenAnswer((_) => Stream.value(null));
 
       final result = await useCase('gol-1', 1000);
 
@@ -57,8 +58,9 @@ void main() {
     });
 
     test('should return Failure when would exceed target', () async {
-      when(() => mockRepo.watchById('gol-1'))
-          .thenAnswer((_) => Stream.value(testGoal));
+      when(
+        () => mockRepo.watchById('gol-1'),
+      ).thenAnswer((_) => Stream.value(testGoal));
 
       final result = await useCase('gol-1', 50000);
 
@@ -68,10 +70,12 @@ void main() {
     });
 
     test('should return Success on valid contribution', () async {
-      when(() => mockRepo.watchById('gol-1'))
-          .thenAnswer((_) => Stream.value(testGoal));
-      when(() => mockRepo.addContribution('gol-1', 1000))
-          .thenAnswer((_) async {});
+      when(
+        () => mockRepo.watchById('gol-1'),
+      ).thenAnswer((_) => Stream.value(testGoal));
+      when(
+        () => mockRepo.addContribution('gol-1', 1000),
+      ).thenAnswer((_) async {});
 
       final result = await useCase('gol-1', 1000);
 
@@ -79,10 +83,12 @@ void main() {
     });
 
     test('should allow contribution exactly to target', () async {
-      when(() => mockRepo.watchById('gol-1'))
-          .thenAnswer((_) => Stream.value(testGoal));
-      when(() => mockRepo.addContribution('gol-1', 40000))
-          .thenAnswer((_) async {});
+      when(
+        () => mockRepo.watchById('gol-1'),
+      ).thenAnswer((_) => Stream.value(testGoal));
+      when(
+        () => mockRepo.addContribution('gol-1', 40000),
+      ).thenAnswer((_) async {});
 
       final result = await useCase('gol-1', 40000);
 

@@ -1,4 +1,4 @@
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:drift/drift.dart';
 import 'package:lootr/data/repositories/goal_repo.dart';
@@ -15,14 +15,16 @@ void main() {
   late AddGoal useCase;
 
   setUpAll(() {
-    registerFallbackValue(GoalsCompanion(
-      id: const Value(''),
-      ownerUserId: const Value(''),
-      name: const Value(''),
-      goalType: const Value('custom'),
-      targetAmount: const Value(0),
-      currentAmount: const Value(0),
-    ));
+    registerFallbackValue(
+      GoalsCompanion(
+        id: const Value(''),
+        ownerUserId: const Value(''),
+        name: const Value(''),
+        goalType: const Value('custom'),
+        targetAmount: const Value(0),
+        currentAmount: const Value(0),
+      ),
+    );
   });
 
   final testGoal = Goal(

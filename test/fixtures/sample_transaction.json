@@ -1,0 +1,11 @@
+{
+  "id": "txn-sample-coffee",
+  "accountId": "acc-test-wallet",
+  "categoryId": "cat-test-food",
+  "payeeId": "pay-test-cafe",
+  "amount": 185.5,
+  "direction": "expense",
+  "mode": "one_time",
+  "occurredAt": "2026-06-21T09:30:00.000Z",
+  "note": "Latte and pastry"
+}

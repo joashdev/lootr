@@ -1,4 +1,4 @@
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 import 'package:lootr/domain/entities/account.dart';
 import 'package:lootr/domain/entities/budget.dart';
 import 'package:lootr/domain/entities/category.dart';
@@ -463,16 +463,8 @@ void main() {
 
   group('User', () {
     test('construction and equality', () {
-      final u = User(
-        id: 'u1',
-        createdAt: now,
-        updatedAt: now,
-      );
-      final u2 = User(
-        id: 'u1',
-        createdAt: now,
-        updatedAt: now,
-      );
+      final u = User(id: 'u1', createdAt: now, updatedAt: now);
+      final u2 = User(id: 'u1', createdAt: now, updatedAt: now);
       expect(u, equals(u2));
     });
 

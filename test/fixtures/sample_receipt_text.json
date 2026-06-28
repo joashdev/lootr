@@ -1,0 +1,11 @@
+{
+  "source": "ocr",
+  "merchant": "Coffee Bar",
+  "capturedAt": "2026-06-21T09:35:00.000Z",
+  "lines": [
+    "Coffee Bar",
+    "Latte PHP 125.50",
+    "Pastry PHP 60.00",
+    "TOTAL PHP 185.50"
+  ]
+}

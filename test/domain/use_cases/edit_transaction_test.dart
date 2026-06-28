@@ -1,4 +1,4 @@
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:drift/drift.dart';
 import 'package:lootr/data/repositories/transaction_repo.dart';
@@ -18,14 +18,16 @@ void main() {
   late EditTransaction useCase;
 
   setUpAll(() {
-    registerFallbackValue(TransactionsCompanion(
-      id: const Value(''),
-      accountId: const Value(''),
-      amount: const Value(0),
-      transactionDirection: const Value('expense'),
-      transactionMode: const Value('one_time'),
-      occurredAt: Value(DateTime.now()),
-    ));
+    registerFallbackValue(
+      TransactionsCompanion(
+        id: const Value(''),
+        accountId: const Value(''),
+        amount: const Value(0),
+        transactionDirection: const Value('expense'),
+        transactionMode: const Value('one_time'),
+        occurredAt: Value(DateTime.now()),
+      ),
+    );
   });
 
   final testTransaction = Transaction(
@@ -79,8 +81,9 @@ void main() {
     });
 
     test('should return Failure when transaction not found', () async {
-      when(() => mockTxRepo.watchById('txn-1'))
-          .thenAnswer((_) => Stream.value(null));
+      when(
+        () => mockTxRepo.watchById('txn-1'),
+      ).thenAnswer((_) => Stream.value(null));
 
       final result = await useCase(testTransaction);
 
@@ -90,9 +93,12 @@ void main() {
     });
 
     test('should return Failure when transaction is soft-deleted', () async {
-      final deleted = testOriginal.copyWith(deletedAt: Value(DateTime(2026, 1, 1)));
-      when(() => mockTxRepo.watchById('txn-1'))
-          .thenAnswer((_) => Stream.value(deleted));
+      final deleted = testOriginal.copyWith(
+        deletedAt: Value(DateTime(2026, 1, 1)),
+      );
+      when(
+        () => mockTxRepo.watchById('txn-1'),
+      ).thenAnswer((_) => Stream.value(deleted));
 
       final result = await useCase(testTransaction);
 
@@ -102,10 +108,12 @@ void main() {
     });
 
     test('should return Failure when new account not found', () async {
-      when(() => mockTxRepo.watchById('txn-1'))
-          .thenAnswer((_) => Stream.value(testOriginal));
-      when(() => mockAccountRepo.watchById('acc-2'))
-          .thenAnswer((_) => Stream.value(null));
+      when(
+        () => mockTxRepo.watchById('txn-1'),
+      ).thenAnswer((_) => Stream.value(testOriginal));
+      when(
+        () => mockAccountRepo.watchById('acc-2'),
+      ).thenAnswer((_) => Stream.value(null));
 
       final tx = testTransaction.copyWith(accountId: 'acc-2');
       final result = await useCase(tx);
@@ -116,8 +124,9 @@ void main() {
     });
 
     test('should return Success on valid update (same account)', () async {
-      when(() => mockTxRepo.watchById('txn-1'))
-          .thenAnswer((_) => Stream.value(testOriginal));
+      when(
+        () => mockTxRepo.watchById('txn-1'),
+      ).thenAnswer((_) => Stream.value(testOriginal));
       when(() => mockTxRepo.update(any())).thenAnswer((_) async {});
 
       final result = await useCase(testTransaction);
@@ -139,10 +148,12 @@ void main() {
         createdAt: DateTime(2026, 6, 19),
         updatedAt: DateTime(2026, 6, 19),
       );
-      when(() => mockTxRepo.watchById('txn-1'))
-          .thenAnswer((_) => Stream.value(testOriginal));
-      when(() => mockAccountRepo.watchById('acc-2'))
-          .thenAnswer((_) => Stream.value(newAccount));
+      when(
+        () => mockTxRepo.watchById('txn-1'),
+      ).thenAnswer((_) => Stream.value(testOriginal));
+      when(
+        () => mockAccountRepo.watchById('acc-2'),
+      ).thenAnswer((_) => Stream.value(newAccount));
       when(() => mockTxRepo.update(any())).thenAnswer((_) async {});
 
       final tx = testTransaction.copyWith(accountId: 'acc-2');
@@ -152,10 +163,10 @@ void main() {
     });
 
     test('should return Failure when repo throws', () async {
-      when(() => mockTxRepo.watchById('txn-1'))
-          .thenAnswer((_) => Stream.value(testOriginal));
-      when(() => mockTxRepo.update(any()))
-          .thenThrow(Exception('DB error'));
+      when(
+        () => mockTxRepo.watchById('txn-1'),
+      ).thenAnswer((_) => Stream.value(testOriginal));
+      when(() => mockTxRepo.update(any())).thenThrow(Exception('DB error'));
 
       final result = await useCase(testTransaction);
 
