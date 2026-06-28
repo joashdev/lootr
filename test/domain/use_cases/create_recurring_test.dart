@@ -1,4 +1,4 @@
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:drift/drift.dart';
 import 'package:lootr/data/repositories/recurring_repo.dart';
@@ -14,12 +14,14 @@ void main() {
   late CreateRecurring useCase;
 
   setUpAll(() {
-    registerFallbackValue(RecurringTemplatesCompanion(
-      id: const Value(''),
-      accountId: const Value(''),
-      amount: const Value(0),
-      recurrenceRule: const Value('daily'),
-    ));
+    registerFallbackValue(
+      RecurringTemplatesCompanion(
+        id: const Value(''),
+        accountId: const Value(''),
+        amount: const Value(0),
+        recurrenceRule: const Value('daily'),
+      ),
+    );
   });
 
   final testTemplate = RecurringTemplate(

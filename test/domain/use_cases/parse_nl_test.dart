@@ -1,4 +1,4 @@
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 import 'package:lootr/domain/use_cases/parse_nl.dart';
 import 'package:lootr/domain/value_objects/result.dart';
 import 'package:lootr/domain/value_objects/parsed_transaction.dart';

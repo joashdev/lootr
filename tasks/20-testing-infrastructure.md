@@ -1,6 +1,6 @@
 # Task 20 — Testing Infrastructure
 
-**Status:** [ ]
+**Status:** [x]
 
 ---
 
@@ -74,16 +74,16 @@ ProviderContainer createTestContainer({AppDatabase? db}) {
 
 ## Acceptance Criteria
 
-- [ ] `flutter test` runs all unit/widget tests with in-memory DB
-- [ ] `flutter test integration_test` runs integration tests
-- [ ] Test DB utility creates clean in-memory database per test
-- [ ] Provider test utility correctly overrides providers with test DB
-- [ ] All domain tests are pure Dart (no Flutter dependency)
-- [ ] Repository tests cover CRUD, streams, and SQLite transaction atomicity
-- [ ] Provider tests cover loading → data → error states
-- [ ] Widget tests cover null-safety, empty states, and interaction callbacks
-- [ ] Screen tests verify navigation and sheet behavior
-- [ ] CI workflow runs all tests on PR
+- [x] `flutter test` runs all unit/widget tests with in-memory DB
+- [x] `flutter test integration_test` runs integration tests
+- [x] Test DB utility creates clean in-memory database per test
+- [x] Provider test utility correctly overrides providers with test DB
+- [x] All domain tests are pure Dart (no Flutter dependency)
+- [x] Repository tests cover CRUD, streams, and SQLite transaction atomicity
+- [x] Provider tests cover loading → data → error states
+- [x] Widget tests cover null-safety, empty states, and interaction callbacks
+- [x] Screen tests verify navigation and sheet behavior
+- [x] CI workflow runs all tests on PR
 
 ## Files Likely Affected
 

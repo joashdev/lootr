@@ -1,4 +1,4 @@
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 import 'package:lootr/domain/entities/transaction.dart';
 
 void main() {
@@ -129,10 +129,7 @@ void main() {
         updatedAt: now,
       );
 
-      final updated = tx.copyWith(
-        categoryId: () => null,
-        note: () => null,
-      );
+      final updated = tx.copyWith(categoryId: () => null, note: () => null);
 
       expect(updated.categoryId, isNull);
       expect(updated.note, isNull);

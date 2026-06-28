@@ -1,4 +1,4 @@
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 import 'package:lootr/domain/value_objects/date_range.dart';
 
 void main() {
@@ -14,10 +14,7 @@ void main() {
       });
 
       test('should throw when start is after end', () {
-        expect(
-          () => DateRange(end, start),
-          throwsA(isA<ArgumentError>()),
-        );
+        expect(() => DateRange(end, start), throwsA(isA<ArgumentError>()));
       });
     });
 
@@ -62,10 +59,7 @@ void main() {
 
     group('monthsInRange', () {
       test('should return all months in range', () {
-        final range = DateRange(
-          DateTime(2026, 1, 15),
-          DateTime(2026, 3, 20),
-        );
+        final range = DateRange(DateTime(2026, 1, 15), DateTime(2026, 3, 20));
         final months = range.monthsInRange();
 
         expect(months.length, 3);
@@ -75,10 +69,7 @@ void main() {
       });
 
       test('should return single month when start and end same month', () {
-        final range = DateRange(
-          DateTime(2026, 6, 1),
-          DateTime(2026, 6, 30),
-        );
+        final range = DateRange(DateTime(2026, 6, 1), DateTime(2026, 6, 30));
         final months = range.monthsInRange();
 
         expect(months.length, 1);
@@ -86,10 +77,7 @@ void main() {
       });
 
       test('should span across years', () {
-        final range = DateRange(
-          DateTime(2025, 11, 1),
-          DateTime(2026, 2, 28),
-        );
+        final range = DateRange(DateTime(2025, 11, 1), DateTime(2026, 2, 28));
         final months = range.monthsInRange();
 
         expect(months.length, 4);

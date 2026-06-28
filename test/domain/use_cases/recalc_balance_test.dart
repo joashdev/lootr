@@ -1,4 +1,4 @@
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:lootr/data/repositories/account_repo.dart';
 import 'package:lootr/domain/use_cases/recalc_balance.dart';
@@ -18,8 +18,7 @@ void main() {
   group('RecalcBalance', () {
     test('should return Success with new balance', () async {
       when(() => mockRepo.recalcBalance('acc-1')).thenAnswer((_) async {});
-      when(() => mockRepo.getBalance('acc-1'))
-          .thenAnswer((_) async => 750.0);
+      when(() => mockRepo.getBalance('acc-1')).thenAnswer((_) async => 750.0);
 
       final result = await useCase('acc-1');
 
@@ -29,8 +28,9 @@ void main() {
     });
 
     test('should return Failure when recalc throws', () async {
-      when(() => mockRepo.recalcBalance('acc-1'))
-          .thenThrow(Exception('DB error'));
+      when(
+        () => mockRepo.recalcBalance('acc-1'),
+      ).thenThrow(Exception('DB error'));
 
       final result = await useCase('acc-1');
 

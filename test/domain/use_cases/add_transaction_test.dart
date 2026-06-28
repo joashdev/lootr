@@ -1,4 +1,4 @@
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:drift/drift.dart';
 import 'package:lootr/data/repositories/transaction_repo.dart';
@@ -18,14 +18,16 @@ void main() {
   late AddTransaction useCase;
 
   setUpAll(() {
-    registerFallbackValue(TransactionsCompanion(
-      id: const Value(''),
-      accountId: const Value(''),
-      amount: const Value(0),
-      transactionDirection: const Value('expense'),
-      transactionMode: const Value('one_time'),
-      occurredAt: Value(DateTime.now()),
-    ));
+    registerFallbackValue(
+      TransactionsCompanion(
+        id: const Value(''),
+        accountId: const Value(''),
+        amount: const Value(0),
+        transactionDirection: const Value('expense'),
+        transactionMode: const Value('one_time'),
+        occurredAt: Value(DateTime.now()),
+      ),
+    );
   });
 
   final testTransaction = Transaction(
@@ -91,8 +93,9 @@ void main() {
     });
 
     test('should return Failure when account not found', () async {
-      when(() => mockAccountRepo.watchById('acc-1'))
-          .thenAnswer((_) => Stream.value(null));
+      when(
+        () => mockAccountRepo.watchById('acc-1'),
+      ).thenAnswer((_) => Stream.value(null));
 
       final result = await useCase(testTransaction);
 
@@ -103,8 +106,9 @@ void main() {
 
     test('should return Failure when account is archived', () async {
       final archived = testAccount.copyWith(isArchived: true);
-      when(() => mockAccountRepo.watchById('acc-1'))
-          .thenAnswer((_) => Stream.value(archived));
+      when(
+        () => mockAccountRepo.watchById('acc-1'),
+      ).thenAnswer((_) => Stream.value(archived));
 
       final result = await useCase(testTransaction);
 
@@ -115,9 +119,11 @@ void main() {
 
     test('should return Failure when account is deleted', () async {
       final deleted = testAccount.copyWith(
-          deletedAt: Value(DateTime(2026, 1, 1)));
-      when(() => mockAccountRepo.watchById('acc-1'))
-          .thenAnswer((_) => Stream.value(deleted));
+        deletedAt: Value(DateTime(2026, 1, 1)),
+      );
+      when(
+        () => mockAccountRepo.watchById('acc-1'),
+      ).thenAnswer((_) => Stream.value(deleted));
 
       final result = await useCase(testTransaction);
 
@@ -127,11 +133,13 @@ void main() {
     });
 
     test('should return Success with id on valid transaction', () async {
-      when(() => mockAccountRepo.watchById('acc-1'))
-          .thenAnswer((_) => Stream.value(testAccount));
+      when(
+        () => mockAccountRepo.watchById('acc-1'),
+      ).thenAnswer((_) => Stream.value(testAccount));
 
-      when(() => mockTransactionRepo.create(any()))
-          .thenAnswer((_) async => 'txn-1');
+      when(
+        () => mockTransactionRepo.create(any()),
+      ).thenAnswer((_) async => 'txn-1');
 
       final result = await useCase(testTransaction);
 
@@ -143,11 +151,13 @@ void main() {
     test('should handle income transaction', () async {
       final tx = testTransaction.copyWith(direction: 'income');
 
-      when(() => mockAccountRepo.watchById('acc-1'))
-          .thenAnswer((_) => Stream.value(testAccount));
+      when(
+        () => mockAccountRepo.watchById('acc-1'),
+      ).thenAnswer((_) => Stream.value(testAccount));
 
-      when(() => mockTransactionRepo.create(any()))
-          .thenAnswer((_) async => 'txn-2');
+      when(
+        () => mockTransactionRepo.create(any()),
+      ).thenAnswer((_) async => 'txn-2');
 
       final result = await useCase(tx);
 

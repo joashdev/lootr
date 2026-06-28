@@ -1,4 +1,4 @@
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 import 'package:lootr/domain/entities/transaction.dart';
 import 'package:lootr/domain/value_objects/date_range.dart';
 import 'package:lootr/domain/value_objects/transaction_filters.dart';

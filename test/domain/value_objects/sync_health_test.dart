@@ -1,4 +1,4 @@
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 import 'package:lootr/domain/value_objects/sync_health.dart';
 
 void main() {
@@ -57,8 +57,16 @@ void main() {
     });
 
     test('should be equatable', () {
-      const a = SyncHealth(pendingCount: 3, failedCount: 1, lastStatus: 'warning');
-      const b = SyncHealth(pendingCount: 3, failedCount: 1, lastStatus: 'warning');
+      const a = SyncHealth(
+        pendingCount: 3,
+        failedCount: 1,
+        lastStatus: 'warning',
+      );
+      const b = SyncHealth(
+        pendingCount: 3,
+        failedCount: 1,
+        lastStatus: 'warning',
+      );
       expect(a, equals(b));
     });
 

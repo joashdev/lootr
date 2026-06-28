@@ -1,4 +1,4 @@
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:drift/drift.dart';
 import 'package:lootr/data/repositories/budget_repo.dart';
@@ -14,14 +14,16 @@ void main() {
   late AddBudget useCase;
 
   setUpAll(() {
-    registerFallbackValue(BudgetsCompanion(
-      id: const Value(''),
-      ownerUserId: const Value(''),
-      categoryId: const Value(''),
-      amount: const Value(0),
-      month: const Value(1),
-      year: const Value(2026),
-    ));
+    registerFallbackValue(
+      BudgetsCompanion(
+        id: const Value(''),
+        ownerUserId: const Value(''),
+        categoryId: const Value(''),
+        amount: const Value(0),
+        month: const Value(1),
+        year: const Value(2026),
+      ),
+    );
   });
 
   final testBudget = Budget(
@@ -84,8 +86,9 @@ void main() {
         updatedAt: DateTime(2026, 6, 1),
       );
 
-      when(() => mockRepo.watchAll(month: 6, year: 2026))
-          .thenAnswer((_) => Stream.value([existing]));
+      when(
+        () => mockRepo.watchAll(month: 6, year: 2026),
+      ).thenAnswer((_) => Stream.value([existing]));
 
       final result = await useCase(testBudget);
 
@@ -95,8 +98,9 @@ void main() {
     });
 
     test('should return Success with id on valid budget', () async {
-      when(() => mockRepo.watchAll(month: 6, year: 2026))
-          .thenAnswer((_) => Stream.value(<BudgetData>[]));
+      when(
+        () => mockRepo.watchAll(month: 6, year: 2026),
+      ).thenAnswer((_) => Stream.value(<BudgetData>[]));
       when(() => mockRepo.create(any())).thenAnswer((_) async => 'bdg-1');
 
       final result = await useCase(testBudget);
@@ -119,8 +123,9 @@ void main() {
         updatedAt: DateTime(2026, 6, 1),
       );
 
-      when(() => mockRepo.watchAll(month: 6, year: 2026))
-          .thenAnswer((_) => Stream.value([existing]));
+      when(
+        () => mockRepo.watchAll(month: 6, year: 2026),
+      ).thenAnswer((_) => Stream.value([existing]));
       when(() => mockRepo.create(any())).thenAnswer((_) async => 'bdg-1');
 
       final result = await useCase(testBudget);

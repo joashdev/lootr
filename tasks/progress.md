@@ -2,6 +2,13 @@
 
 ---
 
+## 2026-06-28 — Task 20 Complete
+
+**Task:** 20 — Testing Infrastructure ✅
+**Summary:** Added reusable test infrastructure for seeded in-memory Drift databases, Riverpod ProviderContainer overrides, mocktail repository/sync/notification mocks, JSON fixtures, and a device-backed integration smoke test for the transaction add/undo data flow. Converted domain tests to `package:test` so domain coverage is pure Dart, added direct `test` and `integration_test` dev dependencies, and created a pinned Flutter 3.44.2 GitHub Actions workflow that runs pub get, build_runner, analyze, unit/widget tests, and integration tests inside an Android emulator. `dart run build_runner build`, targeted Task 20 analysis, and `flutter test --no-pub` pass locally; `flutter test --no-pub integration_test` is wired in CI but cannot run locally here without a supported connected device.
+
+---
+
 ## 2026-06-21 — Task 15 Complete
 
 **Task:** 15 — Presentation — Add Transaction Sheet & Forms ✅
@@ -134,6 +141,6 @@
 | 17 — Presentation — Onboarding | ✅ Done | 2026-06-21 |
 | 18 — Demo Data & Seed Data | [ ] Pending | — |
 | 19 — Local Notifications | [ ] Pending | — |
-| 20 — Testing Infrastructure | [ ] Pending | — |
+| 20 — Testing Infrastructure | ✅ Done | 2026-06-28 |
 | 21 — Backend — NestJS Setup & Auth | [ ] Pending | — |
 | 22 — Backend — Sync Endpoints | [ ] Pending | — |
