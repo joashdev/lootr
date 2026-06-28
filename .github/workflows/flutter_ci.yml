@@ -5,6 +5,11 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+
+concurrency:
+  group: flutter-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   unit-tests:
@@ -22,6 +27,7 @@ jobs:
       - run: flutter test --no-pub
 
   integration-tests:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -41,8 +47,11 @@ jobs:
 
       - uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
+          api-level: 34
           target: google_apis
           arch: x86_64
-          profile: pixel_6
+          profile: Nexus 6
+          disable-animations: true
+          emulator-boot-timeout: 900
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -camera-front none
           script: flutter test --no-pub integration_test
