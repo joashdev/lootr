@@ -1063,17 +1063,17 @@ Future<void> showCategorySheet(
                         shape: BoxShape.circle,
                         border: Border.all(
                           color: isSelected
-                              ? Theme.of(sheetContext).colorScheme.onSurface
+                              ? Theme.of(sheetContext).colorScheme.surface.withValues(alpha: 0.6)
                               : Colors.transparent,
                           width: 3,
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: option.color.withValues(alpha: 0.28),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
+                        // boxShadow: [
+                        //   BoxShadow(
+                        //     color: option.color.withValues(alpha: 0.28),
+                        //     blurRadius: 12,
+                        //     offset: const Offset(0, 4),
+                        //   ),
+                        // ],
                       ),
                     ),
                   ),
