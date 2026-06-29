@@ -223,7 +223,7 @@ const categoryIconOptions = <CategoryIconOption>[
 ];
 
 const categoryColorOptions = <CategoryColorOption>[
-  CategoryColorOption('Ocean Blue', '#2563EB', AppColors.primary600),
+  CategoryColorOption('Indigo Mist', '#5C64CC', AppColors.primary600),
   CategoryColorOption('Sky', '#38BDF8', Color(0xFF38BDF8)),
   CategoryColorOption('Indigo', '#4F46E5', Color(0xFF4F46E5)),
   CategoryColorOption('Mint', '#059669', AppColors.success600),

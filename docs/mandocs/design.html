@@ -13,14 +13,14 @@
     --border: #e2e4e8;
     --text: #1b1b1f;
     --text-secondary: #63666e;
-    --accent: #2563eb;
-    --accent-light: #eff6ff;
+    --accent: #5c64cc;
+    --accent-light: #eeeffe;
     --green: #059669;
     --green-light: #ecfdf5;
     --orange: #d97706;
     --orange-light: #fffbeb;
-    --red: #dc2626;
-    --red-light: #fef2f2;
+    --red: #d97757;
+    --red-light: #fff4ef;
     --code-bg: #1e1e2e;
     --code-text: #cdd6f4;
   }
@@ -101,6 +101,7 @@
 <li><strong>Clarity over density.</strong> One idea per screen. White space is a feature.</li>
 <li><strong>Color is semantic, not decorative.</strong> Green means on-track, amber means watch it, red means overspent. No other meaning attached.</li>
 <li><strong>Typography does the heavy lifting.</strong> Size and weight create hierarchy before color ever does.</li>
+<li><strong>Spotlight moments earn contrast.</strong> Borrow the confidence of premium fintech editorials only for hero moments; the default surface remains quiet and useful.</li>
 </ul>
 
 <h2 id="s2">2. Color Palette</h2>
@@ -109,13 +110,17 @@
 <table>
 <thead><tr><th>Token</th><th>Hex</th><th>Light</th><th>Dark</th></tr></thead>
 <tbody>
-<tr><td><code>primary-50</code></td><td><span class="swatch" style="background:#eff6ff"></span>#eff6ff</td><td>Background highlights</td><td>—</td></tr>
-<tr><td><code>primary-100</code></td><td><span class="swatch" style="background:#dbeafe"></span>#dbeafe</td><td>Hover states</td><td>—</td></tr>
-<tr><td><code>primary-500</code></td><td><span class="swatch" style="background:#3b82f6"></span>#3b82f6</td><td>Links, active states</td><td>#60a5fa</td></tr>
-<tr><td><code>primary-600</code></td><td><span class="swatch" style="background:#2563eb"></span>#2563eb</td><td><strong>Primary accent</strong>, Add island bg, CTAs</td><td>#3b82f6</td></tr>
-<tr><td><code>primary-700</code></td><td><span class="swatch" style="background:#1d4ed8"></span>#1d4ed8</td><td>Pressed states</td><td>#2563eb</td></tr>
+<tr><td><code>primary-50</code></td><td><span class="swatch" style="background:#eeeffe"></span>#eeeffe</td><td>Background highlights</td><td>—</td></tr>
+<tr><td><code>primary-100</code></td><td><span class="swatch" style="background:#dfe2fc"></span>#dfe2fc</td><td>Hover states</td><td>—</td></tr>
+<tr><td><code>primary-500</code></td><td><span class="swatch" style="background:#6e76d8"></span>#6e76d8</td><td>Links, active states</td><td>#8c93eb</td></tr>
+<tr><td><code>primary-600</code></td><td><span class="swatch" style="background:#5c64cc"></span>#5c64cc</td><td><strong>Primary accent</strong>, Add island bg, CTAs</td><td>#6e76d8</td></tr>
+<tr><td><code>primary-700</code></td><td><span class="swatch" style="background:#4d56b7"></span>#4d56b7</td><td>Pressed states</td><td>#5c64cc</td></tr>
 </tbody>
 </table>
+
+<div class="callout">
+<strong>Primary direction:</strong> We borrow Revolut's confidence in indigo-led branding, but soften it into a quieter blue-violet so the app feels premium without becoming loud or salesy.
+</div>
 
 <h3>Semantic</h3>
 <table>
@@ -127,14 +132,14 @@
 <tr><td><code>warning-50</code></td><td><span class="swatch" style="background:#fffbeb"></span>#fffbeb</td><td>Warning backgrounds</td><td>#78350f</td></tr>
 <tr><td><code>warning-500</code></td><td><span class="swatch" style="background:#f59e0b"></span>#f59e0b</td><td>Warning indicators</td><td>#fbbf24</td></tr>
 <tr><td><code>warning-600</code></td><td><span class="swatch" style="background:#d97706"></span>#d97706</td><td><strong>Warning text</strong>, close-to-limit</td><td>#f59e0b</td></tr>
-<tr><td><code>danger-50</code></td><td><span class="swatch" style="background:#fef2f2"></span>#fef2f2</td><td>Error backgrounds</td><td>#7f1d1d</td></tr>
-<tr><td><code>danger-500</code></td><td><span class="swatch" style="background:#ef4444"></span>#ef4444</td><td>Error indicators</td><td>#f87171</td></tr>
-<tr><td><code>danger-600</code></td><td><span class="swatch" style="background:#dc2626"></span>#dc2626</td><td><strong>Overspent text</strong>, negative amounts</td><td>#ef4444</td></tr>
+<tr><td><code>danger-50</code></td><td><span class="swatch" style="background:#fff4ef"></span>#fff4ef</td><td>Error backgrounds</td><td>#5e2f24</td></tr>
+<tr><td><code>danger-500</code></td><td><span class="swatch" style="background:#e98b73"></span>#e98b73</td><td>Error indicators</td><td>#f0a189</td></tr>
+<tr><td><code>danger-600</code></td><td><span class="swatch" style="background:#d97757"></span>#d97757</td><td><strong>Overspent text</strong>, negative amounts</td><td>#e98b73</td></tr>
 </tbody>
 </table>
 
 <div class="callout callout-orange">
-<strong>Soft red for overspent:</strong> <code>#dc2626</code> is used sparingly. Budget bars that exceed 100% use this color. No guilt text, no exclamation marks — just the color.
+<strong>Soft danger for no-guilt finance:</strong> We deliberately avoid alarm red. Overspending is shown with terracotta/salmon tones that still read as caution without scolding the user.
 </div>
 
 <h3>Neutral</h3>
@@ -156,16 +161,21 @@
 <table>
 <thead><tr><th>Direction</th><th>Light</th><th>Dark</th></tr></thead>
 <tbody>
-<tr><td>Expense</td><td><code>danger-600</code> (#dc2626)</td><td><code>danger-500</code> (#ef4444)</td></tr>
+<tr><td>Expense</td><td><code>danger-600</code> (#d97757)</td><td><code>danger-500</code> (#e98b73)</td></tr>
 <tr><td>Income</td><td><code>success-600</code> (#059669)</td><td><code>success-500</code> (#10b981)</td></tr>
-<tr><td>Transfer</td><td><code>primary-600</code> (#2563eb)</td><td><code>primary-500</code> (#3b82f6)</td></tr>
+<tr><td>Transfer</td><td><code>primary-600</code> (#5c64cc)</td><td><code>primary-500</code> (#6e76d8)</td></tr>
 </tbody>
 </table>
 
 <h2 id="s3">3. Typography</h2>
 
-<p>Font family: <code>-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif</code></p>
-<p>Monospace (amounts, codes): <code>SF Mono, Fira Code, Cascadia Code, monospace</code></p>
+<p>Font family: system font stack.</p>
+<ul>
+<li>Sans: <code>Geist</code></li>
+<li>Monospace: <code>Geist Mono</code></li>
+</ul>
+
+<p>Use <code>Geist</code> for all UI copy and headings. Use <code>Geist Mono</code> for amounts and code-like values. This borrows some of Revolut's branded typographic confidence while staying cleaner and more product-oriented than a marketing display face.</p>
 
 <h3>Scale</h3>
 <table>
@@ -182,6 +192,19 @@
 <tr><td><code>micro</code></td><td>11px</td><td>600</td><td>1.4</td><td>Badges, tags, uppercase labels</td></tr>
 </tbody>
 </table>
+
+<h3>Tracking</h3>
+<ul>
+<li><code>display</code>: <code>-1.2px</code></li>
+<li><code>h1</code>: <code>-0.6px</code></li>
+<li><code>h2</code>: <code>-0.3px</code></li>
+<li><code>h3</code>: <code>-0.2px</code></li>
+<li><code>body-medium</code>: <code>-0.1px</code></li>
+<li><code>caption-medium</code>: <code>-0.1px</code></li>
+<li><code>micro</code>: <code>0.4px</code></li>
+</ul>
+
+<p>Use subtle negative tracking on primary headings and amount displays to reduce the generic Material feel and create a denser, more premium rhythm.</p>
 
 <h3>Amount display</h3>
 <p>Amounts use tabular figures (monospace) to prevent jitter when numbers change.</p>
@@ -287,11 +310,13 @@
 
 <h4>Icon button</h4>
 <ul>
-<li>Size: <code>44px × 44px</code></li>
-<li>Background: transparent or <code>surface</code></li>
-<li>Icon: <code>24px</code>, <code>text-secondary</code> color</li>
-<li>Radius: <code>radius-full</code></li>
-<li>Pressed: <code>bg</code> background</li>
+<li>Size: <code>40px × 40px</code></li>
+<li>Background: <code>surface</code></li>
+<li>Border: 1px <code>border-subtle</code></li>
+<li>Icon: <code>20px</code>, <code>text-secondary</code> color by default</li>
+<li>Radius: <code>radius-md</code></li>
+<li>Use semantic overrides for status icons (sync success/warning/error)</li>
+<li>Pressed: retains card surface treatment, uses ink feedback inside the rounded square</li>
 </ul>
 
 <h3>7.2 Cards</h3>
@@ -300,25 +325,29 @@
 <ul>
 <li>Background: <code>surface</code></li>
 <li>Radius: <code>radius-lg</code> (14px)</li>
-<li>Shadow: <code>shadow-sm</code></li>
+<li>Border: 1px <code>border-subtle</code></li>
 <li>Padding: <code>16px</code></li>
-<li>Border: none (light), 1px <code>border</code> (dark)</li>
+<li>Shadow: minimal in light mode, none required in dark mode</li>
+<li>Default posture is quiet and structural, not floating</li>
 </ul>
 
 <h4>Hero card</h4>
 <ul>
-<li>Background: <code>surface</code></li>
-<li>Radius: <code>radius-xl</code> (18px)</li>
-<li>Shadow: <code>shadow-md</code></li>
-<li>Padding: <code>20px</code></li>
-<li>Often has a gradient or accent top border</li>
+<li>Background: layered <code>surface</code> with a restrained primary-tinted gradient wash</li>
+<li>Radius: <code>radius-lg</code> (14px)</li>
+<li>Border: 1px <code>border-subtle</code></li>
+<li>Shadow: <code>shadow-sm</code> in light mode, none in dark mode</li>
+<li>Padding: <code>24px</code></li>
+<li>Accent is concentrated in one corner/edge only; avoid loud full-card color blocks</li>
+<li>Use stronger editorial composition here than on ordinary cards: one large value, one short descriptor, one compact status cue</li>
 </ul>
 
 <h4>Compact row card</h4>
 <ul>
 <li>Background: <code>surface</code></li>
 <li>Radius: <code>radius-md</code> (10px)</li>
-<li>Padding: <code>12px 16px</code></li>
+<li>Border: 1px <code>border-subtle</code></li>
+<li>Padding: <code>12px 16px</code> by default, optionally tighter for dense summary cards</li>
 <li>Used in lists (transactions, budgets)</li>
 </ul>
 
@@ -397,6 +426,15 @@
 <li>Animation: smooth width transition <code>300ms ease</code></li>
 </ul>
 
+<h4>Income vs expense strip</h4>
+<ul>
+<li>Container: standard card</li>
+<li>Track shell: <code>surfaceContainerLow</code>, <code>radius-lg</code>, <code>4px</code> inner padding</li>
+<li>Bar height: <code>8px</code></li>
+<li>Summary copy: one-line compact sentence using semantic amount colors</li>
+<li>Purpose: quick ratio read, not a detailed chart</li>
+</ul>
+
 <h4>Sparkline</h4>
 <ul>
 <li>Stroke width: <code>2px</code></li>
@@ -437,18 +475,16 @@
 
 <h4>Transaction row</h4>
 <ul>
-<li>Background: <code>surface</code></li>
-<li>Radius: <code>radius-md</code></li>
-<li>Padding: <code>12px 16px</code></li>
-<li>Layout: flex row
-  <ul>
-    <li>Left: avatar/icon (<code>40px</code> circle)</li>
-    <li>Center: payee name (<code>h3</code>), category + account (<code>caption</code>)</li>
-    <li>Right: amount (<code>h3</code>, direction color), time (<code>caption</code>)</li>
-  </ul>
-</li>
+<li>Background: transparent inside a parent section card</li>
+<li>Padding: <code>12px 0</code> when used in section cards, <code>12px 16px</code> when freestanding</li>
+<li>Layout: flex row</li>
+<li>Left: avatar/icon (<code>40px</code> circle)</li>
+<li>Center: payee name (<code>body-medium</code>), category + account (<code>caption</code>)</li>
+<li>Right: amount (<code>mono</code>, 15-17px, direction color), time (<code>caption-medium</code>)</li>
 <li>Separator: <code>1px</code> <code>border-subtle</code> between rows</li>
 </ul>
+
+<p>Grouped dashboard lists should prefer one outer section card with internal dividers instead of stacking many mini-cards.</p>
 
 <h4>Section header (grouped list)</h4>
 <ul>
@@ -469,6 +505,29 @@
 </ul>
 
 <h2 id="s8">8. Layout Grid</h2>
+
+<h3>Dashboard composition</h3>
+<p>Dashboard sections follow a fixed top-to-bottom hierarchy:</p>
+<ol>
+<li>Safe-to-Spend hero</li>
+<li>Net worth sparkline</li>
+<li>Account summary cards</li>
+<li>Income vs expense strip</li>
+<li>Budget progress rings</li>
+<li>Spending by category</li>
+<li>Recent transactions</li>
+<li>Upcoming recurring</li>
+<li>Insights (only when present)</li>
+</ol>
+
+<p>Rhythm rules:</p>
+<ul>
+<li>Use <code>space-4</code> (<code>16px</code>) between dashboard sections by default</li>
+<li>Prefer one strong hero followed by quieter structural cards</li>
+<li>Avoid consecutive "card inside card inside card" stacks</li>
+<li>Let typography and spacing carry hierarchy before adding more color</li>
+<li>Borrow from Revolut only at the composition level: stronger spotlight moments, not louder default chrome</li>
+</ul>
 
 <h3>Mobile (default)</h3>
 <ul>
@@ -515,8 +574,9 @@
 
 <h3>Dark mode specifics</h3>
 <ul>
-<li>Cards have 1px <code>border</code> instead of shadow</li>
+<li>Cards have 1px <code>border-subtle</code> instead of relying on shadow</li>
 <li>Shadows are reduced (less visible on dark bg)</li>
+<li>Primary accents appear as restrained tinted washes, not neon surfaces</li>
 <li>Illustrations use inverted or dark-adapted versions</li>
 </ul>
 
@@ -540,7 +600,7 @@
 <tr><td>Add island</td><td><code>Plus</code></td></tr>
 <tr><td>Search</td><td><code>MagnifyingGlass</code></td></tr>
 <tr><td>Filter</td><td><code>SlidersHorizontal</code> or <code>Funnel</code></td></tr>
-<tr><td>Sync status</td><td><code>CloudCheck</code>, <code>CloudArrowUp</code>, <code>CloudWarning</code></td></tr>
+<tr><td>Sync status</td><td><code>CloudCheck</code>, <code>CloudUpload</code>, <code>TriangleAlert</code>, <code>LoaderCircle</code></td></tr>
 <tr><td>Close sheet</td><td><code>X</code></td></tr>
 <tr><td>Back</td><td><code>CaretLeft</code></td></tr>
 <tr><td>Edit</td><td><code>Pencil</code></td></tr>

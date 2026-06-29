@@ -9,6 +9,7 @@ import '../../../application/providers/sync_providers.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
 import '../../shared/components/app_snackbar.dart';
+import '../../shared/components/buttons/app_icon_button.dart';
 import '../../shared/components/empty_state.dart';
 import '../../shared/components/primary_screen_header.dart';
 import '../../sheets/sync_status_sheet.dart';
@@ -58,32 +59,32 @@ class DashboardScreen extends ConsumerWidget {
                 SafeToSpendHero(data: data),
                 const SizedBox(height: AppSpacing.space4),
                 NetWorthSparkline(data: data),
-                const SizedBox(height: AppSpacing.space5),
+                const SizedBox(height: AppSpacing.space4),
                 AccountSummaryCards(
                   accounts: data.accounts,
                   currencyCode: data.currencyCode,
                 ),
-                const SizedBox(height: AppSpacing.space5),
+                const SizedBox(height: AppSpacing.space4),
                 IncomeExpenseStrip(data: data),
-                const SizedBox(height: AppSpacing.space5),
+                const SizedBox(height: AppSpacing.space4),
                 BudgetProgressRings(
                   budgets: data.budgets,
                   currencyCode: data.currencyCode,
                 ),
-                const SizedBox(height: AppSpacing.space5),
+                const SizedBox(height: AppSpacing.space4),
                 SpendingDonut(data: data),
-                const SizedBox(height: AppSpacing.space5),
+                const SizedBox(height: AppSpacing.space4),
                 RecentTransactionsList(
                   transactions: data.recentTransactions,
                   currencyCode: data.currencyCode,
                 ),
-                const SizedBox(height: AppSpacing.space5),
+                const SizedBox(height: AppSpacing.space4),
                 UpcomingRecurringList(
                   items: data.upcomingRecurring,
                   currencyCode: data.currencyCode,
                 ),
                 if (data.insights.isNotEmpty) ...[
-                  const SizedBox(height: AppSpacing.space5),
+                  const SizedBox(height: AppSpacing.space4),
                   InsightsSection(insights: data.insights),
                 ],
               ],
@@ -115,31 +116,23 @@ class _DashboardHeader extends ConsumerWidget implements PreferredSizeWidget {
       title: '${data.greeting}$greetingName',
       subtitle: DateFormat('EEEE, MMMM d').format(data.currentDate),
       actions: [
-        IconButton(
+        AppIconButton(
           tooltip: 'Sync status',
-          icon: Icon(
-            _syncIcon(syncState),
-            color: _syncColor(syncState, lootrColors, context),
-          ),
+          icon: _syncIcon(syncState),
+          color: _syncColor(syncState, lootrColors, context),
           onPressed: () {
             showModalBottomSheet<void>(
               context: context,
               useRootNavigator: true,
               isScrollControlled: true,
-              backgroundColor: Theme.of(context).colorScheme.surface,
-              shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
-              ),
               builder: (_) => const SyncStatusSheet(),
             );
           },
         ),
-        IconButton(
+        const SizedBox(width: AppSpacing.space2),
+        AppIconButton(
           tooltip: 'Search',
-          icon: Icon(
-            LucideIcons.search,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
+          icon: LucideIcons.search,
           onPressed: () {
             AppSnackBar.show(context, 'Global search is coming soon');
           },

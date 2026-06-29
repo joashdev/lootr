@@ -19,6 +19,11 @@ class SafeToSpendHero extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final safeToSpend = ref.watch(safeToSpendProvider);
     final lootrColors = context.lootrColors;
+    final colorScheme = Theme.of(context).colorScheme;
+    final currencyFormatter = NumberFormat.currency(
+      locale: 'en_PH',
+      symbol: '₱',
+    );
 
     return safeToSpend.when(
       loading: () => const SizedBox(height: 180),
@@ -27,44 +32,97 @@ class SafeToSpendHero extends ConsumerWidget {
         final remainingShare = data.monthlyIncome <= 0
             ? 1.0
             : value / data.monthlyIncome;
+        final clampedShare = remainingShare.clamp(0.0, 1.0).toDouble();
         final semanticColor = remainingShare > 0.5
             ? lootrColors.success
             : remainingShare > 0.2
             ? lootrColors.warning
             : lootrColors.danger;
+
         return InkWell(
-          borderRadius: BorderRadius.circular(AppRadius.xl),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
           onTap: () => _showBreakdown(context, value),
           child: HeroCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  NumberFormat.currency(
-                    locale: 'en_PH',
-                    symbol: '₱',
-                  ).format(value),
-                  style: AppTypography.display.copyWith(color: semanticColor),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'SAFE TO SPEND',
+                            style: AppTypography.micro.copyWith(
+                              color: lootrColors.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.space2),
+                          Text(
+                            currencyFormatter.format(value),
+                            style: AppTypography.display.copyWith(
+                              color: colorScheme.onSurface,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    _HeroStatusPill(
+                      label: _statusLabel(remainingShare),
+                      color: semanticColor,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: AppSpacing.space2),
                 Text('Safe to spend', style: AppTypography.h2),
                 const SizedBox(height: AppSpacing.space1),
                 Text(
-                  'out of ${NumberFormat.currency(locale: 'en_PH', symbol: '₱').format(data.monthlyIncome)} monthly income',
+                  'From ${currencyFormatter.format(data.monthlyIncome)} monthly income after planned expenses.',
                   style: AppTypography.body.copyWith(
                     color: lootrColors.textSecondary,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.space4),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(AppRadius.full),
-                  child: LinearProgressIndicator(
-                    minHeight: 10,
-                    value: remainingShare.clamp(0, 1),
-                    backgroundColor: Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainerLow,
-                    valueColor: AlwaysStoppedAnimation<Color>(semanticColor),
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.space3),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surface.withValues(alpha: 0.78),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    border: Border.all(color: colorScheme.outlineVariant),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Remaining this month',
+                            style: AppTypography.captionMedium.copyWith(
+                              color: lootrColors.textSecondary,
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            '${(clampedShare * 100).round()}%',
+                            style: AppTypography.captionMedium.copyWith(
+                              color: semanticColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.space2),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(AppRadius.full),
+                        child: LinearProgressIndicator(
+                          minHeight: 8,
+                          value: clampedShare,
+                          backgroundColor: colorScheme.surfaceContainerLow,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            semanticColor,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -79,10 +137,6 @@ class SafeToSpendHero extends ConsumerWidget {
     showModalBottomSheet<void>(
       context: context,
       useRootNavigator: true,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
-      ),
       builder: (_) {
         return Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
@@ -117,6 +171,41 @@ class SafeToSpendHero extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+
+  String _statusLabel(double remainingShare) {
+    if (remainingShare > 0.5) {
+      return 'Comfortable';
+    }
+    if (remainingShare > 0.2) {
+      return 'Watch';
+    }
+    return 'Tight';
+  }
+}
+
+class _HeroStatusPill extends StatelessWidget {
+  const _HeroStatusPill({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space3,
+        vertical: AppSpacing.space2,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppRadius.full),
+      ),
+      child: Text(
+        label,
+        style: AppTypography.captionMedium.copyWith(color: color),
+      ),
     );
   }
 }

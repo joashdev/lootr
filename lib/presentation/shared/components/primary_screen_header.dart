@@ -13,7 +13,7 @@ class PrimaryScreenHeader extends StatelessWidget
     this.actions = const [],
   });
 
-  static const double height = 72;
+  static const double height = 80;
 
   final String title;
   final String? subtitle;
@@ -29,13 +29,14 @@ class PrimaryScreenHeader extends StatelessWidget
 
     return AppBar(
       automaticallyImplyLeading: false,
-      backgroundColor: colorScheme.surface,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       centerTitle: false,
       elevation: 0,
       scrolledUnderElevation: 0,
       surfaceTintColor: Colors.transparent,
       titleSpacing: AppSpacing.pagePaddingMobile,
       toolbarHeight: height,
+      shape: Border(bottom: BorderSide(color: colorScheme.outlineVariant)),
       title: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -44,7 +45,7 @@ class PrimaryScreenHeader extends StatelessWidget
             title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppTypography.h2.copyWith(color: colorScheme.onSurface),
+            style: AppTypography.h1.copyWith(color: colorScheme.onSurface),
           ),
           if (subtitle != null) ...[
             const SizedBox(height: 2),
@@ -52,7 +53,7 @@ class PrimaryScreenHeader extends StatelessWidget
               subtitle!,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AppTypography.caption.copyWith(
+              style: AppTypography.captionMedium.copyWith(
                 color: lootrColors.textSecondary,
               ),
             ),
@@ -63,7 +64,7 @@ class PrimaryScreenHeader extends StatelessWidget
           ? null
           : [
               Padding(
-                padding: const EdgeInsets.only(right: AppSpacing.space2),
+                padding: const EdgeInsets.only(right: AppSpacing.space4),
                 child: Row(mainAxisSize: MainAxisSize.min, children: actions),
               ),
             ],

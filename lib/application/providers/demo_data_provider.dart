@@ -123,7 +123,7 @@ class DemoDataNotifier extends AsyncNotifier<DemoDataState> {
         name: 'Shopping',
         categoryGroup: 'expense',
         icon: const Value('shopping-bag'),
-        color: const Value('#2563EB'),
+        color: const Value('#5C64CC'),
       ),
     ]) {
       await db.into(db.categories).insert(cat);

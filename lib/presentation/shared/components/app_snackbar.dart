@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../core/theme/colors.dart';
 import '../../../core/theme/radius.dart';
 import '../../../core/theme/typography.dart';
 
@@ -127,13 +128,13 @@ class _SnackBarContent extends StatelessWidget {
   Color _color() {
     switch (variant) {
       case AppSnackBarVariant.success:
-        return const Color(0xFF059669);
+        return AppColors.success600;
       case AppSnackBarVariant.warning:
-        return const Color(0xFFD97706);
+        return AppColors.warning600;
       case AppSnackBarVariant.error:
-        return const Color(0xFFDC2626);
+        return AppColors.danger600;
       case AppSnackBarVariant.neutral:
-        return const Color(0xFF2563EB);
+        return AppColors.primary600;
     }
   }
 

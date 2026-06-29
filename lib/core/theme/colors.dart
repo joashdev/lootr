@@ -4,12 +4,12 @@ abstract class AppColors {
   AppColors._();
 
   // Primary scale
-  static const Color primary50 = Color(0xFFEFF6FF);
-  static const Color primary100 = Color(0xFFDBEAFE);
-  static const Color primary200 = Color(0xFFBFDBFE);
-  static const Color primary500 = Color(0xFF3B82F6);
-  static const Color primary600 = Color(0xFF2563EB);
-  static const Color primary700 = Color(0xFF1D4ED8);
+  static const Color primary50 = Color(0xFFEEEFFE);
+  static const Color primary100 = Color(0xFFDFE2FC);
+  static const Color primary200 = Color(0xFFC9CEF8);
+  static const Color primary500 = Color(0xFF6E76D8);
+  static const Color primary600 = Color(0xFF5C64CC);
+  static const Color primary700 = Color(0xFF4D56B7);
 
   // Semantic — Success
   static const Color success50 = Color(0xFFECFDF5);
@@ -47,9 +47,9 @@ abstract class AppColors {
   static const Color darkTextTertiary = Color(0xFF6B7280);
 
   // Primary — Dark
-  static const Color darkPrimary500 = Color(0xFF60A5FA);
-  static const Color darkPrimary600 = Color(0xFF3B82F6);
-  static const Color darkPrimary700 = Color(0xFF2563EB);
+  static const Color darkPrimary500 = Color(0xFF8C93EB);
+  static const Color darkPrimary600 = Color(0xFF6E76D8);
+  static const Color darkPrimary700 = Color(0xFF5C64CC);
 
   // Semantic — Dark
   static const Color darkSuccess50 = Color(0xFF064E3B);
@@ -65,12 +65,12 @@ abstract class AppColors {
   // Transaction direction — Light
   static const Color expense = Color(0xFFD97757);
   static const Color income = Color(0xFF059669);
-  static const Color transfer = Color(0xFF2563EB);
+  static const Color transfer = Color(0xFF5C64CC);
 
   // Transaction direction — Dark
   static const Color darkExpense = Color(0xFFF0A189);
   static const Color darkIncome = Color(0xFF10B981);
-  static const Color darkTransfer = Color(0xFF3B82F6);
+  static const Color darkTransfer = Color(0xFF6E76D8);
 }
 
 class LootrColorScheme extends ThemeExtension<LootrColorScheme> {

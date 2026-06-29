@@ -10,6 +10,7 @@ Token-level spec for the UI. References: `product-strategy.md` (principles), `na
 - **Clarity over density.** One idea per screen. White space is a feature.
 - **Color is semantic, not decorative.** Green means on-track, amber means watch it, red means overspent. No other meaning attached.
 - **Typography does the heavy lifting.** Size and weight create hierarchy before color ever does.
+- **Spotlight moments earn contrast.** Borrow the confidence of premium fintech editorials only for hero moments; the default surface remains quiet and useful.
 
 ---
 
@@ -19,11 +20,13 @@ Token-level spec for the UI. References: `product-strategy.md` (principles), `na
 
 | Token | Hex | Light | Dark |
 |---|---|---|---|
-| `primary-50` | `#eff6ff` | Background highlights | — |
-| `primary-100` | `#dbeafe` | Hover states | — |
-| `primary-500` | `#3b82f6` | Links, active states | `#60a5fa` |
-| `primary-600` | `#2563eb` | **Primary accent**, Add island bg, CTAs | `#3b82f6` |
-| `primary-700` | `#1d4ed8` | Pressed states | `#2563eb` |
+| `primary-50` | `#eeeffe` | Background highlights | — |
+| `primary-100` | `#dfe2fc` | Hover states | — |
+| `primary-500` | `#6e76d8` | Links, active states | `#8c93eb` |
+| `primary-600` | `#5c64cc` | **Primary accent**, Add island bg, CTAs | `#6e76d8` |
+| `primary-700` | `#4d56b7` | Pressed states | `#5c64cc` |
+
+> **Primary direction:** We borrow Revolut's confidence in indigo-led branding, but soften it into a quieter blue-violet so the app feels premium without becoming loud or salesy.
 
 ### Semantic
 
@@ -35,11 +38,11 @@ Token-level spec for the UI. References: `product-strategy.md` (principles), `na
 | `warning-50` | `#fffbeb` | Warning backgrounds | `#78350f` |
 | `warning-500` | `#f59e0b` | Warning indicators | `#fbbf24` |
 | `warning-600` | `#d97706` | **Warning text**, close-to-limit | `#f59e0b` |
-| `danger-50` | `#fef2f2` | Error backgrounds | `#7f1d1d` |
-| `danger-500` | `#ef4444` | Error indicators | `#f87171` |
-| `danger-600` | `#dc2626` | **Overspent text**, negative amounts | `#ef4444` |
+| `danger-50` | `#fff4ef` | Error backgrounds | `#5e2f24` |
+| `danger-500` | `#e98b73` | Error indicators | `#f0a189` |
+| `danger-600` | `#d97757` | **Overspent text**, negative amounts | `#e98b73` |
 
-> **Soft red for overspent:** `#dc2626` is used sparingly. Budget bars that exceed 100% use this color. No guilt text, no exclamation marks — just the color.
+> **Soft danger for no-guilt finance:** We deliberately avoid alarm red. Overspending is shown with terracotta/salmon tones that still read as caution without scolding the user.
 
 ### Neutral
 
@@ -58,9 +61,9 @@ Token-level spec for the UI. References: `product-strategy.md` (principles), `na
 
 | Direction | Light | Dark |
 |---|---|---|
-| Expense | `danger-600` (`#dc2626`) | `danger-500` (`#ef4444`) |
+| Expense | `danger-600` (`#d97757`) | `danger-500` (`#e98b73`) |
 | Income | `success-600` (`#059669`) | `success-500` (`#10b981`) |
-| Transfer | `primary-600` (`#2563eb`) | `primary-500` (`#3b82f6`) |
+| Transfer | `primary-600` (`#5c64cc`) | `primary-500` (`#6e76d8`) |
 
 ---
 
@@ -68,11 +71,10 @@ Token-level spec for the UI. References: `product-strategy.md` (principles), `na
 
 Font family: system font stack.
 
-```
--apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif
-```
+- Sans: `Geist`
+- Monospace: `Geist Mono`
 
-Monospace (for amounts, codes): `SF Mono`, `Fira Code`, `Cascadia Code`, monospace.
+Use `Geist` for all UI copy and headings. Use `Geist Mono` for amounts and code-like values. This borrows some of Revolut's branded typographic confidence while staying cleaner and more product-oriented than a marketing display face.
 
 ### Scale
 
@@ -87,6 +89,18 @@ Monospace (for amounts, codes): `SF Mono`, `Fira Code`, `Cascadia Code`, monospa
 | `caption` | 13px | 400 | 1.5 | Secondary labels, timestamps |
 | `caption-medium` | 13px | 500 | 1.5 | Category labels, account names |
 | `micro` | 11px | 600 | 1.4 | Badges, tags, uppercase labels |
+
+### Tracking
+
+- `display`: `-1.2px`
+- `h1`: `-0.6px`
+- `h2`: `-0.3px`
+- `h3`: `-0.2px`
+- `body-medium`: `-0.1px`
+- `caption-medium`: `-0.1px`
+- `micro`: `0.4px`
+
+Use subtle negative tracking on primary headings and amount displays to reduce the generic Material feel and create a denser, more premium rhythm.
 
 ### Amount display
 
@@ -182,32 +196,38 @@ Base unit: **4px**.
 - Pressed: `primary-50` background
 
 #### Icon button
-- Size: `44px × 44px`
-- Background: transparent or `surface`
-- Icon: `24px`, `text-secondary` color
-- Radius: `radius-full`
-- Pressed: `bg` background
+- Size: `40px × 40px`
+- Background: `surface`
+- Border: 1px `border-subtle`
+- Icon: `20px`, `text-secondary` color by default
+- Radius: `radius-md`
+- Use semantic overrides for status icons (sync success/warning/error)
+- Pressed: retains card surface treatment, uses ink feedback inside the rounded square
 
 ### 7.2 Cards
 
 #### Standard card
 - Background: `surface`
 - Radius: `radius-lg` (14px)
-- Shadow: `shadow-sm`
+- Border: 1px `border-subtle`
 - Padding: `16px`
-- Border: none (light), 1px `border` (dark)
+- Shadow: minimal in light mode, none required in dark mode
+- Default posture is quiet and structural, not floating
 
 #### Hero card
-- Background: `surface`
-- Radius: `radius-xl` (18px)
-- Shadow: `shadow-md`
-- Padding: `20px`
-- Often has a gradient or accent top border
+- Background: layered `surface` with a restrained primary-tinted gradient wash
+- Radius: `radius-lg` (14px)
+- Border: 1px `border-subtle`
+- Shadow: `shadow-sm` in light mode, none in dark mode
+- Padding: `24px`
+- Accent is concentrated in one corner/edge only; avoid loud full-card color blocks
+- Use stronger editorial composition here than on ordinary cards: one large value, one short descriptor, one compact status cue
 
 #### Compact row card
 - Background: `surface`
 - Radius: `radius-md` (10px)
-- Padding: `12px 16px`
+- Border: 1px `border-subtle`
+- Padding: `12px 16px` by default, optionally tighter for dense summary cards
 - Used in lists (transactions, budgets)
 
 ### 7.3 Inputs
@@ -273,6 +293,13 @@ Base unit: **4px**.
 - Fill color: semantic (emerald/amber/red)
 - Animation: smooth width transition `300ms ease`
 
+#### Income vs expense strip
+- Container: standard card
+- Track shell: `surfaceContainerLow`, `radius-lg`, `4px` inner padding
+- Bar height: `8px`
+- Summary copy: one-line compact sentence using semantic amount colors
+- Purpose: quick ratio read, not a detailed chart
+
 #### Sparkline
 - Stroke width: `2px`
 - Color: `primary-500`
@@ -304,14 +331,15 @@ Base unit: **4px**.
 ### 7.8 Lists
 
 #### Transaction row
-- Background: `surface`
-- Radius: `radius-md`
-- Padding: `12px 16px`
+- Background: transparent inside a parent section card
+- Padding: `12px 0` when used in section cards, `12px 16px` when freestanding
 - Layout: flex row
   - Left: avatar/icon (`40px` circle)
-  - Center: payee name (`h3`), category + account (`caption`)
-  - Right: amount (`h3`, direction color), time (`caption`)
+  - Center: payee name (`body-medium`), category + account (`caption`)
+  - Right: amount (`mono`, 15–17px, direction color), time (`caption-medium`)
 - Separator: `1px` `border-subtle` between rows
+
+Grouped dashboard lists should prefer one outer section card with internal dividers instead of stacking many mini-cards.
 
 #### Section header (grouped list)
 - Text: `caption-medium`, `text-secondary`
@@ -331,6 +359,28 @@ Base unit: **4px**.
 ---
 
 ## 8. Layout Grid
+
+### Dashboard composition
+
+Dashboard sections follow a fixed top-to-bottom hierarchy:
+
+1. Safe-to-Spend hero
+2. Net worth sparkline
+3. Account summary cards
+4. Income vs expense strip
+5. Budget progress rings
+6. Spending by category
+7. Recent transactions
+8. Upcoming recurring
+9. Insights (only when present)
+
+Rhythm rules:
+
+- Use `space-4` (`16px`) between dashboard sections by default
+- Prefer one strong hero followed by quieter structural cards
+- Avoid consecutive “card inside card inside card” stacks
+- Let typography and spacing carry hierarchy before adding more color
+- Borrow from Revolut only at the composition level: stronger spotlight moments, not louder default chrome
 
 ### Mobile (default)
 - Single column
@@ -370,8 +420,9 @@ System preference by default. Toggle in Settings → Appearance.
 Semantic colors stay the same hex values in dark mode for consistency, but backgrounds use darker variants.
 
 ### Dark mode specifics
-- Cards have 1px `border` instead of shadow
+- Cards have 1px `border-subtle` instead of relying on shadow
 - Shadows are reduced (less visible on dark bg)
+- Primary accents appear as restrained tinted washes, not neon surfaces
 - Illustrations use inverted or dark-adapted versions
 
 ---
@@ -394,7 +445,7 @@ Semantic colors stay the same hex values in dark mode for consistency, but backg
 | Add island | `Plus` |
 | Search | `MagnifyingGlass` |
 | Filter | `SlidersHorizontal` or `Funnel` |
-| Sync status | `CloudCheck`, `CloudArrowUp`, `CloudWarning` |
+| Sync status | `CloudCheck`, `CloudUpload`, `TriangleAlert`, `LoaderCircle` |
 | Close sheet | `X` |
 | Back | `CaretLeft` |
 | Edit | `Pencil` |

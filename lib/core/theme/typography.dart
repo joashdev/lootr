@@ -1,107 +1,86 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 abstract class AppTypography {
   AppTypography._();
 
-  static const String _monoFontFamily = 'monospace';
-  static const List<String> _fontFamilyFallback = [
-    '.SF Pro Display',
-    '.SF Pro Text',
-    '-apple-system',
-    'BlinkMacSystemFont',
-    'Segoe UI',
-    'Roboto',
-    'Helvetica',
-    'Arial',
-    'sans-serif',
-  ];
-  static const List<String> _monoFontFamilyFallback = [
-    'SF Mono',
-    'Fira Code',
-    'Cascadia Code',
-    'monospace',
-  ];
+  static TextStyle get display => GoogleFonts.geist(
+    fontSize: 40,
+    fontWeight: FontWeight.w700,
+    height: 1.1,
+    letterSpacing: -1.2,
+  );
 
-  static TextStyle get display => const TextStyle(
-        fontSize: 40,
-        fontWeight: FontWeight.w700,
-        height: 1.1,
-        fontFamilyFallback: _fontFamilyFallback,
-      );
+  static TextStyle get h1 => GoogleFonts.geist(
+    fontSize: 28,
+    fontWeight: FontWeight.w700,
+    height: 1.2,
+    letterSpacing: -0.6,
+  );
 
-  static TextStyle get h1 => const TextStyle(
-        fontSize: 28,
-        fontWeight: FontWeight.w700,
-        height: 1.2,
-        fontFamilyFallback: _fontFamilyFallback,
-      );
+  static TextStyle get h2 => GoogleFonts.geist(
+    fontSize: 21,
+    fontWeight: FontWeight.w600,
+    height: 1.3,
+    letterSpacing: -0.3,
+  );
 
-  static TextStyle get h2 => const TextStyle(
-        fontSize: 21,
-        fontWeight: FontWeight.w600,
-        height: 1.3,
-        fontFamilyFallback: _fontFamilyFallback,
-      );
+  static TextStyle get h3 => GoogleFonts.geist(
+    fontSize: 17,
+    fontWeight: FontWeight.w600,
+    height: 1.4,
+    letterSpacing: -0.2,
+  );
 
-  static TextStyle get h3 => const TextStyle(
-        fontSize: 17,
-        fontWeight: FontWeight.w600,
-        height: 1.4,
-        fontFamilyFallback: _fontFamilyFallback,
-      );
+  static TextStyle get body => GoogleFonts.geist(
+    fontSize: 15,
+    fontWeight: FontWeight.w400,
+    height: 1.6,
+  );
 
-  static TextStyle get body => const TextStyle(
-        fontSize: 15,
-        fontWeight: FontWeight.w400,
-        height: 1.6,
-        fontFamilyFallback: _fontFamilyFallback,
-      );
+  static TextStyle get bodyMedium => GoogleFonts.geist(
+    fontSize: 15,
+    fontWeight: FontWeight.w500,
+    height: 1.6,
+    letterSpacing: -0.1,
+  );
 
-  static TextStyle get bodyMedium => const TextStyle(
-        fontSize: 15,
-        fontWeight: FontWeight.w500,
-        height: 1.6,
-        fontFamilyFallback: _fontFamilyFallback,
-      );
+  static TextStyle get caption => GoogleFonts.geist(
+    fontSize: 13,
+    fontWeight: FontWeight.w400,
+    height: 1.5,
+  );
 
-  static TextStyle get caption => const TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w400,
-        height: 1.5,
-        fontFamilyFallback: _fontFamilyFallback,
-      );
+  static TextStyle get captionMedium => GoogleFonts.geist(
+    fontSize: 13,
+    fontWeight: FontWeight.w500,
+    height: 1.5,
+    letterSpacing: -0.1,
+  );
 
-  static TextStyle get captionMedium => const TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w500,
-        height: 1.5,
-        fontFamilyFallback: _fontFamilyFallback,
-      );
+  static TextStyle get micro => GoogleFonts.geist(
+    fontSize: 11,
+    fontWeight: FontWeight.w600,
+    height: 1.4,
+    letterSpacing: 0.4,
+  );
 
-  static TextStyle get micro => const TextStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.w600,
-        height: 1.4,
-        fontFamilyFallback: _fontFamilyFallback,
-      );
-
-  static TextStyle get mono => const TextStyle(
-        fontSize: 15,
-        fontWeight: FontWeight.w500,
-        height: 1.5,
-        fontFamily: _monoFontFamily,
-        fontFamilyFallback: _monoFontFamilyFallback,
-      );
+  static TextStyle get mono => GoogleFonts.geistMono(
+    fontSize: 15,
+    fontWeight: FontWeight.w500,
+    height: 1.5,
+    fontFeatures: const [FontFeature.tabularFigures()],
+  );
 
   static TextTheme get textTheme => TextTheme(
-        displayLarge: display,
-        headlineLarge: h1,
-        headlineMedium: h2,
-        titleLarge: h3,
-        bodyLarge: body,
-        bodyMedium: bodyMedium,
-        bodySmall: caption,
-        labelLarge: captionMedium,
-        labelSmall: micro,
-      );
+    displayLarge: display,
+    headlineLarge: h1,
+    headlineMedium: h2,
+    titleLarge: h3,
+    bodyLarge: body,
+    bodyMedium: bodyMedium,
+    bodySmall: caption,
+    labelLarge: captionMedium,
+    labelSmall: micro,
+  );
 }

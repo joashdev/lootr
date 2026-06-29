@@ -37,6 +37,7 @@ dependencies:
   drift: 2.34.0
   drift_flutter: 0.3.0
   path_provider: 2.1.6
+  google_fonts: ^8.1.0
 
   lucide_icons_flutter: ^3.1.14
 
