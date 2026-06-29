@@ -71,15 +71,29 @@ class _QuickActionsSheetBodyState extends State<_QuickActionsSheetBody> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SheetHandle(),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Text(
-                'Add Transaction',
-                style: AppTypography.h2.copyWith(color: colorScheme.onSurface),
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Add Transaction',
+                    style: AppTypography.h2.copyWith(
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+                _EntryModeDropdown(
+                  onManual: () => widget.onNavigate('/transactions/new'),
+                  onScan: () => widget.onNavigate('/scan'),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
             ),
+            const SizedBox(height: 4),
             Text(
-              'How would you like to add it?',
+              'Describe it below, or pick a mode above.',
               style: AppTypography.body.copyWith(
                 color: context.lootrColors.textSecondary,
               ),
@@ -142,32 +156,6 @@ class _QuickActionsSheetBodyState extends State<_QuickActionsSheetBody> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-            const Divider(height: 1),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _ActionCard(
-                    icon: LucideIcons.pencilLine,
-                    label: 'Manual Entry',
-                    subtitle: 'Fill in details',
-                    color: AppColors.primary700,
-                    onTap: () => widget.onNavigate('/transactions/new'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _ActionCard(
-                    icon: LucideIcons.camera,
-                    label: 'Scan Receipt',
-                    subtitle: 'OCR capture',
-                    color: AppColors.success600,
-                    onTap: () => widget.onNavigate('/scan'),
-                  ),
-                ),
-              ],
-            ),
             const SizedBox(height: 24),
           ],
         ),
@@ -176,64 +164,57 @@ class _QuickActionsSheetBodyState extends State<_QuickActionsSheetBody> {
   }
 }
 
-class _ActionCard extends StatelessWidget {
-  const _ActionCard({
-    required this.icon,
-    required this.label,
-    required this.subtitle,
-    required this.color,
-    required this.onTap,
-  });
+enum _EntryMode { manual, scan }
 
-  final IconData icon;
-  final String label;
-  final String subtitle;
-  final Color color;
-  final VoidCallback onTap;
+/// Bordered "Manual ▾" dropdown pill for the quick-actions header, mirroring the
+/// mode dropdown in the Add Transaction sheet. Selecting an option triggers the
+/// matching entry flow immediately (Manual opens the full Add Transaction sheet,
+/// Scan opens the OCR scan route).
+class _EntryModeDropdown extends StatelessWidget {
+  const _EntryModeDropdown({required this.onManual, required this.onScan});
+
+  final VoidCallback onManual;
+  final VoidCallback onScan;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return GestureDetector(
-      onTap: onTap,
+    return PopupMenuButton<_EntryMode>(
+      initialValue: _EntryMode.manual,
+      onSelected: (mode) {
+        switch (mode) {
+          case _EntryMode.manual:
+            onManual();
+          case _EntryMode.scan:
+            onScan();
+        }
+      },
+      itemBuilder: (context) => const [
+        PopupMenuItem(value: _EntryMode.manual, child: Text('Manual')),
+        PopupMenuItem(value: _EntryMode.scan, child: Text('Scan')),
+      ],
       child: Container(
-        constraints: const BoxConstraints(minHeight: 152),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: colorScheme.surface,
-          borderRadius: BorderRadius.circular(AppRadius.lg),
+          color: colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(AppRadius.full),
           border: Border.all(color: colorScheme.outlineVariant),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(AppRadius.full),
-              ),
-              child: Icon(icon, color: color, size: 20),
-            ),
-            const SizedBox(height: 12),
             Text(
-              label,
-              style: AppTypography.bodyMedium.copyWith(
+              'Manual',
+              style: AppTypography.captionMedium.copyWith(
                 color: colorScheme.onSurface,
               ),
-              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: AppTypography.caption.copyWith(
-                color: context.lootrColors.textTertiary,
-              ),
-              textAlign: TextAlign.center,
+            const SizedBox(width: 4),
+            Icon(
+              LucideIcons.chevronDown,
+              size: 16,
+              color: context.lootrColors.textSecondary,
             ),
           ],
         ),

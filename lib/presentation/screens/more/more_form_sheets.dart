@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../application/providers/repo_providers.dart';
+import '../../../core/theme/colors.dart';
+import '../../../core/theme/radius.dart';
 import '../../../core/theme/spacing.dart';
+import '../../../core/theme/typography.dart';
 import '../../../data/database/app_database.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/entities/category.dart';
@@ -95,6 +98,110 @@ InputDecoration _fieldDecoration(String label) {
   return InputDecoration(labelText: label, border: const OutlineInputBorder());
 }
 
+/// Small caption label above a normal-size field, matching the pattern used by
+/// the add-transaction and budget-create sheets.
+class _LabeledField extends StatelessWidget {
+  const _LabeledField({required this.label, required this.child});
+
+  final String label;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: AppTypography.captionMedium.copyWith(
+            color: context.lootrColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.space2),
+        child,
+      ],
+    );
+  }
+}
+
+/// Bordered input decoration with a ₱ prefix for amount fields. The prefix is
+/// supplied as a widget (rather than `prefixText`) so the number sits cleanly
+/// right after the symbol without stray leading whitespace.
+InputDecoration _amountFieldDecoration(BuildContext context) {
+  return InputDecoration(
+    hintText: '0.00',
+    prefixIcon: Padding(
+      padding: const EdgeInsets.only(left: 12, right: 8),
+      child: Text(
+        '₱',
+        style: AppTypography.mono.copyWith(
+          color: context.lootrColors.textTertiary,
+        ),
+      ),
+    ),
+    prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+    border: const OutlineInputBorder(),
+  );
+}
+
+/// Two-option segmented control in the app's primary style (selected = primary
+/// bg / onPrimary text, unselected = surface / textSecondary).
+class _SegmentedToggle extends StatelessWidget {
+  const _SegmentedToggle({
+    required this.options,
+    required this.selectedIndex,
+    required this.onChanged,
+  });
+
+  final List<String> options;
+  final int selectedIndex;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(AppRadius.full),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          for (var i = 0; i < options.length; i++)
+            Expanded(
+              child: InkWell(
+                onTap: () => onChanged(i),
+                borderRadius: BorderRadius.circular(AppRadius.full),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: i == selectedIndex
+                        ? colorScheme.primary
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(AppRadius.full),
+                  ),
+                  child: Text(
+                    options[i],
+                    style: AppTypography.captionMedium.copyWith(
+                      color: i == selectedIndex
+                          ? colorScheme.onPrimary
+                          : context.lootrColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 void _showMessage(
   BuildContext context,
   String message, {
@@ -126,52 +233,65 @@ Future<void> showAccountSheet(
             style: Theme.of(sheetContext).textTheme.titleLarge,
           ),
           const SizedBox(height: AppSpacing.space4),
-          TextField(
-            controller: nameController,
-            decoration: _fieldDecoration('Account Name'),
-            textCapitalization: TextCapitalization.words,
-          ),
-          const SizedBox(height: AppSpacing.space3),
-          DropdownButtonFormField<String>(
-            value: accountType,
-            decoration: _fieldDecoration('Account Type'),
-            items: const [
-              DropdownMenuItem(value: AccountType.cash, child: Text('Cash')),
-              DropdownMenuItem(value: AccountType.bank, child: Text('Bank')),
-              DropdownMenuItem(
-                value: AccountType.ewallet,
-                child: Text('E-Wallet'),
+          _LabeledField(
+            label: 'Account Name',
+            child: TextField(
+              controller: nameController,
+              decoration: const InputDecoration(
+                hintText: 'e.g. GCash',
+                border: OutlineInputBorder(),
               ),
-              DropdownMenuItem(
-                value: AccountType.savings,
-                child: Text('Savings'),
-              ),
-              DropdownMenuItem(
-                value: AccountType.investment,
-                child: Text('Investment'),
-              ),
-              DropdownMenuItem(
-                value: AccountType.crypto,
-                child: Text('Crypto'),
-              ),
-              DropdownMenuItem(
-                value: AccountType.creditCard,
-                child: Text('Credit Card'),
-              ),
-              DropdownMenuItem(value: AccountType.loan, child: Text('Loan')),
-              DropdownMenuItem(value: AccountType.bnpl, child: Text('BNPL')),
-            ],
-            onChanged: (value) {
-              if (value != null) setState(() => accountType = value);
-            },
-          ),
-          const SizedBox(height: AppSpacing.space3),
-          TextField(
-            controller: balanceController,
-            decoration: _fieldDecoration(
-              initial == null ? 'Opening Balance' : 'Current Balance',
+              textCapitalization: TextCapitalization.words,
             ),
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          ),
+          const SizedBox(height: AppSpacing.space3),
+          _LabeledField(
+            label: 'Account Type',
+            child: DropdownButtonFormField<String>(
+              value: accountType,
+              decoration: const InputDecoration(border: OutlineInputBorder()),
+              items: const [
+                DropdownMenuItem(value: AccountType.cash, child: Text('Cash')),
+                DropdownMenuItem(value: AccountType.bank, child: Text('Bank')),
+                DropdownMenuItem(
+                  value: AccountType.ewallet,
+                  child: Text('E-Wallet'),
+                ),
+                DropdownMenuItem(
+                  value: AccountType.savings,
+                  child: Text('Savings'),
+                ),
+                DropdownMenuItem(
+                  value: AccountType.investment,
+                  child: Text('Investment'),
+                ),
+                DropdownMenuItem(
+                  value: AccountType.crypto,
+                  child: Text('Crypto'),
+                ),
+                DropdownMenuItem(
+                  value: AccountType.creditCard,
+                  child: Text('Credit Card'),
+                ),
+                DropdownMenuItem(value: AccountType.loan, child: Text('Loan')),
+                DropdownMenuItem(value: AccountType.bnpl, child: Text('BNPL')),
+              ],
+              onChanged: (value) {
+                if (value != null) setState(() => accountType = value);
+              },
+            ),
+          ),
+          const SizedBox(height: AppSpacing.space3),
+          _LabeledField(
+            label: initial == null ? 'Opening Balance' : 'Current Balance',
+            child: TextField(
+              controller: balanceController,
+              decoration: _amountFieldDecoration(sheetContext),
+              style: AppTypography.mono,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+            ),
           ),
           const SizedBox(height: AppSpacing.space4),
           SizedBox(
@@ -244,53 +364,65 @@ Future<void> showDebtSheet(BuildContext context, WidgetRef ref) async {
         children: [
           Text('New Debt', style: Theme.of(sheetContext).textTheme.titleLarge),
           const SizedBox(height: AppSpacing.space4),
-          TextField(
-            controller: counterpartyController,
-            decoration: _fieldDecoration('Who is this with?'),
-            textCapitalization: TextCapitalization.words,
-          ),
-          const SizedBox(height: AppSpacing.space3),
-          Text(
-            'Did you lend or borrow?',
-            style: Theme.of(sheetContext).textTheme.labelLarge,
-          ),
-          const SizedBox(height: AppSpacing.space2),
-          Wrap(
-            spacing: AppSpacing.space2,
-            children: [
-              ChoiceChip(
-                label: const Text('Borrowed'),
-                selected: direction == DebtDirection.borrowed,
-                showCheckmark: false,
-                onSelected: (_) =>
-                    setState(() => direction = DebtDirection.borrowed),
+          _LabeledField(
+            label: 'Counterparty',
+            child: TextField(
+              controller: counterpartyController,
+              decoration: const InputDecoration(
+                hintText: 'Who is this with?',
+                border: OutlineInputBorder(),
               ),
-              ChoiceChip(
-                label: const Text('Lent'),
-                selected: direction == DebtDirection.lent,
-                showCheckmark: false,
-                onSelected: (_) =>
-                    setState(() => direction = DebtDirection.lent),
+              textCapitalization: TextCapitalization.words,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.space3),
+          _LabeledField(
+            label: 'Direction',
+            child: _SegmentedToggle(
+              options: const ['Borrowed', 'Lent'],
+              selectedIndex: direction == DebtDirection.borrowed ? 0 : 1,
+              onChanged: (index) => setState(
+                () => direction = index == 0
+                    ? DebtDirection.borrowed
+                    : DebtDirection.lent,
               ),
-            ],
+            ),
           ),
           const SizedBox(height: AppSpacing.space3),
-          TextField(
-            controller: amountController,
-            decoration: _fieldDecoration('Total Amount'),
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          _LabeledField(
+            label: 'Total Amount',
+            child: TextField(
+              controller: amountController,
+              decoration: _amountFieldDecoration(sheetContext),
+              style: AppTypography.mono,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+            ),
           ),
           const SizedBox(height: AppSpacing.space3),
-          TextField(
-            controller: remainingController,
-            decoration: _fieldDecoration('Remaining Balance'),
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          _LabeledField(
+            label: 'Remaining Balance',
+            child: TextField(
+              controller: remainingController,
+              decoration: _amountFieldDecoration(sheetContext),
+              style: AppTypography.mono,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+            ),
           ),
           const SizedBox(height: AppSpacing.space3),
-          TextField(
-            controller: noteController,
-            decoration: _fieldDecoration('Note (Optional)'),
-            maxLines: 2,
+          _LabeledField(
+            label: 'Note (Optional)',
+            child: TextField(
+              controller: noteController,
+              decoration: const InputDecoration(
+                hintText: 'Add a note',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 2,
+            ),
           ),
           const SizedBox(height: AppSpacing.space4),
           SizedBox(
@@ -362,43 +494,67 @@ Future<void> showGoalSheet(BuildContext context, WidgetRef ref) async {
         children: [
           Text('New Goal', style: Theme.of(sheetContext).textTheme.titleLarge),
           const SizedBox(height: AppSpacing.space4),
-          TextField(
-            controller: nameController,
-            decoration: _fieldDecoration('Goal Name'),
-            textCapitalization: TextCapitalization.words,
-          ),
-          const SizedBox(height: AppSpacing.space3),
-          DropdownButtonFormField<String>(
-            value: goalType,
-            decoration: _fieldDecoration('Goal Type'),
-            items: const [
-              DropdownMenuItem(
-                value: GoalType.emergencyFund,
-                child: Text('Emergency Fund'),
+          _LabeledField(
+            label: 'Goal Name',
+            child: TextField(
+              controller: nameController,
+              decoration: const InputDecoration(
+                hintText: 'e.g. Emergency Fund',
+                border: OutlineInputBorder(),
               ),
-              DropdownMenuItem(value: GoalType.savings, child: Text('Savings')),
-              DropdownMenuItem(value: GoalType.travel, child: Text('Travel')),
-              DropdownMenuItem(
-                value: GoalType.debtPayoff,
-                child: Text('Debt Payoff'),
+              textCapitalization: TextCapitalization.words,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.space3),
+          _LabeledField(
+            label: 'Goal Type',
+            child: DropdownButtonFormField<String>(
+              value: goalType,
+              decoration: const InputDecoration(border: OutlineInputBorder()),
+              items: const [
+                DropdownMenuItem(
+                  value: GoalType.emergencyFund,
+                  child: Text('Emergency Fund'),
+                ),
+                DropdownMenuItem(
+                  value: GoalType.savings,
+                  child: Text('Savings'),
+                ),
+                DropdownMenuItem(value: GoalType.travel, child: Text('Travel')),
+                DropdownMenuItem(
+                  value: GoalType.debtPayoff,
+                  child: Text('Debt Payoff'),
+                ),
+                DropdownMenuItem(value: GoalType.custom, child: Text('Custom')),
+              ],
+              onChanged: (value) {
+                if (value != null) setState(() => goalType = value);
+              },
+            ),
+          ),
+          const SizedBox(height: AppSpacing.space3),
+          _LabeledField(
+            label: 'Target Amount',
+            child: TextField(
+              controller: targetController,
+              decoration: _amountFieldDecoration(sheetContext),
+              style: AppTypography.mono,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
               ),
-              DropdownMenuItem(value: GoalType.custom, child: Text('Custom')),
-            ],
-            onChanged: (value) {
-              if (value != null) setState(() => goalType = value);
-            },
+            ),
           ),
           const SizedBox(height: AppSpacing.space3),
-          TextField(
-            controller: targetController,
-            decoration: _fieldDecoration('Target Amount'),
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          ),
-          const SizedBox(height: AppSpacing.space3),
-          TextField(
-            controller: currentController,
-            decoration: _fieldDecoration('Current Amount'),
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          _LabeledField(
+            label: 'Current Amount',
+            child: TextField(
+              controller: currentController,
+              decoration: _amountFieldDecoration(sheetContext),
+              style: AppTypography.mono,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+            ),
           ),
           const SizedBox(height: AppSpacing.space4),
           SizedBox(
@@ -693,48 +849,66 @@ Future<void> showRecurringSheet(
             style: Theme.of(sheetContext).textTheme.titleLarge,
           ),
           const SizedBox(height: AppSpacing.space4),
-          TextField(
-            controller: payeeController,
-            decoration: _fieldDecoration('Payee (Optional)'),
-            textCapitalization: TextCapitalization.words,
+          _LabeledField(
+            label: 'Payee (Optional)',
+            child: TextField(
+              controller: payeeController,
+              decoration: const InputDecoration(
+                hintText: 'e.g. Netflix',
+                border: OutlineInputBorder(),
+              ),
+              textCapitalization: TextCapitalization.words,
+            ),
           ),
           const SizedBox(height: AppSpacing.space3),
-          TextField(
-            controller: amountController,
-            decoration: _fieldDecoration('Amount'),
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          _LabeledField(
+            label: 'Amount',
+            child: TextField(
+              controller: amountController,
+              decoration: _amountFieldDecoration(sheetContext),
+              style: AppTypography.mono,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+            ),
           ),
           const SizedBox(height: AppSpacing.space3),
-          DropdownButtonFormField<String>(
-            value: selectedAccountId,
-            decoration: _fieldDecoration('Account'),
-            items: accounts
-                .map(
-                  (account) => DropdownMenuItem(
-                    value: account.id,
-                    child: Text(account.name),
-                  ),
-                )
-                .toList(),
-            onChanged: (value) {
-              if (value != null) setState(() => selectedAccountId = value);
-            },
+          _LabeledField(
+            label: 'Account',
+            child: DropdownButtonFormField<String>(
+              value: selectedAccountId,
+              decoration: const InputDecoration(border: OutlineInputBorder()),
+              items: accounts
+                  .map(
+                    (account) => DropdownMenuItem(
+                      value: account.id,
+                      child: Text(account.name),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                if (value != null) setState(() => selectedAccountId = value);
+              },
+            ),
           ),
           const SizedBox(height: AppSpacing.space3),
-          DropdownButtonFormField<String>(
-            value: recurrenceRule,
-            decoration: _fieldDecoration('Frequency'),
-            items: const [
-              DropdownMenuItem(value: 'daily', child: Text('Daily')),
-              DropdownMenuItem(value: 'weekly', child: Text('Weekly')),
-              DropdownMenuItem(value: 'biweekly', child: Text('Biweekly')),
-              DropdownMenuItem(value: 'monthly', child: Text('Monthly')),
-              DropdownMenuItem(value: 'quarterly', child: Text('Quarterly')),
-              DropdownMenuItem(value: 'yearly', child: Text('Yearly')),
-            ],
-            onChanged: (value) {
-              if (value != null) setState(() => recurrenceRule = value);
-            },
+          _LabeledField(
+            label: 'Frequency',
+            child: DropdownButtonFormField<String>(
+              value: recurrenceRule,
+              decoration: const InputDecoration(border: OutlineInputBorder()),
+              items: const [
+                DropdownMenuItem(value: 'daily', child: Text('Daily')),
+                DropdownMenuItem(value: 'weekly', child: Text('Weekly')),
+                DropdownMenuItem(value: 'biweekly', child: Text('Biweekly')),
+                DropdownMenuItem(value: 'monthly', child: Text('Monthly')),
+                DropdownMenuItem(value: 'quarterly', child: Text('Quarterly')),
+                DropdownMenuItem(value: 'yearly', child: Text('Yearly')),
+              ],
+              onChanged: (value) {
+                if (value != null) setState(() => recurrenceRule = value);
+              },
+            ),
           ),
           const SizedBox(height: AppSpacing.space4),
           SizedBox(
@@ -868,49 +1042,6 @@ Future<void> showCategorySheet(
             },
           ),
           const SizedBox(height: AppSpacing.space3),
-          Text('Icon', style: Theme.of(sheetContext).textTheme.labelLarge),
-          const SizedBox(height: AppSpacing.space2),
-          Wrap(
-            spacing: AppSpacing.space2,
-            runSpacing: AppSpacing.space2,
-            children: categoryIconOptions.map((option) {
-              final isSelected = selectedIcon == option.value;
-              return InkWell(
-                onTap: () => setState(() => selectedIcon = option.value),
-                borderRadius: BorderRadius.circular(16),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 160),
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? parseCategoryColor(
-                            selectedColor,
-                          ).withValues(alpha: 0.14)
-                        : Theme.of(
-                            sheetContext,
-                          ).colorScheme.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isSelected
-                          ? parseCategoryColor(selectedColor)
-                          : Theme.of(sheetContext).colorScheme.outlineVariant,
-                    ),
-                  ),
-                  child: Center(
-                    child: buildCategoryVisual(
-                      option.value,
-                      color: isSelected
-                          ? parseCategoryColor(selectedColor)
-                          : Theme.of(sheetContext).colorScheme.onSurfaceVariant,
-                      size: 22,
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: AppSpacing.space3),
           Text('Color', style: Theme.of(sheetContext).textTheme.labelLarge),
           const SizedBox(height: AppSpacing.space2),
           SingleChildScrollView(
@@ -949,6 +1080,41 @@ Future<void> showCategorySheet(
                 );
               }).toList(),
             ),
+          ),
+          const SizedBox(height: AppSpacing.space3),
+          Text('Icon', style: Theme.of(sheetContext).textTheme.labelLarge),
+          const SizedBox(height: AppSpacing.space2),
+          GridView.count(
+            crossAxisCount: 6,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: AppSpacing.space2,
+            crossAxisSpacing: AppSpacing.space2,
+            children: categoryIconOptions.map((option) {
+              final isSelected = selectedIcon == option.value;
+              final iconColor = parseCategoryColor(selectedColor);
+              return InkWell(
+                onTap: () => setState(() => selectedIcon = option.value),
+                borderRadius: BorderRadius.circular(14),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  decoration: BoxDecoration(
+                    color: iconColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(14),
+                    border: isSelected
+                        ? Border.all(color: iconColor, width: 2)
+                        : null,
+                  ),
+                  child: Center(
+                    child: buildCategoryVisual(
+                      option.value,
+                      color: iconColor,
+                      size: 22,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
           ),
           const SizedBox(height: AppSpacing.space4),
           SizedBox(

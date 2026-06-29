@@ -1,18 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../application/providers/account_detail_provider.dart';
+import '../../../application/providers/categories_provider.dart';
+import '../../../application/providers/payees_provider.dart';
 import '../../../application/providers/repo_providers.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
+import '../../../domain/entities/account.dart';
+import '../../../domain/entities/category.dart';
+import '../../../domain/entities/payee.dart';
 import '../../../domain/entities/transaction.dart';
 import '../../../domain/value_objects/field_types.dart';
+import '../../shared/category_visuals.dart';
 import '../../shared/components/app_snackbar.dart';
+import '../../shared/components/buttons/secondary_button.dart';
 import '../../shared/components/empty_state.dart';
+import '../transactions/widgets/transaction_row.dart';
 import 'more_form_sheets.dart';
 
 class AccountDetailScreen extends ConsumerWidget {
@@ -23,61 +30,18 @@ class AccountDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final detailAsync = ref.watch(accountDetailProvider(id));
+    final categories =
+        ref.watch(categoriesProvider).asData?.value ?? const <Category>[];
+    final payees = ref.watch(payeesProvider).asData?.value ?? const <Payee>[];
+    final categoryMap = {for (final c in categories) c.id: c};
+    final payeeNames = {
+      for (final p in payees) p.id: p.displayName ?? p.normalizedName,
+    };
     final lootrColors = context.lootrColors;
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        centerTitle: false,
-        title: const Text('Account'),
-        actions: [
-          IconButton(
-            icon: const Icon(LucideIcons.pencil),
-            onPressed: detailAsync.value == null
-                ? null
-                : () => showAccountSheet(
-                    context,
-                    ref,
-                    initial: detailAsync.value!.account,
-                  ),
-          ),
-          IconButton(
-            icon: const Icon(LucideIcons.archive),
-            onPressed: detailAsync.value == null
-                ? null
-                : () async {
-                    final confirmed = await showDialog<bool>(
-                      context: context,
-                      builder: (dialogContext) => AlertDialog(
-                        title: const Text('Archive account?'),
-                        content: const Text(
-                          'Archived accounts are hidden from the main list but remain in history.',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () =>
-                                Navigator.of(dialogContext).pop(false),
-                            child: const Text('Cancel'),
-                          ),
-                          FilledButton(
-                            onPressed: () =>
-                                Navigator.of(dialogContext).pop(true),
-                            child: const Text('Archive'),
-                          ),
-                        ],
-                      ),
-                    );
-                    if (confirmed != true) return;
-                    await ref
-                        .read(accountRepoProvider)
-                        .archive(detailAsync.value!.account.id);
-                    if (!context.mounted) return;
-                    AppSnackBar.show(context, 'Account archived.');
-                    context.pop();
-                  },
-          ),
-        ],
-      ),
+      appBar: AppBar(centerTitle: false, title: const Text('Account')),
       body: detailAsync.when(
         data: (detail) {
           if (detail == null) {
@@ -171,12 +135,65 @@ class AccountDetailScreen extends ConsumerWidget {
                   ),
                 )
               else
-                SliverList(
-                  delegate: SliverChildBuilderDelegate((context, index) {
-                    final tx = transactions[index];
-                    return _TransactionRow(transaction: tx);
-                  }, childCount: transactions.length),
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.space2,
+                    vertical: AppSpacing.space1,
+                  ),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final tx = transactions[index];
+                      final category = tx.categoryId == null
+                          ? null
+                          : categoryMap[tx.categoryId];
+                      return TransactionRowWidget(
+                        transaction: tx,
+                        accountName: account.name,
+                        categoryName: category?.name,
+                        payeeName: tx.payeeId == null
+                            ? null
+                            : payeeNames[tx.payeeId],
+                        showDate: true,
+                        leading: _TransactionLeading(
+                          transaction: tx,
+                          category: category,
+                        ),
+                        onTap: () => context.push('/transactions/${tx.id}'),
+                      );
+                    }, childCount: transactions.length),
+                  ),
                 ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.pagePaddingMobile,
+                    AppSpacing.space6,
+                    AppSpacing.pagePaddingMobile,
+                    AppSpacing.space8,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: SecondaryButton(
+                          label: 'Edit',
+                          icon: const Icon(LucideIcons.pencil, size: 18),
+                          onPressed: () =>
+                              showAccountSheet(context, ref, initial: account),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.space3),
+                      Expanded(
+                        child: SecondaryButton(
+                          label: 'Archive',
+                          icon: const Icon(LucideIcons.archive, size: 18),
+                          onPressed: () =>
+                              _archiveAccount(context, ref, account),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           );
         },
@@ -210,50 +227,81 @@ class AccountDetailScreen extends ConsumerWidget {
         return type;
     }
   }
+
+  Future<void> _archiveAccount(
+    BuildContext context,
+    WidgetRef ref,
+    Account account,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Archive account?'),
+        content: const Text(
+          'Archived accounts are hidden from the main list but remain in history.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Archive'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await ref.read(accountRepoProvider).archive(account.id);
+    if (!context.mounted) return;
+    AppSnackBar.show(context, 'Account archived.');
+    context.pop();
+  }
 }
 
-class _TransactionRow extends StatelessWidget {
-  const _TransactionRow({required this.transaction});
+/// Category-coloured circle leading for [TransactionRowWidget], matching the
+/// main Transactions list.
+class _TransactionLeading extends StatelessWidget {
+  const _TransactionLeading({required this.transaction, this.category});
 
   final Transaction transaction;
+  final Category? category;
 
   @override
   Widget build(BuildContext context) {
     final lootrColors = context.lootrColors;
     final colorScheme = Theme.of(context).colorScheme;
-    final isExpense = transaction.direction == TransactionDirection.expense;
-    final isIncome = transaction.direction == TransactionDirection.income;
 
-    final amountColor = isExpense
-        ? lootrColors.expense
-        : isIncome
-        ? lootrColors.income
-        : lootrColors.transfer;
+    final Color foreground;
+    if (transaction.direction == TransactionDirection.transfer) {
+      foreground = lootrColors.transfer;
+    } else if (transaction.direction == TransactionDirection.income) {
+      foreground = lootrColors.income;
+    } else {
+      foreground = lootrColors.expense;
+    }
 
-    final prefix = isExpense
-        ? '-'
-        : isIncome
-        ? '+'
-        : '';
-    final dateFmt = DateFormat('MMM d');
+    final hasCategory = category != null;
+    final background = hasCategory
+        ? foreground.withValues(alpha: 0.12)
+        : colorScheme.surfaceContainerHighest;
+    final iconColor = hasCategory ? foreground : colorScheme.onSurfaceVariant;
 
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.pagePaddingMobile,
-      ),
-      title: Text(
-        transaction.note ?? transaction.categoryId ?? 'Transaction',
-        style: AppTypography.bodyMedium.copyWith(color: colorScheme.onSurface),
-      ),
-      subtitle: Text(
-        dateFmt.format(transaction.occurredAt),
-        style: AppTypography.caption.copyWith(color: lootrColors.textSecondary),
-      ),
-      trailing: Text(
-        '$prefix₱${transaction.amount.toStringAsFixed(2)}',
-        style: AppTypography.mono.copyWith(color: amountColor),
-      ),
-      onTap: () => context.push('/transactions/${transaction.id}'),
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(color: background, shape: BoxShape.circle),
+      alignment: Alignment.center,
+      child: hasCategory
+          ? buildCategoryVisual(category!.icon, color: iconColor, size: 18)
+          : Icon(
+              transaction.direction == TransactionDirection.transfer
+                  ? Icons.swap_horiz_rounded
+                  : Icons.receipt_long_outlined,
+              color: iconColor,
+              size: 18,
+            ),
     );
   }
 }

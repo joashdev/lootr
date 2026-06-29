@@ -15,6 +15,7 @@ class TransactionRowWidget extends StatelessWidget {
     required this.accountName,
     this.leading,
     this.onTap,
+    this.showDate = false,
   });
 
   final Transaction transaction;
@@ -23,6 +24,11 @@ class TransactionRowWidget extends StatelessWidget {
   final String accountName;
   final Widget? leading;
   final VoidCallback? onTap;
+
+  /// When true, the trailing block prefixes the time with a short `MM/dd` date
+  /// (e.g. "05/26 · 4:42 PM"). Defaults to false so date-grouped lists stay
+  /// unchanged.
+  final bool showDate;
 
   Color _directionColor(BuildContext context) {
     final lotrColors = context.lootrColors;
@@ -59,7 +65,10 @@ class TransactionRowWidget extends StatelessWidget {
     final initials = accountName.isNotEmpty
         ? accountName[0].toUpperCase()
         : '?';
-    final time = DateFormat('h:mm a').format(transaction.occurredAt);
+    final time = showDate
+        ? '${DateFormat('MM/dd').format(transaction.occurredAt)} · '
+              '${DateFormat('h:mm a').format(transaction.occurredAt)}'
+        : DateFormat('h:mm a').format(transaction.occurredAt);
 
     final parts = <String>[];
     if (categoryName != null) parts.add(categoryName!);

@@ -530,16 +530,18 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
 
   void _showSnackBar(String message, {String? transactionId}) {
     final isError = switch (message) {
-      'Enter a valid amount.' || 'Select an account to continue.' ||
+      'Enter a valid amount.' ||
+      'Select an account to continue.' ||
       'Select both source and destination accounts.' ||
-      'Enter valid transfer amounts.' =>
-        true,
+      'Enter valid transfer amounts.' => true,
       _ => false,
     };
     AppSnackBar.show(
       context,
       message,
-      variant: isError ? AppSnackBarVariant.warning : AppSnackBarVariant.success,
+      variant: isError
+          ? AppSnackBarVariant.warning
+          : AppSnackBarVariant.success,
       actionLabel: transactionId != null ? 'UNDO' : null,
       onAction: transactionId != null
           ? () => ref.read(undoStackProvider.notifier).undo(transactionId)
@@ -1008,31 +1010,30 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   }
 
   Widget _buildTransactionTypeTabs() {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppRadius.full),
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _TransactionTypeTab(
+    return Row(
+      children: [
+        Expanded(
+          child: _TransactionTypeTab(
             label: 'Expense',
             isSelected: _direction == fields.TransactionDirection.expense,
             onTap: () => _selectDirection(fields.TransactionDirection.expense),
           ),
-          _TransactionTypeTab(
+        ),
+        Expanded(
+          child: _TransactionTypeTab(
             label: 'Income',
             isSelected: _direction == fields.TransactionDirection.income,
             onTap: () => _selectDirection(fields.TransactionDirection.income),
           ),
-          _TransactionTypeTab(
+        ),
+        Expanded(
+          child: _TransactionTypeTab(
             label: 'Transfer',
             isSelected: _direction == fields.TransactionDirection.transfer,
             onTap: () => _selectDirection(fields.TransactionDirection.transfer),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -1452,22 +1453,41 @@ class _TransactionTypeTab extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.full),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? colorScheme.primaryContainer : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppRadius.full),
-        ),
-        child: Text(
-          label,
-          style: AppTypography.bodyMedium.copyWith(
-            color: isSelected
-                ? colorScheme.onPrimaryContainer
-                : context.lootrColors.textSecondary,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            decoration: isSelected
+                ? BoxDecoration(
+                    color: colorScheme.primary.withValues(alpha: 0.08),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(AppRadius.sm),
+                    ),
+                  )
+                : null,
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: AppTypography.bodyMedium.copyWith(
+                color: isSelected
+                    ? colorScheme.onSurface
+                    : context.lootrColors.textSecondary,
+              ),
+            ),
           ),
-        ),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            height: 2,
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? colorScheme.primary
+                  : colorScheme.outlineVariant,
+              borderRadius: BorderRadius.circular(1),
+            ),
+          ),
+        ],
       ),
     );
   }

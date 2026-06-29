@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../application/providers/accounts_provider.dart';
 import '../../../application/providers/budget_detail_provider.dart';
 import '../../../application/providers/budgets_tab_provider.dart';
 import '../../../application/providers/categories_provider.dart';
@@ -12,11 +14,15 @@ import '../../../core/theme/colors.dart';
 import '../../../core/theme/radius.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
+import '../../../domain/entities/account.dart';
 import '../../../domain/entities/budget.dart';
-import '../../../domain/entities/payee.dart';
+import '../../../domain/entities/category.dart';
+import '../../../domain/entities/transaction.dart';
+import '../../shared/category_visuals.dart';
 import '../../shared/components/progress/budget_progress_bar.dart';
 import '../../shared/components/buttons/ghost_button.dart';
 import '../../shared/components/buttons/secondary_button.dart';
+import '../transactions/widgets/transaction_row.dart';
 import '../../sheets/budget_create_sheet.dart';
 
 class BudgetDetailScreen extends ConsumerWidget {
@@ -29,6 +35,7 @@ class BudgetDetailScreen extends ConsumerWidget {
     final detailAsync = ref.watch(budgetDetailProvider(id));
     final categoriesAsync = ref.watch(categoriesProvider);
     final payeesAsync = ref.watch(payeesProvider);
+    final accountsAsync = ref.watch(accountsProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Budget Detail')),
@@ -59,7 +66,15 @@ class BudgetDetailScreen extends ConsumerWidget {
               .where((c) => c.id == budget.categoryId)
               .firstOrNull;
           final payees = payeesAsync.valueOrNull ?? [];
-          final payeeMap = {for (final p in payees) p.id: p};
+          final payeeNames = {
+            for (final p in payees)
+              p.id: (p.displayName?.isNotEmpty ?? false)
+                  ? p.displayName!
+                  : p.normalizedName,
+          };
+          final accounts = accountsAsync.valueOrNull ?? const <Account>[];
+          final accountNames = {for (final a in accounts) a.id: a.name};
+          final categoryMap = {for (final c in categories) c.id: c};
           final isReadOnly = isPastBudgetPeriod(budget.month, budget.year);
 
           final progress = budget.amount > 0
@@ -221,42 +236,27 @@ class BudgetDetailScreen extends ConsumerWidget {
                         ),
                       )
                     else
-                      ...transactions.map(
-                        (tx) => Padding(
-                          padding: const EdgeInsets.only(
-                            bottom: AppSpacing.space1,
+                      ...transactions.map((tx) {
+                        final txCategory = tx.categoryId == null
+                            ? null
+                            : categoryMap[tx.categoryId];
+                        final accountName =
+                            accountNames[tx.accountId] ?? 'Account';
+                        return TransactionRowWidget(
+                          transaction: tx,
+                          accountName: accountName,
+                          categoryName: txCategory?.name,
+                          payeeName: tx.payeeId == null
+                              ? null
+                              : payeeNames[tx.payeeId],
+                          showDate: true,
+                          leading: _BudgetTransactionLeading(
+                            transaction: tx,
+                            category: txCategory,
                           ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      _payeeLabel(tx.payeeId, payeeMap),
-                                      style: AppTypography.h3.copyWith(
-                                        color: colorScheme.onSurface,
-                                      ),
-                                    ),
-                                    Text(
-                                      _formatDate(tx.occurredAt),
-                                      style: AppTypography.caption.copyWith(
-                                        color: lootrColors.textTertiary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Text(
-                                '-P${tx.amount.toStringAsFixed(0)}',
-                                style: AppTypography.mono.copyWith(
-                                  color: lootrColors.expense,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                          onTap: () => context.push('/transactions/${tx.id}'),
+                        );
+                      }),
                   ],
                 ),
               ),
@@ -341,16 +341,46 @@ class BudgetDetailScreen extends ConsumerWidget {
       ),
     );
   }
+}
 
-  String _formatDate(DateTime dt) {
-    return '${dt.month}/${dt.day}/${dt.year}';
-  }
+/// Category-coloured circle leading for budget-detail transaction rows, matching
+/// the main Transactions list and account detail.
+class _BudgetTransactionLeading extends StatelessWidget {
+  const _BudgetTransactionLeading({required this.transaction, this.category});
 
-  String _payeeLabel(String? payeeId, Map<String, Payee> payees) {
-    if (payeeId == null) return 'Unknown';
-    final payee = payees[payeeId];
-    if (payee == null) return 'Unknown';
-    return payee.displayName ?? payee.normalizedName;
+  final Transaction transaction;
+  final Category? category;
+
+  @override
+  Widget build(BuildContext context) {
+    final lootrColors = context.lootrColors;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    final Color foreground;
+    switch (transaction.direction) {
+      case 'income':
+        foreground = lootrColors.income;
+      case 'transfer':
+        foreground = lootrColors.transfer;
+      default:
+        foreground = lootrColors.expense;
+    }
+
+    final hasCategory = category != null;
+    final background = hasCategory
+        ? foreground.withValues(alpha: 0.12)
+        : colorScheme.surfaceContainerHighest;
+    final iconColor = hasCategory ? foreground : colorScheme.onSurfaceVariant;
+
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(color: background, shape: BoxShape.circle),
+      alignment: Alignment.center,
+      child: hasCategory
+          ? buildCategoryVisual(category!.icon, color: iconColor, size: 18)
+          : Icon(Icons.receipt_long_outlined, color: iconColor, size: 18),
+    );
   }
 }
 

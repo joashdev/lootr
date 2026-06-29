@@ -332,12 +332,11 @@ class _BudgetCreateSheetState extends ConsumerState<BudgetCreateSheet> {
                 const SizedBox(height: AppSpacing.space2),
                 Text(
                   '${monthNames[sheetMonth - 1]} $sheetYear',
-                  style: TextStyle(
+                  style: AppTypography.caption.copyWith(
                     color: lootrColors.textTertiary,
-                    fontSize: 13,
                   ),
                 ),
-                const SizedBox(height: AppSpacing.space6),
+                const SizedBox(height: AppSpacing.space5),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
