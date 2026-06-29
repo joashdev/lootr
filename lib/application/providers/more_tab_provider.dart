@@ -64,7 +64,7 @@ final moreTabProvider = Provider<List<MoreSectionGroup>>((ref) {
         MoreItem(
           label: 'Profile & Preferences',
           icon: 'user-circle',
-          route: '/more/settings',
+          route: '/more/settings/profile',
         ),
         MoreItem(
           label: 'Notifications',
