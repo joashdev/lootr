@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lootr — Subpage Annotation Canvas</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --surface: #fff; --surface-2: #f0f1f4; --border: #e3e5ea;
+    --text: #16181d; --text-2: #5c6270; --primary: #3e6cb3; --accent: #e0972a;
+    --danger: #c9483a; --shadow: 0 1px 3px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.06);
+    --radius: 12px; --shot-w: 280px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#0e0f12; --surface:#17191e; --surface-2:#1f222a; --border:#2a2d36;
+      --text:#f2f3f5; --text-2:#9aa0ad; --primary:#6e92d4; --accent:#f5c04e;
+      --danger:#e2695b; --shadow:0 1px 3px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.45);
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,system-ui,sans-serif;
+    line-height:1.5; }
+  .layout { display:flex; align-items:flex-start; gap:0; }
+  .main { flex:1; min-width:0; padding:24px clamp(16px,3vw,40px) 80px; }
+  h1 { font-size:1.6rem; margin:0 0 4px; letter-spacing:-.02em; }
+  .sub { color:var(--text-2); margin:0 0 16px; font-size:.9rem; max-width:70ch; }
+  .toolbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:8px; }
+  button.tool { font-size:.82rem; padding:7px 12px; border-radius:8px; border:1px solid var(--border);
+    background:var(--surface); color:var(--text); cursor:pointer; }
+  button.tool:hover { border-color:var(--primary); }
+  button.tool.danger:hover { border-color:var(--danger); color:var(--danger); }
+  .sizes { display:inline-flex; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+  .sizes button { border:0; background:var(--surface); color:var(--text-2); padding:7px 11px; cursor:pointer; font-size:.82rem; }
+  .sizes button.on { background:var(--primary); color:#fff; }
+  .count { font-size:.82rem; color:var(--text-2); margin-left:auto; }
+  .hint { font-size:.8rem; color:var(--text-2); background:var(--surface); border:1px solid var(--border);
+    border-left:3px solid var(--accent); border-radius:0 8px 8px 0; padding:9px 13px; margin:10px 0 22px; }
+  section { margin-top:30px; }
+  section h2 { font-size:1.1rem; margin:0 0 2px; letter-spacing:-.01em; }
+  section .desc { font-size:.85rem; color:var(--text-2); margin:0 0 14px; }
+  .grid { display:flex; flex-wrap:wrap; gap:18px; }
+  .frame { width:var(--shot-w); }
+  .shot-wrap { position:relative; border:1px solid var(--border); border-radius:var(--radius);
+    overflow:hidden; box-shadow:var(--shadow); cursor:crosshair; background:var(--surface-2); }
+  .shot-wrap img { width:100%; height:auto; display:block; }
+  .cap { font-size:.8rem; color:var(--text); margin-top:7px; }
+  .cap .badge { color:var(--text-2); font-size:.72rem; }
+  .pin { position:absolute; width:22px; height:22px; transform:translate(-50%,-50%);
+    background:var(--accent); color:#3a2700; border:2px solid #fff; border-radius:50%;
+    font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; box-shadow:0 1px 4px rgba(0,0,0,.4); z-index:2; }
+  .pin.sel { background:var(--primary); color:#fff; outline:2px solid var(--primary); outline-offset:2px; }
+  /* side panel */
+  .panel { width:340px; flex:0 0 340px; align-self:stretch; background:var(--surface);
+    border-left:1px solid var(--border); padding:20px 18px; position:sticky; top:0; height:100vh; overflow-y:auto; }
+  .panel h3 { font-size:1rem; margin:0 0 2px; }
+  .panel .psub { font-size:.78rem; color:var(--text-2); margin:0 0 14px; }
+  .agroup { margin-bottom:16px; }
+  .agroup .gh { font-size:.74rem; font-weight:600; text-transform:uppercase; letter-spacing:.04em;
+    color:var(--text-2); margin:0 0 6px; }
+  .arow { display:flex; gap:8px; margin-bottom:8px; }
+  .arow .num { flex:0 0 auto; width:20px; height:20px; border-radius:50%; background:var(--accent);
+    color:#3a2700; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; margin-top:6px; }
+  .arow textarea { flex:1; resize:vertical; min-height:34px; font:inherit; font-size:.82rem; line-height:1.4;
+    padding:6px 8px; border:1px solid var(--border); border-radius:7px; background:var(--bg); color:var(--text); }
+  .arow textarea:focus { outline:none; border-color:var(--primary); }
+  .arow .del { flex:0 0 auto; border:0; background:transparent; color:var(--text-2); cursor:pointer; font-size:15px; padding:4px; align-self:flex-start; margin-top:2px; }
+  .arow .del:hover { color:var(--danger); }
+  .empty { font-size:.84rem; color:var(--text-2); }
+  .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--text);
+    color:var(--bg); padding:9px 16px; border-radius:8px; font-size:.85rem; opacity:0; transition:opacity .2s; pointer-events:none; z-index:10; }
+  .toast.show { opacity:1; }
+  @media (max-width:900px){ .layout{flex-direction:column} .panel{width:100%;flex:none;height:auto;position:static;border-left:0;border-top:1px solid var(--border)} }
+</style>
+</head>
+<body>
+<div class="layout">
+  <div class="main">
+    <h1>Lootr — subpage annotation canvas</h1>
+    <p class="sub">Real captures of the add/create sheets, detail &amp; edit screens, settings, and secondary screens (seeded data). Click anywhere on a screen to drop a numbered pin and leave a comment.</p>
+    <div class="toolbar">
+      <button class="tool" id="copyBtn"><b>Copy all annotations</b></button>
+      <button class="tool" id="jsonBtn">Download .json</button>
+      <button class="tool danger" id="clearBtn">Clear all</button>
+      <span class="sizes" id="sizes">
+        <button data-w="220">S</button><button data-w="280" class="on">M</button><button data-w="360">L</button>
+      </span>
+      <span class="count" id="count">0 annotations</span>
+    </div>
+    <div class="hint">Click a screen to add a pin · click a pin to jump to its note · notes auto-save in this browser · use <b>Copy all annotations</b> to paste your feedback back into the chat.</div>
+    <div id="sections"></div>
+  </div>
+  <aside class="panel">
+    <h3>Your annotations</h3>
+    <p class="psub" id="psub">Nothing yet.</p>
+    <div id="annoList"></div>
+  </aside>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const V = '?v=4';
+const GROUPS = [
+  { key:'add', title:'Add / create sheets', desc:'Reached via the + island and the + on each list. (Scan receipt entry shown in Quick Actions; the camera screen itself can’t run on a simulator.)', shots:[
+    ['add/01-quick-actions','Quick Actions sheet'],
+    ['add/02-add-transaction','Add transaction (full form)'],
+    ['add/03-create-budget','Create budget'],
+    ['add/04-create-goal','Create goal'],
+    ['add/05-create-debt','Create debt'],
+    ['add/06-create-account','Create account'],
+    ['add/07-create-recurring','Create recurring'],
+  ]},
+  { key:'detail', title:'Detail / edit screens', desc:'Opened by tapping a seeded row. Edit screens exist for transaction, account, budget, recurring (here) and category (under Secondary). Goal, debt, and payee have action buttons (Add Contribution, Settle…) instead of an edit form.', shots:[
+    ['detail/01-transaction','Transaction detail'],
+    ['detail/01-transaction-edit','Transaction — edit'],
+    ['detail/02-account','Account detail'],
+    ['detail/02-account-edit','Account — edit'],
+    ['detail/03-budget','Budget detail'],
+    ['detail/03-budget-edit','Budget — edit'],
+    ['detail/04-goal','Goal detail'],
+    ['detail/05-debt','Debt detail'],
+    ['detail/06-recurring','Recurring detail'],
+    ['detail/06-recurring-edit','Recurring — edit'],
+    ['detail/07-payee','Payee detail'],
+  ]},
+  { key:'settings', title:'Settings subpages', desc:'Note: the More menu item points at /more/settings which has no route — likely a bug. These were reached via the real per-screen routes.', shots:[
+    ['settings/01-profile','Profile'],
+    ['settings/02-notifications','Notifications'],
+    ['settings/03-ai','AI settings'],
+    ['settings/04-ai-logs','AI logs'],
+    ['settings/05-sync','Sync'],
+    ['settings/06-appearance','Appearance'],
+    ['settings/07-security','Security'],
+    ['settings/08-about','About'],
+  ]},
+  { key:'secondary', title:'Secondary screens', desc:'Households shows the empty state (no seeded households); the report detail currently renders a placeholder.', shots:[
+    ['secondary/01-categories','Categories'],
+    ['secondary/06-category-edit','Category — edit'],
+    ['secondary/02-households','Households (empty state)'],
+    ['secondary/03-reports','Reports'],
+    ['secondary/04-report-detail','Report detail (placeholder)'],
+    ['secondary/05-insights','Insights'],
+  ]},
+];
+const LABELS = {}; GROUPS.forEach(g=>g.shots.forEach(([f,l])=>LABELS[f]=l));
+const SCREEN_ORDER = []; GROUPS.forEach(g=>g.shots.forEach(([f])=>SCREEN_ORDER.push(f)));
+
+const KEY = 'lootr-subpage-annotations-v1';
+let anns = [];
+try { anns = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch(e) { anns = []; }
+let nextId = anns.reduce((m,a)=>Math.max(m,a.id),0) + 1;
+let selected = null;
+function save(){ localStorage.setItem(KEY, JSON.stringify(anns)); }
+
+function build(){
+  const root = document.getElementById('sections');
+  GROUPS.forEach(g=>{
+    const sec = document.createElement('section');
+    sec.innerHTML = `<h2>${g.title}</h2><p class="desc">${g.desc}</p>`;
+    const grid = document.createElement('div'); grid.className='grid';
+    g.shots.forEach(([file,label])=>{
+      const frame = document.createElement('div'); frame.className='frame';
+      const wrap = document.createElement('div'); wrap.className='shot-wrap'; wrap.dataset.screen=file;
+      const img = document.createElement('img'); img.src='storyboard-shots/subpages/'+file+'.png'+V; img.alt=label; img.draggable=false;
+      wrap.appendChild(img);
+      wrap.addEventListener('click', e=>{
+        if(e.target.classList.contains('pin')) return;
+        const r = wrap.getBoundingClientRect();
+        const x = ((e.clientX-r.left)/r.width)*100, y=((e.clientY-r.top)/r.height)*100;
+        const a = { id: nextId++, screen:file, x:+x.toFixed(2), y:+y.toFixed(2), text:'' };
+        anns.push(a); save(); render(); focusAnno(a.id);
+      });
+      frame.appendChild(wrap);
+      const cap = document.createElement('div'); cap.className='cap';
+      cap.innerHTML = `${label} <span class="badge">· ${file.split('/')[1]}</span>`;
+      frame.appendChild(cap);
+      grid.appendChild(frame);
+    });
+    sec.appendChild(grid); root.appendChild(sec);
+  });
+}
+
+function renderPins(){
+  document.querySelectorAll('.pin').forEach(p=>p.remove());
+  document.querySelectorAll('.shot-wrap').forEach(wrap=>{
+    const screen = wrap.dataset.screen;
+    anns.forEach((a,i)=>{
+      if(a.screen!==screen) return;
+      const pin=document.createElement('div'); pin.className='pin'+(selected===a.id?' sel':'');
+      pin.style.left=a.x+'%'; pin.style.top=a.y+'%'; pin.textContent=i+1;
+      pin.title='Click to edit note #' + (i+1);
+      pin.addEventListener('click', ev=>{ ev.stopPropagation(); focusAnno(a.id); });
+      wrap.appendChild(pin);
+    });
+  });
+}
+function render(){
+  renderPins();
+  renderPanel();
+  const n = anns.length;
+  document.getElementById('count').textContent = n + (n===1?' annotation':' annotations');
+}
+
+function renderPanel(){
+  const list = document.getElementById('annoList');
+  const psub = document.getElementById('psub');
+  list.innerHTML='';
+  if(!anns.length){ psub.textContent='Nothing yet — click a screen to add your first note.'; return; }
+  psub.textContent='Auto-saved in this browser. Edit freely, then Copy all.';
+  const byScreen = {};
+  anns.forEach((a,i)=>{ (byScreen[a.screen] = byScreen[a.screen]||[]).push({a,n:i+1}); });
+  SCREEN_ORDER.forEach(screen=>{
+    if(!byScreen[screen]) return;
+    const grp=document.createElement('div'); grp.className='agroup';
+    grp.innerHTML=`<p class="gh">${LABELS[screen]||screen}</p>`;
+    byScreen[screen].forEach(({a,n})=>{
+      const row=document.createElement('div'); row.className='arow'; row.dataset.id=a.id;
+      const num=document.createElement('div'); num.className='num'; num.textContent=n;
+      const ta=document.createElement('textarea'); ta.value=a.text; ta.placeholder='What should change here?';
+      ta.addEventListener('input', ()=>{ a.text=ta.value; save(); });
+      ta.addEventListener('focus', ()=>{ if(selected!==a.id){ selected=a.id; renderPins(); } });
+      const del=document.createElement('button'); del.className='del'; del.innerHTML='&times;'; del.title='Delete';
+      del.addEventListener('click', ()=>{ anns=anns.filter(x=>x.id!==a.id); if(selected===a.id)selected=null; save(); render(); });
+      row.appendChild(num); row.appendChild(ta); row.appendChild(del);
+      grp.appendChild(row);
+    });
+    list.appendChild(grp);
+  });
+}
+
+function focusAnno(id){
+  selected=id; renderPins();
+  const row=document.querySelector('.arow[data-id="'+id+'"]');
+  if(row){ row.scrollIntoView({behavior:'smooth',block:'center'}); const ta=row.querySelector('textarea'); if(ta) ta.focus(); }
+}
+
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1800); }
+
+document.getElementById('copyBtn').addEventListener('click', ()=>{
+  if(!anns.length){ toast('No annotations to copy'); return; }
+  let out='Lootr — subpage annotations\n';
+  const byScreen={}; anns.forEach((a,i)=>{ (byScreen[a.screen]=byScreen[a.screen]||[]).push({a,n:i+1}); });
+  SCREEN_ORDER.forEach(screen=>{
+    if(!byScreen[screen]) return;
+    out+=`\n## ${LABELS[screen]||screen}  (${screen})\n`;
+    byScreen[screen].forEach(({a,n})=>{ out+=`  [${n}] (${Math.round(a.x)}%, ${Math.round(a.y)}%) ${a.text.trim()||'(no comment)'}\n`; });
+  });
+  navigator.clipboard.writeText(out).then(()=>toast('Copied '+anns.length+' annotations')).catch(()=>{
+    const ta=document.createElement('textarea'); ta.value=out; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); toast('Copied '+anns.length+' annotations');
+  });
+});
+document.getElementById('jsonBtn').addEventListener('click', ()=>{
+  const blob=new Blob([JSON.stringify(anns,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='lootr-annotations.json'; a.click(); URL.revokeObjectURL(a.href);
+});
+document.getElementById('clearBtn').addEventListener('click', ()=>{
+  if(!anns.length) return;
+  if(confirm('Delete all '+anns.length+' annotations?')){ anns=[]; selected=null; save(); render(); toast('Cleared'); }
+});
+document.getElementById('sizes').addEventListener('click', e=>{
+  if(e.target.tagName!=='BUTTON') return;
+  document.documentElement.style.setProperty('--shot-w', e.target.dataset.w+'px');
+  document.querySelectorAll('#sizes button').forEach(b=>b.classList.toggle('on', b===e.target));
+});
+
+build();
+render();
+</script>
+</body>
+</html>
