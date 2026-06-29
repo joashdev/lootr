@@ -1,6 +1,6 @@
 # Task 18 — Demo Data & Seed Data
 
-**Status:** [ ]
+**Status:** [x]
 
 ---
 
@@ -92,15 +92,15 @@ class DemoDataNotifier extends AsyncNotifier<DemoDataState> {
 
 ## Acceptance Criteria
 
-- [ ] Default categories are seeded on first launch (if categories table is empty)
-- [ ] Demo data creates 4 accounts, 15+ payees, 30+ transactions, 4 budgets, 2 goals
-- [ ] Transaction amounts use realistic PHP values (hundreds to tens of thousands)
-- [ ] Budgets match demo transactions (spent amounts visible in progress bars)
-- [ ] Demo data is created in a single SQLite transaction (atomic)
-- [ ] `clear()` removes all demo data without affecting default categories
-- [ ] `hasDemoData` returns true after seeding, false after clearing
-- [ ] Seeding is idempotent (running twice doesn't duplicate)
-- [ ] Demo data works with an in-memory database for testing
+- [x] Default categories are seeded on first launch (if categories table is empty)
+- [x] Demo data creates 4 accounts, 15+ payees, 30+ transactions, 4 budgets, 2 goals
+- [x] Transaction amounts use realistic PHP values (hundreds to tens of thousands)
+- [x] Budgets match demo transactions (spent amounts visible in progress bars)
+- [x] Demo data is created in a single SQLite transaction (atomic)
+- [x] `clear()` removes all demo data without affecting default categories
+- [x] `hasDemoData` returns true after seeding, false after clearing
+- [x] Seeding is idempotent (running twice doesn't duplicate)
+- [x] Demo data works with an in-memory database for testing
 
 ## Files Likely Affected
 

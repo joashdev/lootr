@@ -6,7 +6,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lootr/app.dart';
+import 'package:lootr/application/providers/database_provider.dart';
 import 'package:lootr/application/providers/onboarding_provider.dart';
+import 'package:lootr/data/database/app_database.dart';
 import 'package:lootr/main.dart';
 
 void main() {
@@ -26,10 +28,15 @@ void main() {
   testWidgets('App renders', (WidgetTester tester) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
+    final db = AppDatabase.inMemory();
+    addTearDown(() => db.close());
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          databaseProvider.overrideWith((ref) => db),
+        ],
         child: const App(),
       ),
     );
