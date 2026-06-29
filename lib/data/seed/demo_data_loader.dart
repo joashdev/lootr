@@ -20,6 +20,12 @@ class DemoDataResult {
 
 class DemoDataLoader {
   Future<DemoDataResult> load(AppDatabase db, {required String userId}) async {
+    final now = DateTime.now();
+    final curYear = now.year;
+    final curMonth = now.month;
+    final prevMonth = curMonth == 1 ? 12 : curMonth - 1;
+    final prevYear = curMonth == 1 ? curYear - 1 : curYear;
+
     final accountIds = const [
       'demo-acc-bdo-savings',
       'demo-acc-gcash',
@@ -115,7 +121,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryBills,
       payeeId: meralco,
-      occurredAt: DateTime(2026, 5, 1),
+      occurredAt: DateTime(prevYear, prevMonth, 1),
       note: 'Meralco bill — May',
       subtype: 'subscription',
     );
@@ -126,7 +132,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryBills,
       payeeId: pldt,
-      occurredAt: DateTime(2026, 5, 1),
+      occurredAt: DateTime(prevYear, prevMonth, 1),
       note: 'PLDT bill — May',
       subtype: 'subscription',
     );
@@ -137,7 +143,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryBills,
       payeeId: converge,
-      occurredAt: DateTime(2026, 5, 2),
+      occurredAt: DateTime(prevYear, prevMonth, 2),
       note: 'Converge internet — May',
       subtype: 'subscription',
     );
@@ -149,7 +155,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryFood,
       payeeId: smSupermarket,
-      occurredAt: DateTime(2026, 5, 3),
+      occurredAt: DateTime(prevYear, prevMonth, 3),
       note: 'Weekly groceries',
     );
     // Daily expenses
@@ -160,7 +166,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryFood,
       payeeId: jollibee,
-      occurredAt: DateTime(2026, 5, 4),
+      occurredAt: DateTime(prevYear, prevMonth, 4),
       note: 'Jollibee lunch',
     );
     addTxn(
@@ -170,7 +176,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryTransport,
       payeeId: angkas,
-      occurredAt: DateTime(2026, 5, 5),
+      occurredAt: DateTime(prevYear, prevMonth, 5),
       note: 'Angkas ride to work',
     );
     addTxn(
@@ -180,7 +186,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryFood,
       payeeId: grab,
-      occurredAt: DateTime(2026, 5, 6),
+      occurredAt: DateTime(prevYear, prevMonth, 6),
       note: 'GrabFood dinner',
     );
     addTxn(
@@ -190,7 +196,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryHealth,
       payeeId: mercuryDrug,
-      occurredAt: DateTime(2026, 5, 7),
+      occurredAt: DateTime(prevYear, prevMonth, 7),
       note: 'Vitamins & medicine',
     );
     addTxn(
@@ -200,7 +206,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryFood,
       payeeId: starbucks,
-      occurredAt: DateTime(2026, 5, 8),
+      occurredAt: DateTime(prevYear, prevMonth, 8),
       note: 'Morning coffee',
     );
     addTxn(
@@ -210,7 +216,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryFood,
       payeeId: puregold,
-      occurredAt: DateTime(2026, 5, 10),
+      occurredAt: DateTime(prevYear, prevMonth, 10),
       note: 'Weekly groceries',
     );
     addTxn(
@@ -220,7 +226,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryShopping,
       payeeId: shopee,
-      occurredAt: DateTime(2026, 5, 12),
+      occurredAt: DateTime(prevYear, prevMonth, 12),
       note: 'Phone case',
     );
     addTxn(
@@ -230,7 +236,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryShopping,
       payeeId: landers,
-      occurredAt: DateTime(2026, 5, 13),
+      occurredAt: DateTime(prevYear, prevMonth, 13),
       note: 'Landers membership renewal',
     );
     // Bi-weekly salary
@@ -240,7 +246,7 @@ class DemoDataLoader {
       amount: 35000,
       direction: 'income',
       categoryId: categorySalary,
-      occurredAt: DateTime(2026, 5, 15),
+      occurredAt: DateTime(prevYear, prevMonth, 15),
       note: 'Bi-monthly salary',
       subtype: 'salary',
     );
@@ -251,7 +257,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryFood,
       payeeId: sevenEleven,
-      occurredAt: DateTime(2026, 5, 15),
+      occurredAt: DateTime(prevYear, prevMonth, 15),
       note: 'Slurpee & siopao',
     );
     addTxn(
@@ -261,7 +267,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryFood,
       payeeId: smSupermarket,
-      occurredAt: DateTime(2026, 5, 17),
+      occurredAt: DateTime(prevYear, prevMonth, 17),
       note: 'Weekly groceries',
     );
     addTxn(
@@ -271,7 +277,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryFood,
       payeeId: mcdonalds,
-      occurredAt: DateTime(2026, 5, 18),
+      occurredAt: DateTime(prevYear, prevMonth, 18),
       note: "McDonald's dinner",
     );
     addTxn(
@@ -281,7 +287,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryShopping,
       payeeId: lazada,
-      occurredAt: DateTime(2026, 5, 19),
+      occurredAt: DateTime(prevYear, prevMonth, 19),
       note: 'Kitchen appliance',
     );
     addTxn(
@@ -291,7 +297,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryTransport,
       payeeId: angkas,
-      occurredAt: DateTime(2026, 5, 20),
+      occurredAt: DateTime(prevYear, prevMonth, 20),
       note: 'Angkas ride home',
     );
     addTxn(
@@ -301,7 +307,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryFood,
       payeeId: starbucks,
-      occurredAt: DateTime(2026, 5, 22),
+      occurredAt: DateTime(prevYear, prevMonth, 22),
       note: 'Afternoon coffee',
     );
     addTxn(
@@ -311,7 +317,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryFood,
       payeeId: puregold,
-      occurredAt: DateTime(2026, 5, 24),
+      occurredAt: DateTime(prevYear, prevMonth, 24),
       note: 'Weekly groceries',
     );
     addTxn(
@@ -321,7 +327,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryTransport,
       payeeId: grab,
-      occurredAt: DateTime(2026, 5, 25),
+      occurredAt: DateTime(prevYear, prevMonth, 25),
       note: 'GrabCar to meeting',
     );
     addTxn(
@@ -331,7 +337,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryFood,
       payeeId: jollibee,
-      occurredAt: DateTime(2026, 5, 27),
+      occurredAt: DateTime(prevYear, prevMonth, 27),
       note: 'Chickenjoy meal',
     );
     addTxn(
@@ -341,7 +347,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryFood,
       payeeId: starbucks,
-      occurredAt: DateTime(2026, 5, 28),
+      occurredAt: DateTime(prevYear, prevMonth, 28),
       note: 'Morning coffee',
     );
     addTxn(
@@ -350,7 +356,7 @@ class DemoDataLoader {
       amount: 35000,
       direction: 'income',
       categoryId: categorySalary,
-      occurredAt: DateTime(2026, 5, 30),
+      occurredAt: DateTime(prevYear, prevMonth, 30),
       note: 'Bi-monthly salary',
       subtype: 'salary',
     );
@@ -361,7 +367,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryFood,
       payeeId: smSupermarket,
-      occurredAt: DateTime(2026, 5, 31),
+      occurredAt: DateTime(prevYear, prevMonth, 31),
       note: 'Weekly groceries',
     );
 
@@ -373,7 +379,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryBills,
       payeeId: meralco,
-      occurredAt: DateTime(2026, 6, 1),
+      occurredAt: DateTime(curYear, curMonth, 1),
       note: 'Meralco bill — June',
       subtype: 'subscription',
     );
@@ -384,7 +390,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryBills,
       payeeId: pldt,
-      occurredAt: DateTime(2026, 6, 1),
+      occurredAt: DateTime(curYear, curMonth, 1),
       note: 'PLDT bill — June',
       subtype: 'subscription',
     );
@@ -395,7 +401,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryBills,
       payeeId: converge,
-      occurredAt: DateTime(2026, 6, 2),
+      occurredAt: DateTime(curYear, curMonth, 2),
       note: 'Converge internet — June',
       subtype: 'subscription',
     );
@@ -406,7 +412,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryFood,
       payeeId: smSupermarket,
-      occurredAt: DateTime(2026, 6, 4),
+      occurredAt: DateTime(curYear, curMonth, 4),
       note: 'Weekly groceries',
     );
     addTxn(
@@ -416,7 +422,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryTransport,
       payeeId: angkas,
-      occurredAt: DateTime(2026, 6, 5),
+      occurredAt: DateTime(curYear, curMonth, 5),
       note: 'Angkas ride to work',
     );
     addTxn(
@@ -426,7 +432,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryFood,
       payeeId: grab,
-      occurredAt: DateTime(2026, 6, 7),
+      occurredAt: DateTime(curYear, curMonth, 7),
       note: 'GrabFood lunch',
     );
     addTxn(
@@ -436,7 +442,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryHealth,
       payeeId: mercuryDrug,
-      occurredAt: DateTime(2026, 6, 8),
+      occurredAt: DateTime(curYear, curMonth, 8),
       note: 'Prescription refill',
     );
     addTxn(
@@ -446,7 +452,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryFood,
       payeeId: starbucks,
-      occurredAt: DateTime(2026, 6, 10),
+      occurredAt: DateTime(curYear, curMonth, 10),
       note: 'Morning coffee',
     );
     addTxn(
@@ -456,7 +462,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryShopping,
       payeeId: shopee,
-      occurredAt: DateTime(2026, 6, 12),
+      occurredAt: DateTime(curYear, curMonth, 12),
       note: 'Wireless earbuds',
     );
     addTxn(
@@ -466,7 +472,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryFood,
       payeeId: puregold,
-      occurredAt: DateTime(2026, 6, 14),
+      occurredAt: DateTime(curYear, curMonth, 14),
       note: 'Weekly groceries',
     );
     addTxn(
@@ -475,7 +481,7 @@ class DemoDataLoader {
       amount: 35000,
       direction: 'income',
       categoryId: categorySalary,
-      occurredAt: DateTime(2026, 6, 15),
+      occurredAt: DateTime(curYear, curMonth, 15),
       note: 'Bi-monthly salary',
       subtype: 'salary',
     );
@@ -486,7 +492,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryFood,
       payeeId: jollibee,
-      occurredAt: DateTime(2026, 6, 16),
+      occurredAt: DateTime(curYear, curMonth, 16),
       note: 'Jollibee breakfast',
     );
     addTxn(
@@ -496,7 +502,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryEntertainment,
       payeeId: smSupermarket,
-      occurredAt: DateTime(2026, 6, 18),
+      occurredAt: DateTime(curYear, curMonth, 18),
       note: 'Movie tickets — SM Cinema',
     );
     addTxn(
@@ -506,7 +512,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryShopping,
       payeeId: lazada,
-      occurredAt: DateTime(2026, 6, 20),
+      occurredAt: DateTime(curYear, curMonth, 20),
       note: 'New sandals',
     );
     addTxn(
@@ -516,7 +522,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryTransport,
       payeeId: angkas,
-      occurredAt: DateTime(2026, 6, 22),
+      occurredAt: DateTime(curYear, curMonth, 22),
       note: 'Angkas ride home',
     );
     addTxn(
@@ -526,7 +532,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryFood,
       payeeId: smSupermarket,
-      occurredAt: DateTime(2026, 6, 24),
+      occurredAt: DateTime(curYear, curMonth, 24),
       note: 'Weekly groceries',
     );
     addTxn(
@@ -536,7 +542,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryFood,
       payeeId: mcdonalds,
-      occurredAt: DateTime(2026, 6, 26),
+      occurredAt: DateTime(curYear, curMonth, 26),
       note: "McDonald's lunch",
     );
     addTxn(
@@ -546,7 +552,7 @@ class DemoDataLoader {
       direction: 'expense',
       categoryId: categoryFood,
       payeeId: sevenEleven,
-      occurredAt: DateTime(2026, 6, 28),
+      occurredAt: DateTime(curYear, curMonth, 28),
       note: 'Quick snack',
     );
 
@@ -684,32 +690,32 @@ class DemoDataLoader {
           ownerUserId: userId,
           categoryId: categoryFood,
           amount: 15000.0,
-          month: 6,
-          year: 2026,
+          month: curMonth,
+          year: curYear,
         ),
         BudgetsCompanion.insert(
           id: budgetIds[1],
           ownerUserId: userId,
           categoryId: categoryTransport,
           amount: 5000.0,
-          month: 6,
-          year: 2026,
+          month: curMonth,
+          year: curYear,
         ),
         BudgetsCompanion.insert(
           id: budgetIds[2],
           ownerUserId: userId,
           categoryId: categoryShopping,
           amount: 8000.0,
-          month: 6,
-          year: 2026,
+          month: curMonth,
+          year: curYear,
         ),
         BudgetsCompanion.insert(
           id: budgetIds[3],
           ownerUserId: userId,
           categoryId: categoryEntertainment,
           amount: 3000.0,
-          month: 6,
-          year: 2026,
+          month: curMonth,
+          year: curYear,
         ),
       ]);
 

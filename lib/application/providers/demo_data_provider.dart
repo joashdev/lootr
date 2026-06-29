@@ -21,6 +21,9 @@ class DemoDataNotifier extends AsyncNotifier<DemoDataState> {
   }
 
   Future<void> seed() async {
+    final repo = ref.read(categoryRepoProvider);
+    await repo.seedCategories();
+
     final alreadySeeded = await hasDemoData();
     if (alreadySeeded) return;
 
