@@ -31,9 +31,11 @@ class AppSnackBar extends StatelessWidget {
   }) {
     if (!context.mounted) return;
 
-    final colorScheme = Theme.of(context).colorScheme;
+    final rootContext = Navigator.of(context, rootNavigator: true).context;
+    final targetContext = rootContext.mounted ? rootContext : context;
+    final colorScheme = Theme.of(targetContext).colorScheme;
 
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = ScaffoldMessenger.of(targetContext);
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(
       SnackBar(

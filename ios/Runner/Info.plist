@@ -26,6 +26,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Lootr uses the microphone for on-device voice transaction entry.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Lootr uses speech recognition to turn your voice into transaction text on-device.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

@@ -7,8 +7,6 @@ import '../../../../application/providers/ai_settings_provider.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/typography.dart';
-import '../../../shared/components/buttons/primary_button.dart';
-
 class AiSettingsScreen extends ConsumerWidget {
   const AiSettingsScreen({super.key});
 
@@ -42,7 +40,7 @@ class AiSettingsScreen extends ConsumerWidget {
                   ),
                 ),
                 subtitle: Text(
-                  'Natural language parsing and smart categorization',
+                  'Local parsing, categorization, and OCR heuristics on-device',
                   style: AppTypography.caption.copyWith(
                     color: lootrColors.textSecondary,
                   ),
@@ -72,7 +70,7 @@ class AiSettingsScreen extends ConsumerWidget {
                   ),
                 ),
                 subtitle: Text(
-                  'DeepSeek V4 • On-device',
+                  'Current build uses ML Kit OCR plus local parsing heuristics',
                   style: AppTypography.caption.copyWith(
                     color: lootrColors.textSecondary,
                   ),
@@ -88,44 +86,17 @@ class AiSettingsScreen extends ConsumerWidget {
                   color: colorScheme.primary,
                 ),
                 title: Text(
-                  'Model Download',
+                  'Prompt Support',
                   style: AppTypography.bodyMedium.copyWith(
                     color: colorScheme.onSurface,
                   ),
                 ),
                 subtitle: Text(
-                  _statusLabel(aiState.modelStatus),
+                  'Custom OCR prompts and model downloads are not supported yet in this build',
                   style: AppTypography.caption.copyWith(
                     color: lootrColors.textSecondary,
                   ),
                 ),
-                trailing:
-                    aiState.modelStatus == ModelDownloadStatus.notDownloaded
-                    ? PrimaryButton(
-                        label: 'Download',
-                        onPressed: () async {
-                          final notifier = ref.read(
-                            aiSettingsProvider.notifier,
-                          );
-                          notifier.updateModelDownload(
-                            status: ModelDownloadStatus.downloading,
-                            sizeBytes: 256 * 1024 * 1024,
-                            downloadedBytes: 0,
-                          );
-                          await Future<void>.delayed(
-                            const Duration(milliseconds: 400),
-                          );
-                          notifier.updateModelDownload(
-                            status: ModelDownloadStatus.downloaded,
-                            sizeBytes: 256 * 1024 * 1024,
-                            downloadedBytes: 256 * 1024 * 1024,
-                          );
-                        },
-                        icon: const Icon(LucideIcons.download, size: 16),
-                        isTonal: true,
-                        isExpanded: false,
-                      )
-                    : null,
               ),
             ],
           ),
@@ -161,18 +132,6 @@ class AiSettingsScreen extends ConsumerWidget {
     );
   }
 
-  String _statusLabel(ModelDownloadStatus status) {
-    switch (status) {
-      case ModelDownloadStatus.notDownloaded:
-        return 'Not downloaded (0 MB)';
-      case ModelDownloadStatus.downloading:
-        return 'Downloading… 256 MB';
-      case ModelDownloadStatus.downloaded:
-        return 'Downloaded (256 MB)';
-      case ModelDownloadStatus.failed:
-        return 'Download failed';
-    }
-  }
 }
 
 class _SettingsSection extends StatelessWidget {

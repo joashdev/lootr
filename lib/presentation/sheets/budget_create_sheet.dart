@@ -284,49 +284,53 @@ class _BudgetCreateSheetState extends ConsumerState<BudgetCreateSheet> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.space2),
-                TextField(
-                  controller: _amountController,
-                  enabled: !isReadOnly,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: false,
+                Container(
+                  decoration: BoxDecoration(
+                    color: colorScheme.surface,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    border: Border.all(color: colorScheme.outline),
                   ),
-                  style: AppTypography.mono.copyWith(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w600,
-                    color: colorScheme.onSurface,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.space4,
+                    vertical: AppSpacing.space3,
                   ),
-                  decoration: InputDecoration(
-                    prefixText: 'P ',
-                    prefixStyle: AppTypography.mono.copyWith(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w600,
-                      color: lootrColors.textTertiary,
-                    ),
-                    hintText: '0',
-                    hintStyle: AppTypography.mono.copyWith(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w600,
-                      color: lootrColors.textTertiary,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                      borderSide: BorderSide(color: colorScheme.outline),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                      borderSide: BorderSide(color: colorScheme.outline),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                      borderSide: BorderSide(
-                        color: colorScheme.primary,
-                        width: 2,
+                  child: Row(
+                    children: [
+                      Text(
+                        '₱',
+                        style: AppTypography.mono.copyWith(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w600,
+                          color: lootrColors.textTertiary,
+                        ),
                       ),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.space4,
-                      vertical: AppSpacing.space3,
-                    ),
+                      const SizedBox(width: AppSpacing.space2),
+                      Expanded(
+                        child: TextField(
+                          controller: _amountController,
+                          enabled: !isReadOnly,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: false,
+                          ),
+                          style: AppTypography.mono.copyWith(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w600,
+                            color: colorScheme.onSurface,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: '0',
+                            hintStyle: AppTypography.mono.copyWith(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w600,
+                              color: lootrColors.textTertiary,
+                            ),
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: AppSpacing.space2),

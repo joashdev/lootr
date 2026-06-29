@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 
 import '../../application/providers/accounts_provider.dart';
 import '../../application/providers/categories_provider.dart';
@@ -83,6 +84,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   final _feeController = TextEditingController();
   final _noteController = TextEditingController();
   final _quickAddController = TextEditingController();
+  final SpeechToText _speech = SpeechToText();
 
   String? _accountId;
   String? _categoryId;
@@ -101,12 +103,23 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   bool _isQuickMode = false;
   bool _isSaving = false;
   bool _seededInitialParsed = false;
+  bool _isListening = false;
 
   ParsedTransaction? _parsedPreview;
   String? _parseError;
 
   bool get _isTransactionEditing => widget.initialTransaction != null;
   bool get _isTransferEditing => widget.initialTransfer != null;
+
+  @override
+  void dispose() {
+    _speech.cancel();
+    _amountController.dispose();
+    _feeController.dispose();
+    _noteController.dispose();
+    _quickAddController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -156,13 +169,48 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     _debtRecordId = metadata['debtRecordId'] as String?;
   }
 
-  @override
-  void dispose() {
-    _amountController.dispose();
-    _feeController.dispose();
-    _noteController.dispose();
-    _quickAddController.dispose();
-    super.dispose();
+  Future<void> _toggleSpeechInput() async {
+    if (_isListening) {
+      await _speech.stop();
+      if (mounted) {
+        setState(() => _isListening = false);
+      }
+      return;
+    }
+
+    final available = await _speech.initialize(
+      onStatus: (status) {
+        if (!mounted) return;
+        if (status == 'done' || status == 'notListening') {
+          setState(() => _isListening = false);
+        }
+      },
+      onError: (_) {
+        if (!mounted) return;
+        setState(() => _isListening = false);
+        _showSnackBar('Voice input could not start on this device.');
+      },
+    );
+
+    if (!available) {
+      _showSnackBar('Voice input is unavailable on this device.');
+      return;
+    }
+
+    setState(() => _isListening = true);
+    await _speech.listen(
+      listenMode: ListenMode.dictation,
+      partialResults: true,
+      onResult: (result) {
+        if (!mounted) return;
+        setState(() {
+          _quickAddController.text = result.recognizedWords.trim();
+          _quickAddController.selection = TextSelection.collapsed(
+            offset: _quickAddController.text.length,
+          );
+        });
+      },
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -830,13 +878,14 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  tooltip: 'Voice input (coming soon)',
-                  onPressed: () =>
-                      _showSnackBar('Voice input is not available in V1'),
+                  tooltip: _isListening ? 'Stop listening' : 'Start voice input',
+                  onPressed: _toggleSpeechInput,
                   icon: Icon(
-                    LucideIcons.mic,
+                    _isListening ? LucideIcons.audioLines : LucideIcons.mic,
                     size: 18,
-                    color: lootrColors.textTertiary,
+                    color: _isListening
+                        ? Theme.of(context).colorScheme.primary
+                        : lootrColors.textTertiary,
                   ),
                 ),
                 IconButton(

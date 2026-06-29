@@ -35,7 +35,7 @@ class AccountDetailScreen extends ConsumerWidget {
     final payees = ref.watch(payeesProvider).asData?.value ?? const <Payee>[];
     final categoryMap = {for (final c in categories) c.id: c};
     final payeeNames = {
-      for (final p in payees) p.id: p.displayName ?? p.normalizedName,
+      for (final p in payees) p.id: p.resolvedName,
     };
     final lootrColors = context.lootrColors;
     final colorScheme = Theme.of(context).colorScheme;

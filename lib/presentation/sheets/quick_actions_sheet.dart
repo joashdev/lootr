@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 
 import '../../core/theme/colors.dart';
 import '../../core/theme/radius.dart';
@@ -37,9 +38,12 @@ class _QuickActionsSheetBody extends StatefulWidget {
 
 class _QuickActionsSheetBodyState extends State<_QuickActionsSheetBody> {
   final TextEditingController _quickInputController = TextEditingController();
+  final SpeechToText _speech = SpeechToText();
+  bool _isListening = false;
 
   @override
   void dispose() {
+    _speech.cancel();
     _quickInputController.dispose();
     super.dispose();
   }
@@ -52,6 +56,59 @@ class _QuickActionsSheetBodyState extends State<_QuickActionsSheetBody> {
         startInQuickMode: true,
         initialQuickText: initialQuickText.isEmpty ? null : initialQuickText,
       ),
+    );
+  }
+
+  Future<void> _toggleSpeechInput() async {
+    if (_isListening) {
+      await _speech.stop();
+      if (mounted) {
+        setState(() => _isListening = false);
+      }
+      return;
+    }
+
+    final available = await _speech.initialize(
+      onStatus: (status) {
+        if (!mounted) return;
+        if (status == 'done' || status == 'notListening') {
+          setState(() => _isListening = false);
+        }
+      },
+      onError: (_) {
+        if (!mounted) return;
+        setState(() => _isListening = false);
+        AppSnackBar.show(
+          context,
+          'Voice input could not start on this device.',
+          variant: AppSnackBarVariant.warning,
+        );
+      },
+    );
+
+    if (!available) {
+      if (!mounted) return;
+      AppSnackBar.show(
+        context,
+        'Voice input is unavailable on this device.',
+        variant: AppSnackBarVariant.warning,
+      );
+      return;
+    }
+
+    setState(() => _isListening = true);
+    await _speech.listen(
+      listenMode: ListenMode.dictation,
+      partialResults: true,
+      onResult: (result) {
+        if (!mounted) return;
+        setState(() {
+          _quickInputController.text = result.recognizedWords.trim();
+          _quickInputController.selection = TextSelection.collapsed(
+            offset: _quickInputController.text.length,
+          );
+        });
+      },
     );
   }
 
@@ -129,17 +186,13 @@ class _QuickActionsSheetBodyState extends State<_QuickActionsSheetBody> {
                     ),
                   ),
                   IconButton(
-                    onPressed: () {
-                      AppSnackBar.show(
-                        context,
-                        'Voice input is not available in V1',
-                        variant: AppSnackBarVariant.neutral,
-                        duration: const Duration(seconds: 2),
-                      );
-                    },
+                    tooltip: _isListening ? 'Stop listening' : 'Start voice input',
+                    onPressed: _toggleSpeechInput,
                     icon: Icon(
-                      LucideIcons.mic,
-                      color: colorScheme.primary,
+                      _isListening ? LucideIcons.audioLines : LucideIcons.mic,
+                      color: _isListening
+                          ? colorScheme.onSurface
+                          : colorScheme.primary,
                       size: 18,
                     ),
                   ),

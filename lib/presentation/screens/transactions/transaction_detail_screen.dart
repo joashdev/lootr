@@ -155,9 +155,7 @@ class _TransactionDetailScreenState
     if (transaction.payeeId == null) return null;
     for (final payee in payees) {
       if (payee.id == transaction.payeeId) {
-        return payee.displayName?.isNotEmpty == true
-            ? payee.displayName
-            : payee.normalizedName;
+        return payee.resolvedName;
       }
     }
     return transaction.payeeId;
@@ -203,9 +201,10 @@ class _TransactionDetailScreenState
       onSuccess: (undoEntry) {
         ref.read(undoStackProvider.notifier).push(undoEntry);
         if (mounted) {
+          final navigator = Navigator.of(context);
           context.pop();
           AppSnackBar.show(
-            context,
+            navigator.context,
             undoEntry.message,
             variant: AppSnackBarVariant.success,
             actionLabel: 'UNDO',
@@ -364,7 +363,9 @@ class _TransactionDetailScreenState
                 ],
               ),
             ),
-            const SizedBox(height: AppSpacing.space6),
+            SizedBox(
+              height: AppSpacing.space6 + MediaQuery.of(context).padding.bottom,
+            ),
           ],
         ),
       ),

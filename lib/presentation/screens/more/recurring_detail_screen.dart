@@ -36,8 +36,7 @@ class RecurringDetailScreen extends ConsumerWidget {
     final lootrColors = context.lootrColors;
     final colorScheme = Theme.of(context).colorScheme;
     final payeeNames = {
-      for (final payee in payees)
-        payee.id: payee.displayName ?? payee.normalizedName,
+      for (final payee in payees) payee.id: payee.resolvedName,
     };
 
     return Scaffold(

@@ -23,7 +23,7 @@ class PayeeAutocomplete extends StatelessWidget {
   final ValueChanged<String> onTextChanged;
   final String? initialText;
 
-  String _labelFor(Payee payee) => payee.displayName ?? payee.normalizedName;
+  String _labelFor(Payee payee) => payee.resolvedName;
 
   @override
   Widget build(BuildContext context) {

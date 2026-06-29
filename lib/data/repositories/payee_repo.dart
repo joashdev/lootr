@@ -91,4 +91,18 @@ class PayeeRepo {
           .getSingle();
     });
   }
+
+  Future<void> updateName(String id, String name) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return;
+
+    await (_db.update(_db.payees)..where((p) => p.id.equals(id))).write(
+      PayeesCompanion(
+        normalizedName: Value(trimmed.toLowerCase()),
+        displayName: Value(trimmed),
+        syncStatus: const Value('pending_sync'),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
 }

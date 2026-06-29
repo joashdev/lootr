@@ -4,6 +4,7 @@ import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/radius.dart';
 import '../../../../core/theme/typography.dart';
 import '../../../../domain/entities/category.dart';
+import '../../../shared/category_visuals.dart';
 
 /// Autocomplete selector for categories, filtered by [groupFilter]
 /// (e.g. expense vs income).
@@ -104,6 +105,7 @@ class CategoryAutocomplete extends StatelessWidget {
                 itemBuilder: (context, index) {
                   final category = options.elementAt(index);
                   final isSelected = category.id == selectedCategoryId;
+                  final iconColor = parseCategoryColor(category.color);
                   return InkWell(
                     onTap: () => onSelected(category),
                     child: Padding(
@@ -113,6 +115,21 @@ class CategoryAutocomplete extends StatelessWidget {
                       ),
                       child: Row(
                         children: [
+                          Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: iconColor.withValues(alpha: 0.12),
+                              shape: BoxShape.circle,
+                            ),
+                            alignment: Alignment.center,
+                            child: buildCategoryVisual(
+                              category.icon,
+                              color: iconColor,
+                              size: 16,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
                           Expanded(
                             child: Text(
                               category.name,

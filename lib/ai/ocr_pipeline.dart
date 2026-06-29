@@ -174,27 +174,77 @@ class OCRPipeline {
     double? amount;
     String? date;
 
-    final lines = text.split('\n').map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
+    final lines = text
+        .split('\n')
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        .toList();
 
     if (lines.isNotEmpty) {
-      storeName = lines.first;
+      storeName = lines.firstWhere(
+        (line) {
+          final lower = line.toLowerCase();
+          return !lower.contains('vat') &&
+              !lower.contains('tin') &&
+              !lower.contains('receipt') &&
+              !RegExp(r'^\d+$').hasMatch(lower);
+        },
+        orElse: () => lines.first,
+      );
     }
 
     for (final line in lines) {
       final lower = line.toLowerCase();
-      if (lower.contains('total') || lower.contains('amount')) {
+      if (_looksLikeReceiptTotal(lower)) {
         final result = _nlParser.parse(line);
-        if (result != null) {
+        if (result != null && result.parsed.amount != null) {
           amount = result.parsed.amount;
         }
       }
 
-      if (lower.contains('date') || lower.contains('time')) {
+      if (_looksLikeDateLine(lower)) {
         date = line;
       }
     }
 
-    return _ReceiptFields(storeName: storeName, amount: amount, date: date, confidence: storeName != null ? 0.5 : 0.0);
+    amount ??= _fallbackLargestAmount(lines);
+
+    return _ReceiptFields(
+      storeName: storeName,
+      amount: amount,
+      date: date,
+      confidence: amount != null ? 0.72 : (storeName != null ? 0.5 : 0.0),
+    );
+  }
+
+  bool _looksLikeReceiptTotal(String lower) {
+    if (lower.contains('subtotal')) return false;
+    return lower.contains('total') ||
+        lower.contains('amount due') ||
+        lower.contains('net amount') ||
+        lower.contains('total due') ||
+        lower.contains('grand total') ||
+        lower.contains('balance due');
+  }
+
+  bool _looksLikeDateLine(String lower) {
+    return lower.contains('date') ||
+        lower.contains('time') ||
+        RegExp(r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b').hasMatch(lower) ||
+        RegExp(r'\b\d{4}[/-]\d{1,2}[/-]\d{1,2}\b').hasMatch(lower);
+  }
+
+  double? _fallbackLargestAmount(List<String> lines) {
+    double? best;
+    for (final line in lines.reversed.take(12)) {
+      final parsed = _nlParser.parse(line);
+      final amount = parsed?.parsed.amount;
+      if (amount == null) continue;
+      if (best == null || amount > best) {
+        best = amount;
+      }
+    }
+    return best;
   }
 }
 
