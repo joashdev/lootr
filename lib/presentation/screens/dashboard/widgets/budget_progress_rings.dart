@@ -62,7 +62,9 @@ class BudgetProgressRings extends StatelessWidget {
                           const SizedBox(height: 2),
                           Text(
                             '${NumberFormat.currency(locale: 'en_PH', symbol: '₱', name: currencyCode).format(budget.spent)} / ${NumberFormat.currency(locale: 'en_PH', symbol: '₱', name: currencyCode).format(budget.budgeted)}',
-                            style: AppTypography.caption.copyWith(
+                            style: AppTypography.mono.copyWith(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w400,
                               color: context.lootrColors.textSecondary,
                             ),
                             textAlign: TextAlign.center,

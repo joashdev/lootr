@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 import '../../../../application/providers/dashboard_provider.dart';
 import '../../../../application/providers/safe_to_spend_provider.dart';
+import '../../../../core/format/money_format.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/radius.dart';
 import '../../../../core/theme/spacing.dart';
@@ -20,10 +20,6 @@ class SafeToSpendHero extends ConsumerWidget {
     final safeToSpend = ref.watch(safeToSpendProvider);
     final lootrColors = context.lootrColors;
     final colorScheme = Theme.of(context).colorScheme;
-    final currencyFormatter = NumberFormat.currency(
-      locale: 'en_PH',
-      symbol: '₱',
-    );
 
     return safeToSpend.when(
       loading: () => const SizedBox(height: 180),
@@ -61,8 +57,8 @@ class SafeToSpendHero extends ConsumerWidget {
                           ),
                           const SizedBox(height: AppSpacing.space2),
                           Text(
-                            currencyFormatter.format(value),
-                            style: AppTypography.display.copyWith(
+                            MoneyFormat.display(value, data.currencyCode),
+                            style: AppTypography.displayMono.copyWith(
                               color: colorScheme.onSurface,
                             ),
                           ),
@@ -78,7 +74,7 @@ class SafeToSpendHero extends ConsumerWidget {
                 Text('Safe to spend', style: AppTypography.h2),
                 const SizedBox(height: AppSpacing.space1),
                 Text(
-                  'From ${currencyFormatter.format(data.monthlyIncome)} monthly income after planned expenses.',
+                  'From ${MoneyFormat.display(data.monthlyIncome, data.currencyCode)} monthly income after planned expenses.',
                   style: AppTypography.body.copyWith(
                     color: lootrColors.textSecondary,
                   ),
@@ -104,7 +100,8 @@ class SafeToSpendHero extends ConsumerWidget {
                           const Spacer(),
                           Text(
                             '${(clampedShare * 100).round()}%',
-                            style: AppTypography.captionMedium.copyWith(
+                            style: AppTypography.mono.copyWith(
+                              fontSize: 13,
                               color: semanticColor,
                             ),
                           ),
@@ -148,24 +145,18 @@ class SafeToSpendHero extends ConsumerWidget {
               const SizedBox(height: AppSpacing.space4),
               _BreakdownRow(
                 label: 'Safe to spend now',
-                value: NumberFormat.currency(
-                  locale: 'en_PH',
-                  symbol: '₱',
-                ).format(safeToSpend),
+                value: MoneyFormat.exact(safeToSpend, data.currencyCode),
               ),
               _BreakdownRow(
                 label: 'Monthly income',
-                value: NumberFormat.currency(
-                  locale: 'en_PH',
-                  symbol: '₱',
-                ).format(data.monthlyIncome),
+                value: MoneyFormat.exact(data.monthlyIncome, data.currencyCode),
               ),
               _BreakdownRow(
                 label: 'This month\'s expenses',
-                value: NumberFormat.currency(
-                  locale: 'en_PH',
-                  symbol: '₱',
-                ).format(data.monthlyExpense),
+                value: MoneyFormat.exact(
+                  data.monthlyExpense,
+                  data.currencyCode,
+                ),
               ),
             ],
           ),

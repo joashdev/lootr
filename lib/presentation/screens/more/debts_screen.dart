@@ -189,7 +189,9 @@ class _DebtRow extends StatelessWidget {
           ),
           Text(
             'of ₱${debt.amount.toStringAsFixed(2)}',
-            style: AppTypography.caption.copyWith(
+            style: AppTypography.mono.copyWith(
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
               color: lootrColors.textTertiary,
             ),
           ),

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../application/providers/budgets_tab_provider.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/spacing.dart';
+import '../../../../core/theme/typography.dart';
 import '../../../shared/components/progress/budget_progress_bar.dart';
 
 class BudgetSummaryHeader extends ConsumerWidget {
@@ -55,14 +56,14 @@ class BudgetSummaryHeader extends ConsumerWidget {
             children: [
               Text(
                 'P${summary.spent.toStringAsFixed(0)} of P${summary.budgeted.toStringAsFixed(0)}',
-                style: const TextStyle(
+                style: AppTypography.mono.copyWith(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                 ),
               ),
               Text(
                 '$percent%',
-                style: TextStyle(
+                style: AppTypography.mono.copyWith(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: progressColor(),

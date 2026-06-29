@@ -102,18 +102,25 @@ class _DashboardHeader extends ConsumerWidget implements PreferredSizeWidget {
   final DashboardData data;
 
   @override
-  Size get preferredSize => const Size.fromHeight(PrimaryScreenHeader.height);
+  Size get preferredSize => Size.fromHeight(
+    _hasName
+        ? PrimaryScreenHeader.heightWithEyebrow
+        : PrimaryScreenHeader.height,
+  );
+
+  bool get _hasName => data.displayName?.trim().isNotEmpty == true;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final syncState = ref.watch(syncStatusIconProvider);
     final lootrColors = context.lootrColors;
-    final greetingName = data.displayName?.trim().isNotEmpty == true
-        ? ', ${data.displayName!.trim()}'
-        : '';
+    final name = data.displayName?.trim() ?? '';
 
     return PrimaryScreenHeader(
-      title: '${data.greeting}$greetingName',
+      // Greeting sits in the eyebrow so a long name (the title) is never
+      // truncated by the time-of-day prefix.
+      eyebrow: _hasName ? data.greeting : null,
+      title: _hasName ? name : data.greeting,
       subtitle: DateFormat('EEEE, MMMM d').format(data.currentDate),
       actions: [
         AppIconButton(

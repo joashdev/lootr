@@ -126,7 +126,7 @@ class TransactionRowWidget extends StatelessWidget {
             children: [
               Text(
                 '${_amountPrefix()}${NumberFormat("#,##0.00").format(transaction.amount)}',
-                style: AppTypography.h3.copyWith(color: directionColor),
+                style: AppTypography.h3Mono.copyWith(color: directionColor),
               ),
               const SizedBox(height: 2),
               Text(

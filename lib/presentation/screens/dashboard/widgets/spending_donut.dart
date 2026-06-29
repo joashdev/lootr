@@ -65,7 +65,7 @@ class SpendingDonut extends StatelessWidget {
                               (sum, slice) => sum + slice.amount,
                             ),
                           ),
-                          style: AppTypography.h2,
+                          style: AppTypography.h2Mono,
                         ),
                       ],
                     ),
@@ -96,12 +96,14 @@ class SpendingDonut extends StatelessWidget {
                         locale: 'en_PH',
                         symbol: '₱',
                       ).format(slice.amount),
-                      style: AppTypography.bodyMedium,
+                      style: AppTypography.mono,
                     ),
                     const SizedBox(width: AppSpacing.space2),
                     Text(
                       '${(slice.percentage * 100).round()}%',
-                      style: AppTypography.caption.copyWith(
+                      style: AppTypography.mono.copyWith(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
                         color: context.lootrColors.textSecondary,
                       ),
                     ),

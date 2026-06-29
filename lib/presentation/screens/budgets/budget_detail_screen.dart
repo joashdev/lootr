@@ -113,11 +113,26 @@ class BudgetDetailScreen extends ConsumerWidget {
                                   color: colorScheme.onSurface,
                                 ),
                               ),
-                              Text(
-                                'Budget: P${budget.amount.toStringAsFixed(0)}',
-                                style: TextStyle(
-                                  color: lootrColors.textSecondary,
-                                  fontSize: 13,
+                              Text.rich(
+                                TextSpan(
+                                  children: [
+                                    TextSpan(
+                                      text: 'Budget: ',
+                                      style: TextStyle(
+                                        color: lootrColors.textSecondary,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    TextSpan(
+                                      text:
+                                          'P${budget.amount.toStringAsFixed(0)}',
+                                      style: AppTypography.mono.copyWith(
+                                        color: lootrColors.textSecondary,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w400,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -143,7 +158,7 @@ class BudgetDetailScreen extends ConsumerWidget {
                         ),
                         Text(
                           '${(progress * 100).round()}%',
-                          style: AppTypography.h3.copyWith(
+                          style: AppTypography.h3Mono.copyWith(
                             color: progressColor(),
                           ),
                         ),
@@ -234,7 +249,7 @@ class BudgetDetailScreen extends ConsumerWidget {
                               ),
                               Text(
                                 '-P${tx.amount.toStringAsFixed(0)}',
-                                style: AppTypography.bodyMedium.copyWith(
+                                style: AppTypography.mono.copyWith(
                                   color: lootrColors.expense,
                                 ),
                               ),
@@ -377,7 +392,7 @@ class _StatItem extends StatelessWidget {
       children: [
         Text(
           value,
-          style: AppTypography.h3.copyWith(
+          style: AppTypography.h3Mono.copyWith(
             color: color ?? Theme.of(context).colorScheme.onSurface,
           ),
         ),

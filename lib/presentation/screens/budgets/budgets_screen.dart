@@ -54,8 +54,7 @@ class BudgetsScreen extends ConsumerWidget {
         titleSpacing: AppSpacing.pagePaddingMobile,
         title: Row(
           children: [
-            Text('Budgets',
-                style: Theme.of(context).textTheme.headlineMedium),
+            Text('Budgets', style: Theme.of(context).textTheme.headlineLarge),
             const Spacer(),
             const MonthNavigator(compact: true),
           ],

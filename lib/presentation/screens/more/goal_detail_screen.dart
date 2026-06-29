@@ -68,7 +68,7 @@ class GoalDetailScreen extends ConsumerWidget {
                         children: [
                           Text(
                             '${goal.progress.round()}%',
-                            style: AppTypography.display.copyWith(
+                            style: AppTypography.displayMono.copyWith(
                               color: progressColor,
                               fontSize: 28,
                             ),
@@ -96,11 +96,13 @@ class GoalDetailScreen extends ConsumerWidget {
                 _DetailCard(
                   label: 'Target',
                   value: '₱${goal.targetAmount.toStringAsFixed(2)}',
+                  mono: true,
                 ),
                 const SizedBox(height: AppSpacing.space2),
                 _DetailCard(
                   label: 'Saved',
                   value: '₱${goal.currentAmount.toStringAsFixed(2)}',
+                  mono: true,
                 ),
                 const SizedBox(height: AppSpacing.space2),
                 _DetailCard(
@@ -110,6 +112,7 @@ class GoalDetailScreen extends ConsumerWidget {
                   valueColor: remaining > 0
                       ? lootrColors.warning
                       : lootrColors.success,
+                  mono: true,
                 ),
                 if (goal.targetDate != null) ...[
                   const SizedBox(height: AppSpacing.space2),
@@ -234,11 +237,13 @@ class _DetailCard extends StatelessWidget {
     required this.label,
     required this.value,
     this.valueColor,
+    this.mono = false,
   });
 
   final String label;
   final String value;
   final Color? valueColor;
+  final bool mono;
 
   @override
   Widget build(BuildContext context) {
@@ -262,9 +267,8 @@ class _DetailCard extends StatelessWidget {
           ),
           Text(
             value,
-            style: AppTypography.bodyMedium.copyWith(
-              color: valueColor ?? colorScheme.onSurface,
-            ),
+            style: (mono ? AppTypography.mono : AppTypography.bodyMedium)
+                .copyWith(color: valueColor ?? colorScheme.onSurface),
           ),
         ],
       ),

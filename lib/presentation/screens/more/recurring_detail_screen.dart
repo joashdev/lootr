@@ -132,6 +132,7 @@ class RecurringDetailScreen extends ConsumerWidget {
                       _DetailRow(
                         label: 'Amount',
                         value: '₱${template.amount.toStringAsFixed(2)}',
+                        mono: true,
                       ),
                       const SizedBox(height: AppSpacing.space2),
                       _DetailRow(
@@ -283,11 +284,17 @@ class RecurringDetailScreen extends ConsumerWidget {
 }
 
 class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, required this.value, this.valueColor});
+  const _DetailRow({
+    required this.label,
+    required this.value,
+    this.valueColor,
+    this.mono = false,
+  });
 
   final String label;
   final String value;
   final Color? valueColor;
+  final bool mono;
 
   @override
   Widget build(BuildContext context) {
@@ -303,9 +310,8 @@ class _DetailRow extends StatelessWidget {
         ),
         Text(
           value,
-          style: AppTypography.bodyMedium.copyWith(
-            color: valueColor ?? colorScheme.onSurface,
-          ),
+          style: (mono ? AppTypography.mono : AppTypography.bodyMedium)
+              .copyWith(color: valueColor ?? colorScheme.onSurface),
         ),
       ],
     );

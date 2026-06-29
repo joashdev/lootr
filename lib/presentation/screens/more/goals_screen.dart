@@ -99,7 +99,9 @@ class _GoalList extends StatelessWidget {
                       ),
                       Text(
                         '${goal.progress.round()}%',
-                        style: AppTypography.h3.copyWith(color: progressColor),
+                        style: AppTypography.h3Mono.copyWith(
+                          color: progressColor,
+                        ),
                       ),
                     ],
                   ),
@@ -112,15 +114,31 @@ class _GoalList extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        '₱${goal.currentAmount.toStringAsFixed(2)} saved',
-                        style: AppTypography.caption.copyWith(
-                          color: lootrColors.textSecondary,
+                      Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(
+                              text: '₱${goal.currentAmount.toStringAsFixed(2)}',
+                              style: AppTypography.mono.copyWith(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w400,
+                                color: lootrColors.textSecondary,
+                              ),
+                            ),
+                            TextSpan(
+                              text: ' saved',
+                              style: AppTypography.caption.copyWith(
+                                color: lootrColors.textSecondary,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       Text(
                         'of ₱${goal.targetAmount.toStringAsFixed(2)}',
-                        style: AppTypography.caption.copyWith(
+                        style: AppTypography.mono.copyWith(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w400,
                           color: lootrColors.textSecondary,
                         ),
                       ),

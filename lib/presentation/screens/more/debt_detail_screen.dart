@@ -78,6 +78,7 @@ class DebtDetailScreen extends ConsumerWidget {
                 _DetailRow(
                   label: 'Total Amount',
                   value: '₱${debt.amount.toStringAsFixed(2)}',
+                  mono: true,
                 ),
                 const SizedBox(height: AppSpacing.space2),
                 _DetailRow(
@@ -86,6 +87,7 @@ class DebtDetailScreen extends ConsumerWidget {
                   valueColor: debt.remainingBalance > 0
                       ? lootrColors.warning
                       : lootrColors.success,
+                  mono: true,
                 ),
                 if (debt.dueDate != null) ...[
                   const SizedBox(height: AppSpacing.space2),
@@ -98,10 +100,24 @@ class DebtDetailScreen extends ConsumerWidget {
                 BudgetProgressBar(progress: progress.clamp(0.0, 1.0)),
                 Padding(
                   padding: const EdgeInsets.only(top: AppSpacing.space1),
-                  child: Text(
-                    '${(progress * 100).round()}% paid',
-                    style: AppTypography.caption.copyWith(
-                      color: lootrColors.textSecondary,
+                  child: Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: '${(progress * 100).round()}%',
+                          style: AppTypography.mono.copyWith(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w400,
+                            color: lootrColors.textSecondary,
+                          ),
+                        ),
+                        TextSpan(
+                          text: ' paid',
+                          style: AppTypography.caption.copyWith(
+                            color: lootrColors.textSecondary,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -242,11 +258,17 @@ class _PaymentRow extends StatelessWidget {
 }
 
 class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, required this.value, this.valueColor});
+  const _DetailRow({
+    required this.label,
+    required this.value,
+    this.valueColor,
+    this.mono = false,
+  });
 
   final String label;
   final String value;
   final Color? valueColor;
+  final bool mono;
 
   @override
   Widget build(BuildContext context) {
@@ -262,9 +284,8 @@ class _DetailRow extends StatelessWidget {
         ),
         Text(
           value,
-          style: AppTypography.bodyMedium.copyWith(
-            color: valueColor ?? colorScheme.onSurface,
-          ),
+          style: (mono ? AppTypography.mono : AppTypography.bodyMedium)
+              .copyWith(color: valueColor ?? colorScheme.onSurface),
         ),
       ],
     );

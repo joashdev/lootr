@@ -122,7 +122,7 @@ class AccountDetailScreen extends ConsumerWidget {
                       const SizedBox(height: AppSpacing.space4),
                       Text(
                         '${account.balance < 0 ? '-' : ''}₱${account.balance.abs().toStringAsFixed(2)}',
-                        style: AppTypography.display.copyWith(
+                        style: AppTypography.displayMono.copyWith(
                           color: balanceColor ?? colorScheme.onSurface,
                         ),
                       ),

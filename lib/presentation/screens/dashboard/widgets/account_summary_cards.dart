@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../../core/format/money_format.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/typography.dart';
@@ -79,11 +79,9 @@ class AccountSummaryCards extends StatelessWidget {
                       ),
                       const SizedBox(height: AppSpacing.space3),
                       Text(
-                        NumberFormat.currency(
-                          locale: 'en_PH',
-                          symbol: '₱',
-                          name: currencyCode,
-                        ).format(account.balance),
+                        MoneyFormat.display(account.balance, currencyCode),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: AppTypography.mono.copyWith(
                           fontSize: 17,
                           fontWeight: FontWeight.w600,

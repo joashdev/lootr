@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../../../../application/providers/dashboard_provider.dart';
+import '../../../../core/format/money_format.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/radius.dart';
 import '../../../../core/theme/spacing.dart';
@@ -19,10 +19,6 @@ class IncomeExpenseStrip extends StatelessWidget {
     final incomeShare = total == 0 ? 0.5 : data.monthlyIncome / total;
     final expenseShare = total == 0 ? 0.5 : data.monthlyExpense / total;
     final colorScheme = Theme.of(context).colorScheme;
-    final currencyFormatter = NumberFormat.currency(
-      locale: 'en_PH',
-      symbol: '₱',
-    );
 
     return StandardCard(
       child: Column(
@@ -60,8 +56,11 @@ class IncomeExpenseStrip extends StatelessWidget {
             TextSpan(
               children: [
                 TextSpan(
-                  text: currencyFormatter.format(data.monthlyIncome),
-                  style: AppTypography.bodyMedium.copyWith(
+                  text: MoneyFormat.display(
+                    data.monthlyIncome,
+                    data.currencyCode,
+                  ),
+                  style: AppTypography.mono.copyWith(
                     color: context.lootrColors.income,
                   ),
                 ),
@@ -78,8 +77,11 @@ class IncomeExpenseStrip extends StatelessWidget {
                   ),
                 ),
                 TextSpan(
-                  text: currencyFormatter.format(data.monthlyExpense),
-                  style: AppTypography.bodyMedium.copyWith(
+                  text: MoneyFormat.display(
+                    data.monthlyExpense,
+                    data.currencyCode,
+                  ),
+                  style: AppTypography.mono.copyWith(
                     color: context.lootrColors.expense,
                   ),
                 ),

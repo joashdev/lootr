@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/spacing.dart';
+import '../../../../core/theme/typography.dart';
 import '../../../../domain/entities/budget.dart';
 import '../../../../domain/entities/category.dart';
 import '../../../shared/category_visuals.dart';
@@ -71,81 +72,82 @@ class BudgetCard extends StatelessWidget {
                     : null,
               ),
               child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: _parseCategoryColor(
-                          category?.color,
-                        ).withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Center(
-                        child: buildCategoryVisual(
-                          iconName,
-                          color: _progressColor(context),
-                          size: 18,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: _parseCategoryColor(
+                            category?.color,
+                          ).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Center(
+                          child: buildCategoryVisual(
+                            iconName,
+                            color: _progressColor(context),
+                            size: 18,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: AppSpacing.space3),
-                    Expanded(
-                      child: Text(
-                        category?.name ?? 'Uncategorized',
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w600,
-                          height: 1.4,
-                        ),
-                      ),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          'P${budget.spent.toStringAsFixed(0)}',
-                          style: TextStyle(
+                      const SizedBox(width: AppSpacing.space3),
+                      Expanded(
+                        child: Text(
+                          category?.name ?? 'Uncategorized',
+                          style: const TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w600,
-                            color: _progressColor(context),
+                            height: 1.4,
                           ),
                         ),
-                        Text(
-                          'of P${budget.amount.toStringAsFixed(0)}',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: lootrColors.textTertiary,
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            'P${budget.spent.toStringAsFixed(0)}',
+                            style: AppTypography.mono.copyWith(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w600,
+                              color: _progressColor(context),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.space3),
-                BudgetProgressBar(
-                  progress: progress.clamp(0.0, 1.0),
-                  color: _progressColor(context),
-                ),
-                const SizedBox(height: AppSpacing.space1),
-                Text(
-                  _statusLabel(),
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: _progressColor(context),
-                    fontWeight: FontWeight.w500,
+                          Text(
+                            'of P${budget.amount.toStringAsFixed(0)}',
+                            style: AppTypography.mono.copyWith(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w400,
+                              color: lootrColors.textTertiary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: AppSpacing.space3),
+                  BudgetProgressBar(
+                    progress: progress.clamp(0.0, 1.0),
+                    color: _progressColor(context),
+                  ),
+                  const SizedBox(height: AppSpacing.space1),
+                  Text(
+                    _statusLabel(),
+                    style: AppTypography.mono.copyWith(
+                      fontSize: 13,
+                      color: _progressColor(context),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
-    ),
-  );
+    );
   }
 
   Color _parseCategoryColor(String? hexColor) => parseCategoryColor(hexColor);

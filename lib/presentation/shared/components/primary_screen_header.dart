@@ -9,18 +9,26 @@ class PrimaryScreenHeader extends StatelessWidget
   const PrimaryScreenHeader({
     super.key,
     required this.title,
+    this.eyebrow,
     this.subtitle,
     this.actions = const [],
   });
 
   static const double height = 80;
+  static const double heightWithEyebrow = 98;
 
+  /// Small label rendered above [title]. Lets a screen show a secondary line
+  /// (e.g. a greeting) without cramming it into [title], which is single-line
+  /// and would otherwise truncate a long [title].
+  final String? eyebrow;
   final String title;
   final String? subtitle;
   final List<Widget> actions;
 
+  double get _height => eyebrow != null ? heightWithEyebrow : height;
+
   @override
-  Size get preferredSize => const Size.fromHeight(height);
+  Size get preferredSize => Size.fromHeight(_height);
 
   @override
   Widget build(BuildContext context) {
@@ -35,12 +43,23 @@ class PrimaryScreenHeader extends StatelessWidget
       scrolledUnderElevation: 0,
       surfaceTintColor: Colors.transparent,
       titleSpacing: AppSpacing.pagePaddingMobile,
-      toolbarHeight: height,
+      toolbarHeight: _height,
       shape: Border(bottom: BorderSide(color: colorScheme.outlineVariant)),
       title: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (eyebrow != null) ...[
+            Text(
+              eyebrow!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.bodyMedium.copyWith(
+                color: lootrColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 1),
+          ],
           Text(
             title,
             maxLines: 1,

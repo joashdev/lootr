@@ -50,7 +50,7 @@ class MonthNavigator extends ConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
-          icon: const Icon(LucideIcons.chevronLeft, size: 20),
+          icon: const Icon(LucideIcons.chevronLeft, size: 16),
           onPressed: () {
             if (month == 1) {
               ref.read(budgetMonthProvider.notifier).goTo(12);
@@ -65,7 +65,7 @@ class MonthNavigator extends ConsumerWidget {
         GestureDetector(
           onTap: () => _showMonthPicker(context, ref),
           child: SizedBox(
-            width: compact ? 108 : 140,
+            width: compact ? 96 : 120,
             child: Text(
               '${(compact ? _compactMonthNames : _monthNames)[month - 1]} $year',
               textAlign: TextAlign.center,
@@ -78,7 +78,7 @@ class MonthNavigator extends ConsumerWidget {
           ),
         ),
         IconButton(
-          icon: const Icon(LucideIcons.chevronRight, size: 20),
+          icon: const Icon(LucideIcons.chevronRight, size: 16),
           onPressed: () {
             if (month == 12) {
               ref.read(budgetMonthProvider.notifier).goTo(1);
@@ -162,17 +162,14 @@ class MonthNavigator extends ConsumerWidget {
                   childAspectRatio: 2.4,
                   children: List.generate(12, (index) {
                     final m = index + 1;
-                    final isSelected =
-                        m == month && selectedYear == year;
-                    final isDisabled = selectedYear == now.year + 5 &&
-                        m > now.month;
+                    final isSelected = m == month && selectedYear == year;
+                    final isDisabled =
+                        selectedYear == now.year + 5 && m > now.month;
                     return InkWell(
                       onTap: isDisabled
                           ? null
                           : () {
-                              ref
-                                  .read(budgetMonthProvider.notifier)
-                                  .goTo(m);
+                              ref.read(budgetMonthProvider.notifier).goTo(m);
                               ref
                                   .read(budgetYearProvider.notifier)
                                   .goTo(selectedYear);
@@ -197,8 +194,8 @@ class MonthNavigator extends ConsumerWidget {
                               color: isDisabled
                                   ? lootrColors.textTertiary
                                   : isSelected
-                                      ? colorScheme.primary
-                                      : colorScheme.onSurface,
+                                  ? colorScheme.primary
+                                  : colorScheme.onSurface,
                             ),
                           ),
                         ),
