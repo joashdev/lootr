@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lootr — Live User Flow Storyboard</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --surface: #ffffff;
+    --surface-2: #f0f1f4;
+    --border: #e3e5ea;
+    --text: #16181d;
+    --text-2: #5c6270;
+    --primary: #5c64cc;
+    --seeded: #059669;
+    --noseed: #d97757;
+    --shadow: 0 1px 3px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.06);
+    --radius: 16px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e0f12;
+      --surface: #17191e;
+      --surface-2: #1f222a;
+      --border: #2a2d36;
+      --text: #f2f3f5;
+      --text-2: #9aa0ad;
+      --primary: #8b91e6;
+      --seeded: #34d399;
+      --noseed: #f0a07e;
+      --shadow: 0 1px 3px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.45);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, system-ui, sans-serif;
+    line-height: 1.5;
+    padding: 32px clamp(16px, 4vw, 48px) 80px;
+  }
+  header { max-width: 1100px; margin: 0 auto 8px; }
+  h1 { font-size: 1.9rem; margin: 0 0 6px; letter-spacing: -.02em; }
+  .sub { color: var(--text-2); margin: 0 0 4px; max-width: 70ch; }
+  .meta {
+    display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 8px;
+    font-size: .8rem;
+  }
+  .chip {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 999px; padding: 4px 12px; color: var(--text-2);
+  }
+  .chip b { color: var(--text); font-weight: 600; }
+  .note {
+    max-width: 1100px; margin: 14px auto 0; background: var(--surface);
+    border: 1px solid var(--border); border-left: 3px solid var(--primary);
+    border-radius: 0 var(--radius) var(--radius) 0; padding: 12px 16px;
+    font-size: .85rem; color: var(--text-2); line-height: 1.55;
+  }
+  .note b { color: var(--text); font-weight: 600; }
+  code { background: var(--surface-2); border-radius: 5px; padding: 1px 5px; font-size: .85em; }
+  main { max-width: 1100px; margin: 0 auto; }
+  .flow { margin-top: 40px; }
+  .flow-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 4px; }
+  .flow-head h2 { font-size: 1.25rem; margin: 0; letter-spacing: -.01em; }
+  .flow-head p { margin: 0; color: var(--text-2); font-size: .9rem; }
+  .row { margin-top: 16px; }
+  .row-label {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: .78rem; font-weight: 600; letter-spacing: .04em;
+    text-transform: uppercase; margin-bottom: 10px;
+  }
+  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .dot.seeded { background: var(--seeded); }
+  .dot.noseed { background: var(--noseed); }
+  .filmstrip {
+    display: flex; gap: 16px; overflow-x: auto; padding: 4px 2px 14px;
+    scroll-snap-type: x proximity;
+  }
+  .frame { flex: 0 0 auto; width: 244px; scroll-snap-align: start; }
+  .frame figure { margin: 0; }
+  .shot {
+    width: 244px; height: auto; display: block;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    transition: transform .12s ease, box-shadow .12s ease;
+  }
+  .frame a { display: block; }
+  .frame a:hover .shot { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(16,24,40,.12), 0 16px 40px rgba(16,24,40,.16); }
+  figcaption {
+    margin-top: 8px; font-size: .8rem; color: var(--text);
+  }
+  figcaption .step { color: var(--text-2); font-variant-numeric: tabular-nums; margin-right: 4px; }
+  .gaps {
+    margin-top: 48px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px 24px; box-shadow: var(--shadow);
+  }
+  .gaps h2 { font-size: 1.1rem; margin: 0 0 10px; }
+  .gaps ul { margin: 0; padding-left: 20px; color: var(--text-2); }
+  .gaps li { margin: 6px 0; }
+  .gaps b { color: var(--text); }
+  footer { max-width: 1100px; margin: 40px auto 0; color: var(--text-2); font-size: .8rem; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Lootr — Live User Flow Storyboard</h1>
+  <p class="sub">Real screenshots captured by driving the app on an iOS simulator through onboarding and the core tabs, in two states: <b>seeded</b> (demo data toggle ON) and <b>no-seed</b> (toggle OFF). Each row is a horizontal filmstrip — scroll right to see the full flow. Click any frame for the full-resolution capture.</p>
+  <div class="meta">
+    <span class="chip"><b>Device:</b> iPhone 15 Pro · iOS 17.2 simulator</span>
+    <span class="chip"><b>Flutter:</b> 3.44.2 stable</span>
+    <span class="chip"><b>Capture:</b> integration_test + flutter drive</span>
+    <span class="chip"><b>Pass:</b> design polish #1</span>
+  </div>
+  <div class="note">
+    <b>This capture reflects design polish pass #1.</b> Brand recoloured to a muted denim blue; expenses now read as neutral ink (no longer coral) with red reserved for genuine alerts; the dashboard header shows the greeting as an eyebrow above the name so long names never truncate; and summary figures drop centavos, switching to compact <code>K</code>/<code>M</code>/<code>B</code> above ₱1,000,000.
+  </div>
+</header>
+
+<main>
+  <!-- ONBOARDING -->
+  <section class="flow">
+    <div class="flow-head">
+      <h2>1 · Onboarding</h2>
+      <p>4-step intro → profile setup. Identical for both states up to the demo-data toggle.</p>
+    </div>
+
+    <div class="row">
+      <div class="row-label"><span class="dot seeded"></span> Seeded — demo toggle ON</div>
+      <div class="filmstrip">
+        <div class="frame"><figure><a href="storyboard-shots/seeded/01-onboarding-welcome.png?v=5" target="_blank" rel="noopener"><img class="shot" src="storyboard-shots/seeded/01-onboarding-welcome.png?v=5" alt="Welcome"></a><figcaption><span class="step">01</span>Welcome to Lootr</figcaption></figure></div>
+        <div class="frame"><figure><a href="storyboard-shots/seeded/02-onboarding-track.png?v=5" target="_blank" rel="noopener"><img class="shot" src="storyboard-shots/seeded/02-onboarding-track.png?v=5" alt="Track"></a><figcaption><span class="step">02</span>Track every peso</figcaption></figure></div>
+        <div class="frame"><figure><a href="storyboard-shots/seeded/03-onboarding-plan.png?v=5" target="_blank" rel="noopener"><img class="shot" src="storyboard-shots/seeded/03-onboarding-plan.png?v=5" alt="Plan"></a><figcaption><span class="step">03</span>Plan your spending</figcaption></figure></div>
+        <div class="frame"><figure><a href="storyboard-shots/seeded/04-onboarding-setup.png?v=5" target="_blank" rel="noopener"><img class="shot" src="storyboard-shots/seeded/04-onboarding-setup.png?v=5" alt="Setup"></a><figcaption><span class="step">04</span>Profile setup — toggle ON</figcaption></figure></div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="row-label"><span class="dot noseed"></span> No-seed — demo toggle OFF</div>
+      <div class="filmstrip">
+        <div class="frame"><figure><a href="storyboard-shots/no-seed/01-onboarding-welcome.png?v=5" target="_blank" rel="noopener"><img class="shot" src="storyboard-shots/no-seed/01-onboarding-welcome.png?v=5" alt="Welcome"></a><figcaption><span class="step">01</span>Welcome to Lootr</figcaption></figure></div>
+        <div class="frame"><figure><a href="storyboard-shots/no-seed/02-onboarding-track.png?v=5" target="_blank" rel="noopener"><img class="shot" src="storyboard-shots/no-seed/02-onboarding-track.png?v=5" alt="Track"></a><figcaption><span class="step">02</span>Track every peso</figcaption></figure></div>
+        <div class="frame"><figure><a href="storyboard-shots/no-seed/03-onboarding-plan.png?v=5" target="_blank" rel="noopener"><img class="shot" src="storyboard-shots/no-seed/03-onboarding-plan.png?v=5" alt="Plan"></a><figcaption><span class="step">03</span>Plan your spending</figcaption></figure></div>
+        <div class="frame"><figure><a href="storyboard-shots/no-seed/04-onboarding-setup.png?v=5" target="_blank" rel="noopener"><img class="shot" src="storyboard-shots/no-seed/04-onboarding-setup.png?v=5" alt="Setup"></a><figcaption><span class="step">04</span>Profile setup — toggle OFF</figcaption></figure></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CORE APP -->
+  <section class="flow">
+    <div class="flow-head">
+      <h2>2 · Core app — populated vs. empty</h2>
+      <p>Same six screens in both states. The contrast between real data and empty-state CTAs is the point.</p>
+    </div>
+
+    <div class="row">
+      <div class="row-label"><span class="dot seeded"></span> Seeded — populated</div>
+      <div class="filmstrip">
+        <div class="frame"><figure><a href="storyboard-shots/seeded/05-dashboard.png?v=5" target="_blank" rel="noopener"><img class="shot" src="storyboard-shots/seeded/05-dashboard.png?v=5" alt="Dashboard"></a><figcaption><span class="step">05</span>Dashboard — ₱14,800 net worth</figcaption></figure></div>
+        <div class="frame"><figure><a href="storyboard-shots/seeded/06-transactions.png?v=5" target="_blank" rel="noopener"><img class="shot" src="storyboard-shots/seeded/06-transactions.png?v=5" alt="Transactions"></a><figcaption><span class="step">06</span>Transactions list</figcaption></figure></div>
+        <div class="frame"><figure><a href="storyboard-shots/seeded/07-budgets.png?v=5" target="_blank" rel="noopener"><img class="shot" src="storyboard-shots/seeded/07-budgets.png?v=5" alt="Budgets"></a><figcaption><span class="step">07</span>Budgets</figcaption></figure></div>
+        <div class="frame"><figure><a href="storyboard-shots/seeded/08-more.png?v=5" target="_blank" rel="noopener"><img class="shot" src="storyboard-shots/seeded/08-more.png?v=5" alt="More"></a><figcaption><span class="step">08</span>More menu</figcaption></figure></div>
+        <div class="frame"><figure><a href="storyboard-shots/seeded/09-accounts.png?v=5" target="_blank" rel="noopener"><img class="shot" src="storyboard-shots/seeded/09-accounts.png?v=5" alt="Accounts"></a><figcaption><span class="step">09</span>Accounts</figcaption></figure></div>
+        <div class="frame"><figure><a href="storyboard-shots/seeded/10-goals.png?v=5" target="_blank" rel="noopener"><img class="shot" src="storyboard-shots/seeded/10-goals.png?v=5" alt="Goals"></a><figcaption><span class="step">10</span>Goals</figcaption></figure></div>
+        <div class="frame"><figure><a href="storyboard-shots/seeded/11-debts.png?v=5" target="_blank" rel="noopener"><img class="shot" src="storyboard-shots/seeded/11-debts.png?v=5" alt="Debts"></a><figcaption><span class="step">11</span>Debts &amp; Lending</figcaption></figure></div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="row-label"><span class="dot noseed"></span> No-seed — empty states</div>
+      <div class="filmstrip">
+        <div class="frame"><figure><a href="storyboard-shots/no-seed/05-dashboard.png?v=5" target="_blank" rel="noopener"><img class="shot" src="storyboard-shots/no-seed/05-dashboard.png?v=5" alt="Dashboard"></a><figcaption><span class="step">05</span>Dashboard — add first account</figcaption></figure></div>
+        <div class="frame"><figure><a href="storyboard-shots/no-seed/06-transactions.png?v=5" target="_blank" rel="noopener"><img class="shot" src="storyboard-shots/no-seed/06-transactions.png?v=5" alt="Transactions"></a><figcaption><span class="step">06</span>No transactions yet</figcaption></figure></div>
+        <div class="frame"><figure><a href="storyboard-shots/no-seed/07-budgets.png?v=5" target="_blank" rel="noopener"><img class="shot" src="storyboard-shots/no-seed/07-budgets.png?v=5" alt="Budgets"></a><figcaption><span class="step">07</span>Budgets — empty</figcaption></figure></div>
+        <div class="frame"><figure><a href="storyboard-shots/no-seed/08-more.png?v=5" target="_blank" rel="noopener"><img class="shot" src="storyboard-shots/no-seed/08-more.png?v=5" alt="More"></a><figcaption><span class="step">08</span>More menu</figcaption></figure></div>
+        <div class="frame"><figure><a href="storyboard-shots/no-seed/09-accounts.png?v=5" target="_blank" rel="noopener"><img class="shot" src="storyboard-shots/no-seed/09-accounts.png?v=5" alt="Accounts"></a><figcaption><span class="step">09</span>No accounts yet</figcaption></figure></div>
+        <div class="frame"><figure><a href="storyboard-shots/no-seed/10-goals.png?v=5" target="_blank" rel="noopener"><img class="shot" src="storyboard-shots/no-seed/10-goals.png?v=5" alt="Goals"></a><figcaption><span class="step">10</span>No goals yet</figcaption></figure></div>
+        <div class="frame"><figure><a href="storyboard-shots/no-seed/11-debts.png?v=5" target="_blank" rel="noopener"><img class="shot" src="storyboard-shots/no-seed/11-debts.png?v=5" alt="Debts"></a><figcaption><span class="step">11</span>No debts yet</figcaption></figure></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- GAPS -->
+  <section class="gaps">
+    <h2>Gaps &amp; notes</h2>
+    <ul>
+      <li><b>Camera / OCR scan flow</b> — not captured. No camera on the simulator; the <code>/scan</code> route opens the device camera so it cannot be driven headlessly. Documented gap only.</li>
+      <li><b>AI quick-add parse</b> — not captured. The quick-add sheet's natural-language parse needs AI settings / network; skipped to avoid blocking the run.</li>
+      <li><b>Add-transaction sheet</b> — not captured this pass. It is reachable via the floating "+" island (Quick Actions sheet), but was left out to keep the run deterministic; the test is structured so a frame can be added later.</li>
+      <li><b>Recurring / Reports / Insights / Categories / Payees / Households / Settings</b> — exist under the More tab but are out of the requested core scope.</li>
+    </ul>
+  </section>
+
+  <section class="gaps">
+    <h2>Real-app observations (vs. a naive wireframe guess)</h2>
+    <ul>
+      <li>Onboarding is <b>4 steps</b>, not a single form: three intro slides (Welcome / Track every peso / Plan your spending) then a profile-setup page. A "Skip" link jumps straight to setup with demo data forced OFF.</li>
+      <li>The setup page has a <b>display name (required)</b>, a <b>currency dropdown defaulting to PHP</b>, and the <b>Load demo data</b> toggle (default ON). The finish button reads <b>"Get Started"</b>, intermediate ones read "Next".</li>
+      <li>Bottom navigation is a <b>floating glass pill</b> with four tabs (Home / Transactions / Budgets / More) plus a separate "+" island — not a standard Material bottom bar.</li>
+      <li>Accounts, Goals, and Debts live <b>under the More tab</b> (pushed routes), not as top-level tabs.</li>
+      <li>Empty-state copy is specific and CTA-driven: Transactions says "No transactions yet / Add an account first…" with an <b>Add Account</b> button (it correctly detects there are no accounts), Accounts "No accounts yet / Add Account", Goals "No goals yet / Add Goal".</li>
+      <li>Seeded dashboard surfaces a <b>"Safe to spend"</b> headline (₱1,251 from ₱8,000 income), a <b>Net worth</b> line chart (₱14,800, +20.5%), and an Accounts carousel (Cash ₱2,500, Bank ₱15,000).</li>
+      <li>The seeded Debts entry renders as "Friend · You borrowed · ACTIVE · ₱3000 of ₱5000".</li>
+    </ul>
+  </section>
+
+  <section class="gaps">
+    <h2>Design polish pass #1 — what changed</h2>
+    <ul>
+      <li><b>Palette.</b> Brand moved from periwinkle <code>#5C64CC</code> to muted denim <code>#3E6CB3</code>. Expenses are now <b>neutral ink</b> instead of coral, income stays green, and <b>red is reserved for true alerts</b> (over-budget, errors) — visible on the Budgets screen where only the over-budget category turns red.</li>
+      <li><b>Header.</b> The greeting is now an <b>eyebrow above the name</b> ("Good afternoon" / "Alex" / date) — a long display name no longer gets truncated by the time-of-day prefix.</li>
+      <li><b>Numbers.</b> Summary figures (safe-to-spend, net worth, account cards, income/expense strip) <b>drop centavos</b> and switch to compact <code>₱1.2M</code> / <code>₱24.0M</code> / <code>₱1.2B</code> above ₱1,000,000; transaction rows and detail screens keep exact two-decimal values. Currency symbol now follows the account's currency code, not a hard-coded ₱.</li>
+      <li><b>Note:</b> demo balances top out around ₱15,000, so the compact <code>M</code>/<code>B</code> form is logic-only here — it does not visibly appear in these captures.</li>
+    </ul>
+  </section>
+
+  <footer>
+    Generated from a live <code>flutter drive</code> run on iPhone 15 Pro (iOS 17.2 sim), reflecting design polish pass #1. Screenshots in <code>docs/storyboard-shots/{seeded,no-seed}/</code> (re-run the capture test to refresh them; bump the <code>?v=</code> image suffix to bust the browser cache). Reusable test: <code>integration_test/storyboard_capture_test.dart</code> + <code>test_driver/integration_test.dart</code>.
+  </footer>
+</main>
+</body>
+</html>
