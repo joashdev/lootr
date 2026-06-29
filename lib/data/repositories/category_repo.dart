@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart' hide isNull;
 
 import '../database/app_database.dart';
+import '../seed/category_seeds.dart';
 
 class CategoryRepo {
   final AppDatabase _db;
@@ -37,5 +38,16 @@ class CategoryRepo {
       syncStatus: const Value('pending_sync'),
       updatedAt: Value(DateTime.now()),
     ));
+  }
+
+  Future<void> seedCategories() async {
+    final existing = await _db.select(_db.categories).get();
+    if (existing.isNotEmpty) return;
+    await _db.batch((batch) {
+      batch.insertAllOnConflictUpdate(
+        _db.categories,
+        CategorySeeds.toCompanions(),
+      );
+    });
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'application/providers/category_seed_provider.dart';
 import 'application/providers/theme_provider.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/theme.dart';
@@ -10,6 +11,7 @@ class App extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(categorySeedProvider);
     final router = ref.watch(appRouterProvider);
     final themeMode = ref.watch(themeModeProvider);
 

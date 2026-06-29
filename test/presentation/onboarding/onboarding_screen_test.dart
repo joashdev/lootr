@@ -9,6 +9,7 @@ import 'package:lootr/application/providers/onboarding_provider.dart';
 import 'package:lootr/core/theme/theme.dart';
 import 'package:lootr/data/database/app_database.dart';
 import 'package:lootr/data/repositories/user_repo.dart';
+import 'package:lootr/data/seed/category_seeds.dart';
 import 'package:lootr/presentation/screens/onboarding/onboarding_screen.dart';
 import 'package:lootr/presentation/screens/onboarding/widgets/step_indicator.dart';
 
@@ -18,6 +19,9 @@ void main() {
 
   setUp(() async {
     db = AppDatabase.inMemory();
+    await db.batch((batch) {
+      batch.insertAllOnConflictUpdate(db.categories, CategorySeeds.toCompanions());
+    });
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
   });
