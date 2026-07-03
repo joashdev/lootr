@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
@@ -10,6 +11,10 @@ import 'core/theme/typography.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Offline-first: Geist / Geist Mono ship as bundled assets, so never let
+  // google_fonts reach out over HTTP to fetch them at runtime.
+  GoogleFonts.config.allowRuntimeFetching = false;
 
   FlutterError.onError = (details) {
     FlutterError.presentError(details);

@@ -5,20 +5,11 @@ import 'onboarding_provider.dart';
 
 class ThemeModeNotifier extends Notifier<ThemeMode> {
   static const _prefsKey = 'theme_mode';
-  bool _loaded = false;
 
   @override
   ThemeMode build() {
-    _loadPersistedMode();
-    return ThemeMode.system;
-  }
-
-  Future<void> _loadPersistedMode() async {
-    if (_loaded) return;
-    _loaded = true;
-    final prefs = ref.read(sharedPreferencesProvider);
-    final raw = prefs.getString(_prefsKey);
-    state = switch (raw) {
+    final raw = ref.read(sharedPreferencesProvider).getString(_prefsKey);
+    return switch (raw) {
       'light' => ThemeMode.light,
       'dark' => ThemeMode.dark,
       _ => ThemeMode.system,

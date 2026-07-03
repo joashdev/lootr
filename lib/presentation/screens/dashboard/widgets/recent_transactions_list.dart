@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../application/providers/dashboard_provider.dart';
 import '../../../../core/constants/enums.dart';
+import '../../../../core/format/money_format.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/typography.dart';
@@ -136,7 +137,7 @@ class _TransactionRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '$prefix${NumberFormat.currency(symbol: '₱', name: currencyCode).format(txn.amount)}',
+                    '$prefix${MoneyFormat.exact(txn.amount, currencyCode)}',
                     style: AppTypography.mono.copyWith(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,

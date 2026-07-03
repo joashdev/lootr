@@ -8,6 +8,7 @@ import '../../../application/providers/categories_provider.dart';
 import '../../../application/providers/payee_detail_provider.dart';
 import '../../../application/providers/repo_providers.dart';
 import '../../../core/theme/colors.dart';
+import '../../../data/repositories/payee_repo.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
 import '../../../domain/entities/account.dart';
@@ -62,7 +63,13 @@ class PayeeDetailScreen extends ConsumerWidget {
       return;
     }
 
-    await ref.read(payeeRepoProvider).updateName(payee.id, nextName);
+    try {
+      await ref.read(payeeRepoProvider).updateName(payee.id, nextName);
+    } on PayeeNameConflictException catch (e) {
+      if (!context.mounted) return;
+      AppSnackBar.show(context, e.toString());
+      return;
+    }
     if (!context.mounted) return;
     AppSnackBar.show(context, 'Payee updated.');
   }

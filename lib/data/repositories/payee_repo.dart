@@ -95,14 +95,34 @@ class PayeeRepo {
   Future<void> updateName(String id, String name) async {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return;
+    final normalized = trimmed.toLowerCase();
 
-    await (_db.update(_db.payees)..where((p) => p.id.equals(id))).write(
-      PayeesCompanion(
-        normalizedName: Value(trimmed.toLowerCase()),
-        displayName: Value(trimmed),
-        syncStatus: const Value('pending_sync'),
-        updatedAt: Value(DateTime.now()),
-      ),
-    );
+    await _db.transaction(() async {
+      // `normalized_name` is covered by a unique index, so a rename onto an
+      // existing payee's name would otherwise throw a raw SQLite exception.
+      // Surface it as a typed conflict the UI can turn into validation feedback.
+      final existing = await findByNormalizedName(normalized);
+      if (existing != null && existing.id != id) {
+        throw const PayeeNameConflictException();
+      }
+
+      await (_db.update(_db.payees)..where((p) => p.id.equals(id))).write(
+        PayeesCompanion(
+          normalizedName: Value(normalized),
+          displayName: Value(trimmed),
+          syncStatus: const Value('pending_sync'),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+    });
   }
+}
+
+/// Thrown by [PayeeRepo.updateName] when the target name already belongs to
+/// another payee (the unique `idx_payees_normalized` index would reject it).
+class PayeeNameConflictException implements Exception {
+  const PayeeNameConflictException();
+
+  @override
+  String toString() => 'A payee with that name already exists.';
 }
