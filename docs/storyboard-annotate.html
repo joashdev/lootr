@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Lootr — Subpage Annotation Canvas</title>
+<title>Lootr — Storyboard Annotation Canvas</title>
 <style>
   :root {
     --bg: #f6f7f9; --surface: #fff; --surface-2: #f0f1f4; --border: #e3e5ea;
@@ -52,6 +52,31 @@
     font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center;
     cursor:pointer; box-shadow:0 1px 4px rgba(0,0,0,.4); z-index:2; }
   .pin.sel { background:var(--primary); color:#fff; outline:2px solid var(--primary); outline-offset:2px; }
+  /* findings */
+  .findings { margin-top:6px; display:flex; flex-direction:column; gap:4px; }
+  .finding { font-size:.74rem; line-height:1.45; padding:6px 8px 6px 9px; border-radius:0 7px 7px 0;
+    background:var(--surface); border:1px solid var(--border); }
+  .finding.sev-high   { border-left:3px solid var(--danger); }
+  .finding.sev-medium { border-left:3px solid var(--accent); }
+  .finding.sev-low    { border-left:3px solid var(--text-2); }
+  .finding .sev { font-weight:700; font-size:.66rem; text-transform:uppercase; letter-spacing:.05em; margin-right:5px; }
+  .finding.sev-high .sev { color:var(--danger); }
+  .finding.sev-medium .sev { color:var(--accent); }
+  .finding.sev-low .sev { color:var(--text-2); }
+  .fsummary { margin:0 0 8px; background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius); box-shadow:var(--shadow); padding:16px 18px 12px; }
+  .fsummary h2 { font-size:1.05rem; margin:0 0 2px; }
+  .fsummary .desc { font-size:.82rem; color:var(--text-2); margin:0 0 10px; }
+  .fsummary ol { margin:0; padding-left:20px; }
+  .fsummary li { font-size:.8rem; margin-bottom:6px; }
+  .fsummary a { color:var(--primary); text-decoration:none; font-weight:600; }
+  .fsummary a:hover { text-decoration:underline; }
+  .fsummary .sev { font-weight:700; font-size:.66rem; text-transform:uppercase; letter-spacing:.05em; margin-right:5px; }
+  .fsummary li.sev-high .sev { color:var(--danger); }
+  .fsummary li.sev-medium .sev { color:var(--accent); }
+  .fsummary li.sev-low .sev { color:var(--text-2); }
+  .flash { animation:flash 1.6s ease-out 1; }
+  @keyframes flash { 0%,60% { outline:3px solid var(--accent); outline-offset:3px; } 100% { outline:0 solid transparent; } }
   /* side panel */
   .panel { width:340px; flex:0 0 340px; align-self:stretch; background:var(--surface);
     border-left:1px solid var(--border); padding:20px 18px; position:sticky; top:0; height:100vh; overflow-y:auto; }
@@ -78,8 +103,8 @@
 <body>
 <div class="layout">
   <div class="main">
-    <h1>Lootr — subpage annotation canvas</h1>
-    <p class="sub">Real captures of the add/create sheets, detail &amp; edit screens, settings, and secondary screens (seeded data). Click anywhere on a screen to drop a numbered pin and leave a comment.</p>
+    <h1>Lootr — storyboard annotation canvas</h1>
+    <p class="sub">Full user journey (onboarding → every page and action state), plus the earlier subpage captures. Click anywhere on a screen to drop a numbered pin and leave a comment. UX findings from the audit are attached under the relevant screens and summarised below.</p>
     <div class="toolbar">
       <button class="tool" id="copyBtn"><b>Copy all annotations</b></button>
       <button class="tool" id="jsonBtn">Download .json</button>
@@ -90,6 +115,7 @@
       <span class="count" id="count">0 annotations</span>
     </div>
     <div class="hint">Click a screen to add a pin · click a pin to jump to its note · notes auto-save in this browser · use <b>Copy all annotations</b> to paste your feedback back into the chat.</div>
+    <div id="findingsSummary"></div>
     <div id="sections"></div>
   </div>
   <aside class="panel">
@@ -101,18 +127,148 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const V = '?v=5';
+const V = '?v=7';
+const JB = 'storyboard-shots/journey/';
+const SB = 'storyboard-shots/subpages/';
 const GROUPS = [
-  { key:'add', title:'Add / create sheets', desc:'Reached via the + island and the + on each list. (Scan receipt entry shown in Quick Actions; the camera screen itself can’t run on a simulator.)', shots:[
+  // ---------------------------------------------------------------- journey
+  { key:'j-onboarding', title:'Journey · Onboarding', base:JB,
+    desc:'First launch: all four steps, the setup form before and after input, and the first dashboard.', shots:[
+    ['01-onboarding-welcome','Welcome'],
+    ['02-onboarding-track','Step 2 — Track'],
+    ['03-onboarding-plan','Step 3 — Plan'],
+    ['04-onboarding-setup-empty','Setup — empty'],
+    ['05-onboarding-setup-filled','Setup — name filled, demo ON'],
+    ['06-dashboard-first-run','First dashboard after Get Started'],
+  ]},
+  { key:'j-dashboard', title:'Journey · Dashboard', base:JB,
+    desc:'Initial state, two scroll positions, and the sync-status sheet from the header.', shots:[
+    ['07-dashboard-top','Dashboard — top'],
+    ['08-dashboard-scrolled-mid','Dashboard — scrolled (mid)'],
+    ['09-dashboard-scrolled-bottom','Dashboard — scrolled (bottom)'],
+    ['10-dashboard-sync-sheet','Sync status sheet'],
+  ]},
+  { key:'j-add', title:'Journey · Quick Actions + Add Transaction', base:JB,
+    desc:'The + island end-to-end: quick input & NL parse preview, then the full manual form with every picker opened, each direction tab, and the post-save result. (The Scan/OCR camera cannot run on a simulator.)', shots:[
+    ['11-quick-actions-sheet','Quick Actions sheet (+)'],
+    ['12-quick-actions-typed','Quick input typed'],
+    ['13-quick-add-parsed-preview','NL parse preview (Quick mode)'],
+    ['14-add-transaction-empty','Manual form — empty (Expense)'],
+    ['15-add-transaction-income-tab','Income tab'],
+    ['16-add-transaction-transfer-tab','Transfer tab'],
+    ['17-add-transaction-amount-typed','Amount typed'],
+    ['18-add-transaction-account-picker','Account dropdown open'],
+    ['19-add-transaction-category-picker','Category autocomplete open'],
+    ['20-add-transaction-payee-picker','Payee autocomplete open'],
+    ['21-add-transaction-date-picker','Date picker open'],
+    ['22-add-transaction-mode-recurring','Recurring mode selected'],
+    ['23-add-transaction-filled','Form fully filled'],
+    ['24-add-transaction-saved-snackbar','Saved — snackbar + UNDO'],
+    ['25-transactions-after-add','Transactions list after save'],
+  ]},
+  { key:'j-transactions', title:'Journey · Transactions', base:JB,
+    desc:'List, search, filter sheet, swipe-to-delete confirm (cancelled), detail, edit (amount changed & saved), delete confirm (cancelled).', shots:[
+    ['26-transactions-list','List'],
+    ['27-transactions-search','Search active ("jolli")'],
+    ['28-transactions-filter-sheet','Filter sheet'],
+    ['29-transactions-swipe-delete-confirm','Swipe-left delete confirm'],
+    ['30-transaction-detail','Detail'],
+    ['31-transaction-edit','Edit (full sheet)'],
+    ['32-transaction-after-edit-save','After edit save'],
+    ['33-transaction-delete-confirm','Delete confirm (cancelled)'],
+  ]},
+  { key:'j-budgets', title:'Journey · Budgets', base:JB,
+    desc:'List, previous month (read-only), create empty → filled (incl. the new appearance picker) → saved, detail (now loads), edit sheet, delete confirm.', shots:[
+    ['34-budgets-list','List (July 2026)'],
+    ['35-budgets-previous-month','Previous month (read-only)'],
+    ['36-budget-create-empty','Create — empty'],
+    ['37-budget-create-filled','Create — filled'],
+    ['91-budget-appearance-picker','NEW · Appearance picker (color row + icon grid + reset)'],
+    ['38-budgets-after-create','After create (Bills & Utilities added)'],
+    ['39-budget-detail','Detail — loaded (spinner bug fixed)'],
+    ['40-budget-edit','NEW · Edit sheet'],
+    ['41-budget-delete-confirm','NEW · Delete confirm (cancelled)'],
+  ]},
+  { key:'j-accounts', title:'Journey · Accounts', base:JB,
+    desc:'List, create empty → filled → saved ("Maya Wallet"), detail, edit sheet.', shots:[
+    ['42-accounts-list','List'],
+    ['43-account-create-empty','Create — empty'],
+    ['44-account-create-filled','Create — filled'],
+    ['45-accounts-after-create','After create'],
+    ['46-account-detail','Detail (GCash)'],
+    ['47-account-edit','Edit sheet'],
+  ]},
+  { key:'j-goals-debts', title:'Journey · Goals & Debts', base:JB,
+    desc:'Goal create → detail → contribution → post-contribution; debt create (via empty-state CTA — demo data ships no debts) → detail → Partial Pay & Settle sheets (dismissed).', shots:[
+    ['48-goals-list','Goals list'],
+    ['49-goal-create-empty','Goal create — empty'],
+    ['50-goal-create-filled','Goal create — filled'],
+    ['51-goals-after-create','Goals after create'],
+    ['52-goal-detail','Goal detail'],
+    ['53-goal-add-contribution','Add Contribution sheet'],
+    ['54-goal-after-contribution','After contribution'],
+    ['55-debts-list','Debts list (empty with demo data!)'],
+    ['56-debt-create-empty','Debt create — empty'],
+    ['57-debt-create-filled','Debt create — filled'],
+    ['58-debts-after-create','Debts after create'],
+    ['59-debt-detail','Debt detail'],
+    ['60-debt-partial-pay','Partial Pay sheet'],
+    ['61-debt-settle-sheet','Settle sheet'],
+  ]},
+  { key:'j-manage', title:'Journey · Recurring, Categories, Payees', base:JB,
+    desc:'Recurring create (via empty-state CTA — no demo recurring) → detail → edit → delete confirm; categories + edit sheet; payees + detail.', shots:[
+    ['62-recurring-list','Recurring list (empty with demo data!)'],
+    ['63-recurring-create-empty','Recurring create — empty'],
+    ['64-recurring-create-filled','Recurring create — filled'],
+    ['65-recurring-after-create','Recurring after create'],
+    ['66-recurring-detail','Recurring detail'],
+    ['67-recurring-edit','Recurring edit sheet'],
+    ['68-recurring-delete-confirm','Delete confirm (cancelled)'],
+    ['69-categories-list','Categories'],
+    ['70-category-edit','Category edit sheet'],
+    ['92-category-icon-picker','NEW · Icon picker (true icon preselected)'],
+    ['71-payees-list','Payees'],
+    ['72-payee-detail','Payee detail'],
+  ]},
+  { key:'j-settings', title:'Journey · Settings & dark mode', base:JB,
+    desc:'More menu, every settings subpage, the theme dropdown open, and dark mode applied (appearance, dashboard, transactions).', shots:[
+    ['73-more-menu','More menu'],
+    ['74-settings-profile','Profile & Preferences'],
+    ['75-settings-notifications','Notifications'],
+    ['76-settings-ai','AI & Data'],
+    ['77-settings-ai-logs','AI logs'],
+    ['78-settings-sync','Cloud Sync'],
+    ['79-settings-appearance','Appearance'],
+    ['80-appearance-theme-menu','Theme dropdown open'],
+    ['81-settings-appearance-dark','Appearance — dark'],
+    ['82-dashboard-dark-mode','Dashboard — dark'],
+    ['83-transactions-dark-mode','Transactions — dark'],
+    ['84-settings-security','Security'],
+    ['85-settings-about','About'],
+  ]},
+  { key:'j-secondary', title:'Journey · Secondary screens', base:JB,
+    desc:'Reports (detail now renders real charts — three report types captured), insights, households (+ create sheet).', shots:[
+    ['86-reports','Reports'],
+    ['87-report-detail','Report detail — Spending by Category (charts)'],
+    ['93-report-detail-income-expenses','NEW · Report detail — Income vs Expenses'],
+    ['94-report-detail-net-worth','NEW · Report detail — Net Worth Over Time'],
+    ['88-insights','Insights'],
+    ['89-households-empty','Households (empty)'],
+    ['90-household-create-sheet','New Household sheet'],
+  ]},
+  // ---------------------------------------------------------------- earlier subpage captures
+  { key:'add', title:'Subpages · Add / create sheets', base:SB,
+    desc:'Earlier captures, kept for reference. (Note: "Add transaction (full form)" actually shows the Manual/Scan popup — see the journey group for the real full form.)', shots:[
     ['add/01-quick-actions','Quick Actions sheet'],
-    ['add/02-add-transaction','Add transaction (full form)'],
+    ['add/02-add-transaction','Entry-mode popup (mislabelled before)'],
     ['add/03-create-budget','Create budget'],
     ['add/04-create-goal','Create goal'],
     ['add/05-create-debt','Create debt'],
     ['add/06-create-account','Create account'],
     ['add/07-create-recurring','Create recurring'],
   ]},
-  { key:'detail', title:'Detail / edit screens', desc:'Opened by tapping a seeded row. Edit screens exist for transaction, account, budget, recurring (here) and category (under Secondary). Goal, debt, and payee have action buttons (Add Contribution, Settle…) instead of an edit form.', shots:[
+  { key:'detail', title:'Subpages · Detail / edit screens', base:SB,
+    desc:'Opened by tapping a seeded row. Edit screens exist for transaction, account, budget, recurring (here) and category (under Secondary). Goal, debt, and payee have action buttons (Add Contribution, Settle…) instead of an edit form.', shots:[
     ['detail/01-transaction','Transaction detail'],
     ['detail/01-transaction-edit','Transaction — edit'],
     ['detail/02-account','Account detail'],
@@ -125,7 +281,8 @@ const GROUPS = [
     ['detail/06-recurring-edit','Recurring — edit'],
     ['detail/07-payee','Payee detail'],
   ]},
-  { key:'settings', title:'Settings subpages', desc:'Note: the More menu item points at /more/settings which has no route — likely a bug. These were reached via the real per-screen routes.', shots:[
+  { key:'settings', title:'Subpages · Settings', base:SB,
+    desc:'Note: the More menu item points at /more/settings which has no route — likely a bug. These were reached via the real per-screen routes.', shots:[
     ['settings/01-profile','Profile'],
     ['settings/02-notifications','Notifications'],
     ['settings/03-ai','AI settings'],
@@ -135,7 +292,8 @@ const GROUPS = [
     ['settings/07-security','Security'],
     ['settings/08-about','About'],
   ]},
-  { key:'secondary', title:'Secondary screens', desc:'Households shows the empty state (no seeded households); the report detail currently renders a placeholder.', shots:[
+  { key:'secondary', title:'Subpages · Secondary screens', base:SB,
+    desc:'Households shows the empty state (no seeded households); the report detail currently renders a placeholder.', shots:[
     ['secondary/01-categories','Categories'],
     ['secondary/06-category-edit','Category — edit'],
     ['secondary/02-households','Households (empty state)'],
@@ -144,8 +302,54 @@ const GROUPS = [
     ['secondary/05-insights','Insights'],
   ]},
 ];
+
+// UX / consistency findings from the audit walk-through. Keyed by shot file.
+// sev: high | medium | low
+const FINDINGS = [
+  { shot:'07-dashboard-top', sev:'high', text:'✅ FIXED — Safe-to-spend hero contradicts itself: shows ₱138,700 but the subtitle says “From ₱0 monthly income after planned expenses”. Also says “SAFE TO SPEND” (eyebrow) and “Safe to spend” (label) twice in one card.' },
+  { shot:'07-dashboard-top', sev:'medium', text:'Header search button is a dead affordance — tapping it only shows a “Global search is coming soon” snackbar.' },
+  { shot:'10-dashboard-sync-sheet', sev:'medium', text:'Sync sheet contradicts itself: header says “Some local changes are still waiting to sync” while the rows read Pending changes 0, Failed 0, Last result “healthy” — and Last synced “Not yet synced”. Status copy and counters disagree.' },
+  { shot:'26-transactions-list', sev:'high', text:'✅ FIXED — Bottom-nav label “Transactions” is clipped to “Transaction” on every screen (tab_shell.dart _NavTab Text has maxLines:1 and no overflow handling).' },
+  { shot:'26-transactions-list', sev:'high', text:'✅ FIXED — Transaction rows show amounts with no currency symbol (“-120.00”) while the detail screen shows “-₱120.00” and the dashboard “₱138,700” — three money renderings.' },
+  { shot:'26-transactions-list', sev:'medium', text:'Date group headers are the raw filter key “29/06/2026” (dd/MM/yyyy); detail screens use “Jul 28, 2026 · 12:00 AM”, account detail uses “07/22 · 12:00 AM”. No Today/Yesterday grouping.' },
+  { shot:'26-transactions-list', sev:'medium', text:'✅ FIXED — Payees render as raw normalized slugs, e.g. “grocery-store” — displayName fallback missing.' },
+  { shot:'25-transactions-after-add', sev:'low', text:'Demo data seeds future-dated transactions (16/07/2026 while “today” is 03/07) — fresh lists start with confusing future entries.' },
+  { shot:'27-transactions-search', sev:'low', text:'✅ FIXED — The same Food & Dining category shows different row icons (fork &amp; knife on some rows, generic shapes on others) — icon resolution inconsistent.' },
+  { shot:'29-transactions-swipe-delete-confirm', sev:'medium', text:'Swipe actions (edit/delete) exist only on transactions; accounts, goals, debts and recurring rows have no swipe affordances and their delete/edit lives behind detail-screen buttons.' },
+  { shot:'30-transaction-detail', sev:'low', text:'Header mixes two accents: amount in expense amber, category icon bubble in category red, directly adjacent.' },
+  { shot:'11-quick-actions-sheet', sev:'medium', text:'The + island only adds transactions. Creating a budget/goal/debt/account takes 3–4 taps via More → list → “+”. The sheet is also titled “Add Transaction” although it is the app-wide quick-action entry point.' },
+  { shot:'14-add-transaction-empty', sev:'medium', text:'✅ FIXED — Amount field shows the currency as literal “PHP” while budget/account sheets and every display surface use “₱” — mixed symbol treatment inside forms.' },
+  { shot:'14-add-transaction-empty', sev:'low', text:'Reaching the full manual form costs 3 taps (+ → “Manual ▾” pill → “Manual” menu item); the pill reads as a label rather than a menu.' },
+  { shot:'16-add-transaction-transfer-tab', sev:'high', text:'✅ FIXED — Transfer form uses bare Material underline fields (Transfer Amount, Fee, dropdowns) — a completely different input style from the boxed Expense/Income form in the same sheet, and a different save button (“Save Transfer” FilledButton vs “Add Transaction” PrimaryButton).' },
+  { shot:'13-quick-add-parsed-preview', sev:'medium', text:'NL parse of “Coffee at Starbucks 180” yields payee “at Starbucks” and category “Dining” — which matches no real category (“Food &amp; Dining”), so it is silently dropped on save. Per-row confidence dots all repeat the same overall value.' },
+  { shot:'13-quick-add-parsed-preview', sev:'low', text:'✅ FIXED — Third save-button label variant in one flow: “Save Transaction” (quick) vs “Add Transaction” (manual) vs “Save Transfer” (transfer).' },
+  { shot:'31-transaction-edit', sev:'high', text:'✅ FIXED — Edit Transaction does not display the existing Category and Payee — both fields show empty “Search…” placeholders even though the transaction has “Food &amp; Dining” / “7-Eleven” (the IDs are kept internally, but the user sees blank fields and can unknowingly clear them by typing).' },
+  { shot:'34-budgets-list', sev:'high', text:'✅ FIXED — Budget amounts render as “P9675 of P15000” — plain “P” instead of “₱” and no thousands separators (budget_card.dart / budget_summary_header.dart bypass the money formatter).' },
+  { shot:'36-budget-create-empty', sev:'medium', text:'Sheet titled “Create Budget” while sibling sheets are “New Account / New Goal / New Debt / New Recurring Item”; save button is just “Save” (others “Save Account”, “Save Goal”…); amount hint “0” vs “0.00” elsewhere; third distinct amount-input design.' },
+  { shot:'39-budget-detail', sev:'high', text:'✅ FIXED — Budget detail hung on an endless loading spinner in BOTH capture runs (two different tap paths from the budgets list) — the edit sheet and delete flow behind it were unreachable. Caveat: the working tree had uncommitted WIP edits to budget_detail_screen.dart during capture, so verify against a clean checkout. Title “Budget Detail” also breaks the convention of the other detail screens (“Transaction”, “Goal”, “Account”).' },
+  { shot:'42-accounts-list', sev:'medium', text:'✅ FIXED — Balances show “₱45000.00” — no thousands separators, inconsistent with the dashboard’s “₱45,000”.' },
+  { shot:'46-account-detail', sev:'medium', text:'✅ FIXED — Edit/Archive are buried below the full transaction list — you must scroll past every transaction to edit an account. Sibling detail screens keep actions in view.' },
+  { shot:'46-account-detail', sev:'low', text:'“Account created.” snackbar uses a green success check while “Goal created.” uses a blue info icon — inconsistent snackbar variants for identical events (see the goals/debts shots).' },
+  { shot:'52-goal-detail', sev:'high', text:'✅ FIXED — The “Add Contribution” CTA and the contributions empty-state render behind/under the floating nav — the automated tap missed the button exactly as a user’s would. Content needs bottom padding for the floating nav.' },
+  { shot:'52-goal-detail', sev:'medium', text:'✅ PARTLY FIXED (separators) — Amounts “₱100000.00” without separators; goal (and debt, payee) details have no Edit action while transaction/account/budget/recurring do — inconsistent capability across siblings.' },
+  { shot:'55-debts-list', sev:'medium', text:'Demo data seeds accounts, transactions, budgets and goals — but no debts and no recurring items, so these lists open empty even with the demo toggle ON.' },
+  { shot:'56-debt-create-empty', sev:'low', text:'Terminology drift across create entry points: CTA “Add Debt” / tooltip “Add debt” / sheet “New Debt”; recurring: “Add Recurring” vs “New Recurring Item”; households: “Create Household” vs “Add household” vs “New Household”; budgets: “Create budget” vs “Create Budget”.' },
+  { shot:'59-debt-detail', sev:'low', text:'✅ FIXED — Titled “Debt Detail” (others drop the word “Detail”); debt progress bar is primary blue while budget progress bars are green — progress color semantics differ.' },
+  { shot:'66-recurring-detail', sev:'medium', text:'Edit patterns are inconsistent across siblings: transaction edit = full sheet page, account/budget/recurring/category = modal bottom sheet, goal/debt/payee = none. “Recurring item created.” snackbar is info-blue while “Account created.” is success-green.' },
+  { shot:'28-transactions-filter-sheet', sev:'medium', text:'Filter sheet has two competing apply affordances: a small “Apply” link inside Amount Range plus the global “Apply 0 filters” button — which shows a raw zero count when nothing is selected.' },
+  { shot:'28-transactions-filter-sheet', sev:'low', text:'Account/category chip rows overflow off-screen (“BPI Checking”, “B…” clipped) with no fade/scroll hint.' },
+  { shot:'69-categories-list', sev:'high', text:'✅ FIXED — Once categories exist there is no way to add one — the “Add Category” CTA only exists in the empty state; the populated screen has no “+” button.' },
+  { shot:'69-categories-list', sev:'medium', text:'✅ FIXED — Most categories fall back to the same generic shopping-bag glyph (Bills &amp; Utilities, Education, Entertainment, Food &amp; Dining, Shopping…), and the last row is clipped behind the floating nav.' },
+  { shot:'74-settings-profile', sev:'low', text:'Email row subtitle leaks internal jargon to end users: “Read-only in V1”.' },
+  { shot:'79-settings-appearance', sev:'medium', text:'“Theme Mode” row shows the current value twice (subtitle “System” + trailing dropdown “System”); “Font Size” row has a chevron affordance but does nothing.' },
+  { shot:'87-report-detail', sev:'high', text:'✅ FIXED — Report detail still shows the placeholder “Report charts will be available with data” although the app is fully seeded — reports are effectively non-functional.' },
+  { shot:'73-more-menu', sev:'low', text:'Settings section lists 7 separate pages; there is no /more/settings hub route (the earlier storyboard flagged a dead “Settings” link).' },
+  { shot:'44-account-create-filled', sev:'low', text:'Three different amount-input designs across create forms: boxed mono AmountInput (transaction), ₱-prefix-icon text field (account/goal/debt/recurring), custom mono container (budget).' },
+];
+
 const LABELS = {}; GROUPS.forEach(g=>g.shots.forEach(([f,l])=>LABELS[f]=l));
 const SCREEN_ORDER = []; GROUPS.forEach(g=>g.shots.forEach(([f])=>SCREEN_ORDER.push(f)));
+const slug = f => 'shot-' + f.replace(/[^a-z0-9]+/gi,'-');
 
 const KEY = 'lootr-subpage-annotations-v1';
 let anns = [];
@@ -154,6 +358,29 @@ let nextId = anns.reduce((m,a)=>Math.max(m,a.id),0) + 1;
 let selected = null;
 function save(){ localStorage.setItem(KEY, JSON.stringify(anns)); }
 
+function buildFindingsSummary(){
+  const root = document.getElementById('findingsSummary');
+  if(!FINDINGS.length){ root.remove(); return; }
+  const order = { high:0, medium:1, low:2 };
+  const sorted = FINDINGS.slice().sort((a,b)=>(order[a.sev]-order[b.sev]) || SCREEN_ORDER.indexOf(a.shot)-SCREEN_ORDER.indexOf(b.shot));
+  const counts = FINDINGS.reduce((m,f)=>{m[f.sev]=(m[f.sev]||0)+1;return m;},{});
+  const box = document.createElement('div'); box.className='fsummary';
+  box.innerHTML = `<h2>⚠ Inconsistencies &amp; UX findings</h2>
+    <p class="desc">${FINDINGS.length} findings from the audit walk-through — ${counts.high||0} high · ${counts.medium||0} medium · ${counts.low||0} low. Each links to the screenshot it was observed on; the same note is repeated under that frame.</p>`;
+  const ol = document.createElement('ol');
+  sorted.forEach(f=>{
+    const li = document.createElement('li'); li.className='sev-'+f.sev;
+    li.innerHTML = `<span class="sev">${f.sev}</span><a href="#${slug(f.shot)}">${LABELS[f.shot]||f.shot}</a> — ${f.text}`;
+    ol.appendChild(li);
+  });
+  box.appendChild(ol); root.appendChild(box);
+  root.addEventListener('click', e=>{
+    const a = e.target.closest('a'); if(!a) return;
+    const el = document.getElementById(a.getAttribute('href').slice(1));
+    if(el){ el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
+  });
+}
+
 function build(){
   const root = document.getElementById('sections');
   GROUPS.forEach(g=>{
@@ -161,9 +388,9 @@ function build(){
     sec.innerHTML = `<h2>${g.title}</h2><p class="desc">${g.desc}</p>`;
     const grid = document.createElement('div'); grid.className='grid';
     g.shots.forEach(([file,label])=>{
-      const frame = document.createElement('div'); frame.className='frame';
+      const frame = document.createElement('div'); frame.className='frame'; frame.id = slug(file);
       const wrap = document.createElement('div'); wrap.className='shot-wrap'; wrap.dataset.screen=file;
-      const img = document.createElement('img'); img.src='storyboard-shots/subpages/'+file+'.png'+V; img.alt=label; img.draggable=false;
+      const img = document.createElement('img'); img.src=g.base+file+'.png'+V; img.alt=label; img.loading='lazy'; img.draggable=false;
       wrap.appendChild(img);
       wrap.addEventListener('click', e=>{
         if(e.target.classList.contains('pin')) return;
@@ -174,8 +401,18 @@ function build(){
       });
       frame.appendChild(wrap);
       const cap = document.createElement('div'); cap.className='cap';
-      cap.innerHTML = `${label} <span class="badge">· ${file.split('/')[1]}</span>`;
+      cap.innerHTML = `${label} <span class="badge">· ${file.split('/').pop()}</span>`;
       frame.appendChild(cap);
+      const fs = FINDINGS.filter(f=>f.shot===file);
+      if(fs.length){
+        const list = document.createElement('div'); list.className='findings';
+        fs.forEach(f=>{
+          const d = document.createElement('div'); d.className='finding sev-'+f.sev;
+          d.innerHTML = `<span class="sev">${f.sev}</span>${f.text}`;
+          list.appendChild(d);
+        });
+        frame.appendChild(list);
+      }
       grid.appendChild(frame);
     });
     sec.appendChild(grid); root.appendChild(sec);
@@ -240,7 +477,7 @@ function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg
 
 document.getElementById('copyBtn').addEventListener('click', ()=>{
   if(!anns.length){ toast('No annotations to copy'); return; }
-  let out='Lootr — subpage annotations\n';
+  let out='Lootr — storyboard annotations\n';
   const byScreen={}; anns.forEach((a,i)=>{ (byScreen[a.screen]=byScreen[a.screen]||[]).push({a,n:i+1}); });
   SCREEN_ORDER.forEach(screen=>{
     if(!byScreen[screen]) return;
@@ -265,6 +502,7 @@ document.getElementById('sizes').addEventListener('click', e=>{
   document.querySelectorAll('#sizes button').forEach(b=>b.classList.toggle('on', b===e.target));
 });
 
+buildFindingsSummary();
 build();
 render();
 </script>
