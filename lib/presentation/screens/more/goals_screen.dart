@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../application/providers/goals_provider.dart';
+import '../../../core/format/money_format.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
@@ -118,7 +119,10 @@ class _GoalList extends StatelessWidget {
                         TextSpan(
                           children: [
                             TextSpan(
-                              text: '₱${goal.currentAmount.toStringAsFixed(2)}',
+                              text: MoneyFormat.exact(
+                                goal.currentAmount,
+                                'PHP',
+                              ),
                               style: AppTypography.mono.copyWith(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w400,
@@ -135,7 +139,7 @@ class _GoalList extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        'of ₱${goal.targetAmount.toStringAsFixed(2)}',
+                        'of ${MoneyFormat.exact(goal.targetAmount, 'PHP')}',
                         style: AppTypography.mono.copyWith(
                           fontSize: 13,
                           fontWeight: FontWeight.w400,

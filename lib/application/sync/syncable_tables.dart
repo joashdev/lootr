@@ -107,6 +107,8 @@ const syncableTableDefinitions = [
     'amount',
     'month',
     'year',
+    'icon',
+    'color',
     'created_at',
     'updated_at',
     'deleted_at',

@@ -1,9 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rxdart/rxdart.dart';
+import '../../data/database/app_database.dart';
+import '../../data/repositories/transaction_repo.dart';
 import '../../domain/entities/budget.dart';
 import '../../domain/entities/mappers.dart';
 import '../../domain/entities/transaction.dart';
-import '../../data/repositories/transaction_repo.dart';
 import 'repo_providers.dart';
 
 final budgetDetailProvider =
@@ -12,42 +13,39 @@ final budgetDetailProvider =
     final budgetRepo = ref.watch(budgetRepoProvider);
     final txnRepo = ref.watch(transactionRepoProvider);
 
-    final budgetStream = budgetRepo.watchById(budgetId).asyncMap(
-      (row) async {
-        if (row == null) return null;
-        final entity = row.toEntity();
-        final spentStream = budgetRepo.watchSpentForBudget(entity.id);
-        final spent = await spentStream.first;
-        return entity.copyWith(spent: spent);
-      },
-    );
+    // Note: never call `.first` on a stream that already has a listener —
+    // drift streams are broadcast, so a late `.first` subscriber gets no
+    // replay and waits forever (endless-spinner bug). switchMap keeps every
+    // subscription first-class instead.
+    return budgetRepo.watchById(budgetId).switchMap((row) {
+      if (row == null) {
+        return Stream.value(null);
+      }
+      final entity = row.toEntity();
+      final startOfMonth = DateTime(entity.year, entity.month);
+      final endOfMonth = entity.month == 12
+          ? DateTime(entity.year + 1, 1)
+          : DateTime(entity.year, entity.month + 1);
 
-    final txnStream = txnRepo
-        .watchFiltered(const TransactionRepoFilters()).asyncMap((rows) async {
-      final budget = await budgetStream.first;
-      if (budget == null) return <Transaction>[];
-      final startOfMonth = DateTime(budget.year, budget.month);
-      final endOfMonth = budget.month == 12
-          ? DateTime(budget.year + 1, 1)
-          : DateTime(budget.year, budget.month + 1);
-      return rows
-          .where((r) =>
-              r.categoryId == budget.categoryId &&
-              r.transactionDirection == 'expense' &&
-              !r.occurredAt.isBefore(startOfMonth) &&
-              r.occurredAt.isBefore(endOfMonth) &&
-              r.deletedAt == null)
-          .map((r) => r.toEntity())
-          .toList();
+      return Rx.combineLatest2(
+        budgetRepo.watchSpentForBudget(entity.id),
+        txnRepo.watchFiltered(const TransactionRepoFilters()),
+        (double spent, List<TransactionData> rows) {
+          final transactions = rows
+              .where((r) =>
+                  r.categoryId == entity.categoryId &&
+                  r.transactionDirection == 'expense' &&
+                  !r.occurredAt.isBefore(startOfMonth) &&
+                  r.occurredAt.isBefore(endOfMonth) &&
+                  r.deletedAt == null)
+              .map((r) => r.toEntity())
+              .toList();
+          return (
+            budget: entity.copyWith(spent: spent),
+            transactions: transactions,
+          );
+        },
+      );
     });
-
-    return Rx.combineLatest2(
-      budgetStream,
-      txnStream,
-      (Budget? budget, List<Transaction> transactions) {
-        if (budget == null) return null;
-        return (budget: budget, transactions: transactions);
-      },
-    );
   },
 );

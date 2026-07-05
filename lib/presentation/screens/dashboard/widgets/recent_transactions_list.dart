@@ -103,9 +103,10 @@ class _TransactionRow extends StatelessWidget {
                 ),
                 child: Center(
                   child: buildCategoryVisual(
-                    txn.categoryIcon ?? 'shopping-bag',
+                    txn.categoryIcon,
                     color: categoryColor,
                     size: 18,
+                    categoryName: txn.categoryName,
                   ),
                 ),
               ),

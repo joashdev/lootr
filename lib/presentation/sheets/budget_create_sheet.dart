@@ -15,6 +15,7 @@ import '../../domain/entities/mappers.dart';
 import '../../application/providers/budgets_tab_provider.dart';
 import '../../application/providers/categories_provider.dart';
 import '../../application/providers/repo_providers.dart';
+import '../shared/category_visuals.dart';
 import '../shared/components/sheet_handle.dart';
 import '../shared/components/app_snackbar.dart';
 
@@ -38,6 +39,11 @@ class _BudgetCreateSheetState extends ConsumerState<BudgetCreateSheet> {
   late FocusNode _categoryFocusNode;
   String? _selectedCategoryId;
 
+  /// Visual overrides. Null means the budget inherits its category's
+  /// icon/color.
+  String? _iconOverride;
+  String? _colorOverride;
+
   bool get isEditing => widget.budget != null;
 
   @override
@@ -49,6 +55,8 @@ class _BudgetCreateSheetState extends ConsumerState<BudgetCreateSheet> {
     _categoryController = TextEditingController();
     _categoryFocusNode = FocusNode();
     _selectedCategoryId = widget.budget?.categoryId;
+    _iconOverride = widget.budget?.icon;
+    _colorOverride = widget.budget?.color;
   }
 
   @override
@@ -113,6 +121,8 @@ class _BudgetCreateSheetState extends ConsumerState<BudgetCreateSheet> {
         final b = widget.budget!.copyWith(
           amount: amount,
           categoryId: _selectedCategoryId,
+          icon: () => _iconOverride,
+          color: () => _colorOverride,
           updatedAt: now,
         );
         await repo.update(b.toCompanion());
@@ -124,6 +134,8 @@ class _BudgetCreateSheetState extends ConsumerState<BudgetCreateSheet> {
           amount: amount,
           month: month,
           year: year,
+          icon: _iconOverride,
+          color: _colorOverride,
           createdAt: now,
           updatedAt: now,
         );
@@ -208,7 +220,9 @@ class _BudgetCreateSheetState extends ConsumerState<BudgetCreateSheet> {
         mainAxisSize: MainAxisSize.min,
         children: [
           const SheetHandle(),
-          Padding(
+          Flexible(
+            child: SingleChildScrollView(
+              child: Padding(
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.sheetPaddingHorizontal,
               0,
@@ -340,6 +354,21 @@ class _BudgetCreateSheetState extends ConsumerState<BudgetCreateSheet> {
                     color: lootrColors.textTertiary,
                   ),
                 ),
+                const SizedBox(height: AppSpacing.space4),
+                _AppearancePicker(
+                  category: selectedCategory,
+                  iconOverride: _iconOverride,
+                  colorOverride: _colorOverride,
+                  enabled: !isReadOnly,
+                  onIconChanged: (value) =>
+                      setState(() => _iconOverride = value),
+                  onColorChanged: (value) =>
+                      setState(() => _colorOverride = value),
+                  onReset: () => setState(() {
+                    _iconOverride = null;
+                    _colorOverride = null;
+                  }),
+                ),
                 const SizedBox(height: AppSpacing.space5),
                 SizedBox(
                   width: double.infinity,
@@ -396,6 +425,8 @@ class _BudgetCreateSheetState extends ConsumerState<BudgetCreateSheet> {
                 const SizedBox(height: AppSpacing.space4),
               ],
             ),
+              ),
+            ),
           ),
         ],
       ),
@@ -439,6 +470,138 @@ class _BudgetCreateSheetState extends ConsumerState<BudgetCreateSheet> {
         Navigator.of(context).pop();
       }
     }
+  }
+}
+
+/// Icon + color pickers for a budget, mirroring the category sheet pickers.
+/// A null override means the budget inherits its category's visuals.
+class _AppearancePicker extends StatelessWidget {
+  const _AppearancePicker({
+    required this.category,
+    required this.iconOverride,
+    required this.colorOverride,
+    required this.enabled,
+    required this.onIconChanged,
+    required this.onColorChanged,
+    required this.onReset,
+  });
+
+  final Category? category;
+  final String? iconOverride;
+  final String? colorOverride;
+  final bool enabled;
+  final ValueChanged<String> onIconChanged;
+  final ValueChanged<String> onColorChanged;
+  final VoidCallback onReset;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final lootrColors = context.lootrColors;
+    final hasOverride = iconOverride != null || colorOverride != null;
+
+    final displayIconValue =
+        canonicalCategoryIconValue(iconOverride) ??
+        resolveCategoryIconValue(
+          icon: category?.icon,
+          name: category?.name,
+          categoryGroup: category?.categoryGroup,
+        );
+    final displayColorHex = colorOverride ?? category?.color;
+    final displayColor = parseCategoryColor(displayColorHex);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Color',
+                style: AppTypography.captionMedium.copyWith(
+                  color: lootrColors.textSecondary,
+                ),
+              ),
+            ),
+            if (hasOverride)
+              TextButton(
+                onPressed: enabled ? onReset : null,
+                child: const Text('Use category default'),
+              ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.space2),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: categoryColorOptions.map((option) {
+              final isSelected = displayColorHex == option.hex;
+              return Padding(
+                padding: const EdgeInsets.only(right: AppSpacing.space2),
+                child: InkWell(
+                  onTap: enabled ? () => onColorChanged(option.hex) : null,
+                  borderRadius: BorderRadius.circular(9999),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: option.color,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isSelected
+                            ? colorScheme.surface.withValues(alpha: 0.6)
+                            : Colors.transparent,
+                        width: 3,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.space3),
+        Text(
+          'Icon',
+          style: AppTypography.captionMedium.copyWith(
+            color: lootrColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.space2),
+        GridView.count(
+          crossAxisCount: 6,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: AppSpacing.space2,
+          crossAxisSpacing: AppSpacing.space2,
+          children: categoryIconOptions.map((option) {
+            final isSelected = displayIconValue == option.value;
+            return InkWell(
+              onTap: enabled ? () => onIconChanged(option.value) : null,
+              borderRadius: BorderRadius.circular(14),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                decoration: BoxDecoration(
+                  color: displayColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(14),
+                  border: isSelected
+                      ? Border.all(color: displayColor, width: 2)
+                      : null,
+                ),
+                child: Center(
+                  child: buildCategoryVisual(
+                    option.value,
+                    color: displayColor,
+                    size: 22,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
   }
 }
 

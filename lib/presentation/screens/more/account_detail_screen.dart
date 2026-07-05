@@ -7,6 +7,7 @@ import '../../../application/providers/account_detail_provider.dart';
 import '../../../application/providers/categories_provider.dart';
 import '../../../application/providers/payees_provider.dart';
 import '../../../application/providers/repo_providers.dart';
+import '../../../core/format/money_format.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
@@ -17,7 +18,6 @@ import '../../../domain/entities/transaction.dart';
 import '../../../domain/value_objects/field_types.dart';
 import '../../shared/category_visuals.dart';
 import '../../shared/components/app_snackbar.dart';
-import '../../shared/components/buttons/secondary_button.dart';
 import '../../shared/components/empty_state.dart';
 import '../transactions/widgets/transaction_row.dart';
 import 'more_form_sheets.dart';
@@ -39,9 +39,30 @@ class AccountDetailScreen extends ConsumerWidget {
     };
     final lootrColors = context.lootrColors;
     final colorScheme = Theme.of(context).colorScheme;
+    final loadedAccount = detailAsync.asData?.value?.account;
 
     return Scaffold(
-      appBar: AppBar(centerTitle: false, title: const Text('Account')),
+      appBar: AppBar(
+        centerTitle: false,
+        title: const Text('Account'),
+        // Keep Edit/Archive reachable without scrolling past the
+        // transaction list.
+        actions: [
+          if (loadedAccount != null) ...[
+            IconButton(
+              tooltip: 'Edit account',
+              icon: const Icon(LucideIcons.pencil, size: 20),
+              onPressed: () =>
+                  showAccountSheet(context, ref, initial: loadedAccount),
+            ),
+            IconButton(
+              tooltip: 'Archive account',
+              icon: const Icon(LucideIcons.archive, size: 20),
+              onPressed: () => _archiveAccount(context, ref, loadedAccount),
+            ),
+          ],
+        ],
+      ),
       body: detailAsync.when(
         data: (detail) {
           if (detail == null) {
@@ -85,7 +106,10 @@ class AccountDetailScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: AppSpacing.space4),
                       Text(
-                        '${account.balance < 0 ? '-' : ''}₱${account.balance.abs().toStringAsFixed(2)}',
+                        MoneyFormat.exact(
+                          account.balance,
+                          account.currencyCode,
+                        ),
                         style: AppTypography.displayMono.copyWith(
                           color: balanceColor ?? colorScheme.onSurface,
                         ),
@@ -163,35 +187,11 @@ class AccountDetailScreen extends ConsumerWidget {
                     }, childCount: transactions.length),
                   ),
                 ),
+              // Keep the last row clear of the floating bottom nav.
               SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.pagePaddingMobile,
-                    AppSpacing.space6,
-                    AppSpacing.pagePaddingMobile,
-                    AppSpacing.space8,
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: SecondaryButton(
-                          label: 'Edit',
-                          icon: const Icon(LucideIcons.pencil, size: 18),
-                          onPressed: () =>
-                              showAccountSheet(context, ref, initial: account),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.space3),
-                      Expanded(
-                        child: SecondaryButton(
-                          label: 'Archive',
-                          icon: const Icon(LucideIcons.archive, size: 18),
-                          onPressed: () =>
-                              _archiveAccount(context, ref, account),
-                        ),
-                      ),
-                    ],
-                  ),
+                child: SizedBox(
+                  height: AppSpacing.bottomNavClearance +
+                      MediaQuery.paddingOf(context).bottom,
                 ),
               ),
             ],
@@ -294,7 +294,7 @@ class _TransactionLeading extends StatelessWidget {
       decoration: BoxDecoration(color: background, shape: BoxShape.circle),
       alignment: Alignment.center,
       child: hasCategory
-          ? buildCategoryVisual(category!.icon, color: iconColor, size: 18)
+          ? buildCategoryVisualFor(category, color: iconColor, size: 18)
           : Icon(
               transaction.direction == TransactionDirection.transfer
                   ? Icons.swap_horiz_rounded

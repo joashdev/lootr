@@ -16,6 +16,7 @@ class CategoryAutocomplete extends StatelessWidget {
     required this.groupFilter,
     required this.onChanged,
     this.initialText,
+    this.onTextChanged,
   });
 
   final List<Category> categories;
@@ -23,6 +24,10 @@ class CategoryAutocomplete extends StatelessWidget {
   final String groupFilter;
   final ValueChanged<String?> onChanged;
   final String? initialText;
+
+  /// Reports raw text typed into the field (without a selection), so callers
+  /// can resolve free-text drafts (e.g. from NL quick-add) at save time.
+  final ValueChanged<String>? onTextChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -36,11 +41,22 @@ class CategoryAutocomplete extends StatelessWidget {
             .toList()
           ..sort((left, right) => left.name.compareTo(right.name));
 
+    // Resolve the selected category from the FULL list (not the group-filtered
+    // one) so an existing selection still displays its name/icon even when the
+    // category was soft-deleted or belongs to another group.
+    final selectedCategory = categories.cast<Category?>().firstWhere(
+      (category) => category!.id == selectedCategoryId,
+      orElse: () => null,
+    );
+    final displayText = (initialText != null && initialText!.trim().isNotEmpty)
+        ? initialText!
+        : (selectedCategory?.name ?? '');
+
     return Autocomplete<Category>(
       key: ValueKey(
-        '${selectedCategoryId ?? 'none'}:${initialText ?? ''}:$groupFilter',
+        '${selectedCategoryId ?? 'none'}:$displayText:$groupFilter',
       ),
-      initialValue: TextEditingValue(text: initialText ?? ''),
+      initialValue: TextEditingValue(text: displayText),
       displayStringForOption: (category) => category.name,
       optionsBuilder: (value) {
         final query = value.text.trim().toLowerCase();
@@ -56,10 +72,15 @@ class CategoryAutocomplete extends StatelessWidget {
         final colorScheme = Theme.of(context).colorScheme;
         final lootrColors = context.lootrColors;
 
+        final selectedIconColor = selectedCategory == null
+            ? null
+            : parseCategoryColor(selectedCategory.color);
+
         return TextField(
           controller: controller,
           focusNode: focusNode,
           onChanged: (value) {
+            onTextChanged?.call(value);
             if (value.trim().isEmpty) {
               onChanged(null);
             }
@@ -70,7 +91,16 @@ class CategoryAutocomplete extends StatelessWidget {
             hintStyle: AppTypography.body.copyWith(
               color: lootrColors.textTertiary,
             ),
-            prefixIcon: const Icon(Icons.search, size: 18),
+            prefixIcon: selectedCategory != null && selectedIconColor != null
+                ? Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: buildCategoryVisualFor(
+                      selectedCategory,
+                      color: selectedIconColor,
+                      size: 18,
+                    ),
+                  )
+                : const Icon(Icons.search, size: 18),
             filled: true,
             fillColor: colorScheme.surface,
             border: OutlineInputBorder(
@@ -123,8 +153,8 @@ class CategoryAutocomplete extends StatelessWidget {
                               shape: BoxShape.circle,
                             ),
                             alignment: Alignment.center,
-                            child: buildCategoryVisual(
-                              category.icon,
+                            child: buildCategoryVisualFor(
+                              category,
                               color: iconColor,
                               size: 16,
                             ),

@@ -31,9 +31,20 @@ class PayeeAutocomplete extends StatelessWidget {
         payees.where((payee) => payee.deletedAt == null).toList()
           ..sort((left, right) => _labelFor(left).compareTo(_labelFor(right)));
 
+    // Resolve the selected payee from the FULL list so an existing selection
+    // (e.g. when editing a transaction) still displays its name even if the
+    // payee was soft-deleted.
+    final selectedPayee = payees.cast<Payee?>().firstWhere(
+      (payee) => payee!.id == selectedPayeeId,
+      orElse: () => null,
+    );
+    final displayText = (initialText != null && initialText!.trim().isNotEmpty)
+        ? initialText!
+        : (selectedPayee == null ? '' : _labelFor(selectedPayee));
+
     return Autocomplete<Payee>(
-      key: ValueKey('${selectedPayeeId ?? 'none'}:${initialText ?? ''}'),
-      initialValue: TextEditingValue(text: initialText ?? ''),
+      key: ValueKey('${selectedPayeeId ?? 'none'}:$displayText'),
+      initialValue: TextEditingValue(text: displayText),
       displayStringForOption: _labelFor,
       optionsBuilder: (value) {
         final query = value.text.trim().toLowerCase();

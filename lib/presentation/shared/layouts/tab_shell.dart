@@ -232,13 +232,18 @@ class _NavTab extends StatelessWidget {
             children: [
               Icon(icon, color: color, size: 20),
               const SizedBox(height: 2),
-              Text(
-                label,
-                maxLines: 1,
-                style: AppTypography.micro.copyWith(
-                  fontWeight: fontWeight,
-                  color: color,
-                  height: 1.1,
+              // Scale down long labels (e.g. "Transactions") instead of
+              // clipping them; short labels render at full size.
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  style: AppTypography.micro.copyWith(
+                    fontWeight: fontWeight,
+                    color: color,
+                    height: 1.1,
+                  ),
                 ),
               ),
             ],

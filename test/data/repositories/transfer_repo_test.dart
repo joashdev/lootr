@@ -119,6 +119,74 @@ void main() {
       expect(dst.balance, 500.0);
     });
 
+    test('restore re-applies balances and revives fee transaction (cascade)',
+        () async {
+      await repo.create(TransfersCompanion.insert(
+        id: 'xfer-fee',
+        sourceAccountId: 'acc-src',
+        destinationAccountId: 'acc-dst',
+        amount: 200.0,
+        feeAmount: const Value(15.0),
+        occurredAt: DateTime(2026, 6, 19),
+      ));
+      await repo.softDelete('xfer-fee');
+
+      // Fee txn tombstoned by the cascade.
+      var feeTxn = await (db.select(db.transactions)
+            ..where((t) => t.id.equals('txn-fee-xfer-fee'))
+            ..limit(1))
+          .getSingle();
+      expect(feeTxn.deletedAt, isNotNull);
+
+      await repo.restore('xfer-fee');
+
+      final xfer = await (db.select(db.transfers)
+            ..where((t) => t.id.equals('xfer-fee'))
+            ..limit(1))
+          .getSingle();
+      expect(xfer.deletedAt, isNull);
+      expect(xfer.syncStatus, 'pending_sync');
+
+      final src = await (db.select(db.accounts)
+            ..where((a) => a.id.equals('acc-src'))
+            ..limit(1))
+          .getSingle();
+      expect(src.balance, 785.0); // 1000 - 200 - 15 re-applied
+
+      final dst = await (db.select(db.accounts)
+            ..where((a) => a.id.equals('acc-dst'))
+            ..limit(1))
+          .getSingle();
+      expect(dst.balance, 700.0);
+
+      // Fee txn revived with the SAME id — no duplicate created.
+      feeTxn = await (db.select(db.transactions)
+            ..where((t) => t.id.equals('txn-fee-xfer-fee'))
+            ..limit(1))
+          .getSingle();
+      expect(feeTxn.deletedAt, isNull);
+      final allTxns = await db.select(db.transactions).get();
+      expect(allTxns.length, 1);
+    });
+
+    test('restore is a no-op when transfer is not deleted', () async {
+      await repo.create(TransfersCompanion.insert(
+        id: 'xfer-live',
+        sourceAccountId: 'acc-src',
+        destinationAccountId: 'acc-dst',
+        amount: 200.0,
+        occurredAt: DateTime(2026, 6, 19),
+      ));
+
+      await repo.restore('xfer-live');
+
+      final src = await (db.select(db.accounts)
+            ..where((a) => a.id.equals('acc-src'))
+            ..limit(1))
+          .getSingle();
+      expect(src.balance, 800.0); // unchanged
+    });
+
     test('watchAll returns non-deleted transfers', () async {
       await repo.create(TransfersCompanion.insert(
         id: 'xfer-1',

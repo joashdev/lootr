@@ -12,6 +12,12 @@ class Budget extends Equatable {
   final double amount;
   final int month;
   final int year;
+
+  /// Optional visual override; when null the budget inherits its
+  /// category's icon/color.
+  final String? icon;
+  final String? color;
+
   /// Computed by the repository layer — not stored in the DB.
   /// Populated when fetching budgets (e.g., `BudgetRepo.watchWithSpent`).
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,6 +34,8 @@ class Budget extends Equatable {
     required this.amount,
     required this.month,
     required this.year,
+    this.icon,
+    this.color,
     this.spent = 0,
     required this.createdAt,
     required this.updatedAt,
@@ -47,6 +55,8 @@ class Budget extends Equatable {
     double? amount,
     int? month,
     int? year,
+    String? Function()? icon,
+    String? Function()? color,
     double? spent,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -61,6 +71,8 @@ class Budget extends Equatable {
       amount: amount ?? this.amount,
       month: month ?? this.month,
       year: year ?? this.year,
+      icon: icon != null ? icon() : this.icon,
+      color: color != null ? color() : this.color,
       spent: spent ?? this.spent,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -77,6 +89,8 @@ class Budget extends Equatable {
         amount,
         month,
         year,
+        icon,
+        color,
         createdAt,
         updatedAt,
         deletedAt,

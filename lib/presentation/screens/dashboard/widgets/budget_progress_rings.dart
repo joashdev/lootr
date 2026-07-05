@@ -2,9 +2,9 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../../../application/providers/dashboard_provider.dart';
+import '../../../../core/format/money_format.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/theme.dart';
@@ -49,6 +49,7 @@ class BudgetProgressRings extends StatelessWidget {
                         progress: budget.progress.clamp(0, 1),
                         color: _budgetColor(context, budget.progress),
                         iconName: budget.icon,
+                        categoryName: budget.name,
                       ),
                       Column(
                         children: [
@@ -61,7 +62,7 @@ class BudgetProgressRings extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '${NumberFormat.currency(locale: 'en_PH', symbol: '₱', name: currencyCode).format(budget.spent)} / ${NumberFormat.currency(locale: 'en_PH', symbol: '₱', name: currencyCode).format(budget.budgeted)}',
+                            '${MoneyFormat.display(budget.spent, currencyCode)} / ${MoneyFormat.display(budget.budgeted, currencyCode)}',
                             style: AppTypography.mono.copyWith(
                               fontSize: 13,
                               fontWeight: FontWeight.w400,
@@ -98,11 +99,13 @@ class _AnimatedProgressRing extends StatefulWidget {
     required this.progress,
     required this.color,
     required this.iconName,
+    this.categoryName,
   });
 
   final double progress;
   final Color color;
   final String? iconName;
+  final String? categoryName;
 
   @override
   State<_AnimatedProgressRing> createState() => _AnimatedProgressRingState();
@@ -163,6 +166,7 @@ class _AnimatedProgressRingState extends State<_AnimatedProgressRing>
                 widget.iconName,
                 color: widget.color,
                 size: 28,
+                categoryName: widget.categoryName,
               ),
             ),
           ),

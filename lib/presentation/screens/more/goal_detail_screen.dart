@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../application/providers/accounts_provider.dart';
 import '../../../application/providers/goal_contributions_provider.dart';
 import '../../../application/providers/goal_detail_provider.dart';
+import '../../../core/format/money_format.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
@@ -43,7 +44,14 @@ class GoalDetailScreen extends ConsumerWidget {
           final remaining = goal.targetAmount - goal.currentAmount;
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.pagePaddingMobile),
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.pagePaddingMobile,
+              AppSpacing.pagePaddingMobile,
+              AppSpacing.pagePaddingMobile,
+              // Keep the trailing CTA clear of the floating bottom nav.
+              AppSpacing.bottomNavClearance +
+                  MediaQuery.paddingOf(context).bottom,
+            ),
             child: Column(
               children: [
                 const SizedBox(height: AppSpacing.space4),
@@ -95,20 +103,22 @@ class GoalDetailScreen extends ConsumerWidget {
                 const SizedBox(height: AppSpacing.space6),
                 _DetailCard(
                   label: 'Target',
-                  value: '₱${goal.targetAmount.toStringAsFixed(2)}',
+                  value: MoneyFormat.exact(goal.targetAmount, 'PHP'),
                   mono: true,
                 ),
                 const SizedBox(height: AppSpacing.space2),
                 _DetailCard(
                   label: 'Saved',
-                  value: '₱${goal.currentAmount.toStringAsFixed(2)}',
+                  value: MoneyFormat.exact(goal.currentAmount, 'PHP'),
                   mono: true,
                 ),
                 const SizedBox(height: AppSpacing.space2),
                 _DetailCard(
                   label: 'Remaining',
-                  value:
-                      '₱${remaining > 0 ? remaining.toStringAsFixed(2) : '0.00'}',
+                  value: MoneyFormat.exact(
+                    remaining > 0 ? remaining : 0,
+                    'PHP',
+                  ),
                   valueColor: remaining > 0
                       ? lootrColors.warning
                       : lootrColors.success,
@@ -225,7 +235,7 @@ class _ContributionRow extends StatelessWidget {
       title: Text(transaction.note ?? 'Contribution'),
       subtitle: Text(GoalDetailScreen._formatDate(transaction.occurredAt)),
       trailing: Text(
-        '₱${transaction.amount.toStringAsFixed(2)}',
+        MoneyFormat.exact(transaction.amount, 'PHP'),
         style: AppTypography.mono.copyWith(color: lootrColors.expense),
       ),
     );

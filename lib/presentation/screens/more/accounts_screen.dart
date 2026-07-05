@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../application/providers/accounts_provider.dart';
+import '../../../core/format/money_format.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
@@ -216,7 +217,7 @@ class _AccountRow extends StatelessWidget {
             )
           : null,
       trailing: Text(
-        '${account.balance < 0 ? '-' : ''}₱${account.balance.abs().toStringAsFixed(2)}',
+        MoneyFormat.exact(account.balance, account.currencyCode),
         style: AppTypography.mono.copyWith(
           color: balanceColor ?? colorScheme.onSurface,
         ),

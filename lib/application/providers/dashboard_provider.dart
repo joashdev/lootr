@@ -11,6 +11,7 @@ import '../../domain/entities/payee.dart';
 import '../../domain/entities/recurring_template.dart';
 import '../../domain/entities/transaction.dart';
 import '../../domain/entities/user.dart';
+import '../../domain/use_cases/calculate_safe_to_spend.dart';
 import 'repo_providers.dart';
 
 class DashboardBudgetSummary {
@@ -123,7 +124,7 @@ class DashboardData {
   final String? displayName;
   final DateTime currentDate;
   final String currencyCode;
-  final double safeToSpend;
+  final SafeToSpendResult safeToSpend;
   final double monthlyIncome;
   final double monthlyExpense;
   final double netWorth;
@@ -301,17 +302,14 @@ final dashboardProvider = StreamProvider<DashboardData>((ref) {
         .where((txn) => txn.direction == 'expense')
         .fold<double>(0, (sum, txn) => sum + txn.amount);
 
-    final committedExpenses =
-        budgets.fold<double>(0, (sum, budget) => sum + budget.amount) +
-        recurringTemplates
-            .where(
-              (item) => !item.nextOccurrenceAt!.isAfter(
-                now.add(const Duration(days: 30)),
-              ),
-            )
-            .fold<double>(0, (sum, item) => sum + item.amount) +
-        totalLiabilities;
-    final safeToSpend = totalAssets - committedExpenses;
+    final safeToSpend = const CalculateSafeToSpend()(
+      accounts: accounts,
+      budgets: budgets,
+      recurringTemplates: recurringTemplates,
+      monthlyIncome: monthlyIncome,
+      monthlyExpense: monthlyExpense,
+      now: now,
+    );
 
     final budgetSummaries =
         budgets
@@ -319,8 +317,12 @@ final dashboardProvider = StreamProvider<DashboardData>((ref) {
               (budget) => DashboardBudgetSummary(
                 id: budget.id,
                 name: categoryById[budget.categoryId]?.name ?? 'Budget',
-                icon: _categoryBadge(categoryById[budget.categoryId]),
-                color: _categoryColor(categoryById[budget.categoryId]?.color),
+                icon:
+                    budget.icon ??
+                    _categoryBadge(categoryById[budget.categoryId]),
+                color: _categoryColor(
+                  budget.color ?? categoryById[budget.categoryId]?.color,
+                ),
                 budgeted: budget.amount,
                 spent: budget.spent,
               ),
@@ -387,7 +389,7 @@ final dashboardProvider = StreamProvider<DashboardData>((ref) {
       aiEnabled: user?.aiEnabled ?? false,
       spending: topSpending,
       monthlyIncome: monthlyIncome,
-      safeToSpend: safeToSpend,
+      safeToSpend: safeToSpend.amount,
       budgets: budgetSummaries,
     );
 

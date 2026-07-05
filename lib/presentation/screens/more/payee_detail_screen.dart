@@ -226,7 +226,7 @@ class _TransactionLeading extends StatelessWidget {
       ),
       alignment: Alignment.center,
       child: transactionCategory != null
-          ? buildCategoryVisual(transactionCategory!.icon, color: color, size: 18)
+          ? buildCategoryVisualFor(transactionCategory, color: color, size: 18)
           : Icon(
               transactionDirection == 'transfer'
                   ? Icons.swap_horiz_rounded

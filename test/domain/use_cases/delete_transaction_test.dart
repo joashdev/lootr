@@ -71,19 +71,23 @@ void main() {
       expect(success.value.message, 'Transaction deleted');
     });
 
-    test('should restore transaction on undo with new id', () async {
+    test('should restore transaction in place (same id) on undo', () async {
       when(
         () => mockRepo.watchById('txn-1'),
       ).thenAnswer((_) => Stream.value(testTransaction));
       when(() => mockRepo.softDelete('txn-1')).thenAnswer((_) async {});
-      when(() => mockRepo.create(any())).thenAnswer((_) async => 'restored-1');
+      when(() => mockRepo.restore('txn-1')).thenAnswer((_) async {});
 
       final result = await useCase('txn-1');
       final entry = (result as Success<UndoEntry>).value;
 
       await entry.rollback();
 
-      verify(() => mockRepo.create(any())).called(1);
+      // Undo must clear the tombstone on the original row, not create a
+      // duplicate under a new id (which would double-sync and re-run
+      // create() side effects like advancing recurring templates).
+      verify(() => mockRepo.restore('txn-1')).called(1);
+      verifyNever(() => mockRepo.create(any()));
     });
 
     test('should return Failure when softDelete throws', () async {

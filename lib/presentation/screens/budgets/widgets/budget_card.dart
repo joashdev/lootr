@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/format/money_format.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/typography.dart';
@@ -30,8 +31,10 @@ class BudgetCard extends StatelessWidget {
   String _statusLabel() {
     if (budget.amount <= 0) return 'No budget set';
     final remaining = budget.amount - budget.spent;
-    if (remaining >= 0) return 'P${remaining.toStringAsFixed(0)} left';
-    return 'P${(-remaining).toStringAsFixed(0)} over';
+    if (remaining >= 0) {
+      return '${MoneyFormat.display(remaining, 'PHP')} left';
+    }
+    return '${MoneyFormat.display(-remaining, 'PHP')} over';
   }
 
   @override
@@ -42,7 +45,8 @@ class BudgetCard extends StatelessWidget {
         ? (budget.spent / budget.amount).clamp(0.0, 1.5)
         : 0.0;
 
-    final iconName = category?.icon ?? 'shopping-bag';
+    final iconValue = resolveBudgetIconValue(budget, category);
+    final budgetColor = resolveBudgetColor(budget, category);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.space2),
@@ -80,15 +84,13 @@ class BudgetCard extends StatelessWidget {
                         width: 36,
                         height: 36,
                         decoration: BoxDecoration(
-                          color: _parseCategoryColor(
-                            category?.color,
-                          ).withValues(alpha: 0.15),
+                          color: budgetColor.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Center(
                           child: buildCategoryVisual(
-                            iconName,
-                            color: _progressColor(context),
+                            iconValue,
+                            color: budgetColor,
                             size: 18,
                           ),
                         ),
@@ -108,7 +110,7 @@ class BudgetCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            'P${budget.spent.toStringAsFixed(0)}',
+                            MoneyFormat.display(budget.spent, 'PHP'),
                             style: AppTypography.mono.copyWith(
                               fontSize: 17,
                               fontWeight: FontWeight.w600,
@@ -116,7 +118,7 @@ class BudgetCard extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            'of P${budget.amount.toStringAsFixed(0)}',
+                            'of ${MoneyFormat.display(budget.amount, 'PHP')}',
                             style: AppTypography.mono.copyWith(
                               fontSize: 13,
                               fontWeight: FontWeight.w400,
@@ -149,6 +151,4 @@ class BudgetCard extends StatelessWidget {
       ),
     );
   }
-
-  Color _parseCategoryColor(String? hexColor) => parseCategoryColor(hexColor);
 }

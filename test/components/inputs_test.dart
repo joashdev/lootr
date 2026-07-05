@@ -92,7 +92,7 @@ void main() {
       await tester.pumpWidget(wrapWithTheme(
         const AmountInput(direction: TransactionDirection.expense),
       ));
-      expect(find.text('PHP'), findsOneWidget);
+      expect(find.text('₱'), findsOneWidget);
     });
 
     testWidgets('renders in dark mode', (tester) async {
@@ -100,14 +100,14 @@ void main() {
         const AmountInput(direction: TransactionDirection.income),
         brightness: Brightness.dark,
       ));
-      expect(find.text('PHP'), findsOneWidget);
+      expect(find.text('₱'), findsOneWidget);
     });
 
     testWidgets('shows currency prefix', (tester) async {
       await tester.pumpWidget(wrapWithTheme(
         const AmountInput(direction: TransactionDirection.transfer, currency: 'USD'),
       ));
-      expect(find.text('USD'), findsOneWidget);
+      expect(find.text('\$'), findsOneWidget);
     });
   });
 }

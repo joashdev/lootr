@@ -24,9 +24,22 @@ class CategoriesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final categoriesAsync = ref.watch(categoriesProvider);
+    final hasCategories =
+        categoriesAsync.asData?.value.isNotEmpty ?? false;
 
     return Scaffold(
-      appBar: AppBar(centerTitle: false, title: const Text('Categories')),
+      appBar: AppBar(
+        centerTitle: false,
+        title: const Text('Categories'),
+        actions: [
+          if (hasCategories)
+            IconButton(
+              tooltip: 'Add category',
+              onPressed: () => showCategorySheet(context, ref),
+              icon: const Icon(LucideIcons.plus),
+            ),
+        ],
+      ),
       body: categoriesAsync.when(
         data: (categories) {
           if (categories.isEmpty) {
@@ -83,7 +96,11 @@ class _CategoryList extends ConsumerWidget {
     }
 
     return ListView(
-      padding: const EdgeInsets.only(bottom: AppSpacing.space8),
+      // Keep the last row clear of the floating bottom nav.
+      padding: EdgeInsets.only(
+        bottom: AppSpacing.bottomNavClearance +
+            MediaQuery.paddingOf(context).bottom,
+      ),
       children: sections,
     );
   }
@@ -191,7 +208,7 @@ class _CategoryTile extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Center(
-              child: buildCategoryVisual(category.icon, color: color, size: 18),
+              child: buildCategoryVisualFor(category, color: color, size: 18),
             ),
           ),
         ],

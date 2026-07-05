@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../application/providers/budgets_tab_provider.dart';
+import '../../../../core/format/money_format.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/typography.dart';
@@ -55,7 +56,7 @@ class BudgetSummaryHeader extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'P${summary.spent.toStringAsFixed(0)} of P${summary.budgeted.toStringAsFixed(0)}',
+                '${MoneyFormat.display(summary.spent, 'PHP')} of ${MoneyFormat.display(summary.budgeted, 'PHP')}',
                 style: AppTypography.mono.copyWith(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,

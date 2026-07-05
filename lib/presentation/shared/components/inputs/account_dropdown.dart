@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
+import '../../../../core/format/money_format.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/radius.dart';
 import '../../../../core/theme/typography.dart';
@@ -23,11 +23,6 @@ class AccountDropdown extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final lootrColors = context.lootrColors;
-    final formatter = NumberFormat.currency(
-      symbol: '₱',
-      decimalDigits: 2,
-      locale: 'en_PH',
-    );
     final selectedExists = accounts.any(
       (account) => account.id == selectedAccountId,
     );
@@ -62,7 +57,10 @@ class AccountDropdown extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        formatter.format(account.balance),
+                        MoneyFormat.exact(
+                          account.balance,
+                          account.currencyCode,
+                        ),
                         style: AppTypography.caption.copyWith(
                           color: lootrColors.textSecondary,
                         ),

@@ -2,9 +2,9 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../../../application/providers/dashboard_provider.dart';
+import '../../../../core/format/money_format.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/radius.dart';
 import '../../../../core/theme/spacing.dart';
@@ -56,14 +56,12 @@ class SpendingDonut extends StatelessWidget {
                         Text('Top 5', style: AppTypography.captionMedium),
                         const SizedBox(height: 2),
                         Text(
-                          NumberFormat.currency(
-                            locale: 'en_PH',
-                            symbol: '₱',
-                          ).format(
+                          MoneyFormat.display(
                             data.spendingByCategory.fold<double>(
                               0,
                               (sum, slice) => sum + slice.amount,
                             ),
+                            data.currencyCode,
                           ),
                           style: AppTypography.h2Mono,
                         ),
@@ -92,10 +90,7 @@ class SpendingDonut extends StatelessWidget {
                       child: Text(slice.name, style: AppTypography.bodyMedium),
                     ),
                     Text(
-                      NumberFormat.currency(
-                        locale: 'en_PH',
-                        symbol: '₱',
-                      ).format(slice.amount),
+                      MoneyFormat.display(slice.amount, data.currencyCode),
                       style: AppTypography.mono,
                     ),
                     const SizedBox(width: AppSpacing.space2),

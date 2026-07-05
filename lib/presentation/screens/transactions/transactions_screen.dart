@@ -25,6 +25,7 @@ import '../../../domain/use_cases/delete_transfer.dart';
 import '../../../domain/value_objects/transaction_filters.dart';
 import '../more/more_form_sheets.dart';
 import '../../sheets/filter_sheet.dart';
+import '../../shared/category_visuals.dart';
 import '../../shared/components/app_snackbar.dart';
 import '../../shared/components/primary_screen_header.dart';
 import '../../shared/components/buttons/ghost_button.dart';
@@ -568,29 +569,42 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }) {
     final Color backgroundColor;
     final Color foregroundColor;
-    final IconData icon;
+    final Widget child;
 
     if (isTransferEntry(transaction)) {
       backgroundColor = context.lootrColors.transfer.withValues(alpha: 0.12);
       foregroundColor = context.lootrColors.transfer;
-      icon = Icons.swap_horiz_rounded;
+      child = Icon(
+        Icons.swap_horiz_rounded,
+        color: foregroundColor,
+        size: 18,
+      );
     } else if (category != null) {
-      backgroundColor = _categoryGroupColor(
-        category.categoryGroup,
-      ).withValues(alpha: 0.12);
-      foregroundColor = _categoryGroupColor(category.categoryGroup);
-      icon = _categoryIcon(category.icon);
+      foregroundColor = category.color != null && category.color!.isNotEmpty
+          ? parseCategoryColor(category.color)
+          : _categoryGroupColor(category.categoryGroup);
+      backgroundColor = foregroundColor.withValues(alpha: 0.12);
+      child = buildCategoryVisualFor(
+        category,
+        color: foregroundColor,
+        size: 18,
+      );
     } else {
       backgroundColor = Theme.of(context).colorScheme.surfaceContainerHighest;
       foregroundColor = Theme.of(context).colorScheme.onSurfaceVariant;
-      icon = _accountTypeIcon(account?.accountType);
+      child = Icon(
+        _accountTypeIcon(account?.accountType),
+        color: foregroundColor,
+        size: 18,
+      );
     }
 
     return Container(
       width: 40,
       height: 40,
+      alignment: Alignment.center,
       decoration: BoxDecoration(color: backgroundColor, shape: BoxShape.circle),
-      child: Icon(icon, color: foregroundColor, size: 18),
+      child: child,
     );
   }
 
@@ -628,26 +642,4 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     }
   }
 
-  IconData _categoryIcon(String? iconName) {
-    switch (iconName) {
-      case 'shopping-cart':
-      case 'cart':
-        return Icons.shopping_cart_outlined;
-      case 'utensils':
-      case 'food':
-        return Icons.restaurant_outlined;
-      case 'tag':
-        return Icons.sell_outlined;
-      case 'transport':
-        return Icons.directions_car_outlined;
-      case 'house':
-        return Icons.home_outlined;
-      case 'medical':
-        return Icons.local_hospital_outlined;
-      case 'salary':
-        return Icons.work_outline;
-      default:
-        return Icons.category_outlined;
-    }
-  }
 }

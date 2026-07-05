@@ -20,4 +20,9 @@ abstract class AppSpacing {
   static const double cardPaddingCompact = 12;
   static const double sheetPaddingHorizontal = 20;
   static const double sheetPaddingVertical = 16;
+
+  /// Bottom clearance for scrollable content so the last items are not hidden
+  /// behind the floating bottom nav (56 pill + 16 gap + 16 breathing room).
+  /// Add `MediaQuery.paddingOf(context).bottom` on top for the safe area.
+  static const double bottomNavClearance = 88;
 }

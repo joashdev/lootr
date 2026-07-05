@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../application/providers/accounts_provider.dart';
 import '../../../application/providers/payees_provider.dart';
 import '../../../application/providers/recurring_provider.dart';
+import '../../../core/format/money_format.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
@@ -167,7 +168,7 @@ class _RecurringList extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '₱${amount.toStringAsFixed(2)}',
+                MoneyFormat.exact(amount, 'PHP'),
                 style: AppTypography.mono.copyWith(
                   color: colorScheme.onSurface,
                 ),

@@ -989,7 +989,11 @@ Future<void> showCategorySheet(
 }) async {
   final nameController = TextEditingController(text: initial?.name ?? '');
   var group = initial?.categoryGroup ?? initialGroup ?? CategoryGroup.expense;
-  var selectedIcon = _iconValueOrFallback(initial?.icon);
+  var selectedIcon = resolveCategoryIconValue(
+    icon: initial?.icon,
+    name: initial?.name,
+    categoryGroup: initial?.categoryGroup ?? initialGroup,
+  );
   var selectedColor = _colorValueOrFallback(initial?.color);
 
   await _showSheet(
@@ -1163,13 +1167,6 @@ Future<void> showCategorySheet(
       );
     },
   );
-}
-
-String _iconValueOrFallback(String? value) {
-  if (value == null || value.isEmpty) return categoryIconOptions.first.value;
-  return categoryIconOptions.any((option) => option.value == value)
-      ? value
-      : categoryIconOptions.first.value;
 }
 
 String _colorValueOrFallback(String? value) {

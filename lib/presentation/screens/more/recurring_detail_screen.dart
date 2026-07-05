@@ -9,6 +9,7 @@ import '../../../application/providers/categories_provider.dart';
 import '../../../application/providers/payees_provider.dart';
 import '../../../application/providers/repo_providers.dart';
 import '../../../application/providers/recurring_detail_provider.dart';
+import '../../../core/format/money_format.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
@@ -18,6 +19,7 @@ import '../../../domain/entities/category.dart';
 import '../../../domain/entities/payee.dart';
 import 'more_form_sheets.dart';
 import '../../shared/components/app_snackbar.dart';
+import '../../shared/components/buttons/ghost_button.dart';
 import '../../shared/components/buttons/secondary_button.dart';
 
 class RecurringDetailScreen extends ConsumerWidget {
@@ -74,7 +76,7 @@ class RecurringDetailScreen extends ConsumerWidget {
                       const SizedBox(height: AppSpacing.space2),
                       _DetailRow(
                         label: 'Amount',
-                        value: '₱${template.amount.toStringAsFixed(2)}',
+                        value: MoneyFormat.exact(template.amount, 'PHP'),
                         mono: true,
                       ),
                       const SizedBox(height: AppSpacing.space2),
@@ -170,7 +172,7 @@ class RecurringDetailScreen extends ConsumerWidget {
                         ),
                       ),
                       trailing: Text(
-                        '₱${tx.amount.toStringAsFixed(2)}',
+                        MoneyFormat.exact(tx.amount, 'PHP'),
                         style: AppTypography.mono.copyWith(
                           color: colorScheme.onSurface,
                         ),
@@ -212,6 +214,33 @@ class RecurringDetailScreen extends ConsumerWidget {
                               icon: const Icon(LucideIcons.trash2, size: 18),
                               isDanger: true,
                               onPressed: () async {
+                                final confirmed = await showDialog<bool>(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    title: const Text('Delete Recurring?'),
+                                    content: const Text(
+                                      'This stops future auto-created '
+                                      'transactions. Existing transactions '
+                                      'are kept.',
+                                    ),
+                                    actions: [
+                                      GhostButton(
+                                        label: 'Cancel',
+                                        onPressed: () =>
+                                            Navigator.pop(ctx, false),
+                                        isExpanded: false,
+                                      ),
+                                      GhostButton(
+                                        label: 'Delete',
+                                        onPressed: () =>
+                                            Navigator.pop(ctx, true),
+                                        isDanger: true,
+                                        isExpanded: false,
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                if (confirmed != true) return;
                                 await ref
                                     .read(recurringRepoProvider)
                                     .update(

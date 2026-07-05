@@ -13,6 +13,7 @@ import '../../application/providers/payees_provider.dart';
 import '../../application/providers/repo_providers.dart';
 import '../../application/providers/undo_stack_provider.dart';
 import '../../core/constants/enums.dart' as ui;
+import '../../core/format/money_format.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/radius.dart';
 import '../../core/theme/typography.dart';
@@ -273,11 +274,29 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
 
   String? _matchCategoryId(String label, List<Category> categories) {
     final normalized = _normalize(label);
-    final match = categories.cast<Category?>().firstWhere(
+    if (normalized.isEmpty) return null;
+    final group = _direction == fields.TransactionDirection.income
+        ? fields.CategoryGroup.income
+        : fields.CategoryGroup.expense;
+    final candidates = categories
+        .where(
+          (category) =>
+              category.deletedAt == null && category.categoryGroup == group,
+        )
+        .toList();
+    final exact = candidates.cast<Category?>().firstWhere(
       (category) => _normalize(category!.name) == normalized,
       orElse: () => null,
     );
-    return match?.id;
+    if (exact != null) return exact.id;
+    // Fuzzy fallback: NL quick-add emits short labels ("Dining") that
+    // otherwise match no real category ("Food & Dining") and would save
+    // the transaction uncategorized.
+    final fuzzy = candidates.cast<Category?>().firstWhere((category) {
+      final name = _normalize(category!.name);
+      return name.contains(normalized) || normalized.contains(name);
+    }, orElse: () => null);
+    return fuzzy?.id;
   }
 
   String? _matchPayeeId(String label, List<Payee> payees) {
@@ -306,7 +325,9 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     }
     if (parsed.category != null) {
       _categoryId = _matchCategoryId(parsed.category!, categories);
-      _categoryDraft = parsed.category;
+      // Keep the raw label only when unresolved, so a matched category
+      // displays its real name (icon + name) instead of the parsed alias.
+      _categoryDraft = _categoryId == null ? parsed.category : null;
     }
     if (parsed.payee != null) {
       _payeeId = _matchPayeeId(parsed.payee!, payees);
@@ -440,11 +461,19 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     try {
       final payeeId = await _resolvePayeeId();
       final previous = widget.initialTransaction;
+      // Fall back to resolving free-typed category text (e.g. an NL
+      // quick-add label that was never tapped in the picker) at save time.
+      final categoryId =
+          _categoryId ??
+          _matchCategoryId(
+            _categoryDraft ?? '',
+            ref.read(categoriesProvider).asData?.value ?? const <Category>[],
+          );
 
       final transaction = Transaction(
         id: previous?.id ?? 'txn-${now.microsecondsSinceEpoch}',
         accountId: _accountId!,
-        categoryId: _categoryId,
+        categoryId: categoryId,
         payeeId: payeeId,
         parentTransactionId: _mode == fields.TransactionMode.installment
             ? _parentTransactionId
@@ -507,7 +536,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     final feeAmount = _feeController.text.trim().isEmpty
         ? 0.0
         : double.tryParse(_feeController.text.trim());
-    if (amount == null || feeAmount == null) {
+    if (amount == null || amount <= 0 || feeAmount == null || feeAmount < 0) {
       _showSnackBar('Enter valid transfer amounts.');
       return;
     }
@@ -809,7 +838,12 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                 ? fields.CategoryGroup.income
                 : fields.CategoryGroup.expense,
             initialText: _categoryDraft,
-            onChanged: (value) => setState(() => _categoryId = value),
+            onChanged: (value) => setState(() {
+              _categoryId = value;
+              // A concrete pick supersedes any free-typed draft label.
+              if (value != null) _categoryDraft = null;
+            }),
+            onTextChanged: (value) => _categoryDraft = value,
           ),
           const SizedBox(height: 16),
           _buildLabel('Payee'),
@@ -924,7 +958,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
           _buildPreviewCard(_parsedPreview!),
           const SizedBox(height: 16),
           PrimaryButton(
-            label: 'Save Transaction',
+            label: 'Add Transaction',
             onPressed: _isSaving
                 ? null
                 : () {
@@ -1005,7 +1039,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
           ),
           const SizedBox(height: 12),
           if (parsed.amount != null)
-            previewRow('Amount', '₱${parsed.amount!.toStringAsFixed(2)}'),
+            previewRow('Amount', MoneyFormat.exact(parsed.amount!, 'PHP')),
           if (parsed.payee != null) previewRow('Payee', parsed.payee!),
           if (parsed.account != null) previewRow('Account', parsed.account!),
           if (parsed.category != null) previewRow('Category', parsed.category!),
@@ -1177,7 +1211,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                   value: transaction.id,
                   child: Text(
                     '${DateFormat('MMM d').format(transaction.occurredAt)} • '
-                    '₱${transaction.amount.toStringAsFixed(2)}',
+                    '${MoneyFormat.exact(transaction.amount, 'PHP')}',
                   ),
                 ),
               )
@@ -1211,7 +1245,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                   value: debt.id,
                   child: Text(
                     '${debt.counterpartyName} • '
-                    '₱${debt.remainingBalance.toStringAsFixed(2)}',
+                    '${MoneyFormat.exact(debt.remainingBalance, 'PHP')}',
                   ),
                 ),
               )
@@ -1233,73 +1267,36 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _amountField(labelText: 'Transfer Amount'),
+        AmountInput(
+          direction: ui.TransactionDirection.transfer,
+          controller: _amountController,
+          label: 'Transfer Amount',
+        ),
         if (accounts.length < 2) ...[
           const SizedBox(height: 12),
           _buildTransferAccountsPrompt(accounts.length),
         ] else ...[
           const SizedBox(height: 16),
-          TextFormField(
+          AmountInput(
+            direction: ui.TransactionDirection.transfer,
             controller: _feeController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(
-              labelText: 'Fee',
-              prefixText: 'PHP ',
-            ),
-            validator: (value) {
-              if ((value ?? '').trim().isEmpty) return null;
-              final parsed = double.tryParse(value!.trim());
-              if (parsed == null || parsed < 0) {
-                return 'Enter a valid fee';
-              }
-              return null;
-            },
+            label: 'Fee',
           ),
           const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            key: ValueKey(
-              'source-${_sourceAccountId ?? 'none'}-${accounts.length}',
-            ),
-            initialValue:
-                accounts.any((account) => account.id == _sourceAccountId)
-                ? _sourceAccountId
-                : null,
-            decoration: const InputDecoration(labelText: 'From account'),
-            items: [
-              for (final account in accounts)
-                DropdownMenuItem<String>(
-                  value: account.id,
-                  child: Text(account.name),
-                ),
-            ],
-            onChanged: accounts.isEmpty
-                ? null
-                : (value) => setState(() => _sourceAccountId = value),
-            validator: (value) =>
-                value == null ? 'Select a source account' : null,
+          _buildLabel('From Account'),
+          const SizedBox(height: 8),
+          AccountDropdown(
+            accounts: accounts,
+            selectedAccountId: _sourceAccountId,
+            onChanged: (value) => setState(() => _sourceAccountId = value),
           ),
           const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            key: ValueKey(
-              'destination-${_destinationAccountId ?? 'none'}-${accounts.length}',
-            ),
-            initialValue:
-                accounts.any((account) => account.id == _destinationAccountId)
-                ? _destinationAccountId
-                : null,
-            decoration: const InputDecoration(labelText: 'To account'),
-            items: [
-              for (final account in accounts)
-                DropdownMenuItem<String>(
-                  value: account.id,
-                  child: Text(account.name),
-                ),
-            ],
-            onChanged: accounts.isEmpty
-                ? null
-                : (value) => setState(() => _destinationAccountId = value),
-            validator: (value) =>
-                value == null ? 'Select a destination account' : null,
+          _buildLabel('To Account'),
+          const SizedBox(height: 8),
+          AccountDropdown(
+            accounts: accounts,
+            selectedAccountId: _destinationAccountId,
+            onChanged: (value) => setState(() => _destinationAccountId = value),
           ),
           const SizedBox(height: 16),
           _noteField(hintText: 'Optional transfer note'),
@@ -1308,9 +1305,10 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
-            child: FilledButton(
+            child: PrimaryButton(
+              label: _isTransferEditing ? 'Save Changes' : 'Add Transfer',
               onPressed: _isSaving ? null : _saveTransfer,
-              child: Text(_isSaving ? 'Saving...' : 'Save Transfer'),
+              isLoading: _isSaving,
             ),
           ),
         ],
@@ -1355,21 +1353,6 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _amountField({String labelText = 'Amount'}) {
-    return TextFormField(
-      controller: _amountController,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      decoration: InputDecoration(labelText: labelText, prefixText: 'PHP '),
-      validator: (value) {
-        final parsed = double.tryParse((value ?? '').trim());
-        if (parsed == null || parsed <= 0) {
-          return 'Enter an amount greater than zero';
-        }
-        return null;
-      },
     );
   }
 

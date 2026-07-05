@@ -10,6 +10,7 @@ import '../../../application/providers/payees_provider.dart';
 import '../../../application/providers/repo_providers.dart';
 import '../../../application/providers/transaction_entry_support.dart';
 import '../../../application/providers/undo_stack_provider.dart';
+import '../../../core/format/money_format.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/radius.dart';
 import '../../../core/theme/spacing.dart';
@@ -293,7 +294,7 @@ class _TransactionDetailScreenState
     final transfer = entry.transfer;
     final isTransfer = transfer != null;
     final directionColor = _directionColor(transaction);
-    final amountStr = NumberFormat('#,##0.00').format(transaction.amount);
+    final amountStr = MoneyFormat.exact(transaction.amount, 'PHP');
     final transferDestinationName = isTransfer
         ? _accountName(transfer.destinationAccountId, accounts)
         : null;
@@ -330,7 +331,7 @@ class _TransactionDetailScreenState
                       'From': _accountName(transfer.sourceAccountId, accounts),
                       'To': transferDestinationName,
                       if (transfer.feeAmount > 0)
-                        'Fee': 'PHP ${transfer.feeAmount.toStringAsFixed(2)}',
+                        'Fee': MoneyFormat.exact(transfer.feeAmount, 'PHP'),
                     }
                   : transaction.metadata,
             ),
@@ -404,7 +405,7 @@ class _TransactionDetailScreenState
             ),
             alignment: Alignment.center,
             child: hasCategory
-                ? buildCategoryVisual(category.icon, color: iconColor, size: 26)
+                ? buildCategoryVisualFor(category, color: iconColor, size: 26)
                 : Icon(
                     isTransfer
                         ? Icons.swap_horiz_rounded
@@ -415,7 +416,7 @@ class _TransactionDetailScreenState
           ),
           const SizedBox(height: AppSpacing.space3),
           Text(
-            '${_amountPrefix(transaction)}\u20B1$amountStr',
+            '${_amountPrefix(transaction)}$amountStr',
             style: AppTypography.displayMono.copyWith(color: directionColor),
             textAlign: TextAlign.center,
           ),

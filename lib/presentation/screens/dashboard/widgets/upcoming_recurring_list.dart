@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../../../application/providers/dashboard_provider.dart';
+import '../../../../core/format/money_format.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/typography.dart';
@@ -92,11 +92,7 @@ class _RecurringRow extends StatelessWidget {
                 ),
               ),
               Text(
-                NumberFormat.currency(
-                  locale: 'en_PH',
-                  symbol: '₱',
-                  name: currencyCode,
-                ).format(item.amount),
+                MoneyFormat.exact(item.amount, currencyCode),
                 style: AppTypography.mono.copyWith(
                   fontSize: 15,
                   color: Theme.of(context).colorScheme.onSurface,

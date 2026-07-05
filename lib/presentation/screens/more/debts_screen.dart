@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../application/providers/debts_provider.dart';
+import '../../../core/format/money_format.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
@@ -180,7 +181,7 @@ class _DebtRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Text(
-            '₱${debt.remainingBalance.toStringAsFixed(2)}',
+            MoneyFormat.exact(debt.remainingBalance, 'PHP'),
             style: AppTypography.mono.copyWith(
               color: isSettled
                   ? lootrColors.textTertiary
@@ -188,7 +189,7 @@ class _DebtRow extends StatelessWidget {
             ),
           ),
           Text(
-            'of ₱${debt.amount.toStringAsFixed(2)}',
+            'of ${MoneyFormat.exact(debt.amount, 'PHP')}',
             style: AppTypography.mono.copyWith(
               fontSize: 13,
               fontWeight: FontWeight.w400,

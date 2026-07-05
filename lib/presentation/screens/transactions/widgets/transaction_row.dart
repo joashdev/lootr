@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/format/money_format.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/radius.dart';
 import '../../../../core/theme/spacing.dart';
@@ -134,7 +135,7 @@ class TransactionRowWidget extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '${_amountPrefix()}${NumberFormat("#,##0.00").format(transaction.amount)}',
+                '${_amountPrefix()}${MoneyFormat.exact(transaction.amount, 'PHP')}',
                 style: AppTypography.h3Mono.copyWith(color: directionColor),
               ),
               const SizedBox(height: 2),

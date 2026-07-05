@@ -10,6 +10,7 @@ import '../../../application/providers/categories_provider.dart';
 import '../../../application/providers/payees_provider.dart';
 import '../../../application/providers/repo_providers.dart';
 import '../../../core/extensions/async_value_x.dart';
+import '../../../core/format/money_format.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/radius.dart';
 import '../../../core/theme/spacing.dart';
@@ -38,7 +39,7 @@ class BudgetDetailScreen extends ConsumerWidget {
     final accountsAsync = ref.watch(accountsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Budget Detail')),
+      appBar: AppBar(centerTitle: false, title: const Text('Budget')),
       body: detailAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(
@@ -93,11 +94,17 @@ class BudgetDetailScreen extends ConsumerWidget {
             return lootrColors.success;
           }
 
-          final iconName = category?.icon ?? 'shopping-bag';
-          final iconData = _iconForName(iconName);
+          final iconValue = resolveBudgetIconValue(budget, category);
+          final budgetColor = resolveBudgetColor(budget, category);
 
           return ListView(
-            padding: const EdgeInsets.all(AppSpacing.pagePaddingMobile),
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.pagePaddingMobile,
+              AppSpacing.pagePaddingMobile,
+              AppSpacing.pagePaddingMobile,
+              AppSpacing.bottomNavClearance +
+                  MediaQuery.paddingOf(context).bottom,
+            ),
             children: [
               _DetailCard(
                 child: Column(
@@ -107,14 +114,15 @@ class BudgetDetailScreen extends ConsumerWidget {
                         Container(
                           width: 48,
                           height: 48,
+                          alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            color: progressColor().withValues(alpha: 0.15),
+                            color: budgetColor.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(14),
                           ),
-                          child: Icon(
-                            iconData,
+                          child: buildCategoryVisual(
+                            iconValue,
                             size: 24,
-                            color: progressColor(),
+                            color: budgetColor,
                           ),
                         ),
                         const SizedBox(width: AppSpacing.space3),
@@ -139,8 +147,10 @@ class BudgetDetailScreen extends ConsumerWidget {
                                       ),
                                     ),
                                     TextSpan(
-                                      text:
-                                          'P${budget.amount.toStringAsFixed(0)}',
+                                      text: MoneyFormat.display(
+                                        budget.amount,
+                                        'PHP',
+                                      ),
                                       style: AppTypography.mono.copyWith(
                                         color: lootrColors.textSecondary,
                                         fontSize: 13,
@@ -191,17 +201,19 @@ class BudgetDetailScreen extends ConsumerWidget {
                       children: [
                         _StatItem(
                           label: 'Spent',
-                          value: 'P${budget.spent.toStringAsFixed(0)}',
+                          value: MoneyFormat.display(budget.spent, 'PHP'),
                           color: isOver ? lootrColors.danger : null,
                         ),
                         _StatItem(
                           label: 'Budgeted',
-                          value: 'P${budget.amount.toStringAsFixed(0)}',
+                          value: MoneyFormat.display(budget.amount, 'PHP'),
                         ),
                         _StatItem(
                           label: isOver ? 'Over' : 'Left',
-                          value:
-                              'P${(isOver ? -remaining : remaining).toStringAsFixed(0)}',
+                          value: MoneyFormat.display(
+                            isOver ? -remaining : remaining,
+                            'PHP',
+                          ),
                           color: isOver
                               ? lootrColors.danger
                               : lootrColors.success,
@@ -378,7 +390,7 @@ class _BudgetTransactionLeading extends StatelessWidget {
       decoration: BoxDecoration(color: background, shape: BoxShape.circle),
       alignment: Alignment.center,
       child: hasCategory
-          ? buildCategoryVisual(category!.icon, color: iconColor, size: 18)
+          ? buildCategoryVisualFor(category, color: iconColor, size: 18)
           : Icon(Icons.receipt_long_outlined, color: iconColor, size: 18),
     );
   }
@@ -435,56 +447,5 @@ class _StatItem extends StatelessWidget {
         ),
       ],
     );
-  }
-}
-
-IconData _iconForName(String name) {
-  switch (name) {
-    case 'home':
-      return LucideIcons.home;
-    case 'car':
-      return LucideIcons.car;
-    case 'utensils':
-      return LucideIcons.utensils;
-    case 'shopping-cart':
-      return LucideIcons.shoppingCart;
-    case 'shopping-bag':
-      return LucideIcons.shoppingBag;
-    case 'film':
-      return LucideIcons.film;
-    case 'tv':
-      return LucideIcons.tv;
-    case 'phone':
-      return LucideIcons.phone;
-    case 'heart':
-      return LucideIcons.heart;
-    case 'gift':
-      return LucideIcons.gift;
-    case 'wifi':
-      return LucideIcons.wifi;
-    case 'book':
-      return LucideIcons.book;
-    case 'music':
-      return LucideIcons.music;
-    case 'camera':
-      return LucideIcons.camera;
-    case 'briefcase':
-      return LucideIcons.briefcase;
-    case 'credit-card':
-      return LucideIcons.creditCard;
-    case 'dollar-sign':
-      return LucideIcons.dollarSign;
-    case 'trending-up':
-      return LucideIcons.trendingUp;
-    case 'trending-down':
-      return LucideIcons.trendingDown;
-    case 'zap':
-      return LucideIcons.zap;
-    case 'coffee':
-      return LucideIcons.coffee;
-    case 'smartphone':
-      return LucideIcons.smartphone;
-    default:
-      return LucideIcons.shoppingBag;
   }
 }

@@ -8,6 +8,10 @@ import 'package:lootr/core/theme/theme.dart';
 import 'package:lootr/core/theme/typography.dart';
 
 void main() {
+  // AppTypography resolves Google Fonts (Geist), which touches asset bundles
+  // and requires an initialized test binding.
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('AppTheme', () {
     test('light theme has correct brightness', () {
       expect(AppTheme.light.brightness, Brightness.light);

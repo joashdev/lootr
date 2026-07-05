@@ -25,7 +25,7 @@ void main() {
       ));
       expect(find.text('Starbucks'), findsOneWidget);
       expect(find.text('Food'), findsOneWidget);
-      expect(find.text('-5.50'), findsOneWidget);
+      expect(find.text('-₱5.50'), findsOneWidget);
       expect(find.text('10:30 AM'), findsOneWidget);
     });
 
@@ -39,7 +39,7 @@ void main() {
         brightness: Brightness.dark,
       ));
       expect(find.text('Acme Inc'), findsOneWidget);
-      expect(find.text('+1000.00'), findsOneWidget);
+      expect(find.text('+₱1,000.00'), findsOneWidget);
     });
 
     testWidgets('calls onTap when tapped', (tester) async {

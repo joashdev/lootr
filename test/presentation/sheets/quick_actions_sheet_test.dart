@@ -17,9 +17,16 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Add Transaction'), findsOneWidget);
-    expect(find.text('How would you like to add it?'), findsOneWidget);
-    expect(find.text('Manual Entry'), findsOneWidget);
-    expect(find.text('Scan Receipt'), findsOneWidget);
+    expect(
+      find.text('Describe it below, or pick a mode above.'),
+      findsOneWidget,
+    );
     expect(find.text('Coffee at Starbucks ₱180'), findsOneWidget);
+    // Entry-mode dropdown trigger, with Manual/Scan behind the popup.
+    expect(find.text('Manual'), findsOneWidget);
+
+    await tester.tap(find.text('Manual'));
+    await tester.pumpAndSettle();
+    expect(find.text('Scan'), findsOneWidget);
   });
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/enums.dart';
+import '../../../../core/format/money_format.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/radius.dart';
 import '../../../../core/theme/typography.dart';
@@ -62,7 +63,7 @@ class AmountInput extends StatelessWidget {
           child: Row(
             children: [
               Text(
-                currency,
+                MoneyFormat.symbolFor(currency),
                 style: AppTypography.mono.copyWith(color: directionColor),
               ),
               const SizedBox(width: 8),
