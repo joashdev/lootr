@@ -111,87 +111,84 @@ void main() {
   }
 
   group('categorySpendingReportProvider', () {
-    test(
-      'groups current-month expenses by category with percentages, '
-      'ignoring income, other months, and deleted rows',
-      () async {
-        await insertTxn(
-          id: 'txn-food-1',
-          amount: 300,
-          direction: 'expense',
-          occurredAt: DateTime(2026, 6, 3),
-          categoryId: 'cat-food',
-        );
-        await insertTxn(
-          id: 'txn-food-2',
-          amount: 150,
-          direction: 'expense',
-          occurredAt: DateTime(2026, 6, 10),
-          categoryId: 'cat-food',
-        );
-        await insertTxn(
-          id: 'txn-transport',
-          amount: 50,
-          direction: 'expense',
-          occurredAt: DateTime(2026, 6, 12),
-          categoryId: 'cat-transport',
-        );
-        await insertTxn(
-          id: 'txn-uncategorized',
-          amount: 100,
-          direction: 'expense',
-          occurredAt: DateTime(2026, 6, 8),
-        );
-        // Should all be excluded:
-        await insertTxn(
-          id: 'txn-income',
-          amount: 5000,
-          direction: 'income',
-          occurredAt: DateTime(2026, 6, 5),
-          categoryId: 'cat-food',
-        );
-        await insertTxn(
-          id: 'txn-last-month',
-          amount: 999,
-          direction: 'expense',
-          occurredAt: DateTime(2026, 5, 20),
-          categoryId: 'cat-food',
-        );
-        await insertTxn(
-          id: 'txn-deleted',
-          amount: 888,
-          direction: 'expense',
-          occurredAt: DateTime(2026, 6, 9),
-          categoryId: 'cat-food',
-          deletedAt: DateTime(2026, 6, 10),
-        );
+    test('groups current-month expenses by category with percentages, '
+        'ignoring income, other months, and deleted rows', () async {
+      await insertTxn(
+        id: 'txn-food-1',
+        amount: 300,
+        direction: 'expense',
+        occurredAt: DateTime(2026, 6, 3),
+        categoryId: 'cat-food',
+      );
+      await insertTxn(
+        id: 'txn-food-2',
+        amount: 150,
+        direction: 'expense',
+        occurredAt: DateTime(2026, 6, 10),
+        categoryId: 'cat-food',
+      );
+      await insertTxn(
+        id: 'txn-transport',
+        amount: 50,
+        direction: 'expense',
+        occurredAt: DateTime(2026, 6, 12),
+        categoryId: 'cat-transport',
+      );
+      await insertTxn(
+        id: 'txn-uncategorized',
+        amount: 100,
+        direction: 'expense',
+        occurredAt: DateTime(2026, 6, 8),
+      );
+      // Should all be excluded:
+      await insertTxn(
+        id: 'txn-income',
+        amount: 5000,
+        direction: 'income',
+        occurredAt: DateTime(2026, 6, 5),
+        categoryId: 'cat-food',
+      );
+      await insertTxn(
+        id: 'txn-last-month',
+        amount: 999,
+        direction: 'expense',
+        occurredAt: DateTime(2026, 5, 20),
+        categoryId: 'cat-food',
+      );
+      await insertTxn(
+        id: 'txn-deleted',
+        amount: 888,
+        direction: 'expense',
+        occurredAt: DateTime(2026, 6, 9),
+        categoryId: 'cat-food',
+        deletedAt: DateTime(2026, 6, 10),
+      );
 
-        final container = makeContainer();
-        final report = await readAsyncValue<CategorySpendingReport>(
-          container,
-          categorySpendingReportProvider,
-        );
+      final container = makeContainer();
+      final report = await readAsyncValue<CategorySpendingReport>(
+        container,
+        categorySpendingReportProvider,
+      );
 
-        expect(report.currencyCode, 'PHP');
-        expect(report.total, 600);
-        expect(report.isEmpty, isFalse);
-        expect(report.slices.map((s) => s.name), [
-          'Food',
-          'Uncategorized',
-          'Transport',
-        ]);
+      expect(report.currencyCode, 'PHP');
+      expect(report.total, 600);
+      expect(report.isEmpty, isFalse);
+      expect(report.slices.map((s) => s.name), [
+        'Food',
+        'Uncategorized',
+        'Transport',
+      ]);
 
-        final food = report.slices.first;
-        expect(food.amount, 450);
-        expect(food.percentage, closeTo(0.75, 0.0001));
+      final food = report.slices.first;
+      expect(food.amount, 450);
+      expect(food.percentage, closeTo(0.75, 0.0001));
 
-        final uncategorized = report.slices[1];
-        expect(uncategorized.categoryId, isNull);
-        expect(uncategorized.amount, 100);
+      final uncategorized = report.slices[1];
+      expect(uncategorized.categoryId, isNull);
+      expect(uncategorized.amount, 100);
 
-        expect(report.slices[2].percentage, closeTo(50 / 600, 0.0001));
-      },
-    );
+      expect(report.slices[2].percentage, closeTo(50 / 600, 0.0001));
+    });
 
     test('is empty when there are no expenses in the current month', () async {
       await insertTxn(
@@ -251,10 +248,14 @@ void main() {
       );
 
       expect(report.months, hasLength(6));
-      expect(
-        report.months.map((m) => '${m.year}-${m.month}'),
-        ['2026-1', '2026-2', '2026-3', '2026-4', '2026-5', '2026-6'],
-      );
+      expect(report.months.map((m) => '${m.year}-${m.month}'), [
+        '2026-1',
+        '2026-2',
+        '2026-3',
+        '2026-4',
+        '2026-5',
+        '2026-6',
+      ]);
 
       final january = report.months.first;
       expect(january.income, 0);
@@ -285,58 +286,55 @@ void main() {
   });
 
   group('netWorthReportProvider', () {
-    test(
-      'computes net worth from assets minus liabilities and reconstructs '
-      'the 90-day series backwards from current balances',
-      () async {
-        await db.accounts.insertOne(
-          AccountsCompanion.insert(
-            id: 'acc-cc',
-            ownerUserId: 'usr-1',
-            name: 'Credit Card',
-            accountType: 'credit_card',
-            balance: const Value(-200),
-          ),
-        );
+    test('computes net worth from assets minus liabilities and reconstructs '
+        'the 90-day series backwards from current balances', () async {
+      await db.accounts.insertOne(
+        AccountsCompanion.insert(
+          id: 'acc-cc',
+          ownerUserId: 'usr-1',
+          name: 'Credit Card',
+          accountType: 'credit_card',
+          balance: const Value(-200),
+        ),
+      );
 
-        // Recent income raised net worth by 500 ten days ago.
-        await insertTxn(
-          id: 'txn-income',
-          amount: 500,
-          direction: 'income',
-          occurredAt: now.subtract(const Duration(days: 10)),
-        );
-        // Expense lowered it by 100 five days ago.
-        await insertTxn(
-          id: 'txn-expense',
-          amount: 100,
-          direction: 'expense',
-          occurredAt: now.subtract(const Duration(days: 5)),
-          categoryId: 'cat-food',
-        );
+      // Recent income raised net worth by 500 ten days ago.
+      await insertTxn(
+        id: 'txn-income',
+        amount: 500,
+        direction: 'income',
+        occurredAt: now.subtract(const Duration(days: 10)),
+      );
+      // Expense lowered it by 100 five days ago.
+      await insertTxn(
+        id: 'txn-expense',
+        amount: 100,
+        direction: 'expense',
+        occurredAt: now.subtract(const Duration(days: 5)),
+        categoryId: 'cat-food',
+      );
 
-        final container = makeContainer();
-        final report = await readAsyncValue<NetWorthReport>(
-          container,
-          netWorthReportProvider,
-        );
+      final container = makeContainer();
+      final report = await readAsyncValue<NetWorthReport>(
+        container,
+        netWorthReportProvider,
+      );
 
-        // 1000 cash - |−200| liability.
-        expect(report.current, 800);
-        expect(report.hasAccounts, isTrue);
-        expect(report.series, hasLength(90));
-        // Before both transactions: 800 - (500 - 100) = 400.
-        expect(report.series.first, 400);
-        // Series ends at the current net worth.
-        expect(report.series.last, 800);
-        expect(report.changePercent, closeTo(100, 0.0001));
-      },
-    );
+      // 1000 cash - |−200| liability.
+      expect(report.current, 800);
+      expect(report.hasAccounts, isTrue);
+      expect(report.series, hasLength(90));
+      // Before both transactions: 800 - (500 - 100) = 400.
+      expect(report.series.first, 400);
+      // Series ends at the current net worth.
+      expect(report.series.last, 800);
+      expect(report.changePercent, closeTo(100, 0.0001));
+    });
 
     test('is empty when there are no visible accounts', () async {
-      await (db.update(db.accounts)).write(
-        const AccountsCompanion(isArchived: Value(true)),
-      );
+      await (db.update(
+        db.accounts,
+      )).write(const AccountsCompanion(isArchived: Value(true)));
 
       final container = makeContainer();
       final report = await readAsyncValue<NetWorthReport>(
@@ -351,79 +349,73 @@ void main() {
   });
 
   group('budgetPerformanceReportProvider', () {
-    test(
-      'reports spent vs budgeted per current-month budget, '
-      'sorted by most-consumed first',
-      () async {
-        await db.budgets.insertOne(
-          BudgetsCompanion.insert(
-            id: 'bud-food',
-            ownerUserId: 'usr-1',
-            categoryId: 'cat-food',
-            amount: 500,
-            month: 6,
-            year: 2026,
-          ),
-        );
-        await db.budgets.insertOne(
-          BudgetsCompanion.insert(
-            id: 'bud-transport',
-            ownerUserId: 'usr-1',
-            categoryId: 'cat-transport',
-            amount: 200,
-            month: 6,
-            year: 2026,
-          ),
-        );
-        // Different month — excluded.
-        await db.budgets.insertOne(
-          BudgetsCompanion.insert(
-            id: 'bud-may',
-            ownerUserId: 'usr-1',
-            categoryId: 'cat-food',
-            amount: 999,
-            month: 5,
-            year: 2026,
-          ),
-        );
-
-        await insertTxn(
-          id: 'txn-food',
-          amount: 100,
-          direction: 'expense',
-          occurredAt: DateTime(2026, 6, 5),
+    test('reports spent vs budgeted per current-month budget, '
+        'sorted by most-consumed first', () async {
+      await db.budgets.insertOne(
+        BudgetsCompanion.insert(
+          id: 'bud-food',
+          ownerUserId: 'usr-1',
           categoryId: 'cat-food',
-        );
-        await insertTxn(
-          id: 'txn-transport',
-          amount: 180,
-          direction: 'expense',
-          occurredAt: DateTime(2026, 6, 7),
+          amount: 500,
+          month: 6,
+          year: 2026,
+        ),
+      );
+      await db.budgets.insertOne(
+        BudgetsCompanion.insert(
+          id: 'bud-transport',
+          ownerUserId: 'usr-1',
           categoryId: 'cat-transport',
-        );
+          amount: 200,
+          month: 6,
+          year: 2026,
+        ),
+      );
+      // Different month — excluded.
+      await db.budgets.insertOne(
+        BudgetsCompanion.insert(
+          id: 'bud-may',
+          ownerUserId: 'usr-1',
+          categoryId: 'cat-food',
+          amount: 999,
+          month: 5,
+          year: 2026,
+        ),
+      );
 
-        final container = makeContainer();
-        final report = await readAsyncValue<BudgetPerformanceReport>(
-          container,
-          budgetPerformanceReportProvider,
-        );
+      await insertTxn(
+        id: 'txn-food',
+        amount: 100,
+        direction: 'expense',
+        occurredAt: DateTime(2026, 6, 5),
+        categoryId: 'cat-food',
+      );
+      await insertTxn(
+        id: 'txn-transport',
+        amount: 180,
+        direction: 'expense',
+        occurredAt: DateTime(2026, 6, 7),
+        categoryId: 'cat-transport',
+      );
 
-        expect(report.rows, hasLength(2));
-        // Transport at 90% consumed sorts ahead of Food at 20%.
-        expect(report.rows.map((r) => r.budgetId), [
-          'bud-transport',
-          'bud-food',
-        ]);
-        expect(report.rows.first.spent, 180);
-        expect(report.rows.first.progress, closeTo(0.9, 0.0001));
-        expect(report.rows.last.spent, 100);
+      final container = makeContainer();
+      final report = await readAsyncValue<BudgetPerformanceReport>(
+        container,
+        budgetPerformanceReportProvider,
+      );
 
-        expect(report.totalBudgeted, 700);
-        expect(report.totalSpent, 280);
-        expect(report.progress, closeTo(0.4, 0.0001));
-        expect(report.isEmpty, isFalse);
-      },
-    );
+      expect(report.rows, hasLength(2));
+      // Transport at 90% consumed sorts ahead of Food at 20%.
+      expect(report.rows.map((r) => r.budgetId), ['bud-transport', 'bud-food']);
+      expect(report.rows.first.spent, 180);
+      expect(report.rows.first.progress, closeTo(0.9, 0.0001));
+      expect(report.rows.last.spent, 100);
+
+      expect(report.totalBudgeted, 700);
+      expect(report.totalSpent, 280);
+      expect(report.progress, closeTo(0.4, 0.0001));
+      expect(report.isEmpty, isFalse);
+    });
 
     test('is empty when the month has no budgets', () async {
       final container = makeContainer();
@@ -435,5 +427,59 @@ void main() {
       expect(report.isEmpty, isTrue);
       expect(report.totalBudgeted, 0);
     });
+
+    test(
+      'updates when transaction spending changes without a budget edit',
+      () async {
+        await db.budgets.insertOne(
+          BudgetsCompanion.insert(
+            id: 'bud-food',
+            ownerUserId: 'usr-1',
+            categoryId: 'cat-food',
+            amount: 500,
+            month: 6,
+            year: 2026,
+          ),
+        );
+
+        final container = makeContainer();
+        final initialCompleter = Completer<BudgetPerformanceReport>();
+        final updatedCompleter = Completer<BudgetPerformanceReport>();
+        final sub = container.listen<AsyncValue<BudgetPerformanceReport>>(
+          budgetPerformanceReportProvider,
+          (previous, next) {
+            if (!next.hasValue) return;
+            final report = next.requireValue;
+            if (!initialCompleter.isCompleted) {
+              initialCompleter.complete(report);
+            }
+            if (report.totalSpent == 75 && !updatedCompleter.isCompleted) {
+              updatedCompleter.complete(report);
+            }
+          },
+          fireImmediately: true,
+        );
+        addTearDown(sub.close);
+
+        final initial = await initialCompleter.future.timeout(
+          const Duration(seconds: 5),
+        );
+        expect(initial.totalSpent, 0);
+
+        await insertTxn(
+          id: 'txn-food-after-report',
+          amount: 75,
+          direction: 'expense',
+          occurredAt: DateTime(2026, 6, 12),
+          categoryId: 'cat-food',
+        );
+
+        final updated = await updatedCompleter.future.timeout(
+          const Duration(seconds: 5),
+        );
+        expect(updated.rows.single.spent, 75);
+        expect(updated.totalSpent, 75);
+      },
+    );
   });
 }

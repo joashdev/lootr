@@ -178,46 +178,45 @@ final categorySpendingReportProvider = StreamProvider<CategorySpendingReport>((
       .watchFiltered(TransactionRepoFilters(from: monthStart, to: now))
       .map(_activeTransactions);
 
-  return Rx.combineLatest3<User?, List<Category>, List<Transaction>,
-      CategorySpendingReport>(
-    userStream,
-    categoriesStream,
-    transactionsStream,
-    (user, categories, transactions) {
-      final categoryById = {
-        for (final category in categories) category.id: category,
-      };
+  return Rx.combineLatest3<
+    User?,
+    List<Category>,
+    List<Transaction>,
+    CategorySpendingReport
+  >(userStream, categoriesStream, transactionsStream, (
+    user,
+    categories,
+    transactions,
+  ) {
+    final categoryById = {
+      for (final category in categories) category.id: category,
+    };
 
-      final totals = <String?, double>{};
-      for (final txn in transactions) {
-        if (txn.direction != 'expense') continue;
-        totals[txn.categoryId] = (totals[txn.categoryId] ?? 0) + txn.amount;
-      }
-      final total = totals.values.fold<double>(0, (sum, v) => sum + v);
+    final totals = <String?, double>{};
+    for (final txn in transactions) {
+      if (txn.direction != 'expense') continue;
+      totals[txn.categoryId] = (totals[txn.categoryId] ?? 0) + txn.amount;
+    }
+    final total = totals.values.fold<double>(0, (sum, v) => sum + v);
 
-      final slices =
-          totals.entries.map((entry) {
-              final category = entry.key == null
-                  ? null
-                  : categoryById[entry.key];
-              return ReportCategorySlice(
-                categoryId: entry.key,
-                name: category?.name ?? 'Uncategorized',
-                color: categoryColorFromHex(category?.color),
-                amount: entry.value,
-                percentage: total == 0 ? 0 : entry.value / total,
-              );
-            }).toList()
-            ..sort((a, b) => b.amount.compareTo(a.amount));
-
-      return CategorySpendingReport(
-        currencyCode: user?.currencyCode ?? 'PHP',
-        periodLabel: DateFormat.yMMMM().format(monthStart),
-        total: total,
-        slices: slices,
+    final slices = totals.entries.map((entry) {
+      final category = entry.key == null ? null : categoryById[entry.key];
+      return ReportCategorySlice(
+        categoryId: entry.key,
+        name: category?.name ?? 'Uncategorized',
+        color: categoryColorFromHex(category?.color),
+        amount: entry.value,
+        percentage: total == 0 ? 0 : entry.value / total,
       );
-    },
-  );
+    }).toList()..sort((a, b) => b.amount.compareTo(a.amount));
+
+    return CategorySpendingReport(
+      currencyCode: user?.currencyCode ?? 'PHP',
+      periodLabel: DateFormat.yMMMM().format(monthStart),
+      total: total,
+      slices: slices,
+    );
+  });
 });
 
 /// Income and expense totals for the trailing six months (current inclusive).
@@ -305,131 +304,133 @@ final netWorthReportProvider = StreamProvider<NetWorthReport>((ref) {
       .watchFiltered(TransactionRepoFilters(from: windowStart, to: now))
       .map(_activeTransactions);
 
-  return Rx.combineLatest3<User?, List<Account>, List<Transaction>,
-      NetWorthReport>(
-    userStream,
-    accountsStream,
-    transactionsStream,
-    (user, accounts, transactions) {
-      double assets = 0;
-      double liabilities = 0;
-      for (final account in accounts) {
-        if (isLiabilityAccountType(account.accountType)) {
-          liabilities += account.balance.abs();
-        } else {
-          assets += account.balance;
-        }
+  return Rx.combineLatest3<
+    User?,
+    List<Account>,
+    List<Transaction>,
+    NetWorthReport
+  >(userStream, accountsStream, transactionsStream, (
+    user,
+    accounts,
+    transactions,
+  ) {
+    double assets = 0;
+    double liabilities = 0;
+    for (final account in accounts) {
+      if (isLiabilityAccountType(account.accountType)) {
+        liabilities += account.balance.abs();
+      } else {
+        assets += account.balance;
       }
-      final netWorth = assets - liabilities;
+    }
+    final netWorth = assets - liabilities;
 
-      final impactByDay = <int, double>{};
-      for (final txn in transactions) {
-        final day = DateTime(
-          txn.occurredAt.year,
-          txn.occurredAt.month,
-          txn.occurredAt.day,
-        );
-        final index = day.difference(windowStart).inDays;
-        if (index < 0 || index >= days) continue;
-        final impact = switch (txn.direction) {
-          'income' => txn.amount,
-          'expense' => -txn.amount,
-          _ => 0.0,
-        };
-        impactByDay[index] = (impactByDay[index] ?? 0) + impact;
-      }
-
-      final totalImpact = impactByDay.values.fold<double>(
-        0,
-        (sum, v) => sum + v,
+    final impactByDay = <int, double>{};
+    for (final txn in transactions) {
+      final day = DateTime(
+        txn.occurredAt.year,
+        txn.occurredAt.month,
+        txn.occurredAt.day,
       );
-      var running = netWorth - totalImpact;
-      final series = <double>[];
-      for (var i = 0; i < days; i++) {
-        running += impactByDay[i] ?? 0;
-        series.add(running);
-      }
+      final index = day.difference(windowStart).inDays;
+      if (index < 0 || index >= days) continue;
+      final impact = switch (txn.direction) {
+        'income' => txn.amount,
+        'expense' => -txn.amount,
+        _ => 0.0,
+      };
+      impactByDay[index] = (impactByDay[index] ?? 0) + impact;
+    }
 
-      final first = series.first;
-      final changePercent = first == 0
-          ? 0.0
-          : ((series.last - first) / first.abs()) * 100;
+    final totalImpact = impactByDay.values.fold<double>(0, (sum, v) => sum + v);
+    var running = netWorth - totalImpact;
+    final series = <double>[];
+    for (var i = 0; i < days; i++) {
+      running += impactByDay[i] ?? 0;
+      series.add(running);
+    }
 
-      return NetWorthReport(
-        currencyCode: user?.currencyCode ?? 'PHP',
-        current: netWorth,
-        series: series,
-        changePercent: changePercent,
-        startDate: windowStart,
-        endDate: today,
-        hasAccounts: accounts.isNotEmpty,
-      );
-    },
-  );
+    final first = series.first;
+    final changePercent = first == 0
+        ? 0.0
+        : ((series.last - first) / first.abs()) * 100;
+
+    return NetWorthReport(
+      currencyCode: user?.currencyCode ?? 'PHP',
+      current: netWorth,
+      series: series,
+      changePercent: changePercent,
+      startDate: windowStart,
+      endDate: today,
+      hasAccounts: accounts.isNotEmpty,
+    );
+  });
 });
 
-final budgetPerformanceReportProvider =
-    StreamProvider<BudgetPerformanceReport>((ref) {
-      final userRepo = ref.watch(userRepoProvider);
-      final budgetRepo = ref.watch(budgetRepoProvider);
-      final categoryRepo = ref.watch(categoryRepoProvider);
+final budgetPerformanceReportProvider = StreamProvider<BudgetPerformanceReport>(
+  (ref) {
+    final userRepo = ref.watch(userRepoProvider);
+    final budgetRepo = ref.watch(budgetRepoProvider);
+    final categoryRepo = ref.watch(categoryRepoProvider);
 
-      final now = ref.watch(reportsClockProvider);
+    final now = ref.watch(reportsClockProvider);
 
-      final userStream = userRepo.watchCurrentUser().map(
-        (row) => row == null ? null : UserDataMapper(row).toEntity(),
-      );
-      final categoriesStream = categoryRepo.watchAll().map(_activeCategories);
-      final budgetsStream = budgetRepo
-          .watchAll(month: now.month, year: now.year)
-          .asyncMap((rows) async {
-            final budgets = <Budget>[];
-            for (final row in rows) {
-              final budget = BudgetDataMapper(row).toEntity();
-              if (budget.deletedAt != null) continue;
-              final spent = await budgetRepo
-                  .watchSpentForBudget(budget.id)
-                  .first;
-              budgets.add(budget.copyWith(spent: spent));
-            }
-            return budgets;
+    final userStream = userRepo.watchCurrentUser().map(
+      (row) => row == null ? null : UserDataMapper(row).toEntity(),
+    );
+    final categoriesStream = categoryRepo.watchAll().map(_activeCategories);
+    final budgetsStream = budgetRepo
+        .watchAll(month: now.month, year: now.year)
+        .map(
+          (rows) => rows
+              .map((row) => BudgetDataMapper(row).toEntity())
+              .where((budget) => budget.deletedAt == null)
+              .toList(),
+        )
+        .switchMap((budgets) {
+          if (budgets.isEmpty) return Stream.value(<Budget>[]);
+
+          return Rx.combineLatestList<double>(
+            budgets.map((budget) => budgetRepo.watchSpentForBudget(budget.id)),
+          ).map((spentValues) {
+            return [
+              for (var i = 0; i < budgets.length; i++)
+                budgets[i].copyWith(spent: spentValues[i]),
+            ];
           });
+        });
 
-      return Rx.combineLatest3<User?, List<Category>, List<Budget>,
-          BudgetPerformanceReport>(
-        userStream,
-        categoriesStream,
-        budgetsStream,
-        (user, categories, budgets) {
-          final categoryById = {
-            for (final category in categories) category.id: category,
-          };
+    return Rx.combineLatest3<
+      User?,
+      List<Category>,
+      List<Budget>,
+      BudgetPerformanceReport
+    >(userStream, categoriesStream, budgetsStream, (user, categories, budgets) {
+      final categoryById = {
+        for (final category in categories) category.id: category,
+      };
 
-          final rows =
-              budgets.map((budget) {
-                  final category = categoryById[budget.categoryId];
-                  return BudgetPerformanceRow(
-                    budgetId: budget.id,
-                    name: category?.name ?? 'Budget',
-                    color: categoryColorFromHex(category?.color),
-                    budgeted: budget.amount,
-                    spent: budget.spent,
-                  );
-                }).toList()
-                ..sort((a, b) => b.progress.compareTo(a.progress));
+      final rows = budgets.map((budget) {
+        final category = categoryById[budget.categoryId];
+        return BudgetPerformanceRow(
+          budgetId: budget.id,
+          name: category?.name ?? 'Budget',
+          color: categoryColorFromHex(category?.color),
+          budgeted: budget.amount,
+          spent: budget.spent,
+        );
+      }).toList()..sort((a, b) => b.progress.compareTo(a.progress));
 
-          return BudgetPerformanceReport(
-            currencyCode: user?.currencyCode ?? 'PHP',
-            periodLabel: DateFormat.yMMMM().format(
-              DateTime(now.year, now.month),
-            ),
-            rows: rows,
-            totalBudgeted: rows.fold<double>(0, (sum, r) => sum + r.budgeted),
-            totalSpent: rows.fold<double>(0, (sum, r) => sum + r.spent),
-          );
-        },
+      return BudgetPerformanceReport(
+        currencyCode: user?.currencyCode ?? 'PHP',
+        periodLabel: DateFormat.yMMMM().format(DateTime(now.year, now.month)),
+        rows: rows,
+        totalBudgeted: rows.fold<double>(0, (sum, r) => sum + r.budgeted),
+        totalSpent: rows.fold<double>(0, (sum, r) => sum + r.spent),
       );
     });
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Shared helpers
