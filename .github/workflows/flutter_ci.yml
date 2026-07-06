@@ -26,32 +26,15 @@ jobs:
       - run: flutter analyze --no-pub --no-fatal-infos --no-fatal-warnings
       - run: flutter test --no-pub
 
-  integration-tests:
-    if: github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.44.2'
-          channel: stable
-          cache: true
-      - run: flutter pub get
-      - run: dart run build_runner build --delete-conflicting-outputs
-
-      - name: Enable KVM
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-
-      - uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 34
-          target: google_apis
-          arch: x86_64
-          profile: Nexus 6
-          disable-animations: true
-          emulator-boot-timeout: 900
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -camera-front none
-          script: flutter test --no-pub integration_test
+# NOTE: everything under integration_test/ is intentionally NOT run in CI, and
+# there is no emulator job. Integration tests require a connected device; on a
+# hosted runner that means the Android emulator, whose nested-virtualization
+# QEMU hangs under the heavy storyboard_*_test.dart screenshot-capture tools
+# (they boot the whole app and drive full user journeys). The one lightweight
+# smoke test (test_infrastructure_flow_test.dart) only exercises the Drift repos,
+# which the unit suite already covers more thoroughly (see
+# test/data/repositories/transaction_repo_test.dart). Run integration tests
+# locally against a simulator, e.g.:
+#   flutter drive \
+#     --driver=test_driver/integration_test.dart \
+#     --target=integration_test/storyboard_journey_test.dart -d <udid>

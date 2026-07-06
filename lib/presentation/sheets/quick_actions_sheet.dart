@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 
 import '../../core/theme/colors.dart';
 import '../../core/theme/radius.dart';
@@ -37,9 +38,12 @@ class _QuickActionsSheetBody extends StatefulWidget {
 
 class _QuickActionsSheetBodyState extends State<_QuickActionsSheetBody> {
   final TextEditingController _quickInputController = TextEditingController();
+  final SpeechToText _speech = SpeechToText();
+  bool _isListening = false;
 
   @override
   void dispose() {
+    _speech.cancel();
     _quickInputController.dispose();
     super.dispose();
   }
@@ -52,6 +56,59 @@ class _QuickActionsSheetBodyState extends State<_QuickActionsSheetBody> {
         startInQuickMode: true,
         initialQuickText: initialQuickText.isEmpty ? null : initialQuickText,
       ),
+    );
+  }
+
+  Future<void> _toggleSpeechInput() async {
+    if (_isListening) {
+      await _speech.stop();
+      if (mounted) {
+        setState(() => _isListening = false);
+      }
+      return;
+    }
+
+    final available = await _speech.initialize(
+      onStatus: (status) {
+        if (!mounted) return;
+        if (status == 'done' || status == 'notListening') {
+          setState(() => _isListening = false);
+        }
+      },
+      onError: (_) {
+        if (!mounted) return;
+        setState(() => _isListening = false);
+        AppSnackBar.show(
+          context,
+          'Voice input could not start on this device.',
+          variant: AppSnackBarVariant.warning,
+        );
+      },
+    );
+
+    if (!available) {
+      if (!mounted) return;
+      AppSnackBar.show(
+        context,
+        'Voice input is unavailable on this device.',
+        variant: AppSnackBarVariant.warning,
+      );
+      return;
+    }
+
+    setState(() => _isListening = true);
+    await _speech.listen(
+      listenMode: ListenMode.dictation,
+      partialResults: true,
+      onResult: (result) {
+        if (!mounted) return;
+        setState(() {
+          _quickInputController.text = result.recognizedWords.trim();
+          _quickInputController.selection = TextSelection.collapsed(
+            offset: _quickInputController.text.length,
+          );
+        });
+      },
     );
   }
 
@@ -71,15 +128,41 @@ class _QuickActionsSheetBodyState extends State<_QuickActionsSheetBody> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SheetHandle(),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Text(
-                'Add Transaction',
-                style: AppTypography.h2.copyWith(color: colorScheme.onSurface),
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Add Transaction',
+                    style: AppTypography.h2.copyWith(
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
             ),
+            const SizedBox(height: 8),
+            // This sheet IS quick (NL) mode, so Quick is always the active
+            // segment; Manual/Scan hand off to their dedicated flows in one tap.
+            EntryModeTabs(
+              selected: EntryMode.quick,
+              onSelected: (mode) {
+                switch (mode) {
+                  case EntryMode.quick:
+                    break; // Already in quick mode.
+                  case EntryMode.manual:
+                    widget.onNavigate('/transactions/new');
+                  case EntryMode.scan:
+                    widget.onNavigate('/scan');
+                }
+              },
+            ),
+            const SizedBox(height: 12),
             Text(
-              'How would you like to add it?',
+              'Describe it below, or pick a mode above.',
               style: AppTypography.body.copyWith(
                 color: context.lootrColors.textSecondary,
               ),
@@ -115,17 +198,13 @@ class _QuickActionsSheetBodyState extends State<_QuickActionsSheetBody> {
                     ),
                   ),
                   IconButton(
-                    onPressed: () {
-                      AppSnackBar.show(
-                        context,
-                        'Voice input is not available in V1',
-                        variant: AppSnackBarVariant.neutral,
-                        duration: const Duration(seconds: 2),
-                      );
-                    },
+                    tooltip: _isListening ? 'Stop listening' : 'Start voice input',
+                    onPressed: _toggleSpeechInput,
                     icon: Icon(
-                      LucideIcons.mic,
-                      color: colorScheme.primary,
+                      _isListening ? LucideIcons.audioLines : LucideIcons.mic,
+                      color: _isListening
+                          ? colorScheme.onSurface
+                          : colorScheme.primary,
                       size: 18,
                     ),
                   ),
@@ -142,99 +221,7 @@ class _QuickActionsSheetBodyState extends State<_QuickActionsSheetBody> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-            const Divider(height: 1),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _ActionCard(
-                    icon: LucideIcons.pencilLine,
-                    label: 'Manual Entry',
-                    subtitle: 'Fill in details',
-                    color: AppColors.primary700,
-                    onTap: () => widget.onNavigate('/transactions/new'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _ActionCard(
-                    icon: LucideIcons.camera,
-                    label: 'Scan Receipt',
-                    subtitle: 'OCR capture',
-                    color: AppColors.success600,
-                    onTap: () => widget.onNavigate('/scan'),
-                  ),
-                ),
-              ],
-            ),
             const SizedBox(height: 24),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ActionCard extends StatelessWidget {
-  const _ActionCard({
-    required this.icon,
-    required this.label,
-    required this.subtitle,
-    required this.color,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final String subtitle;
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 152),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: colorScheme.surface,
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          border: Border.all(color: colorScheme.outlineVariant),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(AppRadius.full),
-              ),
-              child: Icon(icon, color: color, size: 20),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              label,
-              style: AppTypography.bodyMedium.copyWith(
-                color: colorScheme.onSurface,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: AppTypography.caption.copyWith(
-                color: context.lootrColors.textTertiary,
-              ),
-              textAlign: TextAlign.center,
-            ),
           ],
         ),
       ),

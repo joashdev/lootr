@@ -13,7 +13,6 @@ class AppearanceScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
-    final lootrColors = context.lootrColors;
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -39,71 +38,73 @@ class AppearanceScreen extends ConsumerWidget {
                     color: colorScheme.onSurface,
                   ),
                 ),
-                subtitle: Text(
-                  themeMode == ThemeMode.system
-                      ? 'System'
-                      : themeMode == ThemeMode.dark
-                      ? 'Dark'
-                      : 'Light',
-                  style: AppTypography.caption.copyWith(
-                    color: lootrColors.textSecondary,
-                  ),
-                ),
-                trailing: SegmentedButton<ThemeMode>(
-                  segments: const [
-                    ButtonSegment(value: ThemeMode.light, label: Text('Light')),
-                    ButtonSegment(
-                      value: ThemeMode.system,
-                      label: Text('System'),
+                trailing: DropdownButtonHideUnderline(
+                  child: DropdownButton<ThemeMode>(
+                    value: themeMode,
+                    borderRadius: BorderRadius.circular(12),
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: colorScheme.onSurface,
                     ),
-                    ButtonSegment(value: ThemeMode.dark, label: Text('Dark')),
-                  ],
-                  selected: {themeMode},
-                  onSelectionChanged: (Set<ThemeMode> selected) {
-                    ref
-                        .read(themeModeProvider.notifier)
-                        .setMode(selected.first);
-                  },
+                    items: [
+                      _themeModeItem(
+                        context,
+                        value: ThemeMode.light,
+                        icon: LucideIcons.sun,
+                        label: 'Light',
+                      ),
+                      _themeModeItem(
+                        context,
+                        value: ThemeMode.system,
+                        icon: LucideIcons.contrast,
+                        label: 'System',
+                      ),
+                      _themeModeItem(
+                        context,
+                        value: ThemeMode.dark,
+                        icon: LucideIcons.moon,
+                        label: 'Dark',
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        ref.read(themeModeProvider.notifier).setMode(value);
+                      }
+                    },
+                  ),
                 ),
               ),
             ],
           ),
-          _SettingsSection(
-            header: 'Text Size',
-            children: [
-              ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.pagePaddingMobile,
-                ),
-                leading: Icon(
-                  LucideIcons.type,
-                  size: 20,
-                  color: colorScheme.primary,
-                ),
-                title: Text(
-                  'Font Size',
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: colorScheme.onSurface,
-                  ),
-                ),
-                subtitle: Text(
-                  'Default',
-                  style: AppTypography.caption.copyWith(
-                    color: lootrColors.textSecondary,
-                  ),
-                ),
-                trailing: Icon(
-                  LucideIcons.chevronRight,
-                  size: 18,
-                  color: lootrColors.textTertiary,
-                ),
-              ),
-            ],
-          ),
+          // Font Size setting is hidden until text scaling ships.
         ],
       ),
     );
   }
+}
+
+DropdownMenuItem<ThemeMode> _themeModeItem(
+  BuildContext context, {
+  required ThemeMode value,
+  required IconData icon,
+  required String label,
+}) {
+  final colorScheme = Theme.of(context).colorScheme;
+  return DropdownMenuItem<ThemeMode>(
+    value: value,
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: context.lootrColors.textSecondary),
+        const SizedBox(width: AppSpacing.space2),
+        Text(
+          label,
+          style: AppTypography.bodyMedium.copyWith(
+            color: colorScheme.onSurface,
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _SettingsSection extends StatelessWidget {

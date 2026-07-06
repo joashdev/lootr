@@ -116,6 +116,96 @@ void main() {
       expect(txn.syncStatus, 'pending_sync');
     });
 
+    test('restore clears deleted_at, re-applies balance, keeps same id',
+        () async {
+      await repo.create(TransactionsCompanion.insert(
+        id: 'txn-restore',
+        accountId: 'acc-1',
+        amount: 100.0,
+        transactionDirection: 'expense',
+        transactionMode: 'one_time',
+        occurredAt: DateTime(2026, 6, 19),
+      ));
+      await repo.softDelete('txn-restore');
+
+      await repo.restore('txn-restore');
+
+      final txn = await (db.select(db.transactions)
+            ..where((t) => t.id.equals('txn-restore'))
+            ..limit(1))
+          .getSingle();
+      expect(txn.deletedAt, isNull);
+      expect(txn.syncStatus, 'pending_sync');
+
+      final account = await (db.select(db.accounts)
+            ..where((a) => a.id.equals('acc-1'))
+            ..limit(1))
+          .getSingle();
+      expect(account.balance, 400.0); // expense re-applied after undo
+      expect(account.syncStatus, 'pending_sync');
+
+      // No duplicate row was created.
+      final all = await db.select(db.transactions).get();
+      expect(all.length, 1);
+    });
+
+    test('restore is a no-op for non-deleted or missing transactions',
+        () async {
+      await repo.create(TransactionsCompanion.insert(
+        id: 'txn-live',
+        accountId: 'acc-1',
+        amount: 100.0,
+        transactionDirection: 'expense',
+        transactionMode: 'one_time',
+        occurredAt: DateTime(2026, 6, 19),
+      ));
+
+      await repo.restore('txn-live'); // not deleted
+      await repo.restore('txn-missing'); // does not exist
+
+      final account = await (db.select(db.accounts)
+            ..where((a) => a.id.equals('acc-1'))
+            ..limit(1))
+          .getSingle();
+      expect(account.balance, 400.0); // unchanged
+    });
+
+    test('delete + restore of recurring-linked txn does not advance template',
+        () async {
+      await db.recurringTemplates.insertOne(
+        RecurringTemplatesCompanion.insert(
+          id: 'rec-1',
+          accountId: 'acc-1',
+          amount: 100.0,
+          recurrenceRule: 'monthly',
+          nextOccurrenceAt: Value(DateTime(2026, 7, 1)),
+        ),
+      );
+      await repo.create(TransactionsCompanion.insert(
+        id: 'txn-rec',
+        accountId: 'acc-1',
+        amount: 100.0,
+        transactionDirection: 'expense',
+        transactionMode: 'recurring',
+        recurringTemplateId: const Value('rec-1'),
+        occurredAt: DateTime(2026, 6, 19),
+      ));
+
+      final afterCreate = await (db.select(db.recurringTemplates)
+            ..where((t) => t.id.equals('rec-1')))
+          .getSingle();
+      final advancedOnce = afterCreate.nextOccurrenceAt;
+
+      await repo.softDelete('txn-rec');
+      await repo.restore('txn-rec');
+
+      final afterUndo = await (db.select(db.recurringTemplates)
+            ..where((t) => t.id.equals('rec-1')))
+          .getSingle();
+      // Undo must not re-run create() side effects.
+      expect(afterUndo.nextOccurrenceAt, advancedOnce);
+    });
+
     test('watchFiltered returns non-deleted transactions', () async {
       await repo.create(TransactionsCompanion.insert(
         id: 'txn-a',

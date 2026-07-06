@@ -213,6 +213,67 @@ class TransferRepo {
     });
   }
 
+  /// Reverses [softDelete]: clears the tombstone on the original transfer
+  /// (and its fee transaction, if any) and re-applies both balance impacts.
+  /// Used by undo so the transfer keeps its id (sync-friendly).
+  Future<void> restore(String id) async {
+    await _db.transaction(() async {
+      final rows = await (_db.select(_db.transfers)
+            ..where((t) => t.id.equals(id) & t.deletedAt.isNotNull())
+            ..limit(1))
+          .get();
+      if (rows.isEmpty) return;
+      final transfer = rows.first;
+      final hasFee = transfer.feeAmount != null && transfer.feeAmount! > 0;
+
+      final sourceAccount = await (_db.select(_db.accounts)
+            ..where((a) => a.id.equals(transfer.sourceAccountId))
+            ..limit(1))
+          .getSingle();
+
+      final totalDeduction =
+          transfer.amount + (hasFee ? transfer.feeAmount! : 0);
+      await (_db.update(_db.accounts)
+            ..where((a) => a.id.equals(transfer.sourceAccountId)))
+          .write(AccountsCompanion(
+        balance: Value(sourceAccount.balance - totalDeduction),
+        syncStatus: const Value('pending_sync'),
+        updatedAt: Value(DateTime.now()),
+      ));
+
+      final destAccount = await (_db.select(_db.accounts)
+            ..where((a) => a.id.equals(transfer.destinationAccountId))
+            ..limit(1))
+          .getSingle();
+
+      await (_db.update(_db.accounts)
+            ..where((a) => a.id.equals(transfer.destinationAccountId)))
+          .write(AccountsCompanion(
+        balance: Value(destAccount.balance + transfer.amount),
+        syncStatus: const Value('pending_sync'),
+        updatedAt: Value(DateTime.now()),
+      ));
+
+      final now = DateTime.now();
+      await (_db.update(_db.transfers)..where((t) => t.id.equals(id)))
+          .write(TransfersCompanion(
+        deletedAt: const Value(null),
+        syncStatus: const Value('pending_sync'),
+        updatedAt: Value(now),
+      ));
+
+      if (hasFee) {
+        final feeId = 'txn-fee-$id';
+        await (_db.update(_db.transactions)..where((t) => t.id.equals(feeId)))
+            .write(TransactionsCompanion(
+          deletedAt: const Value(null),
+          syncStatus: const Value('pending_sync'),
+          updatedAt: Value(now),
+        ));
+      }
+    });
+  }
+
   Future<void> softDelete(String id) async {
     await _db.transaction(() async {
       final rows = await (_db.select(_db.transfers)

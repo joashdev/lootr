@@ -14,6 +14,9 @@ import 'package:lootr/domain/entities/payee.dart';
 import 'package:lootr/domain/entities/transaction.dart';
 import 'package:lootr/domain/entities/transfer.dart';
 import 'package:lootr/presentation/sheets/add_transaction_sheet.dart';
+import 'package:lootr/presentation/shared/components/buttons/primary_button.dart';
+import 'package:lootr/presentation/shared/components/inputs/account_dropdown.dart';
+import 'package:lootr/presentation/shared/components/inputs/amount_input.dart';
 
 Widget _wrap(
   Widget child, {
@@ -121,6 +124,10 @@ void main() {
 
       expect(find.text('Add Transaction'), findsWidgets);
       expect(find.text('Amount'), findsOneWidget);
+      // Opened straight into the manual form: the segmented control mirrors
+      // the active mode instead of a stale default.
+      final tabs = tester.widget<EntryModeTabs>(find.byType(EntryModeTabs));
+      expect(tabs.selected, EntryMode.manual);
     });
 
     testWidgets('renders prefilled edit mode', (tester) async {
@@ -138,6 +145,11 @@ void main() {
       expect(find.text('Mode: Recurring'), findsOneWidget);
       expect(find.text('Morning coffee'), findsOneWidget);
       expect(find.text('Save Changes'), findsOneWidget);
+      // The saved category and payee must be resolved back into the pickers.
+      expect(find.text('Coffee'), findsOneWidget);
+      expect(find.text('Brew Lab'), findsOneWidget);
+      // Entry-mode segments are hidden while editing.
+      expect(find.byType(EntryModeTabs), findsNothing);
     });
 
     testWidgets('renders prefilled transfer edit mode', (tester) async {
@@ -151,8 +163,37 @@ void main() {
 
       expect(find.text('Edit Transfer'), findsOneWidget);
       expect(find.text('Transfer Amount'), findsOneWidget);
-      expect(find.text('Save Transfer'), findsOneWidget);
+      expect(find.text('Save Changes'), findsOneWidget);
       expect(find.text('Move savings'), findsOneWidget);
+    });
+
+    testWidgets('transfer tab reuses shared boxed fields', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          const AddTransactionSheet(),
+          accounts: [_account(), _secondAccount()],
+          categories: [_category()],
+          payees: [_payee()],
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('Transfer'));
+      await tester.pumpAndSettle();
+
+      // Boxed AmountInput for both Transfer Amount and Fee.
+      expect(find.byType(AmountInput), findsNWidgets(2));
+      expect(find.text('Transfer Amount'), findsOneWidget);
+      expect(find.text('Fee'), findsOneWidget);
+      // Shared account dropdowns for source and destination.
+      expect(find.byType(AccountDropdown), findsNWidgets(2));
+      expect(find.text('From Account'), findsOneWidget);
+      expect(find.text('To Account'), findsOneWidget);
+      // Same PrimaryButton with the standardized label.
+      expect(
+        find.widgetWithText(PrimaryButton, 'Add Transfer'),
+        findsOneWidget,
+      );
     });
   });
 }

@@ -14,6 +14,11 @@ class Budgets extends Table {
   RealColumn get amount => real()();
   IntColumn get month => integer()();
   IntColumn get year => integer()();
+
+  /// Optional visual override. When null the budget inherits the icon/color
+  /// of its category (resolved in the presentation layer).
+  TextColumn get icon => text().nullable()();
+  TextColumn get color => text().nullable()();
   DateTimeColumn get createdAt => dateTime().named('created_at').withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().named('updated_at').withDefault(currentDateAndTime)();
   DateTimeColumn get deletedAt => dateTime().named('deleted_at').nullable()();

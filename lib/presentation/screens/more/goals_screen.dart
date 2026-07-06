@@ -1,15 +1,22 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../application/providers/goals_provider.dart';
+import '../../../application/providers/repo_providers.dart';
+import '../../../core/format/money_format.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
+import '../../../data/database/app_database.dart';
 import '../../../domain/entities/goal.dart';
+import '../../shared/components/app_snackbar.dart';
+import '../../shared/components/buttons/ghost_button.dart';
 import '../../shared/components/empty_state.dart';
 import '../../shared/components/progress/budget_progress_bar.dart';
+import '../../shared/components/swipe_action_row.dart';
 import 'more_form_sheets.dart';
 
 class GoalsScreen extends ConsumerWidget {
@@ -52,13 +59,58 @@ class GoalsScreen extends ConsumerWidget {
   }
 }
 
-class _GoalList extends StatelessWidget {
+class _GoalList extends ConsumerWidget {
   const _GoalList({required this.goals});
 
   final List<Goal> goals;
 
+  /// No delete affordance exists on the goal detail screen, so this mirrors
+  /// the recurring detail delete flow: confirm dialog, soft delete via the
+  /// repo, then a success snackbar.
+  Future<void> _deleteGoal(
+    BuildContext context,
+    WidgetRef ref,
+    Goal goal,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Goal?'),
+        content: const Text(
+          'This removes the goal. Contributions already made to your '
+          'accounts are kept.',
+        ),
+        actions: [
+          GhostButton(
+            label: 'Cancel',
+            onPressed: () => Navigator.pop(ctx, false),
+            isExpanded: false,
+          ),
+          GhostButton(
+            label: 'Delete',
+            onPressed: () => Navigator.pop(ctx, true),
+            isDanger: true,
+            isExpanded: false,
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await ref
+        .read(goalRepoProvider)
+        .update(
+          GoalsCompanion(id: Value(goal.id), deletedAt: Value(DateTime.now())),
+        );
+    if (!context.mounted) return;
+    AppSnackBar.show(
+      context,
+      'Goal deleted.',
+      variant: AppSnackBarVariant.success,
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final lootrColors = context.lootrColors;
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -75,58 +127,84 @@ class _GoalList extends StatelessWidget {
             ? Theme.of(context).colorScheme.primary
             : lootrColors.warning;
 
-        return Material(
-          color: colorScheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(12),
-          child: InkWell(
+        return SwipeActionRow(
+          rowKey: Key(goal.id),
+          onEdit: () => showGoalSheet(context, ref, initial: goal),
+          onDelete: () => _deleteGoal(context, ref, goal),
+          child: Material(
+            color: colorScheme.surfaceContainerLow,
             borderRadius: BorderRadius.circular(12),
-            onTap: () => context.push('/more/goals/${goal.id}'),
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.space4),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          goal.name,
-                          style: AppTypography.h3.copyWith(
-                            color: colorScheme.onSurface,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => context.push('/more/goals/${goal.id}'),
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.space4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            goal.name,
+                            style: AppTypography.h3.copyWith(
+                              color: colorScheme.onSurface,
+                            ),
                           ),
                         ),
-                      ),
-                      Text(
-                        '${goal.progress.round()}%',
-                        style: AppTypography.h3.copyWith(color: progressColor),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.space2),
-                  BudgetProgressBar(
-                    progress: progress.clamp(0.0, 1.0),
-                    color: progressColor,
-                  ),
-                  const SizedBox(height: AppSpacing.space2),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '₱${goal.currentAmount.toStringAsFixed(2)} saved',
-                        style: AppTypography.caption.copyWith(
-                          color: lootrColors.textSecondary,
+                        Text(
+                          '${goal.progress.round()}%',
+                          style: AppTypography.h3Mono.copyWith(
+                            color: progressColor,
+                          ),
                         ),
-                      ),
-                      Text(
-                        'of ₱${goal.targetAmount.toStringAsFixed(2)}',
-                        style: AppTypography.caption.copyWith(
-                          color: lootrColors.textSecondary,
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.space2),
+                    BudgetProgressBar(
+                      progress: progress.clamp(0.0, 1.0),
+                      color: progressColor,
+                    ),
+                    const SizedBox(height: AppSpacing.space2),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(
+                                text: MoneyFormat.exact(
+                                  goal.currentAmount,
+                                  'PHP',
+                                ),
+                                style: AppTypography.mono.copyWith(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w400,
+                                  color: lootrColors.textSecondary,
+                                ),
+                              ),
+                              TextSpan(
+                                text: ' saved',
+                                style: AppTypography.caption.copyWith(
+                                  color: lootrColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                        Text(
+                          'of ${MoneyFormat.exact(goal.targetAmount, 'PHP')}',
+                          style: AppTypography.mono.copyWith(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w400,
+                            color: lootrColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

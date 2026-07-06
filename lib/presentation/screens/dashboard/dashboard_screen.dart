@@ -2,16 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../application/providers/dashboard_provider.dart';
 import '../../../application/providers/sync_providers.dart';
-import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
-import '../../shared/components/app_snackbar.dart';
 import '../../shared/components/empty_state.dart';
 import '../../shared/components/primary_screen_header.dart';
-import '../../sheets/sync_status_sheet.dart';
 import 'widgets/account_summary_cards.dart';
 import 'widgets/budget_progress_rings.dart';
 import 'widgets/dashboard_shimmer.dart';
@@ -58,32 +54,32 @@ class DashboardScreen extends ConsumerWidget {
                 SafeToSpendHero(data: data),
                 const SizedBox(height: AppSpacing.space4),
                 NetWorthSparkline(data: data),
-                const SizedBox(height: AppSpacing.space5),
+                const SizedBox(height: AppSpacing.space4),
                 AccountSummaryCards(
                   accounts: data.accounts,
                   currencyCode: data.currencyCode,
                 ),
-                const SizedBox(height: AppSpacing.space5),
+                const SizedBox(height: AppSpacing.space4),
                 IncomeExpenseStrip(data: data),
-                const SizedBox(height: AppSpacing.space5),
+                const SizedBox(height: AppSpacing.space4),
                 BudgetProgressRings(
                   budgets: data.budgets,
                   currencyCode: data.currencyCode,
                 ),
-                const SizedBox(height: AppSpacing.space5),
+                const SizedBox(height: AppSpacing.space4),
                 SpendingDonut(data: data),
-                const SizedBox(height: AppSpacing.space5),
+                const SizedBox(height: AppSpacing.space4),
                 RecentTransactionsList(
                   transactions: data.recentTransactions,
                   currencyCode: data.currencyCode,
                 ),
-                const SizedBox(height: AppSpacing.space5),
+                const SizedBox(height: AppSpacing.space4),
                 UpcomingRecurringList(
                   items: data.upcomingRecurring,
                   currencyCode: data.currencyCode,
                 ),
                 if (data.insights.isNotEmpty) ...[
-                  const SizedBox(height: AppSpacing.space5),
+                  const SizedBox(height: AppSpacing.space4),
                   InsightsSection(insights: data.insights),
                 ],
               ],
@@ -101,83 +97,27 @@ class _DashboardHeader extends ConsumerWidget implements PreferredSizeWidget {
   final DashboardData data;
 
   @override
-  Size get preferredSize => const Size.fromHeight(PrimaryScreenHeader.height);
+  Size get preferredSize => Size.fromHeight(
+    _hasName
+        ? PrimaryScreenHeader.heightWithEyebrow
+        : PrimaryScreenHeader.height,
+  );
+
+  bool get _hasName => data.displayName?.trim().isNotEmpty == true;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final syncState = ref.watch(syncStatusIconProvider);
-    final lootrColors = context.lootrColors;
-    final greetingName = data.displayName?.trim().isNotEmpty == true
-        ? ', ${data.displayName!.trim()}'
-        : '';
+    final name = data.displayName?.trim() ?? '';
 
+    // Sync status and global search header actions are hidden until those
+    // features ship; the sync engine and sheet remain available in code.
     return PrimaryScreenHeader(
-      title: '${data.greeting}$greetingName',
+      // Greeting sits in the eyebrow so a long name (the title) is never
+      // truncated by the time-of-day prefix.
+      eyebrow: _hasName ? data.greeting : null,
+      title: _hasName ? name : data.greeting,
       subtitle: DateFormat('EEEE, MMMM d').format(data.currentDate),
-      actions: [
-        IconButton(
-          tooltip: 'Sync status',
-          icon: Icon(
-            _syncIcon(syncState),
-            color: _syncColor(syncState, lootrColors, context),
-          ),
-          onPressed: () {
-            showModalBottomSheet<void>(
-              context: context,
-              useRootNavigator: true,
-              isScrollControlled: true,
-              backgroundColor: Theme.of(context).colorScheme.surface,
-              shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
-              ),
-              builder: (_) => const SyncStatusSheet(),
-            );
-          },
-        ),
-        IconButton(
-          tooltip: 'Search',
-          icon: Icon(
-            LucideIcons.search,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
-          onPressed: () {
-            AppSnackBar.show(context, 'Global search is coming soon');
-          },
-        ),
-      ],
     );
-  }
-
-  IconData _syncIcon(SyncIconState state) {
-    switch (state) {
-      case SyncIconState.synced:
-        return LucideIcons.cloudCheck;
-      case SyncIconState.pending:
-        return LucideIcons.cloudUpload;
-      case SyncIconState.failed:
-      case SyncIconState.offline:
-        return LucideIcons.triangleAlert;
-      case SyncIconState.syncing:
-        return LucideIcons.loaderCircle;
-    }
-  }
-
-  Color _syncColor(
-    SyncIconState state,
-    LootrColorScheme lootrColors,
-    BuildContext context,
-  ) {
-    switch (state) {
-      case SyncIconState.synced:
-        return lootrColors.success;
-      case SyncIconState.pending:
-        return lootrColors.warning;
-      case SyncIconState.failed:
-      case SyncIconState.offline:
-        return lootrColors.danger;
-      case SyncIconState.syncing:
-        return Theme.of(context).colorScheme.primary;
-    }
   }
 }
 

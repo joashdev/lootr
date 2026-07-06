@@ -62,8 +62,7 @@ class _PayeeList extends StatelessWidget {
       ),
       itemBuilder: (context, index) {
         final payee = payees[index];
-        final displayName =
-            payee.payee.displayName ?? payee.payee.normalizedName;
+        final displayName = payee.payee.resolvedName;
         final initial = displayName[0].toUpperCase();
 
         return ListTile(
@@ -72,7 +71,7 @@ class _PayeeList extends StatelessWidget {
           ),
           leading: CircleAvatar(
             radius: 18,
-            backgroundColor: colorScheme.primary.withOpacity(0.1),
+            backgroundColor: colorScheme.primary.withValues(alpha: 0.1),
             child: Text(
               initial,
               style: AppTypography.captionMedium.copyWith(

@@ -8,6 +8,8 @@ class DemoDataResult {
   final List<String> transactionIds;
   final List<String> budgetIds;
   final List<String> goalIds;
+  final List<String> debtIds;
+  final List<String> recurringIds;
 
   const DemoDataResult({
     required this.accountIds,
@@ -15,6 +17,8 @@ class DemoDataResult {
     required this.transactionIds,
     required this.budgetIds,
     required this.goalIds,
+    required this.debtIds,
+    required this.recurringIds,
   });
 }
 
@@ -53,6 +57,7 @@ class DemoDataLoader {
       'demo-pay-7-eleven',
       'demo-pay-starbucks',
       'demo-pay-puregold',
+      'demo-pay-netflix',
     ];
 
     final jollibee = payeeIds[0];
@@ -70,6 +75,7 @@ class DemoDataLoader {
     final sevenEleven = payeeIds[12];
     final starbucks = payeeIds[13];
     final puregold = payeeIds[14];
+    final netflix = payeeIds[15];
 
     const categoryFood = 'default-cat-food-dining';
     const categoryTransport = 'default-cat-transportation';
@@ -78,6 +84,7 @@ class DemoDataLoader {
     const categoryHealth = 'default-cat-health-fitness';
     const categoryEntertainment = 'default-cat-entertainment';
     const categorySalary = 'default-cat-salary';
+    const categoryHousing = 'default-cat-housing';
 
     final transactionIds = <String>[];
     final transactions = <TransactionsCompanion>[];
@@ -568,6 +575,26 @@ class DemoDataLoader {
       'demo-goal-japan',
     ];
 
+    final debtIds = const [
+      'demo-debt-credit-card',
+      'demo-debt-bnpl-phone',
+      'demo-debt-lent-miguel',
+    ];
+
+    final recurringIds = const [
+      'demo-rec-netflix',
+      'demo-rec-meralco',
+      'demo-rec-salary',
+      'demo-rec-rent',
+    ];
+
+    final today = DateTime(now.year, now.month, now.day);
+    final firstOfNextMonth = DateTime(
+      curMonth == 12 ? curYear + 1 : curYear,
+      curMonth == 12 ? 1 : curMonth + 1,
+      1,
+    );
+
     await db.batch((batch) {
       batch.insertAllOnConflictUpdate(db.accounts, [
         AccountsCompanion.insert(
@@ -680,6 +707,11 @@ class DemoDataLoader {
           normalizedName: 'puregold',
           displayName: const Value('Puregold'),
         ),
+        PayeesCompanion.insert(
+          id: netflix,
+          normalizedName: 'netflix',
+          displayName: const Value('Netflix'),
+        ),
       ]);
 
       batch.insertAllOnConflictUpdate(db.transactions, transactions);
@@ -737,6 +769,79 @@ class DemoDataLoader {
           currentAmount: const Value(20000.0),
         ),
       ]);
+
+      batch.insertAllOnConflictUpdate(db.debtRecords, [
+        DebtRecordsCompanion.insert(
+          id: debtIds[0],
+          ownerUserId: userId,
+          counterpartyName: 'BPI Credit Card',
+          debtDirection: 'borrowed',
+          amount: 28500.0,
+          remainingBalance: 18500.0,
+          status: 'partially_paid',
+          note: const Value('Credit card statement balance'),
+          dueDate: Value(today.add(const Duration(days: 20))),
+        ),
+        DebtRecordsCompanion.insert(
+          id: debtIds[1],
+          ownerUserId: userId,
+          counterpartyName: 'Home Credit',
+          debtDirection: 'borrowed',
+          amount: 24000.0,
+          remainingBalance: 16000.0,
+          status: 'partially_paid',
+          note: const Value('BNPL — smartphone, 4 of 6 installments left'),
+          dueDate: Value(today.add(const Duration(days: 12))),
+        ),
+        DebtRecordsCompanion.insert(
+          id: debtIds[2],
+          ownerUserId: userId,
+          counterpartyName: 'Miguel (officemate)',
+          debtDirection: 'lent',
+          amount: 5000.0,
+          remainingBalance: 5000.0,
+          status: 'active',
+          note: const Value('Lent for emergency, pays back on payday'),
+          dueDate: Value(today.add(const Duration(days: 30))),
+        ),
+      ]);
+
+      batch.insertAllOnConflictUpdate(db.recurringTemplates, [
+        RecurringTemplatesCompanion.insert(
+          id: recurringIds[0],
+          accountId: gcash,
+          amount: 549.0,
+          recurrenceRule: 'monthly',
+          categoryId: const Value(categoryEntertainment),
+          payeeId: Value(netflix),
+          nextOccurrenceAt: Value(today.add(const Duration(days: 3))),
+        ),
+        RecurringTemplatesCompanion.insert(
+          id: recurringIds[1],
+          accountId: bpi,
+          amount: 3600.0,
+          recurrenceRule: 'monthly',
+          categoryId: const Value(categoryBills),
+          payeeId: Value(meralco),
+          nextOccurrenceAt: Value(today.add(const Duration(days: 5))),
+        ),
+        RecurringTemplatesCompanion.insert(
+          id: recurringIds[2],
+          accountId: bpi,
+          amount: 35000.0,
+          recurrenceRule: 'biweekly',
+          categoryId: const Value(categorySalary),
+          nextOccurrenceAt: Value(today.add(const Duration(days: 9))),
+        ),
+        RecurringTemplatesCompanion.insert(
+          id: recurringIds[3],
+          accountId: bpi,
+          amount: 18000.0,
+          recurrenceRule: 'monthly',
+          categoryId: const Value(categoryHousing),
+          nextOccurrenceAt: Value(firstOfNextMonth),
+        ),
+      ]);
     });
 
     return DemoDataResult(
@@ -745,6 +850,8 @@ class DemoDataLoader {
       transactionIds: transactionIds,
       budgetIds: budgetIds,
       goalIds: goalIds,
+      debtIds: debtIds,
+      recurringIds: recurringIds,
     );
   }
 }

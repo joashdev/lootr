@@ -206,6 +206,43 @@ class TransactionRepo {
     });
   }
 
+  /// Reverses [softDelete]: clears the tombstone on the original row and
+  /// re-applies the balance impact. Used by undo so the transaction keeps
+  /// its id (sync-friendly — the same row flips back to pending_sync).
+  Future<void> restore(String id) async {
+    await _db.transaction(() async {
+      final rows = await (_db.select(_db.transactions)
+            ..where((t) => t.id.equals(id) & t.deletedAt.isNotNull())
+            ..limit(1))
+          .get();
+      if (rows.isEmpty) return;
+      final txn = rows.first;
+
+      final impact =
+          txn.transactionDirection == 'income' ? txn.amount : -txn.amount;
+
+      final account = await (_db.select(_db.accounts)
+            ..where((a) => a.id.equals(txn.accountId))
+            ..limit(1))
+          .getSingle();
+
+      await (_db.update(_db.accounts)
+            ..where((a) => a.id.equals(txn.accountId)))
+          .write(AccountsCompanion(
+        balance: Value(account.balance + impact),
+        syncStatus: const Value('pending_sync'),
+        updatedAt: Value(DateTime.now()),
+      ));
+
+      await (_db.update(_db.transactions)..where((t) => t.id.equals(id)))
+          .write(TransactionsCompanion(
+        deletedAt: const Value(null),
+        syncStatus: const Value('pending_sync'),
+        updatedAt: Value(DateTime.now()),
+      ));
+    });
+  }
+
   Future<void> _advanceNextOccurrence(String templateId) async {
     final template = await (_db.select(_db.recurringTemplates)
           ..where((t) => t.id.equals(templateId))

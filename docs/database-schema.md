@@ -258,6 +258,8 @@ Monthly category spending target. Advisory only — budgets do not block or rest
 | amount | REAL | NOT NULL | Target amount |
 | month | INTEGER | NOT NULL, CHECK 1–12 | |
 | year | INTEGER | NOT NULL | |
+| icon | TEXT | nullable | v2. Visual override; NULL = inherit category icon |
+| color | TEXT | nullable | v2. Hex color override; NULL = inherit category color |
 | created_at | INTEGER | NOT NULL | |
 | updated_at | INTEGER | NOT NULL | |
 | sync_status | TEXT | NOT NULL, default `'local_only'` | |
@@ -468,7 +470,7 @@ Drift uses `indexName` on `@Index` annotations. Name indexes descriptively (e.g.
 
 | Approach | Recommendation |
 |---|---|
-| Schema versioning | Use `Migrations` with `onUpgrade` callbacks. Start at version 1. |
+| Schema versioning | Use `Migrations` with `onUpgrade` callbacks. Start at version 1. Current: v2 (adds `budgets.icon`, `budgets.color`). |
 | Schema changes | Always add, never drop columns in V1. Soft deletes (`deleted_at`) handle removal. |
 | Seed data | Categories are seeded in a post-migration callback via `batchInsert`. |
 | Testing | In-memory `NativeDatabase` per test suite. Apply migrations in `setUp`. |

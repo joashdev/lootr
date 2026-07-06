@@ -9,18 +9,26 @@ class PrimaryScreenHeader extends StatelessWidget
   const PrimaryScreenHeader({
     super.key,
     required this.title,
+    this.eyebrow,
     this.subtitle,
     this.actions = const [],
   });
 
-  static const double height = 72;
+  static const double height = 80;
+  static const double heightWithEyebrow = 98;
 
+  /// Small label rendered above [title]. Lets a screen show a secondary line
+  /// (e.g. a greeting) without cramming it into [title], which is single-line
+  /// and would otherwise truncate a long [title].
+  final String? eyebrow;
   final String title;
   final String? subtitle;
   final List<Widget> actions;
 
+  double get _height => eyebrow != null ? heightWithEyebrow : height;
+
   @override
-  Size get preferredSize => const Size.fromHeight(height);
+  Size get preferredSize => Size.fromHeight(_height);
 
   @override
   Widget build(BuildContext context) {
@@ -29,22 +37,34 @@ class PrimaryScreenHeader extends StatelessWidget
 
     return AppBar(
       automaticallyImplyLeading: false,
-      backgroundColor: colorScheme.surface,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       centerTitle: false,
       elevation: 0,
       scrolledUnderElevation: 0,
       surfaceTintColor: Colors.transparent,
       titleSpacing: AppSpacing.pagePaddingMobile,
-      toolbarHeight: height,
+      toolbarHeight: _height,
+      shape: Border(bottom: BorderSide(color: colorScheme.outlineVariant)),
       title: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (eyebrow != null) ...[
+            Text(
+              eyebrow!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.bodyMedium.copyWith(
+                color: lootrColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 1),
+          ],
           Text(
             title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppTypography.h2.copyWith(color: colorScheme.onSurface),
+            style: AppTypography.h1.copyWith(color: colorScheme.onSurface),
           ),
           if (subtitle != null) ...[
             const SizedBox(height: 2),
@@ -52,7 +72,7 @@ class PrimaryScreenHeader extends StatelessWidget
               subtitle!,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AppTypography.caption.copyWith(
+              style: AppTypography.captionMedium.copyWith(
                 color: lootrColors.textSecondary,
               ),
             ),
@@ -63,7 +83,7 @@ class PrimaryScreenHeader extends StatelessWidget
           ? null
           : [
               Padding(
-                padding: const EdgeInsets.only(right: AppSpacing.space2),
+                padding: const EdgeInsets.only(right: AppSpacing.space4),
                 child: Row(mainAxisSize: MainAxisSize.min, children: actions),
               ),
             ],

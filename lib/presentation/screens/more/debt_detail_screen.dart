@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../application/providers/accounts_provider.dart';
 import '../../../application/providers/debt_payments_provider.dart';
 import '../../../application/providers/debt_detail_provider.dart';
+import '../../../core/format/money_format.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
@@ -25,9 +26,21 @@ class DebtDetailScreen extends ConsumerWidget {
     final paymentsAsync = ref.watch(debtPaymentsProvider(id));
     final lootrColors = context.lootrColors;
     final colorScheme = Theme.of(context).colorScheme;
+    final loadedDebt = debtAsync.asData?.value;
 
     return Scaffold(
-      appBar: AppBar(centerTitle: false, title: const Text('Debt Detail')),
+      appBar: AppBar(
+        centerTitle: false,
+        title: const Text('Debt'),
+        actions: [
+          if (loadedDebt != null)
+            IconButton(
+              tooltip: 'Edit debt',
+              icon: const Icon(LucideIcons.pencil, size: 20),
+              onPressed: () => showDebtSheet(context, ref, initial: loadedDebt),
+            ),
+        ],
+      ),
       body: debtAsync.when(
         data: (debt) {
           if (debt == null) {
@@ -40,7 +53,14 @@ class DebtDetailScreen extends ConsumerWidget {
               : 0.0;
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.pagePaddingMobile),
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.pagePaddingMobile,
+              AppSpacing.pagePaddingMobile,
+              AppSpacing.pagePaddingMobile,
+              // Keep trailing content clear of the floating bottom nav.
+              AppSpacing.bottomNavClearance +
+                  MediaQuery.paddingOf(context).bottom,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -77,15 +97,17 @@ class DebtDetailScreen extends ConsumerWidget {
                 const SizedBox(height: AppSpacing.space6),
                 _DetailRow(
                   label: 'Total Amount',
-                  value: '₱${debt.amount.toStringAsFixed(2)}',
+                  value: MoneyFormat.exact(debt.amount, 'PHP'),
+                  mono: true,
                 ),
                 const SizedBox(height: AppSpacing.space2),
                 _DetailRow(
                   label: 'Remaining',
-                  value: '₱${debt.remainingBalance.toStringAsFixed(2)}',
+                  value: MoneyFormat.exact(debt.remainingBalance, 'PHP'),
                   valueColor: debt.remainingBalance > 0
                       ? lootrColors.warning
                       : lootrColors.success,
+                  mono: true,
                 ),
                 if (debt.dueDate != null) ...[
                   const SizedBox(height: AppSpacing.space2),
@@ -98,10 +120,24 @@ class DebtDetailScreen extends ConsumerWidget {
                 BudgetProgressBar(progress: progress.clamp(0.0, 1.0)),
                 Padding(
                   padding: const EdgeInsets.only(top: AppSpacing.space1),
-                  child: Text(
-                    '${(progress * 100).round()}% paid',
-                    style: AppTypography.caption.copyWith(
-                      color: lootrColors.textSecondary,
+                  child: Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: '${(progress * 100).round()}%',
+                          style: AppTypography.mono.copyWith(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w400,
+                            color: lootrColors.textSecondary,
+                          ),
+                        ),
+                        TextSpan(
+                          text: ' paid',
+                          style: AppTypography.caption.copyWith(
+                            color: lootrColors.textSecondary,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -234,7 +270,7 @@ class _PaymentRow extends StatelessWidget {
       title: Text(DebtDetailScreen._formatDate(transaction.occurredAt)),
       subtitle: Text(transaction.note ?? 'Debt payment'),
       trailing: Text(
-        '₱${transaction.amount.toStringAsFixed(2)}',
+        MoneyFormat.exact(transaction.amount, 'PHP'),
         style: AppTypography.mono.copyWith(color: amountColor),
       ),
     );
@@ -242,11 +278,17 @@ class _PaymentRow extends StatelessWidget {
 }
 
 class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, required this.value, this.valueColor});
+  const _DetailRow({
+    required this.label,
+    required this.value,
+    this.valueColor,
+    this.mono = false,
+  });
 
   final String label;
   final String value;
   final Color? valueColor;
+  final bool mono;
 
   @override
   Widget build(BuildContext context) {
@@ -262,9 +304,8 @@ class _DetailRow extends StatelessWidget {
         ),
         Text(
           value,
-          style: AppTypography.bodyMedium.copyWith(
-            color: valueColor ?? colorScheme.onSurface,
-          ),
+          style: (mono ? AppTypography.mono : AppTypography.bodyMedium)
+              .copyWith(color: valueColor ?? colorScheme.onSurface),
         ),
       ],
     );

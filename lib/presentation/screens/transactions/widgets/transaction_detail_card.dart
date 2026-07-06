@@ -33,7 +33,7 @@ class TransactionDetailCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('MMM d, yyyy \u00b7 h:mm a');
 
-    return SingleChildScrollView(
+    return Padding(
       padding: const EdgeInsets.all(AppSpacing.space4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

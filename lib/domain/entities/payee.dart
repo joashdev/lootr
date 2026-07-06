@@ -23,6 +23,21 @@ class Payee extends Equatable {
     this.deletedAt,
   });
 
+  String get resolvedName {
+    final label = displayName?.trim();
+    if (label != null && label.isNotEmpty) return label;
+
+    return normalizedName
+        .replaceAll(RegExp(r'[-_]+'), ' ')
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .map(
+          (part) =>
+              '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}',
+        )
+        .join(' ');
+  }
+
   factory Payee.fromJson(Map<String, dynamic> json) =>
       _$PayeeFromJson(json);
 

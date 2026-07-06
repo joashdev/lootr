@@ -35,7 +35,12 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 title: 'Display Name',
                 subtitle: 'Your local profile name',
-                trailing: Text(user?.displayName ?? 'Local User'),
+                trailing: Text(
+                  user?.displayName ?? 'Local User',
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: colorScheme.onSurface,
+                  ),
+                ),
               ),
               _SettingsTile(
                 leading: Icon(
@@ -47,7 +52,9 @@ class ProfileScreen extends ConsumerWidget {
                 subtitle: 'Read-only in V1',
                 trailing: Text(
                   user?.email ?? '—',
-                  style: TextStyle(color: lootrColors.textTertiary),
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: lootrColors.textTertiary,
+                  ),
                 ),
               ),
             ],

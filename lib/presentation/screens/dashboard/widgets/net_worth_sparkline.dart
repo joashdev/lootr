@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../../../application/providers/dashboard_provider.dart';
+import '../../../../core/format/money_format.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/typography.dart';
@@ -29,11 +29,8 @@ class NetWorthSparkline extends StatelessWidget {
           Text('Net worth', style: AppTypography.captionMedium),
           const SizedBox(height: AppSpacing.space1),
           Text(
-            NumberFormat.currency(
-              locale: 'en_PH',
-              symbol: '₱',
-            ).format(data.netWorth),
-            style: AppTypography.h1,
+            MoneyFormat.display(data.netWorth, data.currencyCode),
+            style: AppTypography.h1Mono,
           ),
           const SizedBox(height: AppSpacing.space3),
           Sparkline(
@@ -43,9 +40,25 @@ class NetWorthSparkline extends StatelessWidget {
             semanticLabel: '30-day net worth chart',
           ),
           const SizedBox(height: AppSpacing.space2),
-          Text(
-            '${data.netWorthChangePercent >= 0 ? '+' : ''}${data.netWorthChangePercent.toStringAsFixed(1)}% this month',
-            style: AppTypography.captionMedium.copyWith(color: changeColor),
+          Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text:
+                      '${data.netWorthChangePercent >= 0 ? '+' : ''}${data.netWorthChangePercent.toStringAsFixed(1)}%',
+                  style: AppTypography.mono.copyWith(
+                    fontSize: 13,
+                    color: changeColor,
+                  ),
+                ),
+                TextSpan(
+                  text: ' this month',
+                  style: AppTypography.captionMedium.copyWith(
+                    color: changeColor,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

@@ -1,5 +1,5 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' hide isNull;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/database/app_database.dart';
 import '../../data/seed/demo_data_loader.dart';
@@ -32,11 +32,11 @@ class DemoDataNotifier extends AsyncNotifier<DemoDataState> {
 
     const userId = 'demo-user-1';
     await db.into(db.users).insertOnConflictUpdate(
-          UsersCompanion.insert(
-            id: userId,
-            email: const Value('demo@lootr.app'),
-          ),
-        );
+      UsersCompanion.insert(
+        id: userId,
+        email: const Value('demo@lootr.app'),
+      ),
+    );
 
     final loader = DemoDataLoader();
     await loader.load(db, userId: userId);
@@ -50,16 +50,17 @@ class DemoDataNotifier extends AsyncNotifier<DemoDataState> {
   Future<void> clear() async {
     final db = ref.read(databaseProvider);
 
+    // Delete child rows before the accounts/payees/users they reference.
     await (db.delete(db.transactions)..where((t) => t.id.like('demo-%'))).go();
+    await (db.delete(
+      db.recurringTemplates,
+    )..where((t) => t.id.like('demo-%'))).go();
+    await (db.delete(db.debtRecords)..where((t) => t.id.like('demo-%'))).go();
     await (db.delete(db.accounts)..where((t) => t.id.like('demo-%'))).go();
     await (db.delete(db.categories)..where((t) => t.id.like('demo-%'))).go();
     await (db.delete(db.payees)..where((t) => t.id.like('demo-%'))).go();
     await (db.delete(db.budgets)..where((t) => t.id.like('demo-%'))).go();
     await (db.delete(db.goals)..where((t) => t.id.like('demo-%'))).go();
-    await (db.delete(
-      db.recurringTemplates,
-    )..where((t) => t.id.like('demo-%'))).go();
-    await (db.delete(db.debtRecords)..where((t) => t.id.like('demo-%'))).go();
     await (db.delete(db.users)..where((t) => t.id.like('demo-%'))).go();
 
     final syncRepo = ref.read(syncMetadataRepoProvider);

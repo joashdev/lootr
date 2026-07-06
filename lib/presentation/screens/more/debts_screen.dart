@@ -1,16 +1,23 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../application/providers/debts_provider.dart';
+import '../../../application/providers/repo_providers.dart';
+import '../../../core/format/money_format.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
+import '../../../data/database/app_database.dart';
 import '../../../domain/entities/debt_record.dart';
 import '../../../domain/value_objects/field_types.dart';
+import '../../shared/components/app_snackbar.dart';
 import '../../shared/components/badges/status_badge.dart';
+import '../../shared/components/buttons/ghost_button.dart';
 import '../../shared/components/empty_state.dart';
+import '../../shared/components/swipe_action_row.dart';
 import 'more_form_sheets.dart';
 
 class DebtsScreen extends ConsumerWidget {
@@ -128,13 +135,56 @@ class _DebtSection extends StatelessWidget {
   }
 }
 
-class _DebtRow extends StatelessWidget {
+class _DebtRow extends ConsumerWidget {
   const _DebtRow({required this.debt});
 
   final DebtRecord debt;
 
+  /// No delete affordance exists on the debt detail screen, so this mirrors
+  /// the recurring detail delete flow: confirm dialog, soft delete via the
+  /// repo, then a success snackbar.
+  Future<void> _deleteDebt(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Debt?'),
+        content: const Text(
+          'This removes the debt record. Related transactions are kept.',
+        ),
+        actions: [
+          GhostButton(
+            label: 'Cancel',
+            onPressed: () => Navigator.pop(ctx, false),
+            isExpanded: false,
+          ),
+          GhostButton(
+            label: 'Delete',
+            onPressed: () => Navigator.pop(ctx, true),
+            isDanger: true,
+            isExpanded: false,
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await ref
+        .read(debtRepoProvider)
+        .update(
+          DebtRecordsCompanion(
+            id: Value(debt.id),
+            deletedAt: Value(DateTime.now()),
+          ),
+        );
+    if (!context.mounted) return;
+    AppSnackBar.show(
+      context,
+      'Debt deleted.',
+      variant: AppSnackBarVariant.success,
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final lootrColors = context.lootrColors;
     final colorScheme = Theme.of(context).colorScheme;
     final isLent = debt.debtDirection == DebtDirection.lent;
@@ -145,57 +195,66 @@ class _DebtRow extends StatelessWidget {
         ? StatusBadgeColor.warning
         : StatusBadgeColor.success;
 
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.pagePaddingMobile,
-      ),
-      leading: Icon(
-        isLent ? LucideIcons.arrowUpRight : LucideIcons.arrowDownLeft,
-        color: isLent ? lootrColors.income : lootrColors.expense,
-      ),
-      title: Text(
-        debt.counterpartyName,
-        style: AppTypography.bodyMedium.copyWith(color: colorScheme.onSurface),
-      ),
-      subtitle: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            isLent ? 'You lent' : 'You borrowed',
-            style: AppTypography.caption.copyWith(
-              color: lootrColors.textSecondary,
-            ),
+    return SwipeActionRow(
+      rowKey: Key(debt.id),
+      onEdit: () => showDebtSheet(context, ref, initial: debt),
+      onDelete: () => _deleteDebt(context, ref),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.pagePaddingMobile,
+        ),
+        leading: Icon(
+          isLent ? LucideIcons.arrowUpRight : LucideIcons.arrowDownLeft,
+          color: isLent ? lootrColors.income : lootrColors.expense,
+        ),
+        title: Text(
+          debt.counterpartyName,
+          style: AppTypography.bodyMedium.copyWith(
+            color: colorScheme.onSurface,
           ),
-          if (!isSettled) ...[
-            const SizedBox(width: AppSpacing.space1),
-            StatusBadge(
-              label: debt.status == DebtStatus.active ? 'Active' : 'Partial',
-              color: statusColor,
+        ),
+        subtitle: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              isLent ? 'You lent' : 'You borrowed',
+              style: AppTypography.caption.copyWith(
+                color: lootrColors.textSecondary,
+              ),
+            ),
+            if (!isSettled) ...[
+              const SizedBox(width: AppSpacing.space1),
+              StatusBadge(
+                label: debt.status == DebtStatus.active ? 'Active' : 'Partial',
+                color: statusColor,
+              ),
+            ],
+          ],
+        ),
+        trailing: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              MoneyFormat.exact(debt.remainingBalance, 'PHP'),
+              style: AppTypography.mono.copyWith(
+                color: isSettled
+                    ? lootrColors.textTertiary
+                    : colorScheme.onSurface,
+              ),
+            ),
+            Text(
+              'of ${MoneyFormat.exact(debt.amount, 'PHP')}',
+              style: AppTypography.mono.copyWith(
+                fontSize: 13,
+                fontWeight: FontWeight.w400,
+                color: lootrColors.textTertiary,
+              ),
             ),
           ],
-        ],
+        ),
+        onTap: () => context.push('/more/debts/${debt.id}'),
       ),
-      trailing: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text(
-            '₱${debt.remainingBalance.toStringAsFixed(2)}',
-            style: AppTypography.mono.copyWith(
-              color: isSettled
-                  ? lootrColors.textTertiary
-                  : colorScheme.onSurface,
-            ),
-          ),
-          Text(
-            'of ₱${debt.amount.toStringAsFixed(2)}',
-            style: AppTypography.caption.copyWith(
-              color: lootrColors.textTertiary,
-            ),
-          ),
-        ],
-      ),
-      onTap: () => context.push('/more/debts/${debt.id}'),
     );
   }
 }

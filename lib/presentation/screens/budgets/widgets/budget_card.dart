@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../../../core/format/money_format.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/spacing.dart';
+import '../../../../core/theme/typography.dart';
 import '../../../../domain/entities/budget.dart';
 import '../../../../domain/entities/category.dart';
 import '../../../shared/category_visuals.dart';
@@ -29,8 +31,10 @@ class BudgetCard extends StatelessWidget {
   String _statusLabel() {
     if (budget.amount <= 0) return 'No budget set';
     final remaining = budget.amount - budget.spent;
-    if (remaining >= 0) return 'P${remaining.toStringAsFixed(0)} left';
-    return 'P${(-remaining).toStringAsFixed(0)} over';
+    if (remaining >= 0) {
+      return '${MoneyFormat.display(remaining, 'PHP')} left';
+    }
+    return '${MoneyFormat.display(-remaining, 'PHP')} over';
   }
 
   @override
@@ -41,7 +45,8 @@ class BudgetCard extends StatelessWidget {
         ? (budget.spent / budget.amount).clamp(0.0, 1.5)
         : 0.0;
 
-    final iconName = category?.icon ?? 'shopping-bag';
+    final iconValue = resolveBudgetIconValue(budget, category);
+    final budgetColor = resolveBudgetColor(budget, category);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.space2),
@@ -71,82 +76,79 @@ class BudgetCard extends StatelessWidget {
                     : null,
               ),
               child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: _parseCategoryColor(
-                          category?.color,
-                        ).withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Center(
-                        child: buildCategoryVisual(
-                          iconName,
-                          color: _progressColor(context),
-                          size: 18,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: budgetColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Center(
+                          child: buildCategoryVisual(
+                            iconValue,
+                            color: budgetColor,
+                            size: 18,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: AppSpacing.space3),
-                    Expanded(
-                      child: Text(
-                        category?.name ?? 'Uncategorized',
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w600,
-                          height: 1.4,
-                        ),
-                      ),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          'P${budget.spent.toStringAsFixed(0)}',
-                          style: TextStyle(
+                      const SizedBox(width: AppSpacing.space3),
+                      Expanded(
+                        child: Text(
+                          category?.name ?? 'Uncategorized',
+                          style: const TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w600,
-                            color: _progressColor(context),
+                            height: 1.4,
                           ),
                         ),
-                        Text(
-                          'of P${budget.amount.toStringAsFixed(0)}',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: lootrColors.textTertiary,
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            MoneyFormat.display(budget.spent, 'PHP'),
+                            style: AppTypography.mono.copyWith(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w600,
+                              color: _progressColor(context),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.space3),
-                BudgetProgressBar(
-                  progress: progress.clamp(0.0, 1.0),
-                  color: _progressColor(context),
-                ),
-                const SizedBox(height: AppSpacing.space1),
-                Text(
-                  _statusLabel(),
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: _progressColor(context),
-                    fontWeight: FontWeight.w500,
+                          Text(
+                            'of ${MoneyFormat.display(budget.amount, 'PHP')}',
+                            style: AppTypography.mono.copyWith(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w400,
+                              color: lootrColors.textTertiary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: AppSpacing.space3),
+                  BudgetProgressBar(
+                    progress: progress.clamp(0.0, 1.0),
+                    color: _progressColor(context),
+                  ),
+                  const SizedBox(height: AppSpacing.space1),
+                  Text(
+                    _statusLabel(),
+                    style: AppTypography.mono.copyWith(
+                      fontSize: 13,
+                      color: _progressColor(context),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
-    ),
-  );
+    );
   }
-
-  Color _parseCategoryColor(String? hexColor) => parseCategoryColor(hexColor);
 }

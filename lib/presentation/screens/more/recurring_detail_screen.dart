@@ -2,12 +2,14 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../application/providers/accounts_provider.dart';
 import '../../../application/providers/categories_provider.dart';
 import '../../../application/providers/payees_provider.dart';
 import '../../../application/providers/repo_providers.dart';
 import '../../../application/providers/recurring_detail_provider.dart';
+import '../../../core/format/money_format.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
@@ -17,6 +19,8 @@ import '../../../domain/entities/category.dart';
 import '../../../domain/entities/payee.dart';
 import 'more_form_sheets.dart';
 import '../../shared/components/app_snackbar.dart';
+import '../../shared/components/buttons/ghost_button.dart';
+import '../../shared/components/buttons/secondary_button.dart';
 
 class RecurringDetailScreen extends ConsumerWidget {
   const RecurringDetailScreen({super.key, required this.id});
@@ -34,70 +38,11 @@ class RecurringDetailScreen extends ConsumerWidget {
     final lootrColors = context.lootrColors;
     final colorScheme = Theme.of(context).colorScheme;
     final payeeNames = {
-      for (final payee in payees)
-        payee.id: payee.displayName ?? payee.normalizedName,
+      for (final payee in payees) payee.id: payee.resolvedName,
     };
 
     return Scaffold(
-      appBar: AppBar(
-        centerTitle: false,
-        title: const Text('Recurring'),
-        actions: [
-          PopupMenuButton<String>(
-            onSelected: (action) async {
-              final detail = detailAsync.value;
-              if (detail == null) return;
-              final template = detail.template;
-              if (action == 'edit') {
-                await showRecurringSheet(
-                  context,
-                  ref,
-                  accounts: accounts,
-                  initial: template,
-                  initialPayeeName: template.payeeId == null
-                      ? null
-                      : payeeNames[template.payeeId!],
-                );
-                return;
-              }
-              if (action == 'disable') {
-                await ref
-                    .read(recurringRepoProvider)
-                    .update(
-                      RecurringTemplatesCompanion(
-                        id: Value(template.id),
-                        autoCreateDisabled: Value(!template.autoCreateDisabled),
-                      ),
-                    );
-                if (!context.mounted) return;
-                AppSnackBar.show(
-                  context,
-                  template.autoCreateDisabled
-                      ? 'Recurring item enabled.'
-                      : 'Recurring item disabled.',
-                );
-                return;
-              }
-              await ref
-                  .read(recurringRepoProvider)
-                  .update(
-                    RecurringTemplatesCompanion(
-                      id: Value(template.id),
-                      deletedAt: Value(DateTime.now()),
-                    ),
-                  );
-              if (!context.mounted) return;
-              AppSnackBar.show(context, 'Recurring item deleted.');
-              Navigator.of(context).pop();
-            },
-            itemBuilder: (_) => [
-              const PopupMenuItem(value: 'edit', child: Text('Edit')),
-              const PopupMenuItem(value: 'disable', child: Text('Disable')),
-              const PopupMenuItem(value: 'delete', child: Text('Delete')),
-            ],
-          ),
-        ],
-      ),
+      appBar: AppBar(centerTitle: false, title: const Text('Recurring')),
       body: detailAsync.when(
         data: (detail) {
           if (detail == null) {
@@ -131,7 +76,8 @@ class RecurringDetailScreen extends ConsumerWidget {
                       const SizedBox(height: AppSpacing.space2),
                       _DetailRow(
                         label: 'Amount',
-                        value: '₱${template.amount.toStringAsFixed(2)}',
+                        value: MoneyFormat.exact(template.amount, 'PHP'),
+                        mono: true,
                       ),
                       const SizedBox(height: AppSpacing.space2),
                       _DetailRow(
@@ -226,7 +172,7 @@ class RecurringDetailScreen extends ConsumerWidget {
                         ),
                       ),
                       trailing: Text(
-                        '₱${tx.amount.toStringAsFixed(2)}',
+                        MoneyFormat.exact(tx.amount, 'PHP'),
                         style: AppTypography.mono.copyWith(
                           color: colorScheme.onSurface,
                         ),
@@ -234,6 +180,119 @@ class RecurringDetailScreen extends ConsumerWidget {
                     );
                   }, childCount: transactions.length),
                 ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.pagePaddingMobile,
+                    AppSpacing.space6,
+                    AppSpacing.pagePaddingMobile,
+                    AppSpacing.space8,
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: SecondaryButton(
+                              label: 'Edit',
+                              icon: const Icon(LucideIcons.pencil, size: 18),
+                              onPressed: () => showRecurringSheet(
+                                context,
+                                ref,
+                                accounts: accounts,
+                                initial: template,
+                                initialPayeeName: template.payeeId == null
+                                    ? null
+                                    : payeeNames[template.payeeId!],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.space3),
+                          Expanded(
+                            child: SecondaryButton(
+                              label: 'Delete',
+                              icon: const Icon(LucideIcons.trash2, size: 18),
+                              isDanger: true,
+                              onPressed: () async {
+                                final confirmed = await showDialog<bool>(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    title: const Text('Delete Recurring?'),
+                                    content: const Text(
+                                      'This stops future auto-created '
+                                      'transactions. Existing transactions '
+                                      'are kept.',
+                                    ),
+                                    actions: [
+                                      GhostButton(
+                                        label: 'Cancel',
+                                        onPressed: () =>
+                                            Navigator.pop(ctx, false),
+                                        isExpanded: false,
+                                      ),
+                                      GhostButton(
+                                        label: 'Delete',
+                                        onPressed: () =>
+                                            Navigator.pop(ctx, true),
+                                        isDanger: true,
+                                        isExpanded: false,
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                if (confirmed != true) return;
+                                await ref
+                                    .read(recurringRepoProvider)
+                                    .update(
+                                      RecurringTemplatesCompanion(
+                                        id: Value(template.id),
+                                        deletedAt: Value(DateTime.now()),
+                                      ),
+                                    );
+                                if (!context.mounted) return;
+                                AppSnackBar.show(
+                                  context,
+                                  'Recurring item deleted.',
+                                  variant: AppSnackBarVariant.success,
+                                );
+                                Navigator.of(context).pop();
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.space3),
+                      SecondaryButton(
+                        label: isDisabled ? 'Enable' : 'Disable',
+                        icon: Icon(
+                          isDisabled ? LucideIcons.play : LucideIcons.pause,
+                          size: 18,
+                        ),
+                        onPressed: () async {
+                          await ref
+                              .read(recurringRepoProvider)
+                              .update(
+                                RecurringTemplatesCompanion(
+                                  id: Value(template.id),
+                                  autoCreateDisabled: Value(
+                                    !template.autoCreateDisabled,
+                                  ),
+                                ),
+                              );
+                          if (!context.mounted) return;
+                          AppSnackBar.show(
+                            context,
+                            template.autoCreateDisabled
+                                ? 'Recurring item enabled.'
+                                : 'Recurring item disabled.',
+                            variant: AppSnackBarVariant.success,
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           );
         },
@@ -283,11 +342,17 @@ class RecurringDetailScreen extends ConsumerWidget {
 }
 
 class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, required this.value, this.valueColor});
+  const _DetailRow({
+    required this.label,
+    required this.value,
+    this.valueColor,
+    this.mono = false,
+  });
 
   final String label;
   final String value;
   final Color? valueColor;
+  final bool mono;
 
   @override
   Widget build(BuildContext context) {
@@ -303,9 +368,8 @@ class _DetailRow extends StatelessWidget {
         ),
         Text(
           value,
-          style: AppTypography.bodyMedium.copyWith(
-            color: valueColor ?? colorScheme.onSurface,
-          ),
+          style: (mono ? AppTypography.mono : AppTypography.bodyMedium)
+              .copyWith(color: valueColor ?? colorScheme.onSurface),
         ),
       ],
     );

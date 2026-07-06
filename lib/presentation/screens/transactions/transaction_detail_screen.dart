@@ -10,6 +10,7 @@ import '../../../application/providers/payees_provider.dart';
 import '../../../application/providers/repo_providers.dart';
 import '../../../application/providers/transaction_entry_support.dart';
 import '../../../application/providers/undo_stack_provider.dart';
+import '../../../core/format/money_format.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/radius.dart';
 import '../../../core/theme/spacing.dart';
@@ -22,6 +23,7 @@ import '../../../domain/entities/transaction.dart';
 import '../../../domain/entities/transfer.dart';
 import '../../../domain/use_cases/delete_transaction.dart';
 import '../../../domain/use_cases/delete_transfer.dart';
+import '../../shared/category_visuals.dart';
 import '../../shared/components/buttons/ghost_button.dart';
 import '../../shared/components/buttons/secondary_button.dart';
 import '../../shared/components/app_snackbar.dart';
@@ -142,13 +144,19 @@ class _TransactionDetailScreenState
     return transaction.categoryId;
   }
 
+  Category? _category(Transaction transaction, List<Category> categories) {
+    if (transaction.categoryId == null) return null;
+    for (final category in categories) {
+      if (category.id == transaction.categoryId) return category;
+    }
+    return null;
+  }
+
   String? _payeeName(Transaction transaction, List<Payee> payees) {
     if (transaction.payeeId == null) return null;
     for (final payee in payees) {
       if (payee.id == transaction.payeeId) {
-        return payee.displayName?.isNotEmpty == true
-            ? payee.displayName
-            : payee.normalizedName;
+        return payee.resolvedName;
       }
     }
     return transaction.payeeId;
@@ -194,9 +202,10 @@ class _TransactionDetailScreenState
       onSuccess: (undoEntry) {
         ref.read(undoStackProvider.notifier).push(undoEntry);
         if (mounted) {
+          final navigator = Navigator.of(context);
           context.pop();
           AppSnackBar.show(
-            context,
+            navigator.context,
             undoEntry.message,
             variant: AppSnackBarVariant.success,
             actionLabel: 'UNDO',
@@ -209,11 +218,7 @@ class _TransactionDetailScreenState
       },
       onFailure: (message, _) {
         if (mounted) {
-          AppSnackBar.show(
-            context,
-            message,
-            variant: AppSnackBarVariant.error,
-          );
+          AppSnackBar.show(context, message, variant: AppSnackBarVariant.error);
         }
       },
     );
@@ -289,24 +294,14 @@ class _TransactionDetailScreenState
     final transfer = entry.transfer;
     final isTransfer = transfer != null;
     final directionColor = _directionColor(transaction);
-    final amountStr = NumberFormat('#,##0.00').format(transaction.amount);
+    final amountStr = MoneyFormat.exact(transaction.amount, 'PHP');
     final transferDestinationName = isTransfer
         ? _accountName(transfer.destinationAccountId, accounts)
         : null;
+    final category = isTransfer ? null : _category(transaction, categories);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Transaction'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            onPressed: () => context.push(
-              '/transactions/new',
-              extra: isTransfer ? transfer : transaction,
-            ),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Transaction')),
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -314,6 +309,7 @@ class _TransactionDetailScreenState
               transaction,
               directionColor,
               amountStr,
+              category: category,
               isTransfer: isTransfer,
             ),
             TransactionDetailCard(
@@ -335,7 +331,7 @@ class _TransactionDetailScreenState
                       'From': _accountName(transfer.sourceAccountId, accounts),
                       'To': transferDestinationName,
                       if (transfer.feeAmount > 0)
-                        'Fee': 'PHP ${transfer.feeAmount.toStringAsFixed(2)}',
+                        'Fee': MoneyFormat.exact(transfer.feeAmount, 'PHP'),
                     }
                   : transaction.metadata,
             ),
@@ -368,7 +364,9 @@ class _TransactionDetailScreenState
                 ],
               ),
             ),
-            const SizedBox(height: AppSpacing.space6),
+            SizedBox(
+              height: AppSpacing.space6 + MediaQuery.of(context).padding.bottom,
+            ),
           ],
         ),
       ),
@@ -379,11 +377,16 @@ class _TransactionDetailScreenState
     Transaction transaction,
     Color directionColor,
     String amountStr, {
+    Category? category,
     required bool isTransfer,
   }) {
     final dateStr = DateFormat(
       'MMM d, yyyy \u00b7 h:mm a',
     ).format(transaction.occurredAt);
+    final hasCategory = category != null;
+    final iconColor = hasCategory
+        ? parseCategoryColor(category.color)
+        : directionColor;
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.space4,
@@ -393,12 +396,31 @@ class _TransactionDetailScreenState
       ),
       child: Column(
         children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: hasCategory
+                ? buildCategoryVisualFor(category, color: iconColor, size: 26)
+                : Icon(
+                    isTransfer
+                        ? Icons.swap_horiz_rounded
+                        : Icons.receipt_long_outlined,
+                    color: iconColor,
+                    size: 26,
+                  ),
+          ),
+          const SizedBox(height: AppSpacing.space3),
           Text(
-            '${_amountPrefix(transaction)}\u20B1$amountStr',
-            style: AppTypography.display.copyWith(color: directionColor),
+            '${_amountPrefix(transaction)}$amountStr',
+            style: AppTypography.displayMono.copyWith(color: directionColor),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: AppSpacing.space2),
+          const SizedBox(height: AppSpacing.space3),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -406,10 +428,11 @@ class _TransactionDetailScreenState
                 label: _directionLabel(transaction),
                 color: directionColor,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               _LocalBadge(
                 label: _modeLabel(transaction, isTransfer: isTransfer),
-                color: directionColor.withValues(alpha: 0.7),
+                color: context.lootrColors.textSecondary,
+                neutral: true,
               ),
             ],
           ),
@@ -427,21 +450,32 @@ class _TransactionDetailScreenState
 }
 
 class _LocalBadge extends StatelessWidget {
-  const _LocalBadge({required this.label, required this.color});
+  const _LocalBadge({
+    required this.label,
+    required this.color,
+    this.neutral = false,
+  });
   final String label;
   final Color color;
+  final bool neutral;
 
   @override
   Widget build(BuildContext context) {
+    final background = neutral
+        ? Theme.of(context).colorScheme.surfaceContainerHighest
+        : color.withValues(alpha: 0.08);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: background,
         borderRadius: BorderRadius.circular(AppRadius.sm),
       ),
       child: Text(
         label.toUpperCase(),
-        style: AppTypography.micro.copyWith(color: color),
+        style: AppTypography.micro.copyWith(
+          color: color,
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }

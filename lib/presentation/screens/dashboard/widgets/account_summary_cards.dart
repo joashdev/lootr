@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../../core/format/money_format.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/typography.dart';
@@ -21,6 +21,9 @@ class AccountSummaryCards extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final lootrColors = context.lootrColors;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -39,16 +42,29 @@ class AccountSummaryCards extends StatelessWidget {
                 width: 188,
                 child: CompactRowCard(
                   onTap: () => context.push('/more/accounts/${account.id}'),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Row(
                         children: [
-                          Icon(
-                            _accountIcon(account.accountType),
-                            size: 18,
-                            color: Theme.of(context).colorScheme.primary,
+                          Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: colorScheme.primaryContainer.withValues(
+                                alpha: 0.8,
+                              ),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              _accountIcon(account.accountType),
+                              size: 16,
+                              color: colorScheme.primary,
+                            ),
                           ),
                           const SizedBox(width: AppSpacing.space2),
                           Expanded(
@@ -56,23 +72,28 @@ class AccountSummaryCards extends StatelessWidget {
                               account.name,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: AppTypography.h3,
+                              style: AppTypography.bodyMedium,
                             ),
                           ),
                         ],
                       ),
+                      const SizedBox(height: AppSpacing.space3),
                       Text(
-                        NumberFormat.currency(
-                          locale: 'en_PH',
-                          symbol: '₱',
-                          name: currencyCode,
-                        ).format(account.balance),
-                        style: AppTypography.h2,
+                        MoneyFormat.display(account.balance, currencyCode),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.mono.copyWith(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          height: 1.25,
+                          color: colorScheme.onSurface,
+                        ),
                       ),
+                      const SizedBox(height: AppSpacing.space1),
                       Text(
                         _accountLabel(account.accountType),
                         style: AppTypography.caption.copyWith(
-                          color: context.lootrColors.textSecondary,
+                          color: lootrColors.textSecondary,
                         ),
                       ),
                     ],
@@ -110,6 +131,7 @@ class AccountSummaryCards extends StatelessWidget {
   }
 
   String _accountLabel(String type) {
-    return type.replaceAll('_', ' ');
+    final label = type.replaceAll('_', ' ');
+    return '${label[0].toUpperCase()}${label.substring(1)}';
   }
 }

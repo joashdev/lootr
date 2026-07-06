@@ -9,33 +9,44 @@ class AppIconButton extends StatelessWidget {
     this.onPressed,
     this.tooltip,
     this.semanticLabel,
+    this.color,
   });
 
   final IconData icon;
   final VoidCallback? onPressed;
   final String? tooltip;
   final String? semanticLabel;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final lootrColors = context.lootrColors;
     return SizedBox(
-      width: 44,
-      height: 44,
+      width: 40,
+      height: 40,
       child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(AppRadius.full),
+        color: colorScheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          side: BorderSide(color: colorScheme.outlineVariant),
+        ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onPressed,
-          borderRadius: BorderRadius.circular(AppRadius.full),
-          customBorder: const CircleBorder(),
+          borderRadius: BorderRadius.circular(AppRadius.md),
           child: Tooltip(
             message: tooltip ?? '',
             child: Semantics(
               label: semanticLabel ?? tooltip ?? '',
               button: true,
-              child: Icon(icon, size: 24, color: lootrColors.textSecondary),
+              child: Center(
+                child: Icon(
+                  icon,
+                  size: 20,
+                  color: color ?? lootrColors.textSecondary,
+                ),
+              ),
             ),
           ),
         ),

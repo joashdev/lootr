@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../../../../application/providers/dashboard_provider.dart';
+import '../../../../core/format/money_format.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/radius.dart';
 import '../../../../core/theme/spacing.dart';
@@ -18,36 +18,80 @@ class IncomeExpenseStrip extends StatelessWidget {
     final total = data.monthlyIncome + data.monthlyExpense;
     final incomeShare = total == 0 ? 0.5 : data.monthlyIncome / total;
     final expenseShare = total == 0 ? 0.5 : data.monthlyExpense / total;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return StandardCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Income vs expense', style: AppTypography.h2),
-          const SizedBox(height: AppSpacing.space3),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadius.full),
-            child: SizedBox(
-              height: 12,
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: (incomeShare * 1000).round().clamp(1, 1000),
-                    child: Container(color: context.lootrColors.income),
-                  ),
-                  Expanded(
-                    flex: (expenseShare * 1000).round().clamp(1, 1000),
-                    child: Container(color: context.lootrColors.expense),
-                  ),
-                ],
+          const SizedBox(height: AppSpacing.space2),
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.space1),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.full),
+              child: SizedBox(
+                height: 8,
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: (incomeShare * 1000).round().clamp(1, 1000),
+                      child: Container(color: context.lootrColors.income),
+                    ),
+                    Expanded(
+                      flex: (expenseShare * 1000).round().clamp(1, 1000),
+                      child: Container(color: context.lootrColors.expense),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-          const SizedBox(height: AppSpacing.space3),
-          Text(
-            '${NumberFormat.currency(locale: 'en_PH', symbol: '₱').format(data.monthlyIncome)} income · ${NumberFormat.currency(locale: 'en_PH', symbol: '₱').format(data.monthlyExpense)} expenses',
-            style: AppTypography.body.copyWith(
-              color: context.lootrColors.textSecondary,
+          const SizedBox(height: AppSpacing.space2),
+          Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: MoneyFormat.display(
+                    data.monthlyIncome,
+                    data.currencyCode,
+                  ),
+                  style: AppTypography.mono.copyWith(
+                    color: context.lootrColors.income,
+                  ),
+                ),
+                TextSpan(
+                  text: ' income',
+                  style: AppTypography.body.copyWith(
+                    color: context.lootrColors.textSecondary,
+                  ),
+                ),
+                TextSpan(
+                  text: '  ·  ',
+                  style: AppTypography.body.copyWith(
+                    color: context.lootrColors.textTertiary,
+                  ),
+                ),
+                TextSpan(
+                  text: MoneyFormat.display(
+                    data.monthlyExpense,
+                    data.currencyCode,
+                  ),
+                  style: AppTypography.mono.copyWith(
+                    color: context.lootrColors.expense,
+                  ),
+                ),
+                TextSpan(
+                  text: ' expenses',
+                  style: AppTypography.body.copyWith(
+                    color: context.lootrColors.textSecondary,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

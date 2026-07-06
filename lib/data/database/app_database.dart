@@ -52,14 +52,21 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
       await m.createAll();
     },
-    onUpgrade: (m, from, to) async {},
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        // v2: budgets gain optional icon/color overrides. Null means the
+        // budget inherits its category's visuals.
+        await m.addColumn(budgets, budgets.icon);
+        await m.addColumn(budgets, budgets.color);
+      }
+    },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
     },

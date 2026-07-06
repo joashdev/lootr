@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/radius.dart';
-import '../../../../core/theme/shadows.dart';
 import '../../../../core/theme/spacing.dart';
 
 class StandardCard extends StatelessWidget {
@@ -20,15 +19,13 @@ class StandardCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final card = Container(
       padding: padding ?? const EdgeInsets.all(AppSpacing.cardPaddingStandard),
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        boxShadow: isDark ? AppShadows.none : AppShadows.sm,
-        border: isDark ? Border.all(color: colorScheme.outline) : null,
+        border: Border.all(color: colorScheme.outlineVariant),
       ),
       child: child,
     );

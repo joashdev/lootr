@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/theme/colors.dart';
+import '../../../core/theme/typography.dart';
 import '../../sheets/quick_actions_sheet.dart';
 
 class TabShell extends StatelessWidget {
@@ -156,7 +157,10 @@ class TabShell extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: isDark ? const Color(0x593B82F6) : const Color(0x662563EB),
+              color: (isDark
+                      ? AppColors.darkPrimary500
+                      : AppColors.primary600)
+                  .withValues(alpha: isDark ? 0.35 : 0.26),
               blurRadius: 16,
               offset: const Offset(0, 4),
             ),
@@ -215,7 +219,9 @@ class _NavTab extends StatelessWidget {
           height: double.infinity,
           decoration: BoxDecoration(
             color: isActive
-                ? (isDark ? const Color(0x263B82F6) : const Color(0x1A2563EB))
+                ? (isDark
+                    ? AppColors.darkPrimary500.withValues(alpha: 0.15)
+                    : AppColors.primary600.withValues(alpha: 0.10))
                 : null,
             borderRadius: BorderRadius.circular(14),
           ),
@@ -226,14 +232,18 @@ class _NavTab extends StatelessWidget {
             children: [
               Icon(icon, color: color, size: 20),
               const SizedBox(height: 2),
-              Text(
-                label,
-                maxLines: 1,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: fontWeight,
-                  color: color,
-                  height: 1.1,
+              // Scale down long labels (e.g. "Transactions") instead of
+              // clipping them; short labels render at full size.
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  style: AppTypography.micro.copyWith(
+                    fontWeight: fontWeight,
+                    color: color,
+                    height: 1.1,
+                  ),
                 ),
               ),
             ],

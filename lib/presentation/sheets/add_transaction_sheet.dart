@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 
 import '../../application/providers/accounts_provider.dart';
 import '../../application/providers/categories_provider.dart';
@@ -12,6 +13,7 @@ import '../../application/providers/payees_provider.dart';
 import '../../application/providers/repo_providers.dart';
 import '../../application/providers/undo_stack_provider.dart';
 import '../../core/constants/enums.dart' as ui;
+import '../../core/format/money_format.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/radius.dart';
 import '../../core/theme/typography.dart';
@@ -83,6 +85,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   final _feeController = TextEditingController();
   final _noteController = TextEditingController();
   final _quickAddController = TextEditingController();
+  final SpeechToText _speech = SpeechToText();
 
   String? _accountId;
   String? _categoryId;
@@ -101,12 +104,23 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   bool _isQuickMode = false;
   bool _isSaving = false;
   bool _seededInitialParsed = false;
+  bool _isListening = false;
 
   ParsedTransaction? _parsedPreview;
   String? _parseError;
 
   bool get _isTransactionEditing => widget.initialTransaction != null;
   bool get _isTransferEditing => widget.initialTransfer != null;
+
+  @override
+  void dispose() {
+    _speech.cancel();
+    _amountController.dispose();
+    _feeController.dispose();
+    _noteController.dispose();
+    _quickAddController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -156,13 +170,48 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     _debtRecordId = metadata['debtRecordId'] as String?;
   }
 
-  @override
-  void dispose() {
-    _amountController.dispose();
-    _feeController.dispose();
-    _noteController.dispose();
-    _quickAddController.dispose();
-    super.dispose();
+  Future<void> _toggleSpeechInput() async {
+    if (_isListening) {
+      await _speech.stop();
+      if (mounted) {
+        setState(() => _isListening = false);
+      }
+      return;
+    }
+
+    final available = await _speech.initialize(
+      onStatus: (status) {
+        if (!mounted) return;
+        if (status == 'done' || status == 'notListening') {
+          setState(() => _isListening = false);
+        }
+      },
+      onError: (_) {
+        if (!mounted) return;
+        setState(() => _isListening = false);
+        _showSnackBar('Voice input could not start on this device.');
+      },
+    );
+
+    if (!available) {
+      _showSnackBar('Voice input is unavailable on this device.');
+      return;
+    }
+
+    setState(() => _isListening = true);
+    await _speech.listen(
+      listenMode: ListenMode.dictation,
+      partialResults: true,
+      onResult: (result) {
+        if (!mounted) return;
+        setState(() {
+          _quickAddController.text = result.recognizedWords.trim();
+          _quickAddController.selection = TextSelection.collapsed(
+            offset: _quickAddController.text.length,
+          );
+        });
+      },
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -223,13 +272,35 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     return fuzzyMatch?.id;
   }
 
-  String? _matchCategoryId(String label, List<Category> categories) {
+  String? _matchCategoryId(
+    String label,
+    List<Category> categories, {
+    String? direction,
+  }) {
     final normalized = _normalize(label);
-    final match = categories.cast<Category?>().firstWhere(
+    if (normalized.isEmpty) return null;
+    final group = (direction ?? _direction) == fields.TransactionDirection.income
+        ? fields.CategoryGroup.income
+        : fields.CategoryGroup.expense;
+    final candidates = categories
+        .where(
+          (category) =>
+              category.deletedAt == null && category.categoryGroup == group,
+        )
+        .toList();
+    final exact = candidates.cast<Category?>().firstWhere(
       (category) => _normalize(category!.name) == normalized,
       orElse: () => null,
     );
-    return match?.id;
+    if (exact != null) return exact.id;
+    // Fuzzy fallback: NL quick-add emits short labels ("Dining") that
+    // otherwise match no real category ("Food & Dining") and would save
+    // the transaction uncategorized.
+    final fuzzy = candidates.cast<Category?>().firstWhere((category) {
+      final name = _normalize(category!.name);
+      return name.contains(normalized) || normalized.contains(name);
+    }, orElse: () => null);
+    return fuzzy?.id;
   }
 
   String? _matchPayeeId(String label, List<Payee> payees) {
@@ -258,7 +329,9 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     }
     if (parsed.category != null) {
       _categoryId = _matchCategoryId(parsed.category!, categories);
-      _categoryDraft = parsed.category;
+      // Keep the raw label only when unresolved, so a matched category
+      // displays its real name (icon + name) instead of the parsed alias.
+      _categoryDraft = _categoryId == null ? parsed.category : null;
     }
     if (parsed.payee != null) {
       _payeeId = _matchPayeeId(parsed.payee!, payees);
@@ -392,11 +465,19 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     try {
       final payeeId = await _resolvePayeeId();
       final previous = widget.initialTransaction;
+      // Fall back to resolving free-typed category text (e.g. an NL
+      // quick-add label that was never tapped in the picker) at save time.
+      final categoryId =
+          _categoryId ??
+          _matchCategoryId(
+            _categoryDraft ?? '',
+            ref.read(categoriesProvider).asData?.value ?? const <Category>[],
+          );
 
       final transaction = Transaction(
         id: previous?.id ?? 'txn-${now.microsecondsSinceEpoch}',
         accountId: _accountId!,
-        categoryId: _categoryId,
+        categoryId: categoryId,
         payeeId: payeeId,
         parentTransactionId: _mode == fields.TransactionMode.installment
             ? _parentTransactionId
@@ -459,7 +540,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     final feeAmount = _feeController.text.trim().isEmpty
         ? 0.0
         : double.tryParse(_feeController.text.trim());
-    if (amount == null || feeAmount == null) {
+    if (amount == null || amount <= 0 || feeAmount == null || feeAmount < 0) {
       _showSnackBar('Enter valid transfer amounts.');
       return;
     }
@@ -530,16 +611,18 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
 
   void _showSnackBar(String message, {String? transactionId}) {
     final isError = switch (message) {
-      'Enter a valid amount.' || 'Select an account to continue.' ||
+      'Enter a valid amount.' ||
+      'Select an account to continue.' ||
       'Select both source and destination accounts.' ||
-      'Enter valid transfer amounts.' =>
-        true,
+      'Enter valid transfer amounts.' => true,
       _ => false,
     };
     AppSnackBar.show(
       context,
       message,
-      variant: isError ? AppSnackBarVariant.warning : AppSnackBarVariant.success,
+      variant: isError
+          ? AppSnackBarVariant.warning
+          : AppSnackBarVariant.success,
       actionLabel: transactionId != null ? 'UNDO' : null,
       onAction: transactionId != null
           ? () => ref.read(undoStackProvider.notifier).undo(transactionId)
@@ -596,6 +679,17 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     final router = GoRouter.of(context);
     context.pop();
     router.push('/scan');
+  }
+
+  void _handleEntryModeSelected(EntryMode mode) {
+    switch (mode) {
+      case EntryMode.quick:
+        setState(() => _isQuickMode = true);
+      case EntryMode.manual:
+        setState(() => _isQuickMode = false);
+      case EntryMode.scan:
+        _openScan();
+    }
   }
 
   void _openAccounts() {
@@ -665,13 +759,6 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                       ],
                     ),
                   ),
-                  if (!_isTransactionEditing && !_isTransferEditing)
-                    _EntryModeMenu(
-                      isQuickMode: _isQuickMode,
-                      onManual: () => setState(() => _isQuickMode = false),
-                      onQuick: () => setState(() => _isQuickMode = true),
-                      onScan: _openScan,
-                    ),
                   IconButton(
                     onPressed: () => context.pop(),
                     icon: const Icon(Icons.close),
@@ -679,6 +766,14 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                 ],
               ),
             ),
+            if (!_isTransactionEditing && !_isTransferEditing)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
+                child: EntryModeTabs(
+                  selected: _isQuickMode ? EntryMode.quick : EntryMode.manual,
+                  onSelected: _handleEntryModeSelected,
+                ),
+              ),
             const Divider(height: 1),
             Flexible(
               child: SingleChildScrollView(
@@ -759,7 +854,12 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                 ? fields.CategoryGroup.income
                 : fields.CategoryGroup.expense,
             initialText: _categoryDraft,
-            onChanged: (value) => setState(() => _categoryId = value),
+            onChanged: (value) => setState(() {
+              _categoryId = value;
+              // A concrete pick supersedes any free-typed draft label.
+              if (value != null) _categoryDraft = null;
+            }),
+            onTextChanged: (value) => _categoryDraft = value,
           ),
           const SizedBox(height: 16),
           _buildLabel('Payee'),
@@ -828,13 +928,14 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  tooltip: 'Voice input (coming soon)',
-                  onPressed: () =>
-                      _showSnackBar('Voice input is not available in V1'),
+                  tooltip: _isListening ? 'Stop listening' : 'Start voice input',
+                  onPressed: _toggleSpeechInput,
                   icon: Icon(
-                    LucideIcons.mic,
+                    _isListening ? LucideIcons.audioLines : LucideIcons.mic,
                     size: 18,
-                    color: lootrColors.textTertiary,
+                    color: _isListening
+                        ? Theme.of(context).colorScheme.primary
+                        : lootrColors.textTertiary,
                   ),
                 ),
                 IconButton(
@@ -870,10 +971,10 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
         ],
         if (_parsedPreview != null) ...[
           const SizedBox(height: 16),
-          _buildPreviewCard(_parsedPreview!),
+          _buildPreviewCard(_parsedPreview!, categories),
           const SizedBox(height: 16),
           PrimaryButton(
-            label: 'Save Transaction',
+            label: 'Add Transaction',
             onPressed: _isSaving
                 ? null
                 : () {
@@ -904,8 +1005,26 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     );
   }
 
-  Widget _buildPreviewCard(ParsedTransaction parsed) {
+  /// Resolves the parsed category label against the user's real categories.
+  /// Falls back to "Uncategorized" when nothing matches, so the preview never
+  /// shows a category that would silently disappear on save.
+  String _previewCategoryLabel(
+    ParsedTransaction parsed,
+    List<Category> categories,
+  ) {
+    final matchedId = _matchCategoryId(
+      parsed.category!,
+      categories,
+      direction: parsed.direction,
+    );
+    if (matchedId == null) return 'Uncategorized';
+    return categories.firstWhere((category) => category.id == matchedId).name;
+  }
+
+  Widget _buildPreviewCard(ParsedTransaction parsed, List<Category> categories) {
     final lootrColors = context.lootrColors;
+    // The parser produces a single overall confidence, so it is surfaced once
+    // below the rows rather than repeated per field.
     final confidence = parsed.confidence;
 
     Widget previewRow(String label, String value) {
@@ -930,7 +1049,6 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                 ),
               ),
             ),
-            _ConfidenceDot(confidence: confidence),
           ],
         ),
       );
@@ -954,10 +1072,11 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
           ),
           const SizedBox(height: 12),
           if (parsed.amount != null)
-            previewRow('Amount', '₱${parsed.amount!.toStringAsFixed(2)}'),
+            previewRow('Amount', MoneyFormat.exact(parsed.amount!, 'PHP')),
           if (parsed.payee != null) previewRow('Payee', parsed.payee!),
           if (parsed.account != null) previewRow('Account', parsed.account!),
-          if (parsed.category != null) previewRow('Category', parsed.category!),
+          if (parsed.category != null)
+            previewRow('Category', _previewCategoryLabel(parsed, categories)),
           if (parsed.direction != null)
             previewRow('Direction', _directionLabel(parsed.direction!)),
           Row(
@@ -1008,31 +1127,30 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   }
 
   Widget _buildTransactionTypeTabs() {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppRadius.full),
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _TransactionTypeTab(
+    return Row(
+      children: [
+        Expanded(
+          child: _TransactionTypeTab(
             label: 'Expense',
             isSelected: _direction == fields.TransactionDirection.expense,
             onTap: () => _selectDirection(fields.TransactionDirection.expense),
           ),
-          _TransactionTypeTab(
+        ),
+        Expanded(
+          child: _TransactionTypeTab(
             label: 'Income',
             isSelected: _direction == fields.TransactionDirection.income,
             onTap: () => _selectDirection(fields.TransactionDirection.income),
           ),
-          _TransactionTypeTab(
+        ),
+        Expanded(
+          child: _TransactionTypeTab(
             label: 'Transfer',
             isSelected: _direction == fields.TransactionDirection.transfer,
             onTap: () => _selectDirection(fields.TransactionDirection.transfer),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -1127,7 +1245,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                   value: transaction.id,
                   child: Text(
                     '${DateFormat('MMM d').format(transaction.occurredAt)} • '
-                    '₱${transaction.amount.toStringAsFixed(2)}',
+                    '${MoneyFormat.exact(transaction.amount, 'PHP')}',
                   ),
                 ),
               )
@@ -1161,7 +1279,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                   value: debt.id,
                   child: Text(
                     '${debt.counterpartyName} • '
-                    '₱${debt.remainingBalance.toStringAsFixed(2)}',
+                    '${MoneyFormat.exact(debt.remainingBalance, 'PHP')}',
                   ),
                 ),
               )
@@ -1183,73 +1301,36 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _amountField(labelText: 'Transfer Amount'),
+        AmountInput(
+          direction: ui.TransactionDirection.transfer,
+          controller: _amountController,
+          label: 'Transfer Amount',
+        ),
         if (accounts.length < 2) ...[
           const SizedBox(height: 12),
           _buildTransferAccountsPrompt(accounts.length),
         ] else ...[
           const SizedBox(height: 16),
-          TextFormField(
+          AmountInput(
+            direction: ui.TransactionDirection.transfer,
             controller: _feeController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(
-              labelText: 'Fee',
-              prefixText: 'PHP ',
-            ),
-            validator: (value) {
-              if ((value ?? '').trim().isEmpty) return null;
-              final parsed = double.tryParse(value!.trim());
-              if (parsed == null || parsed < 0) {
-                return 'Enter a valid fee';
-              }
-              return null;
-            },
+            label: 'Fee',
           ),
           const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            key: ValueKey(
-              'source-${_sourceAccountId ?? 'none'}-${accounts.length}',
-            ),
-            initialValue:
-                accounts.any((account) => account.id == _sourceAccountId)
-                ? _sourceAccountId
-                : null,
-            decoration: const InputDecoration(labelText: 'From account'),
-            items: [
-              for (final account in accounts)
-                DropdownMenuItem<String>(
-                  value: account.id,
-                  child: Text(account.name),
-                ),
-            ],
-            onChanged: accounts.isEmpty
-                ? null
-                : (value) => setState(() => _sourceAccountId = value),
-            validator: (value) =>
-                value == null ? 'Select a source account' : null,
+          _buildLabel('From Account'),
+          const SizedBox(height: 8),
+          AccountDropdown(
+            accounts: accounts,
+            selectedAccountId: _sourceAccountId,
+            onChanged: (value) => setState(() => _sourceAccountId = value),
           ),
           const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            key: ValueKey(
-              'destination-${_destinationAccountId ?? 'none'}-${accounts.length}',
-            ),
-            initialValue:
-                accounts.any((account) => account.id == _destinationAccountId)
-                ? _destinationAccountId
-                : null,
-            decoration: const InputDecoration(labelText: 'To account'),
-            items: [
-              for (final account in accounts)
-                DropdownMenuItem<String>(
-                  value: account.id,
-                  child: Text(account.name),
-                ),
-            ],
-            onChanged: accounts.isEmpty
-                ? null
-                : (value) => setState(() => _destinationAccountId = value),
-            validator: (value) =>
-                value == null ? 'Select a destination account' : null,
+          _buildLabel('To Account'),
+          const SizedBox(height: 8),
+          AccountDropdown(
+            accounts: accounts,
+            selectedAccountId: _destinationAccountId,
+            onChanged: (value) => setState(() => _destinationAccountId = value),
           ),
           const SizedBox(height: 16),
           _noteField(hintText: 'Optional transfer note'),
@@ -1258,9 +1339,10 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
-            child: FilledButton(
+            child: PrimaryButton(
+              label: _isTransferEditing ? 'Save Changes' : 'Add Transfer',
               onPressed: _isSaving ? null : _saveTransfer,
-              child: Text(_isSaving ? 'Saving...' : 'Save Transfer'),
+              isLoading: _isSaving,
             ),
           ),
         ],
@@ -1305,21 +1387,6 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _amountField({String labelText = 'Amount'}) {
-    return TextFormField(
-      controller: _amountController,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      decoration: InputDecoration(labelText: labelText, prefixText: 'PHP '),
-      validator: (value) {
-        final parsed = double.tryParse((value ?? '').trim());
-        if (parsed == null || parsed <= 0) {
-          return 'Enter an amount greater than zero';
-        }
-        return null;
-      },
     );
   }
 
@@ -1368,69 +1435,48 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   }
 }
 
-enum _EntryMode { manual, quick, scan }
+/// Entry modes offered at the top of the add-transaction surfaces.
+enum EntryMode { quick, manual, scan }
 
-class _EntryModeMenu extends StatelessWidget {
-  const _EntryModeMenu({
-    required this.isQuickMode,
-    required this.onManual,
-    required this.onQuick,
-    required this.onScan,
+/// Quick | Manual | Scan segmented control shown at the top of the
+/// add-transaction sheet (and reused by the quick-actions sheet). Mirrors the
+/// Expense/Income/Transfer tab styling so the two segmented rows read as one
+/// design language. The highlighted segment always reflects the ACTIVE mode —
+/// selection is fully controlled by [selected], never by internal state.
+class EntryModeTabs extends StatelessWidget {
+  const EntryModeTabs({
+    super.key,
+    required this.selected,
+    required this.onSelected,
   });
 
-  final bool isQuickMode;
-  final VoidCallback onManual;
-  final VoidCallback onQuick;
-  final VoidCallback onScan;
+  final EntryMode selected;
+  final ValueChanged<EntryMode> onSelected;
+
+  String _label(EntryMode mode) {
+    switch (mode) {
+      case EntryMode.quick:
+        return 'Quick';
+      case EntryMode.manual:
+        return 'Manual';
+      case EntryMode.scan:
+        return 'Scan';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final selected = isQuickMode ? _EntryMode.quick : _EntryMode.manual;
-    final label = isQuickMode ? 'Quick' : 'Manual';
-
-    return PopupMenuButton<_EntryMode>(
-      initialValue: selected,
-      onSelected: (mode) {
-        switch (mode) {
-          case _EntryMode.manual:
-            onManual();
-          case _EntryMode.quick:
-            onQuick();
-          case _EntryMode.scan:
-            onScan();
-        }
-      },
-      itemBuilder: (context) => const [
-        PopupMenuItem(value: _EntryMode.manual, child: Text('Manual')),
-        PopupMenuItem(value: _EntryMode.quick, child: Text('Quick')),
-        PopupMenuItem(value: _EntryMode.scan, child: Text('Scan')),
+    return Row(
+      children: [
+        for (final mode in EntryMode.values)
+          Expanded(
+            child: _TransactionTypeTab(
+              label: _label(mode),
+              isSelected: selected == mode,
+              onTap: () => onSelected(mode),
+            ),
+          ),
       ],
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(AppRadius.full),
-          border: Border.all(color: colorScheme.outlineVariant),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: AppTypography.captionMedium.copyWith(
-                color: colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Icon(
-              LucideIcons.chevronDown,
-              size: 16,
-              color: context.lootrColors.textSecondary,
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -1452,22 +1498,41 @@ class _TransactionTypeTab extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.full),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? colorScheme.primaryContainer : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppRadius.full),
-        ),
-        child: Text(
-          label,
-          style: AppTypography.bodyMedium.copyWith(
-            color: isSelected
-                ? colorScheme.onPrimaryContainer
-                : context.lootrColors.textSecondary,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            decoration: isSelected
+                ? BoxDecoration(
+                    color: colorScheme.primary.withValues(alpha: 0.08),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(AppRadius.sm),
+                    ),
+                  )
+                : null,
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: AppTypography.bodyMedium.copyWith(
+                color: isSelected
+                    ? colorScheme.onSurface
+                    : context.lootrColors.textSecondary,
+              ),
+            ),
           ),
-        ),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            height: 2,
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? colorScheme.primary
+                  : colorScheme.outlineVariant,
+              borderRadius: BorderRadius.circular(1),
+            ),
+          ),
+        ],
       ),
     );
   }

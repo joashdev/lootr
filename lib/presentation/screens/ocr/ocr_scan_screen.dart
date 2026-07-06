@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../core/format/money_format.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/radius.dart';
 import '../../../core/theme/typography.dart';
@@ -390,7 +391,7 @@ class _OcrPreviewCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           if (extracted.amount != null)
-            previewRow('Amount', '₱${extracted.amount!.toStringAsFixed(2)}'),
+            previewRow('Amount', MoneyFormat.exact(extracted.amount!, 'PHP')),
           if (extracted.payee != null) previewRow('Payee', extracted.payee!),
           if (extracted.account != null)
             previewRow('Account', extracted.account!),

@@ -4,12 +4,16 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../application/providers/accounts_provider.dart';
+import '../../../application/providers/repo_providers.dart';
+import '../../../core/format/money_format.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/value_objects/field_types.dart';
+import '../../shared/components/app_snackbar.dart';
 import '../../shared/components/empty_state.dart';
+import '../../shared/components/swipe_action_row.dart';
 import 'more_form_sheets.dart';
 
 class AccountsScreen extends ConsumerWidget {
@@ -175,7 +179,7 @@ class _AccountSection extends StatelessWidget {
   }
 }
 
-class _AccountRow extends StatelessWidget {
+class _AccountRow extends ConsumerWidget {
   const _AccountRow({required this.account, required this.typeIcon});
 
   final Account account;
@@ -186,8 +190,39 @@ class _AccountRow extends StatelessWidget {
       account.accountType == AccountType.loan ||
       account.accountType == AccountType.bnpl;
 
+  /// Same confirm + archive flow as the account detail screen.
+  Future<void> _archiveAccount(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Archive account?'),
+        content: const Text(
+          'Archived accounts are hidden from the main list but remain in history.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Archive'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await ref.read(accountRepoProvider).archive(account.id);
+    if (!context.mounted) return;
+    AppSnackBar.show(
+      context,
+      'Account archived.',
+      variant: AppSnackBarVariant.success,
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final lootrColors = context.lootrColors;
     final colorScheme = Theme.of(context).colorScheme;
     final balanceColor = _isCreditOrLoan && account.balance != 0
@@ -198,30 +233,37 @@ class _AccountRow extends StatelessWidget {
         ? lootrColors.danger
         : null;
 
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.pagePaddingMobile,
-      ),
-      leading: Icon(typeIcon, size: 18, color: colorScheme.primary),
-      title: Text(
-        account.name,
-        style: AppTypography.bodyMedium.copyWith(color: colorScheme.onSurface),
-      ),
-      subtitle: account.isArchived
-          ? Text(
-              'Archived',
-              style: AppTypography.caption.copyWith(
-                color: lootrColors.textTertiary,
-              ),
-            )
-          : null,
-      trailing: Text(
-        '${account.balance < 0 ? '-' : ''}₱${account.balance.abs().toStringAsFixed(2)}',
-        style: AppTypography.mono.copyWith(
-          color: balanceColor ?? colorScheme.onSurface,
+    return SwipeActionRow(
+      rowKey: Key(account.id),
+      onEdit: () => showAccountSheet(context, ref, initial: account),
+      onDelete: () => _archiveAccount(context, ref),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.pagePaddingMobile,
         ),
+        leading: Icon(typeIcon, size: 18, color: colorScheme.primary),
+        title: Text(
+          account.name,
+          style: AppTypography.bodyMedium.copyWith(
+            color: colorScheme.onSurface,
+          ),
+        ),
+        subtitle: account.isArchived
+            ? Text(
+                'Archived',
+                style: AppTypography.caption.copyWith(
+                  color: lootrColors.textTertiary,
+                ),
+              )
+            : null,
+        trailing: Text(
+          MoneyFormat.exact(account.balance, account.currencyCode),
+          style: AppTypography.mono.copyWith(
+            color: balanceColor ?? colorScheme.onSurface,
+          ),
+        ),
+        onTap: () => context.push('/more/accounts/${account.id}'),
       ),
-      onTap: () => context.push('/more/accounts/${account.id}'),
     );
   }
 }

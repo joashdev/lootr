@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/format/money_format.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/radius.dart';
 import '../../../../core/theme/spacing.dart';
@@ -15,6 +16,7 @@ class TransactionRowWidget extends StatelessWidget {
     required this.accountName,
     this.leading,
     this.onTap,
+    this.showDate = false,
   });
 
   final Transaction transaction;
@@ -23,6 +25,11 @@ class TransactionRowWidget extends StatelessWidget {
   final String accountName;
   final Widget? leading;
   final VoidCallback? onTap;
+
+  /// When true, the trailing block prefixes the time with a short `MM/dd` date
+  /// (e.g. "05/26 · 4:42 PM"). Defaults to false so date-grouped lists stay
+  /// unchanged.
+  final bool showDate;
 
   Color _directionColor(BuildContext context) {
     final lotrColors = context.lootrColors;
@@ -59,7 +66,10 @@ class TransactionRowWidget extends StatelessWidget {
     final initials = accountName.isNotEmpty
         ? accountName[0].toUpperCase()
         : '?';
-    final time = DateFormat('h:mm a').format(transaction.occurredAt);
+    final time = showDate
+        ? '${DateFormat('MM/dd').format(transaction.occurredAt)} · '
+              '${DateFormat('h:mm a').format(transaction.occurredAt)}'
+        : DateFormat('h:mm a').format(transaction.occurredAt);
 
     final parts = <String>[];
     if (categoryName != null) parts.add(categoryName!);
@@ -125,8 +135,8 @@ class TransactionRowWidget extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '${_amountPrefix()}${NumberFormat("#,##0.00").format(transaction.amount)}',
-                style: AppTypography.h3.copyWith(color: directionColor),
+                '${_amountPrefix()}${MoneyFormat.exact(transaction.amount, 'PHP')}',
+                style: AppTypography.h3Mono.copyWith(color: directionColor),
               ),
               const SizedBox(height: 2),
               Text(

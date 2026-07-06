@@ -140,6 +140,7 @@ class HouseholdDetailScreen extends ConsumerWidget {
                         AppSnackBar.show(
                           context,
                           '${member.displayName} is now ${roleLabel(role).toLowerCase()}.',
+                          variant: AppSnackBarVariant.success,
                         );
                       },
                     );
@@ -232,7 +233,9 @@ class _MemberTile extends StatelessWidget {
                 color: lootrColors.textTertiary,
               ),
             ),
-      onTap: member.isCurrentUser ? () => context.push('/more/settings') : null,
+      onTap: member.isCurrentUser
+          ? () => context.push('/more/settings/profile')
+          : null,
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../core/theme/colors.dart';
 import '../../../core/theme/radius.dart';
 import '../../../core/theme/typography.dart';
 
@@ -30,9 +31,11 @@ class AppSnackBar extends StatelessWidget {
   }) {
     if (!context.mounted) return;
 
-    final colorScheme = Theme.of(context).colorScheme;
+    final rootContext = Navigator.of(context, rootNavigator: true).context;
+    final targetContext = rootContext.mounted ? rootContext : context;
+    final colorScheme = Theme.of(targetContext).colorScheme;
 
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = ScaffoldMessenger.of(targetContext);
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(
       SnackBar(
@@ -127,13 +130,13 @@ class _SnackBarContent extends StatelessWidget {
   Color _color() {
     switch (variant) {
       case AppSnackBarVariant.success:
-        return const Color(0xFF059669);
+        return AppColors.success600;
       case AppSnackBarVariant.warning:
-        return const Color(0xFFD97706);
+        return AppColors.warning600;
       case AppSnackBarVariant.error:
-        return const Color(0xFFDC2626);
+        return AppColors.danger600;
       case AppSnackBarVariant.neutral:
-        return const Color(0xFF2563EB);
+        return AppColors.primary600;
     }
   }
 

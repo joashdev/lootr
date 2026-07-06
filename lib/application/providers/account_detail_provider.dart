@@ -16,8 +16,10 @@ final accountDetailProvider =
         );
 
     final txnStream = txnRepo.watchByAccount(accountId).map(
-          (rows) => rows.map((r) => r.toEntity()).toList(),
-        );
+      (rows) =>
+          rows.map((r) => r.toEntity()).toList()
+            ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt)),
+    );
 
     return Rx.combineLatest2(
       accountStream,

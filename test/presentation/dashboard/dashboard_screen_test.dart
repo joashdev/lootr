@@ -5,10 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lootr/application/providers/dashboard_provider.dart';
-import 'package:lootr/application/providers/safe_to_spend_provider.dart';
 import 'package:lootr/application/providers/sync_providers.dart';
 import 'package:lootr/core/theme/theme.dart';
 import 'package:lootr/domain/entities/account.dart';
+import 'package:lootr/domain/use_cases/calculate_safe_to_spend.dart';
 import 'package:lootr/presentation/screens/dashboard/dashboard_screen.dart';
 
 void main() {
@@ -33,7 +33,14 @@ void main() {
           displayName: 'Joash',
           currentDate: DateTime(2026, 6, 21),
           currencyCode: 'PHP',
-          safeToSpend: 0,
+          safeToSpend: const SafeToSpendResult(
+            amount: 0,
+            basis: SafeToSpendBasis.liquidBalances,
+            monthlyIncome: 0,
+            spentThisMonth: 0,
+            committedOutflows: 0,
+            liquidBalance: 0,
+          ),
           monthlyIncome: 0,
           monthlyExpense: 0,
           netWorth: 0,
@@ -61,7 +68,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Good '), findsOneWidget);
-    expect(find.text('Safe to spend'), findsOneWidget);
+    expect(find.text('SAFE TO SPEND'), findsOneWidget);
     expect(find.text('Net worth'), findsOneWidget);
     expect(find.text('Accounts'), findsOneWidget);
     await tester.scrollUntilVisible(
@@ -94,16 +101,10 @@ void main() {
 }
 
 Widget _wrapWithApp(DashboardData data) {
-  return _wrapWithDashboardStream(
-    Stream.value(data),
-    safeToSpend: data.safeToSpend,
-  );
+  return _wrapWithDashboardStream(Stream.value(data));
 }
 
-Widget _wrapWithDashboardStream(
-  Stream<DashboardData> stream, {
-  double safeToSpend = 0,
-}) {
+Widget _wrapWithDashboardStream(Stream<DashboardData> stream) {
   final router = GoRouter(
     initialLocation: '/',
     routes: [
@@ -122,7 +123,6 @@ Widget _wrapWithDashboardStream(
   return ProviderScope(
     overrides: [
       dashboardProvider.overrideWith((ref) => stream),
-      safeToSpendProvider.overrideWith((ref) => Stream.value(safeToSpend)),
       syncStatusIconProvider.overrideWith((ref) => SyncIconState.synced),
     ],
     child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
@@ -136,7 +136,14 @@ DashboardData _sampleDashboardData() {
     displayName: 'Joash',
     currentDate: now,
     currencyCode: 'PHP',
-    safeToSpend: 12450,
+    safeToSpend: const SafeToSpendResult(
+      amount: 12450,
+      basis: SafeToSpendBasis.monthlyIncome,
+      monthlyIncome: 50000,
+      spentThisMonth: 37550,
+      committedOutflows: 0,
+      liquidBalance: 12450,
+    ),
     monthlyIncome: 50000,
     monthlyExpense: 37550,
     netWorth: 24000,

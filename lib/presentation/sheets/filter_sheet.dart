@@ -203,7 +203,7 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                       _AmountRangeSection(
                         minController: _minAmountController,
                         maxController: _maxAmountController,
-                        onApply: _applyAmountRange,
+                        onChanged: _applyAmountRange,
                       ),
                       const SizedBox(height: AppSpacing.space4),
                       const _SectionLabel(label: 'Date Range'),
@@ -233,15 +233,23 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                       ),
                     ),
                   );
+                  final activeCount = filters.activeCount;
                   final applyButton = FilledButton(
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: () {
+                      // Amounts are committed as they are typed, but re-apply
+                      // here so nothing typed is lost on Apply.
+                      _applyAmountRange();
+                      Navigator.of(context).pop();
+                    },
                     style: FilledButton.styleFrom(
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(AppRadius.full),
                       ),
                     ),
                     child: Text(
-                      'Apply ${filters.activeCount} filter${filters.activeCount == 1 ? '' : 's'}',
+                      activeCount == 0
+                          ? 'Apply'
+                          : 'Apply $activeCount filter${activeCount == 1 ? '' : 's'}',
                     ),
                   );
 
@@ -442,66 +450,58 @@ class _AmountRangeSection extends StatelessWidget {
   const _AmountRangeSection({
     required this.minController,
     required this.maxController,
-    required this.onApply,
+    required this.onChanged,
   });
 
   final TextEditingController minController;
   final TextEditingController maxController;
-  final VoidCallback onApply;
+  final VoidCallback onChanged;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: minController,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                style: AppTypography.body.copyWith(
-                  color: colorScheme.onSurface,
-                ),
-                decoration: _rangeInputDecoration(
-                  context: context,
-                  hintText: 'Min',
-                ),
-              ),
+        Expanded(
+          child: TextField(
+            controller: minController,
+            keyboardType: const TextInputType.numberWithOptions(
+              decimal: true,
             ),
-            const SizedBox(width: AppSpacing.space3),
-            Text(
-              '—',
-              style: AppTypography.body.copyWith(
-                color: context.lootrColors.textTertiary,
-              ),
+            style: AppTypography.body.copyWith(
+              color: colorScheme.onSurface,
             ),
-            const SizedBox(width: AppSpacing.space3),
-            Expanded(
-              child: TextField(
-                controller: maxController,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                style: AppTypography.body.copyWith(
-                  color: colorScheme.onSurface,
-                ),
-                decoration: _rangeInputDecoration(
-                  context: context,
-                  hintText: 'Max',
-                ),
-              ),
+            decoration: _rangeInputDecoration(
+              context: context,
+              hintText: 'Min',
             ),
-          ],
+            onChanged: (_) => onChanged(),
+          ),
         ),
-        const SizedBox(height: AppSpacing.space2),
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton(onPressed: onApply, child: const Text('Apply')),
+        const SizedBox(width: AppSpacing.space3),
+        Text(
+          '—',
+          style: AppTypography.body.copyWith(
+            color: context.lootrColors.textTertiary,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.space3),
+        Expanded(
+          child: TextField(
+            controller: maxController,
+            keyboardType: const TextInputType.numberWithOptions(
+              decimal: true,
+            ),
+            style: AppTypography.body.copyWith(
+              color: colorScheme.onSurface,
+            ),
+            decoration: _rangeInputDecoration(
+              context: context,
+              hintText: 'Max',
+            ),
+            onChanged: (_) => onChanged(),
+          ),
         ),
       ],
     );

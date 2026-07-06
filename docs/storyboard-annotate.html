@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lootr — Storyboard Annotation Canvas</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --surface: #fff; --surface-2: #f0f1f4; --border: #e3e5ea;
+    --text: #16181d; --text-2: #5c6270; --primary: #3e6cb3; --accent: #e0972a;
+    --danger: #c9483a; --shadow: 0 1px 3px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.06);
+    --radius: 12px; --shot-w: 280px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#0e0f12; --surface:#17191e; --surface-2:#1f222a; --border:#2a2d36;
+      --text:#f2f3f5; --text-2:#9aa0ad; --primary:#6e92d4; --accent:#f5c04e;
+      --danger:#e2695b; --shadow:0 1px 3px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.45);
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,system-ui,sans-serif;
+    line-height:1.5; }
+  .layout { display:flex; align-items:flex-start; gap:0; }
+  .main { flex:1; min-width:0; padding:24px clamp(16px,3vw,40px) 80px; }
+  h1 { font-size:1.6rem; margin:0 0 4px; letter-spacing:-.02em; }
+  .sub { color:var(--text-2); margin:0 0 16px; font-size:.9rem; max-width:70ch; }
+  .toolbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:8px; }
+  button.tool { font-size:.82rem; padding:7px 12px; border-radius:8px; border:1px solid var(--border);
+    background:var(--surface); color:var(--text); cursor:pointer; }
+  button.tool:hover { border-color:var(--primary); }
+  button.tool.danger:hover { border-color:var(--danger); color:var(--danger); }
+  .sizes { display:inline-flex; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+  .sizes button { border:0; background:var(--surface); color:var(--text-2); padding:7px 11px; cursor:pointer; font-size:.82rem; }
+  .sizes button.on { background:var(--primary); color:#fff; }
+  .count { font-size:.82rem; color:var(--text-2); margin-left:auto; }
+  .hint { font-size:.8rem; color:var(--text-2); background:var(--surface); border:1px solid var(--border);
+    border-left:3px solid var(--accent); border-radius:0 8px 8px 0; padding:9px 13px; margin:10px 0 22px; }
+  section { margin-top:30px; }
+  section h2 { font-size:1.1rem; margin:0 0 2px; letter-spacing:-.01em; }
+  section .desc { font-size:.85rem; color:var(--text-2); margin:0 0 14px; }
+  .grid { display:flex; flex-wrap:wrap; gap:18px; }
+  .frame { width:var(--shot-w); }
+  .shot-wrap { position:relative; border:1px solid var(--border); border-radius:var(--radius);
+    overflow:hidden; box-shadow:var(--shadow); cursor:crosshair; background:var(--surface-2); }
+  .shot-wrap img { width:100%; height:auto; display:block; }
+  .cap { font-size:.8rem; color:var(--text); margin-top:7px; }
+  .cap .badge { color:var(--text-2); font-size:.72rem; }
+  .pin { position:absolute; width:22px; height:22px; transform:translate(-50%,-50%);
+    background:var(--accent); color:#3a2700; border:2px solid #fff; border-radius:50%;
+    font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; box-shadow:0 1px 4px rgba(0,0,0,.4); z-index:2; }
+  .pin.sel { background:var(--primary); color:#fff; outline:2px solid var(--primary); outline-offset:2px; }
+  /* findings */
+  .findings { margin-top:6px; display:flex; flex-direction:column; gap:4px; }
+  .finding { font-size:.74rem; line-height:1.45; padding:6px 8px 6px 9px; border-radius:0 7px 7px 0;
+    background:var(--surface); border:1px solid var(--border); }
+  .finding.sev-high   { border-left:3px solid var(--danger); }
+  .finding.sev-medium { border-left:3px solid var(--accent); }
+  .finding.sev-low    { border-left:3px solid var(--text-2); }
+  .finding .sev { font-weight:700; font-size:.66rem; text-transform:uppercase; letter-spacing:.05em; margin-right:5px; }
+  .finding.sev-high .sev { color:var(--danger); }
+  .finding.sev-medium .sev { color:var(--accent); }
+  .finding.sev-low .sev { color:var(--text-2); }
+  .fsummary { margin:0 0 8px; background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius); box-shadow:var(--shadow); padding:16px 18px 12px; }
+  .fsummary h2 { font-size:1.05rem; margin:0 0 2px; }
+  .fsummary .desc { font-size:.82rem; color:var(--text-2); margin:0 0 10px; }
+  .fsummary ol { margin:0; padding-left:20px; }
+  .fsummary li { font-size:.8rem; margin-bottom:6px; }
+  .fsummary a { color:var(--primary); text-decoration:none; font-weight:600; }
+  .fsummary a:hover { text-decoration:underline; }
+  .fsummary .sev { font-weight:700; font-size:.66rem; text-transform:uppercase; letter-spacing:.05em; margin-right:5px; }
+  .fsummary li.sev-high .sev { color:var(--danger); }
+  .fsummary li.sev-medium .sev { color:var(--accent); }
+  .fsummary li.sev-low .sev { color:var(--text-2); }
+  .flash { animation:flash 1.6s ease-out 1; }
+  @keyframes flash { 0%,60% { outline:3px solid var(--accent); outline-offset:3px; } 100% { outline:0 solid transparent; } }
+  /* side panel */
+  .panel { width:340px; flex:0 0 340px; align-self:stretch; background:var(--surface);
+    border-left:1px solid var(--border); padding:20px 18px; position:sticky; top:0; height:100vh; overflow-y:auto; }
+  .panel h3 { font-size:1rem; margin:0 0 2px; }
+  .panel .psub { font-size:.78rem; color:var(--text-2); margin:0 0 14px; }
+  .agroup { margin-bottom:16px; }
+  .agroup .gh { font-size:.74rem; font-weight:600; text-transform:uppercase; letter-spacing:.04em;
+    color:var(--text-2); margin:0 0 6px; }
+  .arow { display:flex; gap:8px; margin-bottom:8px; }
+  .arow .num { flex:0 0 auto; width:20px; height:20px; border-radius:50%; background:var(--accent);
+    color:#3a2700; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; margin-top:6px; }
+  .arow textarea { flex:1; resize:vertical; min-height:34px; font:inherit; font-size:.82rem; line-height:1.4;
+    padding:6px 8px; border:1px solid var(--border); border-radius:7px; background:var(--bg); color:var(--text); }
+  .arow textarea:focus { outline:none; border-color:var(--primary); }
+  .arow .del { flex:0 0 auto; border:0; background:transparent; color:var(--text-2); cursor:pointer; font-size:15px; padding:4px; align-self:flex-start; margin-top:2px; }
+  .arow .del:hover { color:var(--danger); }
+  .empty { font-size:.84rem; color:var(--text-2); }
+  .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--text);
+    color:var(--bg); padding:9px 16px; border-radius:8px; font-size:.85rem; opacity:0; transition:opacity .2s; pointer-events:none; z-index:10; }
+  .toast.show { opacity:1; }
+  @media (max-width:900px){ .layout{flex-direction:column} .panel{width:100%;flex:none;height:auto;position:static;border-left:0;border-top:1px solid var(--border)} }
+</style>
+</head>
+<body>
+<div class="layout">
+  <div class="main">
+    <h1>Lootr — storyboard annotation canvas</h1>
+    <p class="sub">Full user journey (onboarding → every page and action state), plus the earlier subpage captures. Click anywhere on a screen to drop a numbered pin and leave a comment. UX findings from the audit are attached under the relevant screens and summarised below.</p>
+    <div class="toolbar">
+      <button class="tool" id="copyBtn"><b>Copy all annotations</b></button>
+      <button class="tool" id="jsonBtn">Download .json</button>
+      <button class="tool danger" id="clearBtn">Clear all</button>
+      <span class="sizes" id="sizes">
+        <button data-w="220">S</button><button data-w="280" class="on">M</button><button data-w="360">L</button>
+      </span>
+      <span class="count" id="count">0 annotations</span>
+    </div>
+    <div class="hint">Click a screen to add a pin · click a pin to jump to its note · notes auto-save in this browser · use <b>Copy all annotations</b> to paste your feedback back into the chat.</div>
+    <div id="findingsSummary"></div>
+    <div id="sections"></div>
+  </div>
+  <aside class="panel">
+    <h3>Your annotations</h3>
+    <p class="psub" id="psub">Nothing yet.</p>
+    <div id="annoList"></div>
+  </aside>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const V = '?v=8';
+const JB = 'storyboard-shots/journey/';
+const SB = 'storyboard-shots/subpages/';
+const GROUPS = [
+  // ---------------------------------------------------------------- journey
+  { key:'j-onboarding', title:'Journey · Onboarding', base:JB,
+    desc:'First launch: all four steps, the setup form before and after input, and the first dashboard.', shots:[
+    ['01-onboarding-welcome','Welcome'],
+    ['02-onboarding-track','Step 2 — Track'],
+    ['03-onboarding-plan','Step 3 — Plan'],
+    ['04-onboarding-setup-empty','Setup — empty'],
+    ['05-onboarding-setup-filled','Setup — name filled, demo ON'],
+    ['06-dashboard-first-run','First dashboard after Get Started'],
+  ]},
+  { key:'j-dashboard', title:'Journey · Dashboard', base:JB,
+    desc:'Initial state and two scroll positions. The header search and sync-status actions are hidden until those features ship, so the old sync-sheet shot (10) is retired.', shots:[
+    ['07-dashboard-top','Dashboard — top (no search/sync icons)'],
+    ['08-dashboard-scrolled-mid','Dashboard — scrolled (mid)'],
+    ['09-dashboard-scrolled-bottom','Dashboard — scrolled (bottom)'],
+  ]},
+  { key:'j-add', title:'Journey · Quick Actions + Add Transaction', base:JB,
+    desc:'The + island end-to-end: the sheet now has a Quick | Manual | Scan segmented control (Quick default; Manual/Scan navigate in one tap), quick input & NL parse preview, then the full manual form with every picker opened, each direction tab, and the post-save result. (The Scan/OCR camera cannot run on a simulator.)', shots:[
+    ['11-quick-actions-sheet','Quick Actions sheet (+) — Quick | Manual | Scan segments'],
+    ['12-quick-actions-typed','Quick input typed'],
+    ['13-quick-add-parsed-preview','NL parse preview (Quick mode)'],
+    ['95-entry-mode-manual-selected','NEW · Manual segment selected (1 tap from + sheet)'],
+    ['14-add-transaction-empty','Manual form — empty (Expense)'],
+    ['15-add-transaction-income-tab','Income tab'],
+    ['16-add-transaction-transfer-tab','Transfer tab'],
+    ['17-add-transaction-amount-typed','Amount typed'],
+    ['18-add-transaction-account-picker','Account dropdown open'],
+    ['19-add-transaction-category-picker','Category autocomplete open'],
+    ['20-add-transaction-payee-picker','Payee autocomplete open'],
+    ['21-add-transaction-date-picker','Date picker open'],
+    ['22-add-transaction-mode-recurring','Recurring mode selected'],
+    ['23-add-transaction-filled','Form fully filled'],
+    ['24-add-transaction-saved-snackbar','Saved — snackbar + UNDO'],
+    ['25-transactions-after-add','Transactions list after save'],
+  ]},
+  { key:'j-transactions', title:'Journey · Transactions', base:JB,
+    desc:'List (date group headers are now friendly: Today / Yesterday / "Jun 29"), search, filter sheet (single global Apply), swipe-to-delete confirm (cancelled), detail, edit (amount changed & saved), delete confirm (cancelled).', shots:[
+    ['26-transactions-list','List — friendly date headers'],
+    ['27-transactions-search','Search active ("jolli")'],
+    ['28-transactions-filter-sheet','Filter sheet'],
+    ['29-transactions-swipe-delete-confirm','Swipe-left delete confirm'],
+    ['30-transaction-detail','Detail'],
+    ['31-transaction-edit','Edit (full sheet)'],
+    ['32-transaction-after-edit-save','After edit save'],
+    ['33-transaction-delete-confirm','Delete confirm (cancelled)'],
+  ]},
+  { key:'j-budgets', title:'Journey · Budgets', base:JB,
+    desc:'List, previous month (read-only), create empty → filled (incl. the new appearance picker) → saved, detail (now loads), edit sheet, delete confirm.', shots:[
+    ['34-budgets-list','List (July 2026)'],
+    ['35-budgets-previous-month','Previous month (read-only)'],
+    ['36-budget-create-empty','Create — empty ("New Budget" / ₱0.00 hint)'],
+    ['37-budget-create-filled','Create — filled'],
+    ['91-budget-appearance-picker','NEW · Appearance picker (color row + icon grid + reset)'],
+    ['38-budgets-after-create','After create (Bills & Utilities added)'],
+    ['39-budget-detail','Detail — loaded (spinner bug fixed)'],
+    ['40-budget-edit','NEW · Edit sheet'],
+    ['41-budget-delete-confirm','NEW · Delete confirm (cancelled)'],
+  ]},
+  { key:'j-accounts', title:'Journey · Accounts', base:JB,
+    desc:'List (rows now support swipe: right = edit, left = delete/archive with confirm), a held swipe revealing the edit action, create empty → filled → saved ("Maya Wallet"), detail, edit sheet.', shots:[
+    ['42-accounts-list','List'],
+    ['98-accounts-swipe-edit-reveal','NEW · Swipe-right reveals edit (gesture held)'],
+    ['43-account-create-empty','Create — empty'],
+    ['44-account-create-filled','Create — filled'],
+    ['45-accounts-after-create','After create'],
+    ['46-account-detail','Detail (GCash)'],
+    ['47-account-edit','Edit sheet'],
+  ]},
+  { key:'j-goals-debts', title:'Journey · Goals & Debts', base:JB,
+    desc:'Goal create → detail (now with a pencil Edit AppBar action) → edit sheet → contribution → post-contribution; debts list now opens seeded (3 demo debts) → create → detail (also with Edit) → edit sheet → Partial Pay & Settle sheets (dismissed).', shots:[
+    ['48-goals-list','Goals list'],
+    ['49-goal-create-empty','Goal create — empty'],
+    ['50-goal-create-filled','Goal create — filled'],
+    ['51-goals-after-create','Goals after create'],
+    ['52-goal-detail','Goal detail (pencil Edit in AppBar)'],
+    ['96-goal-edit-sheet','NEW · Edit Goal sheet'],
+    ['53-goal-add-contribution','Add Contribution sheet'],
+    ['54-goal-after-contribution','After contribution'],
+    ['55-debts-list','Debts list (3 seeded demo debts)'],
+    ['56-debt-create-empty','Debt create — empty'],
+    ['57-debt-create-filled','Debt create — filled'],
+    ['58-debts-after-create','Debts after create'],
+    ['59-debt-detail','Debt detail (pencil Edit in AppBar)'],
+    ['97-debt-edit-sheet','NEW · Edit Debt sheet'],
+    ['60-debt-partial-pay','Partial Pay sheet'],
+    ['61-debt-settle-sheet','Settle sheet'],
+  ]},
+  { key:'j-manage', title:'Journey · Recurring, Categories, Payees', base:JB,
+    desc:'Recurring list now opens seeded (4 demo items) → create → detail → edit → delete confirm; categories + edit sheet; payees + detail.', shots:[
+    ['62-recurring-list','Recurring list (4 seeded demo items)'],
+    ['63-recurring-create-empty','Recurring create — empty'],
+    ['64-recurring-create-filled','Recurring create — filled'],
+    ['65-recurring-after-create','Recurring after create'],
+    ['66-recurring-detail','Recurring detail'],
+    ['67-recurring-edit','Recurring edit sheet'],
+    ['68-recurring-delete-confirm','Delete confirm (cancelled)'],
+    ['69-categories-list','Categories'],
+    ['70-category-edit','Category edit sheet'],
+    ['92-category-icon-picker','NEW · Icon picker (true icon preselected)'],
+    ['71-payees-list','Payees'],
+    ['72-payee-detail','Payee detail'],
+  ]},
+  { key:'j-settings', title:'Journey · Settings & dark mode', base:JB,
+    desc:'More menu, every settings subpage, the theme dropdown open, and dark mode applied (appearance, dashboard, transactions).', shots:[
+    ['73-more-menu','More menu'],
+    ['74-settings-profile','Profile & Preferences'],
+    ['75-settings-notifications','Notifications'],
+    ['76-settings-ai','AI & Data'],
+    ['77-settings-ai-logs','AI logs'],
+    ['78-settings-sync','Cloud Sync'],
+    ['79-settings-appearance','Appearance'],
+    ['80-appearance-theme-menu','Theme dropdown open'],
+    ['81-settings-appearance-dark','Appearance — dark'],
+    ['82-dashboard-dark-mode','Dashboard — dark'],
+    ['83-transactions-dark-mode','Transactions — dark'],
+    ['84-settings-security','Security'],
+    ['85-settings-about','About'],
+  ]},
+  { key:'j-secondary', title:'Journey · Secondary screens', base:JB,
+    desc:'Reports (detail now renders real charts — three report types captured), insights, households (+ create sheet).', shots:[
+    ['86-reports','Reports'],
+    ['87-report-detail','Report detail — Spending by Category (charts)'],
+    ['93-report-detail-income-expenses','NEW · Report detail — Income vs Expenses'],
+    ['94-report-detail-net-worth','NEW · Report detail — Net Worth Over Time'],
+    ['88-insights','Insights'],
+    ['89-households-empty','Households (empty)'],
+    ['90-household-create-sheet','New Household sheet'],
+  ]},
+  // ---------------------------------------------------------------- earlier subpage captures
+  { key:'add', title:'Subpages · Add / create sheets', base:SB,
+    desc:'Earlier captures, kept for reference. (Note: "Add transaction (full form)" actually shows the Manual/Scan popup — see the journey group for the real full form.)', shots:[
+    ['add/01-quick-actions','Quick Actions sheet'],
+    ['add/02-add-transaction','Entry-mode popup (mislabelled before)'],
+    ['add/03-create-budget','Create budget'],
+    ['add/04-create-goal','Create goal'],
+    ['add/05-create-debt','Create debt'],
+    ['add/06-create-account','Create account'],
+    ['add/07-create-recurring','Create recurring'],
+  ]},
+  { key:'detail', title:'Subpages · Detail / edit screens', base:SB,
+    desc:'Opened by tapping a seeded row. Edit screens exist for transaction, account, budget, recurring (here) and category (under Secondary). Goal, debt, and payee have action buttons (Add Contribution, Settle…) instead of an edit form.', shots:[
+    ['detail/01-transaction','Transaction detail'],
+    ['detail/01-transaction-edit','Transaction — edit'],
+    ['detail/02-account','Account detail'],
+    ['detail/02-account-edit','Account — edit'],
+    ['detail/03-budget','Budget detail'],
+    ['detail/03-budget-edit','Budget — edit'],
+    ['detail/04-goal','Goal detail'],
+    ['detail/05-debt','Debt detail'],
+    ['detail/06-recurring','Recurring detail'],
+    ['detail/06-recurring-edit','Recurring — edit'],
+    ['detail/07-payee','Payee detail'],
+  ]},
+  { key:'settings', title:'Subpages · Settings', base:SB,
+    desc:'Note: the More menu item points at /more/settings which has no route — likely a bug. These were reached via the real per-screen routes.', shots:[
+    ['settings/01-profile','Profile'],
+    ['settings/02-notifications','Notifications'],
+    ['settings/03-ai','AI settings'],
+    ['settings/04-ai-logs','AI logs'],
+    ['settings/05-sync','Sync'],
+    ['settings/06-appearance','Appearance'],
+    ['settings/07-security','Security'],
+    ['settings/08-about','About'],
+  ]},
+  { key:'secondary', title:'Subpages · Secondary screens', base:SB,
+    desc:'Households shows the empty state (no seeded households); the report detail currently renders a placeholder.', shots:[
+    ['secondary/01-categories','Categories'],
+    ['secondary/06-category-edit','Category — edit'],
+    ['secondary/02-households','Households (empty state)'],
+    ['secondary/03-reports','Reports'],
+    ['secondary/04-report-detail','Report detail (placeholder)'],
+    ['secondary/05-insights','Insights'],
+  ]},
+];
+
+// UX / consistency findings from the audit walk-through. Keyed by shot file.
+// sev: high | medium | low
+const FINDINGS = [
+  { shot:'07-dashboard-top', sev:'high', text:'✅ FIXED — Safe-to-spend hero contradicts itself: shows ₱138,700 but the subtitle says “From ₱0 monthly income after planned expenses”. Also says “SAFE TO SPEND” (eyebrow) and “Safe to spend” (label) twice in one card.' },
+  { shot:'07-dashboard-top', sev:'medium', text:'✅ FIXED — Header search button was a dead affordance (only showed a “Global search is coming soon” snackbar). The search action is now hidden until global search ships.' },
+  { shot:'07-dashboard-top', sev:'medium', text:'✅ FIXED — Sync sheet contradicted itself (header “Some local changes are still waiting to sync” vs Pending 0 / Failed 0 / “healthy” / “Not yet synced”). The header sync-status entry is now hidden until sync ships, so the contradictory sheet is unreachable (old shot 10 retired).' },
+  { shot:'26-transactions-list', sev:'high', text:'✅ FIXED — Bottom-nav label “Transactions” is clipped to “Transaction” on every screen (tab_shell.dart _NavTab Text has maxLines:1 and no overflow handling).' },
+  { shot:'26-transactions-list', sev:'high', text:'✅ FIXED — Transaction rows show amounts with no currency symbol (“-120.00”) while the detail screen shows “-₱120.00” and the dashboard “₱138,700” — three money renderings.' },
+  { shot:'26-transactions-list', sev:'medium', text:'✅ FIXED — Date group headers were the raw filter key “29/06/2026” with no Today/Yesterday grouping. They now render friendly labels: “Today” / “Yesterday” / “Jun 29” (verified: “Jul 28”, “Jul 26”… in the fresh capture).' },
+  { shot:'26-transactions-list', sev:'medium', text:'✅ FIXED — Payees render as raw normalized slugs, e.g. “grocery-store” — displayName fallback missing.' },
+  { shot:'25-transactions-after-add', sev:'low', text:'Demo data seeds future-dated transactions (16/07/2026 while “today” is 03/07) — fresh lists start with confusing future entries.' },
+  { shot:'27-transactions-search', sev:'low', text:'✅ FIXED — The same Food & Dining category shows different row icons (fork &amp; knife on some rows, generic shapes on others) — icon resolution inconsistent.' },
+  { shot:'29-transactions-swipe-delete-confirm', sev:'medium', text:'✅ FIXED — Swipe actions existed only on transactions. Accounts, goals, debts and recurring rows now share the same SwipeActionRow affordances (swipe right = edit, swipe left = delete/archive with confirm) — see the new accounts swipe-reveal shot.' },
+  { shot:'30-transaction-detail', sev:'low', text:'Header mixes two accents: amount in expense amber, category icon bubble in category red, directly adjacent.' },
+  { shot:'11-quick-actions-sheet', sev:'medium', text:'The + island only adds transactions. Creating a budget/goal/debt/account takes 3–4 taps via More → list → “+”. By design — owner decision 2026-07-05: island stays transaction-only; modes exposed via segmented control (Quick | Manual | Scan).' },
+  { shot:'14-add-transaction-empty', sev:'medium', text:'✅ FIXED — Amount field shows the currency as literal “PHP” while budget/account sheets and every display surface use “₱” — mixed symbol treatment inside forms.' },
+  { shot:'14-add-transaction-empty', sev:'low', text:'✅ FIXED — Reaching the full manual form cost 3 taps via the ambiguous “Manual ▾” pill. The pill was replaced by a Quick | Manual | Scan segmented control: the Manual segment navigates to the full form in 1 tap (see the new manual-segment shot).' },
+  { shot:'16-add-transaction-transfer-tab', sev:'high', text:'✅ FIXED — Transfer form uses bare Material underline fields (Transfer Amount, Fee, dropdowns) — a completely different input style from the boxed Expense/Income form in the same sheet, and a different save button (“Save Transfer” FilledButton vs “Add Transaction” PrimaryButton).' },
+  { shot:'13-quick-add-parsed-preview', sev:'medium', text:'✅ FIXED — NL parse of “Coffee at Starbucks 180” now yields payee “Starbucks” (was “at Starbucks”) and the matched real category “Food &amp; Dining” (or “Uncategorized” when nothing matches) instead of a silently-dropped “Dining”. The repeated per-row confidence dots were replaced by a single overall confidence indicator (“Confidence 60%”).' },
+  { shot:'13-quick-add-parsed-preview', sev:'low', text:'✅ FIXED — Third save-button label variant in one flow: “Save Transaction” (quick) vs “Add Transaction” (manual) vs “Save Transfer” (transfer).' },
+  { shot:'31-transaction-edit', sev:'high', text:'✅ FIXED — Edit Transaction does not display the existing Category and Payee — both fields show empty “Search…” placeholders even though the transaction has “Food &amp; Dining” / “7-Eleven” (the IDs are kept internally, but the user sees blank fields and can unknowingly clear them by typing).' },
+  { shot:'34-budgets-list', sev:'high', text:'✅ FIXED — Budget amounts render as “P9675 of P15000” — plain “P” instead of “₱” and no thousands separators (budget_card.dart / budget_summary_header.dart bypass the money formatter).' },
+  { shot:'36-budget-create-empty', sev:'medium', text:'✅ FIXED — Budget sheet naming drift resolved: now titled “New Budget” (matching “New Account / New Goal / New Debt…”), the save button reads “Save Budget”, and the amount hint is “0.00” like the sibling sheets.' },
+  { shot:'39-budget-detail', sev:'high', text:'✅ FIXED — Budget detail hung on an endless loading spinner in BOTH capture runs (two different tap paths from the budgets list) — the edit sheet and delete flow behind it were unreachable. Caveat: the working tree had uncommitted WIP edits to budget_detail_screen.dart during capture, so verify against a clean checkout. Title “Budget Detail” also breaks the convention of the other detail screens (“Transaction”, “Goal”, “Account”).' },
+  { shot:'42-accounts-list', sev:'medium', text:'✅ FIXED — Balances show “₱45000.00” — no thousands separators, inconsistent with the dashboard’s “₱45,000”.' },
+  { shot:'46-account-detail', sev:'medium', text:'✅ FIXED — Edit/Archive are buried below the full transaction list — you must scroll past every transaction to edit an account. Sibling detail screens keep actions in view.' },
+  { shot:'46-account-detail', sev:'low', text:'✅ FIXED — Snackbar variants are standardized: “Goal created.”, “Contribution added.”, “Transaction saved” etc. all use the green success check now (verified across the fresh captures).' },
+  { shot:'52-goal-detail', sev:'high', text:'✅ FIXED — The “Add Contribution” CTA and the contributions empty-state render behind/under the floating nav — the automated tap missed the button exactly as a user’s would. Content needs bottom padding for the floating nav.' },
+  { shot:'52-goal-detail', sev:'medium', text:'✅ FIXED — Amounts now render with separators (“₱100,000.00”), and goal and debt detail screens gained a pencil Edit action in the AppBar opening Edit Goal / Edit Debt sheets (see the new edit-sheet shots). Payee detail remains view-only.' },
+  { shot:'55-debts-list', sev:'medium', text:'✅ FIXED — Demo data now seeds 3 debts (BPI Credit Card, Home Credit, Miguel — lent) and 4 recurring items (Netflix, Meralco, salary, rent), so the Debts and Recurring lists open populated with the demo toggle ON.' },
+  { shot:'56-debt-create-empty', sev:'low', text:'Terminology drift across create entry points: CTA “Add Debt” / tooltip “Add debt” / sheet “New Debt”; recurring: “Add Recurring” vs “New Recurring Item”; households: “Create Household” vs “Add household” vs “New Household”; budgets: “Create budget” vs “Create Budget”.' },
+  { shot:'59-debt-detail', sev:'low', text:'✅ FIXED — Titled “Debt Detail” (others drop the word “Detail”); debt progress bar is primary blue while budget progress bars are green — progress color semantics differ.' },
+  { shot:'66-recurring-detail', sev:'medium', text:'✅ FIXED — Goal and debt details now have edit sheets like account/budget/recurring/category (payee stays view-only; transaction edit remains a full sheet page by design), and snackbars are standardized to the success variant.' },
+  { shot:'28-transactions-filter-sheet', sev:'medium', text:'✅ FIXED — The small “Apply” link inside Amount Range is gone (amounts commit as typed) and the global button now reads “Apply” / “Apply N filters” — no more raw “Apply 0 filters”. (Residual: the Date Range section still keeps its own small Apply link.)' },
+  { shot:'28-transactions-filter-sheet', sev:'low', text:'Account/category chip rows overflow off-screen (“BPI Checking”, “B…” clipped) with no fade/scroll hint.' },
+  { shot:'69-categories-list', sev:'high', text:'✅ FIXED — Once categories exist there is no way to add one — the “Add Category” CTA only exists in the empty state; the populated screen has no “+” button.' },
+  { shot:'69-categories-list', sev:'medium', text:'✅ FIXED — Most categories fall back to the same generic shopping-bag glyph (Bills &amp; Utilities, Education, Entertainment, Food &amp; Dining, Shopping…), and the last row is clipped behind the floating nav.' },
+  { shot:'74-settings-profile', sev:'low', text:'Email row subtitle leaks internal jargon to end users: “Read-only in V1”.' },
+  { shot:'79-settings-appearance', sev:'medium', text:'✅ FIXED — “Theme Mode” no longer duplicates the current value (the subtitle is gone; only the trailing dropdown shows “System”), and the dead “Font Size” row was removed until text scaling ships.' },
+  { shot:'87-report-detail', sev:'high', text:'✅ FIXED — Report detail still shows the placeholder “Report charts will be available with data” although the app is fully seeded — reports are effectively non-functional.' },
+  { shot:'73-more-menu', sev:'low', text:'Settings section lists 7 separate pages; there is no /more/settings hub route (the earlier storyboard flagged a dead “Settings” link).' },
+  { shot:'44-account-create-filled', sev:'low', text:'Three different amount-input designs across create forms: boxed mono AmountInput (transaction), ₱-prefix-icon text field (account/goal/debt/recurring), custom mono container (budget).' },
+];
+
+const LABELS = {}; GROUPS.forEach(g=>g.shots.forEach(([f,l])=>LABELS[f]=l));
+const SCREEN_ORDER = []; GROUPS.forEach(g=>g.shots.forEach(([f])=>SCREEN_ORDER.push(f)));
+const slug = f => 'shot-' + f.replace(/[^a-z0-9]+/gi,'-');
+
+const KEY = 'lootr-subpage-annotations-v1';
+let anns = [];
+try { anns = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch(e) { anns = []; }
+let nextId = anns.reduce((m,a)=>Math.max(m,a.id),0) + 1;
+let selected = null;
+function save(){ localStorage.setItem(KEY, JSON.stringify(anns)); }
+
+function buildFindingsSummary(){
+  const root = document.getElementById('findingsSummary');
+  if(!FINDINGS.length){ root.remove(); return; }
+  const order = { high:0, medium:1, low:2 };
+  const sorted = FINDINGS.slice().sort((a,b)=>(order[a.sev]-order[b.sev]) || SCREEN_ORDER.indexOf(a.shot)-SCREEN_ORDER.indexOf(b.shot));
+  const counts = FINDINGS.reduce((m,f)=>{m[f.sev]=(m[f.sev]||0)+1;return m;},{});
+  const box = document.createElement('div'); box.className='fsummary';
+  box.innerHTML = `<h2>⚠ Inconsistencies &amp; UX findings</h2>
+    <p class="desc">${FINDINGS.length} findings from the audit walk-through — ${counts.high||0} high · ${counts.medium||0} medium · ${counts.low||0} low. Each links to the screenshot it was observed on; the same note is repeated under that frame.</p>`;
+  const ol = document.createElement('ol');
+  sorted.forEach(f=>{
+    const li = document.createElement('li'); li.className='sev-'+f.sev;
+    li.innerHTML = `<span class="sev">${f.sev}</span><a href="#${slug(f.shot)}">${LABELS[f.shot]||f.shot}</a> — ${f.text}`;
+    ol.appendChild(li);
+  });
+  box.appendChild(ol); root.appendChild(box);
+  root.addEventListener('click', e=>{
+    const a = e.target.closest('a'); if(!a) return;
+    const el = document.getElementById(a.getAttribute('href').slice(1));
+    if(el){ el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
+  });
+}
+
+function build(){
+  const root = document.getElementById('sections');
+  GROUPS.forEach(g=>{
+    const sec = document.createElement('section');
+    sec.innerHTML = `<h2>${g.title}</h2><p class="desc">${g.desc}</p>`;
+    const grid = document.createElement('div'); grid.className='grid';
+    g.shots.forEach(([file,label])=>{
+      const frame = document.createElement('div'); frame.className='frame'; frame.id = slug(file);
+      const wrap = document.createElement('div'); wrap.className='shot-wrap'; wrap.dataset.screen=file;
+      const img = document.createElement('img'); img.src=g.base+file+'.png'+V; img.alt=label; img.loading='lazy'; img.draggable=false;
+      wrap.appendChild(img);
+      wrap.addEventListener('click', e=>{
+        if(e.target.classList.contains('pin')) return;
+        const r = wrap.getBoundingClientRect();
+        const x = ((e.clientX-r.left)/r.width)*100, y=((e.clientY-r.top)/r.height)*100;
+        const a = { id: nextId++, screen:file, x:+x.toFixed(2), y:+y.toFixed(2), text:'' };
+        anns.push(a); save(); render(); focusAnno(a.id);
+      });
+      frame.appendChild(wrap);
+      const cap = document.createElement('div'); cap.className='cap';
+      cap.innerHTML = `${label} <span class="badge">· ${file.split('/').pop()}</span>`;
+      frame.appendChild(cap);
+      const fs = FINDINGS.filter(f=>f.shot===file);
+      if(fs.length){
+        const list = document.createElement('div'); list.className='findings';
+        fs.forEach(f=>{
+          const d = document.createElement('div'); d.className='finding sev-'+f.sev;
+          d.innerHTML = `<span class="sev">${f.sev}</span>${f.text}`;
+          list.appendChild(d);
+        });
+        frame.appendChild(list);
+      }
+      grid.appendChild(frame);
+    });
+    sec.appendChild(grid); root.appendChild(sec);
+  });
+}
+
+function renderPins(){
+  document.querySelectorAll('.pin').forEach(p=>p.remove());
+  document.querySelectorAll('.shot-wrap').forEach(wrap=>{
+    const screen = wrap.dataset.screen;
+    anns.forEach((a,i)=>{
+      if(a.screen!==screen) return;
+      const pin=document.createElement('div'); pin.className='pin'+(selected===a.id?' sel':'');
+      pin.style.left=a.x+'%'; pin.style.top=a.y+'%'; pin.textContent=i+1;
+      pin.title='Click to edit note #' + (i+1);
+      pin.addEventListener('click', ev=>{ ev.stopPropagation(); focusAnno(a.id); });
+      wrap.appendChild(pin);
+    });
+  });
+}
+function render(){
+  renderPins();
+  renderPanel();
+  const n = anns.length;
+  document.getElementById('count').textContent = n + (n===1?' annotation':' annotations');
+}
+
+function renderPanel(){
+  const list = document.getElementById('annoList');
+  const psub = document.getElementById('psub');
+  list.innerHTML='';
+  if(!anns.length){ psub.textContent='Nothing yet — click a screen to add your first note.'; return; }
+  psub.textContent='Auto-saved in this browser. Edit freely, then Copy all.';
+  const byScreen = {};
+  anns.forEach((a,i)=>{ (byScreen[a.screen] = byScreen[a.screen]||[]).push({a,n:i+1}); });
+  SCREEN_ORDER.forEach(screen=>{
+    if(!byScreen[screen]) return;
+    const grp=document.createElement('div'); grp.className='agroup';
+    grp.innerHTML=`<p class="gh">${LABELS[screen]||screen}</p>`;
+    byScreen[screen].forEach(({a,n})=>{
+      const row=document.createElement('div'); row.className='arow'; row.dataset.id=a.id;
+      const num=document.createElement('div'); num.className='num'; num.textContent=n;
+      const ta=document.createElement('textarea'); ta.value=a.text; ta.placeholder='What should change here?';
+      ta.addEventListener('input', ()=>{ a.text=ta.value; save(); });
+      ta.addEventListener('focus', ()=>{ if(selected!==a.id){ selected=a.id; renderPins(); } });
+      const del=document.createElement('button'); del.className='del'; del.innerHTML='&times;'; del.title='Delete';
+      del.addEventListener('click', ()=>{ anns=anns.filter(x=>x.id!==a.id); if(selected===a.id)selected=null; save(); render(); });
+      row.appendChild(num); row.appendChild(ta); row.appendChild(del);
+      grp.appendChild(row);
+    });
+    list.appendChild(grp);
+  });
+}
+
+function focusAnno(id){
+  selected=id; renderPins();
+  const row=document.querySelector('.arow[data-id="'+id+'"]');
+  if(row){ row.scrollIntoView({behavior:'smooth',block:'center'}); const ta=row.querySelector('textarea'); if(ta) ta.focus(); }
+}
+
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1800); }
+
+document.getElementById('copyBtn').addEventListener('click', ()=>{
+  if(!anns.length){ toast('No annotations to copy'); return; }
+  let out='Lootr — storyboard annotations\n';
+  const byScreen={}; anns.forEach((a,i)=>{ (byScreen[a.screen]=byScreen[a.screen]||[]).push({a,n:i+1}); });
+  SCREEN_ORDER.forEach(screen=>{
+    if(!byScreen[screen]) return;
+    out+=`\n## ${LABELS[screen]||screen}  (${screen})\n`;
+    byScreen[screen].forEach(({a,n})=>{ out+=`  [${n}] (${Math.round(a.x)}%, ${Math.round(a.y)}%) ${a.text.trim()||'(no comment)'}\n`; });
+  });
+  navigator.clipboard.writeText(out).then(()=>toast('Copied '+anns.length+' annotations')).catch(()=>{
+    const ta=document.createElement('textarea'); ta.value=out; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); toast('Copied '+anns.length+' annotations');
+  });
+});
+document.getElementById('jsonBtn').addEventListener('click', ()=>{
+  const blob=new Blob([JSON.stringify(anns,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='lootr-annotations.json'; a.click(); URL.revokeObjectURL(a.href);
+});
+document.getElementById('clearBtn').addEventListener('click', ()=>{
+  if(!anns.length) return;
+  if(confirm('Delete all '+anns.length+' annotations?')){ anns=[]; selected=null; save(); render(); toast('Cleared'); }
+});
+document.getElementById('sizes').addEventListener('click', e=>{
+  if(e.target.tagName!=='BUTTON') return;
+  document.documentElement.style.setProperty('--shot-w', e.target.dataset.w+'px');
+  document.querySelectorAll('#sizes button').forEach(b=>b.classList.toggle('on', b===e.target));
+});
+
+buildFindingsSummary();
+build();
+render();
+</script>
+</body>
+</html>

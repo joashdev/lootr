@@ -3,28 +3,28 @@ import 'package:flutter/material.dart';
 abstract class AppColors {
   AppColors._();
 
-  // Primary scale
-  static const Color primary50 = Color(0xFFEFF6FF);
-  static const Color primary100 = Color(0xFFDBEAFE);
-  static const Color primary200 = Color(0xFFBFDBFE);
-  static const Color primary500 = Color(0xFF3B82F6);
-  static const Color primary600 = Color(0xFF2563EB);
-  static const Color primary700 = Color(0xFF1D4ED8);
+  // Primary scale — muted denim blue
+  static const Color primary50 = Color(0xFFECF1FA);
+  static const Color primary100 = Color(0xFFD5E2F3);
+  static const Color primary200 = Color(0xFFB3CAE7);
+  static const Color primary500 = Color(0xFF5E86CD);
+  static const Color primary600 = Color(0xFF3E6CB3);
+  static const Color primary700 = Color(0xFF335A99);
 
-  // Semantic — Success
-  static const Color success50 = Color(0xFFECFDF5);
-  static const Color success500 = Color(0xFF10B981);
-  static const Color success600 = Color(0xFF059669);
+  // Semantic — Success (income green)
+  static const Color success50 = Color(0xFFE9F6F0);
+  static const Color success500 = Color(0xFF12A878);
+  static const Color success600 = Color(0xFF0E8F63);
 
-  // Semantic — Warning
+  // Semantic — Warning (amber; used for "tight"/at-risk states)
   static const Color warning50 = Color(0xFFFFFBEB);
   static const Color warning500 = Color(0xFFF59E0B);
   static const Color warning600 = Color(0xFFD97706);
 
-  // Semantic — Danger
-  static const Color danger50 = Color(0xFFFFF4EF);
-  static const Color danger500 = Color(0xFFE98B73);
-  static const Color danger600 = Color(0xFFD97757);
+  // Semantic — Danger (true red; reserved for errors/over-budget)
+  static const Color danger50 = Color(0xFFFBEBE9);
+  static const Color danger500 = Color(0xFFDC5B4B);
+  static const Color danger600 = Color(0xFFC9483A);
 
   // Neutral — Light
   static const Color lightBg = Color(0xFFFAFAFA);
@@ -47,30 +47,30 @@ abstract class AppColors {
   static const Color darkTextTertiary = Color(0xFF6B7280);
 
   // Primary — Dark
-  static const Color darkPrimary500 = Color(0xFF60A5FA);
-  static const Color darkPrimary600 = Color(0xFF3B82F6);
-  static const Color darkPrimary700 = Color(0xFF2563EB);
+  static const Color darkPrimary500 = Color(0xFF8AA9DF);
+  static const Color darkPrimary600 = Color(0xFF6E92D4);
+  static const Color darkPrimary700 = Color(0xFF5E86CD);
 
   // Semantic — Dark
-  static const Color darkSuccess50 = Color(0xFF064E3B);
+  static const Color darkSuccess50 = Color(0xFF06402F);
   static const Color darkSuccess500 = Color(0xFF34D399);
-  static const Color darkSuccess600 = Color(0xFF10B981);
+  static const Color darkSuccess600 = Color(0xFF12A878);
   static const Color darkWarning50 = Color(0xFF78350F);
   static const Color darkWarning500 = Color(0xFFFBBF24);
   static const Color darkWarning600 = Color(0xFFF59E0B);
-  static const Color darkDanger50 = Color(0xFF5E2F24);
-  static const Color darkDanger500 = Color(0xFFF0A189);
-  static const Color darkDanger600 = Color(0xFFE98B73);
+  static const Color darkDanger50 = Color(0xFF4A201A);
+  static const Color darkDanger500 = Color(0xFFEE8475);
+  static const Color darkDanger600 = Color(0xFFE2695B);
 
-  // Transaction direction — Light
-  static const Color expense = Color(0xFFD97757);
-  static const Color income = Color(0xFF059669);
-  static const Color transfer = Color(0xFF2563EB);
+  // Transaction direction — Light (expense amber, income green)
+  static const Color expense = Color(0xFFE0972A);
+  static const Color income = Color(0xFF0E8F63);
+  static const Color transfer = Color(0xFF3E6CB3);
 
   // Transaction direction — Dark
-  static const Color darkExpense = Color(0xFFF0A189);
-  static const Color darkIncome = Color(0xFF10B981);
-  static const Color darkTransfer = Color(0xFF3B82F6);
+  static const Color darkExpense = Color(0xFFF5C04E);
+  static const Color darkIncome = Color(0xFF34D399);
+  static const Color darkTransfer = Color(0xFF6E92D4);
 }
 
 class LootrColorScheme extends ThemeExtension<LootrColorScheme> {
