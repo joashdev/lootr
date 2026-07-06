@@ -270,7 +270,7 @@ void main() {
   });
 
   // ---------------------------------------------------------------------------
-  // E. Debts (56-61) — no demo debts; create via the empty-state CTA.
+  // E. Debts (56-61) — demo data now seeds debts; create via the AppBar "+".
   // ---------------------------------------------------------------------------
   testWidgets('fix E — debts', (tester) async {
     await bootSeeded(tester);
@@ -322,7 +322,7 @@ void main() {
   });
 
   // ---------------------------------------------------------------------------
-  // F. Recurring (63-68) — no demo recurring; create via the empty-state CTA.
+  // F. Recurring (63-68) — demo data now seeds recurring; create via the "+".
   // ---------------------------------------------------------------------------
   testWidgets('fix F — recurring', (tester) async {
     await bootSeeded(tester);

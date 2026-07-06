@@ -127,7 +127,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const V = '?v=7';
+const V = '?v=8';
 const JB = 'storyboard-shots/journey/';
 const SB = 'storyboard-shots/subpages/';
 const GROUPS = [
@@ -142,17 +142,17 @@ const GROUPS = [
     ['06-dashboard-first-run','First dashboard after Get Started'],
   ]},
   { key:'j-dashboard', title:'Journey · Dashboard', base:JB,
-    desc:'Initial state, two scroll positions, and the sync-status sheet from the header.', shots:[
-    ['07-dashboard-top','Dashboard — top'],
+    desc:'Initial state and two scroll positions. The header search and sync-status actions are hidden until those features ship, so the old sync-sheet shot (10) is retired.', shots:[
+    ['07-dashboard-top','Dashboard — top (no search/sync icons)'],
     ['08-dashboard-scrolled-mid','Dashboard — scrolled (mid)'],
     ['09-dashboard-scrolled-bottom','Dashboard — scrolled (bottom)'],
-    ['10-dashboard-sync-sheet','Sync status sheet'],
   ]},
   { key:'j-add', title:'Journey · Quick Actions + Add Transaction', base:JB,
-    desc:'The + island end-to-end: quick input & NL parse preview, then the full manual form with every picker opened, each direction tab, and the post-save result. (The Scan/OCR camera cannot run on a simulator.)', shots:[
-    ['11-quick-actions-sheet','Quick Actions sheet (+)'],
+    desc:'The + island end-to-end: the sheet now has a Quick | Manual | Scan segmented control (Quick default; Manual/Scan navigate in one tap), quick input & NL parse preview, then the full manual form with every picker opened, each direction tab, and the post-save result. (The Scan/OCR camera cannot run on a simulator.)', shots:[
+    ['11-quick-actions-sheet','Quick Actions sheet (+) — Quick | Manual | Scan segments'],
     ['12-quick-actions-typed','Quick input typed'],
     ['13-quick-add-parsed-preview','NL parse preview (Quick mode)'],
+    ['95-entry-mode-manual-selected','NEW · Manual segment selected (1 tap from + sheet)'],
     ['14-add-transaction-empty','Manual form — empty (Expense)'],
     ['15-add-transaction-income-tab','Income tab'],
     ['16-add-transaction-transfer-tab','Transfer tab'],
@@ -167,8 +167,8 @@ const GROUPS = [
     ['25-transactions-after-add','Transactions list after save'],
   ]},
   { key:'j-transactions', title:'Journey · Transactions', base:JB,
-    desc:'List, search, filter sheet, swipe-to-delete confirm (cancelled), detail, edit (amount changed & saved), delete confirm (cancelled).', shots:[
-    ['26-transactions-list','List'],
+    desc:'List (date group headers are now friendly: Today / Yesterday / "Jun 29"), search, filter sheet (single global Apply), swipe-to-delete confirm (cancelled), detail, edit (amount changed & saved), delete confirm (cancelled).', shots:[
+    ['26-transactions-list','List — friendly date headers'],
     ['27-transactions-search','Search active ("jolli")'],
     ['28-transactions-filter-sheet','Filter sheet'],
     ['29-transactions-swipe-delete-confirm','Swipe-left delete confirm'],
@@ -181,7 +181,7 @@ const GROUPS = [
     desc:'List, previous month (read-only), create empty → filled (incl. the new appearance picker) → saved, detail (now loads), edit sheet, delete confirm.', shots:[
     ['34-budgets-list','List (July 2026)'],
     ['35-budgets-previous-month','Previous month (read-only)'],
-    ['36-budget-create-empty','Create — empty'],
+    ['36-budget-create-empty','Create — empty ("New Budget" / ₱0.00 hint)'],
     ['37-budget-create-filled','Create — filled'],
     ['91-budget-appearance-picker','NEW · Appearance picker (color row + icon grid + reset)'],
     ['38-budgets-after-create','After create (Bills & Utilities added)'],
@@ -190,8 +190,9 @@ const GROUPS = [
     ['41-budget-delete-confirm','NEW · Delete confirm (cancelled)'],
   ]},
   { key:'j-accounts', title:'Journey · Accounts', base:JB,
-    desc:'List, create empty → filled → saved ("Maya Wallet"), detail, edit sheet.', shots:[
+    desc:'List (rows now support swipe: right = edit, left = delete/archive with confirm), a held swipe revealing the edit action, create empty → filled → saved ("Maya Wallet"), detail, edit sheet.', shots:[
     ['42-accounts-list','List'],
+    ['98-accounts-swipe-edit-reveal','NEW · Swipe-right reveals edit (gesture held)'],
     ['43-account-create-empty','Create — empty'],
     ['44-account-create-filled','Create — filled'],
     ['45-accounts-after-create','After create'],
@@ -199,25 +200,27 @@ const GROUPS = [
     ['47-account-edit','Edit sheet'],
   ]},
   { key:'j-goals-debts', title:'Journey · Goals & Debts', base:JB,
-    desc:'Goal create → detail → contribution → post-contribution; debt create (via empty-state CTA — demo data ships no debts) → detail → Partial Pay & Settle sheets (dismissed).', shots:[
+    desc:'Goal create → detail (now with a pencil Edit AppBar action) → edit sheet → contribution → post-contribution; debts list now opens seeded (3 demo debts) → create → detail (also with Edit) → edit sheet → Partial Pay & Settle sheets (dismissed).', shots:[
     ['48-goals-list','Goals list'],
     ['49-goal-create-empty','Goal create — empty'],
     ['50-goal-create-filled','Goal create — filled'],
     ['51-goals-after-create','Goals after create'],
-    ['52-goal-detail','Goal detail'],
+    ['52-goal-detail','Goal detail (pencil Edit in AppBar)'],
+    ['96-goal-edit-sheet','NEW · Edit Goal sheet'],
     ['53-goal-add-contribution','Add Contribution sheet'],
     ['54-goal-after-contribution','After contribution'],
-    ['55-debts-list','Debts list (empty with demo data!)'],
+    ['55-debts-list','Debts list (3 seeded demo debts)'],
     ['56-debt-create-empty','Debt create — empty'],
     ['57-debt-create-filled','Debt create — filled'],
     ['58-debts-after-create','Debts after create'],
-    ['59-debt-detail','Debt detail'],
+    ['59-debt-detail','Debt detail (pencil Edit in AppBar)'],
+    ['97-debt-edit-sheet','NEW · Edit Debt sheet'],
     ['60-debt-partial-pay','Partial Pay sheet'],
     ['61-debt-settle-sheet','Settle sheet'],
   ]},
   { key:'j-manage', title:'Journey · Recurring, Categories, Payees', base:JB,
-    desc:'Recurring create (via empty-state CTA — no demo recurring) → detail → edit → delete confirm; categories + edit sheet; payees + detail.', shots:[
-    ['62-recurring-list','Recurring list (empty with demo data!)'],
+    desc:'Recurring list now opens seeded (4 demo items) → create → detail → edit → delete confirm; categories + edit sheet; payees + detail.', shots:[
+    ['62-recurring-list','Recurring list (4 seeded demo items)'],
     ['63-recurring-create-empty','Recurring create — empty'],
     ['64-recurring-create-filled','Recurring create — filled'],
     ['65-recurring-after-create','Recurring after create'],
@@ -307,41 +310,41 @@ const GROUPS = [
 // sev: high | medium | low
 const FINDINGS = [
   { shot:'07-dashboard-top', sev:'high', text:'✅ FIXED — Safe-to-spend hero contradicts itself: shows ₱138,700 but the subtitle says “From ₱0 monthly income after planned expenses”. Also says “SAFE TO SPEND” (eyebrow) and “Safe to spend” (label) twice in one card.' },
-  { shot:'07-dashboard-top', sev:'medium', text:'Header search button is a dead affordance — tapping it only shows a “Global search is coming soon” snackbar.' },
-  { shot:'10-dashboard-sync-sheet', sev:'medium', text:'Sync sheet contradicts itself: header says “Some local changes are still waiting to sync” while the rows read Pending changes 0, Failed 0, Last result “healthy” — and Last synced “Not yet synced”. Status copy and counters disagree.' },
+  { shot:'07-dashboard-top', sev:'medium', text:'✅ FIXED — Header search button was a dead affordance (only showed a “Global search is coming soon” snackbar). The search action is now hidden until global search ships.' },
+  { shot:'07-dashboard-top', sev:'medium', text:'✅ FIXED — Sync sheet contradicted itself (header “Some local changes are still waiting to sync” vs Pending 0 / Failed 0 / “healthy” / “Not yet synced”). The header sync-status entry is now hidden until sync ships, so the contradictory sheet is unreachable (old shot 10 retired).' },
   { shot:'26-transactions-list', sev:'high', text:'✅ FIXED — Bottom-nav label “Transactions” is clipped to “Transaction” on every screen (tab_shell.dart _NavTab Text has maxLines:1 and no overflow handling).' },
   { shot:'26-transactions-list', sev:'high', text:'✅ FIXED — Transaction rows show amounts with no currency symbol (“-120.00”) while the detail screen shows “-₱120.00” and the dashboard “₱138,700” — three money renderings.' },
-  { shot:'26-transactions-list', sev:'medium', text:'Date group headers are the raw filter key “29/06/2026” (dd/MM/yyyy); detail screens use “Jul 28, 2026 · 12:00 AM”, account detail uses “07/22 · 12:00 AM”. No Today/Yesterday grouping.' },
+  { shot:'26-transactions-list', sev:'medium', text:'✅ FIXED — Date group headers were the raw filter key “29/06/2026” with no Today/Yesterday grouping. They now render friendly labels: “Today” / “Yesterday” / “Jun 29” (verified: “Jul 28”, “Jul 26”… in the fresh capture).' },
   { shot:'26-transactions-list', sev:'medium', text:'✅ FIXED — Payees render as raw normalized slugs, e.g. “grocery-store” — displayName fallback missing.' },
   { shot:'25-transactions-after-add', sev:'low', text:'Demo data seeds future-dated transactions (16/07/2026 while “today” is 03/07) — fresh lists start with confusing future entries.' },
   { shot:'27-transactions-search', sev:'low', text:'✅ FIXED — The same Food & Dining category shows different row icons (fork &amp; knife on some rows, generic shapes on others) — icon resolution inconsistent.' },
-  { shot:'29-transactions-swipe-delete-confirm', sev:'medium', text:'Swipe actions (edit/delete) exist only on transactions; accounts, goals, debts and recurring rows have no swipe affordances and their delete/edit lives behind detail-screen buttons.' },
+  { shot:'29-transactions-swipe-delete-confirm', sev:'medium', text:'✅ FIXED — Swipe actions existed only on transactions. Accounts, goals, debts and recurring rows now share the same SwipeActionRow affordances (swipe right = edit, swipe left = delete/archive with confirm) — see the new accounts swipe-reveal shot.' },
   { shot:'30-transaction-detail', sev:'low', text:'Header mixes two accents: amount in expense amber, category icon bubble in category red, directly adjacent.' },
-  { shot:'11-quick-actions-sheet', sev:'medium', text:'The + island only adds transactions. Creating a budget/goal/debt/account takes 3–4 taps via More → list → “+”. The sheet is also titled “Add Transaction” although it is the app-wide quick-action entry point.' },
+  { shot:'11-quick-actions-sheet', sev:'medium', text:'The + island only adds transactions. Creating a budget/goal/debt/account takes 3–4 taps via More → list → “+”. By design — owner decision 2026-07-05: island stays transaction-only; modes exposed via segmented control (Quick | Manual | Scan).' },
   { shot:'14-add-transaction-empty', sev:'medium', text:'✅ FIXED — Amount field shows the currency as literal “PHP” while budget/account sheets and every display surface use “₱” — mixed symbol treatment inside forms.' },
-  { shot:'14-add-transaction-empty', sev:'low', text:'Reaching the full manual form costs 3 taps (+ → “Manual ▾” pill → “Manual” menu item); the pill reads as a label rather than a menu.' },
+  { shot:'14-add-transaction-empty', sev:'low', text:'✅ FIXED — Reaching the full manual form cost 3 taps via the ambiguous “Manual ▾” pill. The pill was replaced by a Quick | Manual | Scan segmented control: the Manual segment navigates to the full form in 1 tap (see the new manual-segment shot).' },
   { shot:'16-add-transaction-transfer-tab', sev:'high', text:'✅ FIXED — Transfer form uses bare Material underline fields (Transfer Amount, Fee, dropdowns) — a completely different input style from the boxed Expense/Income form in the same sheet, and a different save button (“Save Transfer” FilledButton vs “Add Transaction” PrimaryButton).' },
-  { shot:'13-quick-add-parsed-preview', sev:'medium', text:'NL parse of “Coffee at Starbucks 180” yields payee “at Starbucks” and category “Dining” — which matches no real category (“Food &amp; Dining”), so it is silently dropped on save. Per-row confidence dots all repeat the same overall value.' },
+  { shot:'13-quick-add-parsed-preview', sev:'medium', text:'✅ FIXED — NL parse of “Coffee at Starbucks 180” now yields payee “Starbucks” (was “at Starbucks”) and the matched real category “Food &amp; Dining” (or “Uncategorized” when nothing matches) instead of a silently-dropped “Dining”. The repeated per-row confidence dots were replaced by a single overall confidence indicator (“Confidence 60%”).' },
   { shot:'13-quick-add-parsed-preview', sev:'low', text:'✅ FIXED — Third save-button label variant in one flow: “Save Transaction” (quick) vs “Add Transaction” (manual) vs “Save Transfer” (transfer).' },
   { shot:'31-transaction-edit', sev:'high', text:'✅ FIXED — Edit Transaction does not display the existing Category and Payee — both fields show empty “Search…” placeholders even though the transaction has “Food &amp; Dining” / “7-Eleven” (the IDs are kept internally, but the user sees blank fields and can unknowingly clear them by typing).' },
   { shot:'34-budgets-list', sev:'high', text:'✅ FIXED — Budget amounts render as “P9675 of P15000” — plain “P” instead of “₱” and no thousands separators (budget_card.dart / budget_summary_header.dart bypass the money formatter).' },
-  { shot:'36-budget-create-empty', sev:'medium', text:'Sheet titled “Create Budget” while sibling sheets are “New Account / New Goal / New Debt / New Recurring Item”; save button is just “Save” (others “Save Account”, “Save Goal”…); amount hint “0” vs “0.00” elsewhere; third distinct amount-input design.' },
+  { shot:'36-budget-create-empty', sev:'medium', text:'✅ FIXED — Budget sheet naming drift resolved: now titled “New Budget” (matching “New Account / New Goal / New Debt…”), the save button reads “Save Budget”, and the amount hint is “0.00” like the sibling sheets.' },
   { shot:'39-budget-detail', sev:'high', text:'✅ FIXED — Budget detail hung on an endless loading spinner in BOTH capture runs (two different tap paths from the budgets list) — the edit sheet and delete flow behind it were unreachable. Caveat: the working tree had uncommitted WIP edits to budget_detail_screen.dart during capture, so verify against a clean checkout. Title “Budget Detail” also breaks the convention of the other detail screens (“Transaction”, “Goal”, “Account”).' },
   { shot:'42-accounts-list', sev:'medium', text:'✅ FIXED — Balances show “₱45000.00” — no thousands separators, inconsistent with the dashboard’s “₱45,000”.' },
   { shot:'46-account-detail', sev:'medium', text:'✅ FIXED — Edit/Archive are buried below the full transaction list — you must scroll past every transaction to edit an account. Sibling detail screens keep actions in view.' },
-  { shot:'46-account-detail', sev:'low', text:'“Account created.” snackbar uses a green success check while “Goal created.” uses a blue info icon — inconsistent snackbar variants for identical events (see the goals/debts shots).' },
+  { shot:'46-account-detail', sev:'low', text:'✅ FIXED — Snackbar variants are standardized: “Goal created.”, “Contribution added.”, “Transaction saved” etc. all use the green success check now (verified across the fresh captures).' },
   { shot:'52-goal-detail', sev:'high', text:'✅ FIXED — The “Add Contribution” CTA and the contributions empty-state render behind/under the floating nav — the automated tap missed the button exactly as a user’s would. Content needs bottom padding for the floating nav.' },
-  { shot:'52-goal-detail', sev:'medium', text:'✅ PARTLY FIXED (separators) — Amounts “₱100000.00” without separators; goal (and debt, payee) details have no Edit action while transaction/account/budget/recurring do — inconsistent capability across siblings.' },
-  { shot:'55-debts-list', sev:'medium', text:'Demo data seeds accounts, transactions, budgets and goals — but no debts and no recurring items, so these lists open empty even with the demo toggle ON.' },
+  { shot:'52-goal-detail', sev:'medium', text:'✅ FIXED — Amounts now render with separators (“₱100,000.00”), and goal and debt detail screens gained a pencil Edit action in the AppBar opening Edit Goal / Edit Debt sheets (see the new edit-sheet shots). Payee detail remains view-only.' },
+  { shot:'55-debts-list', sev:'medium', text:'✅ FIXED — Demo data now seeds 3 debts (BPI Credit Card, Home Credit, Miguel — lent) and 4 recurring items (Netflix, Meralco, salary, rent), so the Debts and Recurring lists open populated with the demo toggle ON.' },
   { shot:'56-debt-create-empty', sev:'low', text:'Terminology drift across create entry points: CTA “Add Debt” / tooltip “Add debt” / sheet “New Debt”; recurring: “Add Recurring” vs “New Recurring Item”; households: “Create Household” vs “Add household” vs “New Household”; budgets: “Create budget” vs “Create Budget”.' },
   { shot:'59-debt-detail', sev:'low', text:'✅ FIXED — Titled “Debt Detail” (others drop the word “Detail”); debt progress bar is primary blue while budget progress bars are green — progress color semantics differ.' },
-  { shot:'66-recurring-detail', sev:'medium', text:'Edit patterns are inconsistent across siblings: transaction edit = full sheet page, account/budget/recurring/category = modal bottom sheet, goal/debt/payee = none. “Recurring item created.” snackbar is info-blue while “Account created.” is success-green.' },
-  { shot:'28-transactions-filter-sheet', sev:'medium', text:'Filter sheet has two competing apply affordances: a small “Apply” link inside Amount Range plus the global “Apply 0 filters” button — which shows a raw zero count when nothing is selected.' },
+  { shot:'66-recurring-detail', sev:'medium', text:'✅ FIXED — Goal and debt details now have edit sheets like account/budget/recurring/category (payee stays view-only; transaction edit remains a full sheet page by design), and snackbars are standardized to the success variant.' },
+  { shot:'28-transactions-filter-sheet', sev:'medium', text:'✅ FIXED — The small “Apply” link inside Amount Range is gone (amounts commit as typed) and the global button now reads “Apply” / “Apply N filters” — no more raw “Apply 0 filters”. (Residual: the Date Range section still keeps its own small Apply link.)' },
   { shot:'28-transactions-filter-sheet', sev:'low', text:'Account/category chip rows overflow off-screen (“BPI Checking”, “B…” clipped) with no fade/scroll hint.' },
   { shot:'69-categories-list', sev:'high', text:'✅ FIXED — Once categories exist there is no way to add one — the “Add Category” CTA only exists in the empty state; the populated screen has no “+” button.' },
   { shot:'69-categories-list', sev:'medium', text:'✅ FIXED — Most categories fall back to the same generic shopping-bag glyph (Bills &amp; Utilities, Education, Entertainment, Food &amp; Dining, Shopping…), and the last row is clipped behind the floating nav.' },
   { shot:'74-settings-profile', sev:'low', text:'Email row subtitle leaks internal jargon to end users: “Read-only in V1”.' },
-  { shot:'79-settings-appearance', sev:'medium', text:'“Theme Mode” row shows the current value twice (subtitle “System” + trailing dropdown “System”); “Font Size” row has a chevron affordance but does nothing.' },
+  { shot:'79-settings-appearance', sev:'medium', text:'✅ FIXED — “Theme Mode” no longer duplicates the current value (the subtitle is gone; only the trailing dropdown shows “System”), and the dead “Font Size” row was removed until text scaling ships.' },
   { shot:'87-report-detail', sev:'high', text:'✅ FIXED — Report detail still shows the placeholder “Report charts will be available with data” although the app is fully seeded — reports are effectively non-functional.' },
   { shot:'73-more-menu', sev:'low', text:'Settings section lists 7 separate pages; there is no /more/settings hub route (the earlier storyboard flagged a dead “Settings” link).' },
   { shot:'44-account-create-filled', sev:'low', text:'Three different amount-input designs across create forms: boxed mono AmountInput (transaction), ₱-prefix-icon text field (account/goal/debt/recurring), custom mono container (budget).' },

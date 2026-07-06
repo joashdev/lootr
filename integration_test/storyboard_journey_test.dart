@@ -175,14 +175,12 @@ void main() {
     return true;
   }
 
-  /// Open the FULL Add Transaction sheet like a user: + island -> mode pill ->
-  /// "Manual" menu item.
+  /// Open the FULL Add Transaction sheet like a user: + island -> "Manual"
+  /// segment (the Quick | Manual | Scan segmented control navigates to
+  /// /transactions/new in one tap).
   Future<bool> openManualAddSheet(WidgetTester tester) async {
     if (!await tapPlusIsland(tester)) return false;
-    // Tap the "Manual ▾" pill to open the entry-mode popup menu…
     if (!await tapText(tester, 'Manual')) return false;
-    // …then the "Manual" item inside the menu (same label, later in tree).
-    await tapText(tester, 'Manual', last: true);
     return find.text('Amount').evaluate().isNotEmpty;
   }
 
@@ -237,7 +235,8 @@ void main() {
   });
 
   // ---------------------------------------------------------------------------
-  // 2. Dashboard — initial, scrolled, sync-status sheet.
+  // 2. Dashboard — initial and scrolled. (The header's search and sync-status
+  // actions are hidden until those features ship, so shot 10 is retired.)
   // ---------------------------------------------------------------------------
   testWidgets('journey 02 — dashboard states', (tester) async {
     await bootSeeded(tester);
@@ -254,13 +253,6 @@ void main() {
       await shot(tester, '09-dashboard-scrolled-bottom');
       await tester.drag(scrollable, const Offset(0, 3000));
       await settle(tester);
-    });
-
-    await step('dashboard-sync-sheet', () async {
-      if (await tapTooltip(tester, 'Sync status')) {
-        await shot(tester, '10-dashboard-sync-sheet');
-        await dismissSheet(tester);
-      }
     });
   });
 
@@ -290,9 +282,11 @@ void main() {
       }
     });
 
-    // Full manual form: empty + each direction tab.
+    // Full manual form: empty + each direction tab. The segmented control at
+    // the top now shows Manual selected (one tap from the + sheet).
     await step('add-tx-empty-and-tabs', () async {
       if (await openManualAddSheet(tester)) {
+        await shot(tester, '95-entry-mode-manual-selected');
         await shot(tester, '14-add-transaction-empty');
         await tapText(tester, 'Income');
         await shot(tester, '15-add-transaction-income-tab');
@@ -519,7 +513,7 @@ void main() {
           await shot(tester, '91-budget-appearance-picker');
         }
 
-        await tapText(tester, 'Save');
+        await tapText(tester, 'Save Budget');
         await tester.pump(const Duration(seconds: 1));
         await shot(tester, '38-budgets-after-create');
       }
@@ -572,6 +566,30 @@ void main() {
     await step('accounts-list', () async {
       await pushRoute(tester, '/more/accounts');
       await shot(tester, '42-accounts-list');
+    });
+
+    // Swipe an account row partially right to reveal the edit action
+    // (SwipeActionRow: right = edit, left = delete/archive). The gesture is
+    // held while the shot is taken, then returned so nothing triggers.
+    await step('accounts-swipe-reveal', () async {
+      final row = find.byType(Dismissible);
+      if (row.evaluate().isNotEmpty) {
+        final gesture = await tester.startGesture(tester.getCenter(row.first));
+        // Incremental moves so the drag recognizer wins the arena and the
+        // Dismissible tracks the pointer (a single jump is ignored).
+        for (var i = 0; i < 8; i++) {
+          await gesture.moveBy(const Offset(18, 0));
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+        await tester.pump(const Duration(milliseconds: 250));
+        await binding.takeScreenshot('journey/98-accounts-swipe-edit-reveal');
+        for (var i = 0; i < 8; i++) {
+          await gesture.moveBy(const Offset(-18, 0));
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+        await gesture.up();
+        await settle(tester);
+      }
     });
 
     await step('account-create', () async {
@@ -638,8 +656,19 @@ void main() {
     });
 
     await step('goal-detail', () async {
+      // Let the "Goal created." snackbar from the previous step expire.
+      await tester.pump(const Duration(seconds: 5));
+      await settle(tester);
       if (await tapText(tester, 'Emergency Fund')) {
         await shot(tester, '52-goal-detail');
+      }
+    });
+
+    // Goal detail now has a pencil Edit action in the AppBar.
+    await step('goal-edit-sheet', () async {
+      if (await tapTooltip(tester, 'Edit goal')) {
+        await shot(tester, '96-goal-edit-sheet');
+        await dismissSheet(tester);
       }
     });
 
@@ -665,12 +694,15 @@ void main() {
     });
 
     await step('debts-list', () async {
+      // Let the "Contribution added." snackbar from the previous step expire.
+      await tester.pump(const Duration(seconds: 5));
+      await settle(tester);
+      // Demo data now seeds 3 debts, so the list opens populated.
       await pushRoute(tester, '/more/debts');
       await shot(tester, '55-debts-list');
     });
 
     await step('debt-create', () async {
-      // Demo data ships no debts: fall back to the empty-state CTA.
       if (await tapTooltip(tester, 'Add debt') ||
           await tapText(tester, 'Add Debt')) {
         await shot(tester, '56-debt-create-empty');
@@ -699,6 +731,14 @@ void main() {
       }
     });
 
+    // Debt detail now has a pencil Edit action in the AppBar.
+    await step('debt-edit-sheet', () async {
+      if (await tapTooltip(tester, 'Edit debt')) {
+        await shot(tester, '97-debt-edit-sheet');
+        await dismissSheet(tester);
+      }
+    });
+
     await step('debt-payment-sheets', () async {
       if (await tapText(tester, 'Partial Pay')) {
         await shot(tester, '60-debt-partial-pay');
@@ -720,12 +760,12 @@ void main() {
     await bootSeeded(tester);
 
     await step('recurring-list', () async {
+      // Demo data now seeds 4 recurring items, so the list opens populated.
       await pushRoute(tester, '/more/recurring');
       await shot(tester, '62-recurring-list');
     });
 
     await step('recurring-create', () async {
-      // Demo data ships no recurring items: fall back to the empty-state CTA.
       if (await tapTooltip(tester, 'Add recurring item') ||
           await tapText(tester, 'Add Recurring')) {
         await shot(tester, '63-recurring-create-empty');
