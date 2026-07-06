@@ -81,7 +81,10 @@ void main() {
     expect(find.text('Amount Range'), findsOneWidget);
     expect(find.text('Date Range'), findsOneWidget);
     expect(find.text('Clear all filters'), findsOneWidget);
-    expect(find.text('Apply 0 filters'), findsOneWidget);
+    // With no filters selected the button is a plain "Apply" — never
+    // "Apply 0 filters".
+    expect(find.widgetWithText(FilledButton, 'Apply'), findsOneWidget);
+    expect(find.text('Apply 0 filters'), findsNothing);
     expect(find.text('Wallet'), findsOneWidget);
     expect(find.text('Groceries'), findsOneWidget);
     expect(find.text('Salary'), findsOneWidget);
@@ -166,6 +169,87 @@ void main() {
       await tester.pump();
 
       expect(container.read(transactionFiltersProvider).modes, ['installment']);
+    },
+  );
+
+  testWidgets('apply button label counts active filters with singular form', (
+    tester,
+  ) async {
+    final container = ProviderContainer(
+      overrides: [
+        accountsProvider.overrideWith((ref) => Stream.value(accounts)),
+        categoriesProvider.overrideWith((ref) => Stream.value(categories)),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    tester.view.physicalSize = const Size(1200, 2400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(buildSheet(container));
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(FilledButton, 'Apply'), findsOneWidget);
+
+    await tester.tap(find.text('Expense').first);
+    await tester.pump();
+    expect(find.widgetWithText(FilledButton, 'Apply 1 filter'), findsOneWidget);
+
+    await tester.tap(find.text('Wallet').first);
+    await tester.pump();
+    expect(
+      find.widgetWithText(FilledButton, 'Apply 2 filters'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets(
+    'amount range has no inner apply button and typed amounts are kept',
+    (tester) async {
+      final container = ProviderContainer(
+        overrides: [
+          accountsProvider.overrideWith((ref) => Stream.value(accounts)),
+          categoriesProvider.overrideWith((ref) => Stream.value(categories)),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      tester.view.physicalSize = const Size(1200, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(buildSheet(container));
+      await tester.pumpAndSettle();
+
+      // Only the Date Range section keeps its inline apply link; the Amount
+      // Range one is gone (the global Apply covers it).
+      expect(find.widgetWithText(TextButton, 'Apply'), findsOneWidget);
+
+      Finder amountField(String hint) => find.byWidgetPredicate(
+        (widget) => widget is TextField && widget.decoration?.hintText == hint,
+      );
+
+      await tester.enterText(amountField('Min'), '100');
+      await tester.pump();
+      await tester.enterText(amountField('Max'), '900');
+      await tester.pump();
+
+      // Typed amounts are committed without any inner apply press.
+      expect(container.read(transactionFiltersProvider).minAmount, 100);
+      expect(container.read(transactionFiltersProvider).maxAmount, 900);
+      expect(
+        find.widgetWithText(FilledButton, 'Apply 1 filter'),
+        findsOneWidget,
+      );
+
+      // Global Apply keeps the values and closes the sheet.
+      await tester.tap(find.widgetWithText(FilledButton, 'Apply 1 filter'));
+      await tester.pumpAndSettle();
+      expect(container.read(transactionFiltersProvider).minAmount, 100);
+      expect(container.read(transactionFiltersProvider).maxAmount, 900);
     },
   );
 }

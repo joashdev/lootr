@@ -124,6 +124,10 @@ void main() {
 
       expect(find.text('Add Transaction'), findsWidgets);
       expect(find.text('Amount'), findsOneWidget);
+      // Opened straight into the manual form: the segmented control mirrors
+      // the active mode instead of a stale default.
+      final tabs = tester.widget<EntryModeTabs>(find.byType(EntryModeTabs));
+      expect(tabs.selected, EntryMode.manual);
     });
 
     testWidgets('renders prefilled edit mode', (tester) async {
@@ -144,6 +148,8 @@ void main() {
       // The saved category and payee must be resolved back into the pickers.
       expect(find.text('Coffee'), findsOneWidget);
       expect(find.text('Brew Lab'), findsOneWidget);
+      // Entry-mode segments are hidden while editing.
+      expect(find.byType(EntryModeTabs), findsNothing);
     });
 
     testWidgets('renders prefilled transfer edit mode', (tester) async {

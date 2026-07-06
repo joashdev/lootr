@@ -255,7 +255,11 @@ class AccountDetailScreen extends ConsumerWidget {
     if (confirmed != true) return;
     await ref.read(accountRepoProvider).archive(account.id);
     if (!context.mounted) return;
-    AppSnackBar.show(context, 'Account archived.');
+    AppSnackBar.show(
+      context,
+      'Account archived.',
+      variant: AppSnackBarVariant.success,
+    );
     context.pop();
   }
 }

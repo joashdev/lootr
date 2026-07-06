@@ -132,6 +132,26 @@ void main() {
         final result = parser.parse('transport 150 cash');
         expect(result!.parsed.payee, null);
       });
+
+      test('strips leading "at" connector left after category token removal', () {
+        final result = parser.parse('Coffee at Starbucks 180');
+        expect(result!.parsed.payee, 'Starbucks');
+      });
+
+      test('strips leading connector case-insensitively', () {
+        final result = parser.parse('Dining At Antonios 900 card');
+        expect(result!.parsed.payee, 'Antonios');
+      });
+
+      test('returns null when only a connector remains', () {
+        final result = parser.parse('coffee at 180');
+        expect(result!.parsed.payee, null);
+      });
+
+      test('keeps connector words inside the payee', () {
+        final result = parser.parse('dine in diner 300 cash');
+        expect(result!.parsed.payee, 'dine in diner');
+      });
     });
 
     group('account extraction', () {

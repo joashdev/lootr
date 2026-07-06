@@ -2,17 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../application/providers/dashboard_provider.dart';
 import '../../../application/providers/sync_providers.dart';
-import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
-import '../../shared/components/app_snackbar.dart';
-import '../../shared/components/buttons/app_icon_button.dart';
 import '../../shared/components/empty_state.dart';
 import '../../shared/components/primary_screen_header.dart';
-import '../../sheets/sync_status_sheet.dart';
 import 'widgets/account_summary_cards.dart';
 import 'widgets/budget_progress_rings.dart';
 import 'widgets/dashboard_shimmer.dart';
@@ -112,72 +107,17 @@ class _DashboardHeader extends ConsumerWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final syncState = ref.watch(syncStatusIconProvider);
-    final lootrColors = context.lootrColors;
     final name = data.displayName?.trim() ?? '';
 
+    // Sync status and global search header actions are hidden until those
+    // features ship; the sync engine and sheet remain available in code.
     return PrimaryScreenHeader(
       // Greeting sits in the eyebrow so a long name (the title) is never
       // truncated by the time-of-day prefix.
       eyebrow: _hasName ? data.greeting : null,
       title: _hasName ? name : data.greeting,
       subtitle: DateFormat('EEEE, MMMM d').format(data.currentDate),
-      actions: [
-        AppIconButton(
-          tooltip: 'Sync status',
-          icon: _syncIcon(syncState),
-          color: _syncColor(syncState, lootrColors, context),
-          onPressed: () {
-            showModalBottomSheet<void>(
-              context: context,
-              useRootNavigator: true,
-              isScrollControlled: true,
-              builder: (_) => const SyncStatusSheet(),
-            );
-          },
-        ),
-        const SizedBox(width: AppSpacing.space2),
-        AppIconButton(
-          tooltip: 'Search',
-          icon: LucideIcons.search,
-          onPressed: () {
-            AppSnackBar.show(context, 'Global search is coming soon');
-          },
-        ),
-      ],
     );
-  }
-
-  IconData _syncIcon(SyncIconState state) {
-    switch (state) {
-      case SyncIconState.synced:
-        return LucideIcons.cloudCheck;
-      case SyncIconState.pending:
-        return LucideIcons.cloudUpload;
-      case SyncIconState.failed:
-      case SyncIconState.offline:
-        return LucideIcons.triangleAlert;
-      case SyncIconState.syncing:
-        return LucideIcons.loaderCircle;
-    }
-  }
-
-  Color _syncColor(
-    SyncIconState state,
-    LootrColorScheme lootrColors,
-    BuildContext context,
-  ) {
-    switch (state) {
-      case SyncIconState.synced:
-        return lootrColors.success;
-      case SyncIconState.pending:
-        return lootrColors.warning;
-      case SyncIconState.failed:
-      case SyncIconState.offline:
-        return lootrColors.danger;
-      case SyncIconState.syncing:
-        return Theme.of(context).colorScheme.primary;
-    }
   }
 }
 

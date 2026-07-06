@@ -13,7 +13,6 @@ class AppearanceScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
-    final lootrColors = context.lootrColors;
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -37,16 +36,6 @@ class AppearanceScreen extends ConsumerWidget {
                   'Theme Mode',
                   style: AppTypography.bodyMedium.copyWith(
                     color: colorScheme.onSurface,
-                  ),
-                ),
-                subtitle: Text(
-                  themeMode == ThemeMode.system
-                      ? 'System'
-                      : themeMode == ThemeMode.dark
-                      ? 'Dark'
-                      : 'Light',
-                  style: AppTypography.caption.copyWith(
-                    color: lootrColors.textSecondary,
                   ),
                 ),
                 trailing: DropdownButtonHideUnderline(
@@ -86,38 +75,7 @@ class AppearanceScreen extends ConsumerWidget {
               ),
             ],
           ),
-          _SettingsSection(
-            header: 'Text Size',
-            children: [
-              ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.pagePaddingMobile,
-                ),
-                leading: Icon(
-                  LucideIcons.type,
-                  size: 20,
-                  color: colorScheme.primary,
-                ),
-                title: Text(
-                  'Font Size',
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: colorScheme.onSurface,
-                  ),
-                ),
-                subtitle: Text(
-                  'Default',
-                  style: AppTypography.caption.copyWith(
-                    color: lootrColors.textSecondary,
-                  ),
-                ),
-                trailing: Icon(
-                  LucideIcons.chevronRight,
-                  size: 18,
-                  color: lootrColors.textTertiary,
-                ),
-              ),
-            ],
-          ),
+          // Font Size setting is hidden until text scaling ships.
         ],
       ),
     );

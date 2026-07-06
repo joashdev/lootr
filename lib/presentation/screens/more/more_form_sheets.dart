@@ -348,12 +348,22 @@ Future<void> showAccountSheet(
   );
 }
 
-Future<void> showDebtSheet(BuildContext context, WidgetRef ref) async {
-  final counterpartyController = TextEditingController();
-  final amountController = TextEditingController();
-  final remainingController = TextEditingController();
-  final noteController = TextEditingController();
-  var direction = DebtDirection.borrowed;
+Future<void> showDebtSheet(
+  BuildContext context,
+  WidgetRef ref, {
+  DebtRecord? initial,
+}) async {
+  final counterpartyController = TextEditingController(
+    text: initial?.counterpartyName ?? '',
+  );
+  final amountController = TextEditingController(
+    text: initial == null ? '' : initial.amount.toStringAsFixed(2),
+  );
+  final remainingController = TextEditingController(
+    text: initial == null ? '' : initial.remainingBalance.toStringAsFixed(2),
+  );
+  final noteController = TextEditingController(text: initial?.note ?? '');
+  var direction = initial?.debtDirection ?? DebtDirection.borrowed;
 
   await _showSheet(
     context: context,
@@ -362,7 +372,10 @@ Future<void> showDebtSheet(BuildContext context, WidgetRef ref) async {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('New Debt', style: Theme.of(sheetContext).textTheme.titleLarge),
+          Text(
+            initial == null ? 'New Debt' : 'Edit Debt',
+            style: Theme.of(sheetContext).textTheme.titleLarge,
+          ),
           const SizedBox(height: AppSpacing.space4),
           _LabeledField(
             label: 'Counterparty',
@@ -437,40 +450,57 @@ Future<void> showDebtSheet(BuildContext context, WidgetRef ref) async {
                   _showMessage(
                     context,
                     'Enter who this is with and a valid amount.',
+                    variant: AppSnackBarVariant.error,
                   );
                   return;
                 }
 
-                final ownerUserId = await _ensureCurrentUserId(ref);
                 final status = remaining <= 0
                     ? DebtStatus.settled
                     : remaining < amount
                     ? DebtStatus.partiallyPaid
                     : DebtStatus.active;
+                final note = noteController.text.trim();
 
-                await ref
-                    .read(debtRepoProvider)
-                    .create(
-                      DebtRecordsCompanion.insert(
-                        id: _makeId('debt'),
-                        ownerUserId: ownerUserId,
-                        counterpartyName: counterparty,
-                        debtDirection: direction,
-                        amount: amount,
-                        remainingBalance: remaining.clamp(0, amount).toDouble(),
-                        note: Value(
-                          noteController.text.trim().isEmpty
-                              ? null
-                              : noteController.text.trim(),
-                        ),
-                        status: status,
+                final debtRepo = ref.read(debtRepoProvider);
+                if (initial == null) {
+                  final ownerUserId = await _ensureCurrentUserId(ref);
+                  await debtRepo.create(
+                    DebtRecordsCompanion.insert(
+                      id: _makeId('debt'),
+                      ownerUserId: ownerUserId,
+                      counterpartyName: counterparty,
+                      debtDirection: direction,
+                      amount: amount,
+                      remainingBalance: remaining.clamp(0, amount).toDouble(),
+                      note: Value(note.isEmpty ? null : note),
+                      status: status,
+                    ),
+                  );
+                } else {
+                  await debtRepo.update(
+                    DebtRecordsCompanion(
+                      id: Value(initial.id),
+                      counterpartyName: Value(counterparty),
+                      debtDirection: Value(direction),
+                      amount: Value(amount),
+                      remainingBalance: Value(
+                        remaining.clamp(0, amount).toDouble(),
                       ),
-                    );
+                      note: Value(note.isEmpty ? null : note),
+                      status: Value(status),
+                    ),
+                  );
+                }
 
                 if (sheetContext.mounted) Navigator.of(sheetContext).pop();
-                _showMessage(context, 'Debt saved.');
+                _showMessage(
+                  context,
+                  initial == null ? 'Debt created.' : 'Debt updated.',
+                  variant: AppSnackBarVariant.success,
+                );
               },
-              child: const Text('Save Debt'),
+              child: Text(initial == null ? 'Save Debt' : 'Save Changes'),
             ),
           ),
         ],
@@ -479,11 +509,19 @@ Future<void> showDebtSheet(BuildContext context, WidgetRef ref) async {
   );
 }
 
-Future<void> showGoalSheet(BuildContext context, WidgetRef ref) async {
-  final nameController = TextEditingController();
-  final targetController = TextEditingController();
-  final currentController = TextEditingController();
-  var goalType = GoalType.savings;
+Future<void> showGoalSheet(
+  BuildContext context,
+  WidgetRef ref, {
+  Goal? initial,
+}) async {
+  final nameController = TextEditingController(text: initial?.name ?? '');
+  final targetController = TextEditingController(
+    text: initial == null ? '' : initial.targetAmount.toStringAsFixed(2),
+  );
+  final currentController = TextEditingController(
+    text: initial == null ? '' : initial.currentAmount.toStringAsFixed(2),
+  );
+  var goalType = initial?.goalType ?? GoalType.savings;
 
   await _showSheet(
     context: context,
@@ -492,7 +530,10 @@ Future<void> showGoalSheet(BuildContext context, WidgetRef ref) async {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('New Goal', style: Theme.of(sheetContext).textTheme.titleLarge),
+          Text(
+            initial == null ? 'New Goal' : 'Edit Goal',
+            style: Theme.of(sheetContext).textTheme.titleLarge,
+          ),
           const SizedBox(height: AppSpacing.space4),
           _LabeledField(
             label: 'Goal Name',
@@ -565,28 +606,47 @@ Future<void> showGoalSheet(BuildContext context, WidgetRef ref) async {
                 final targetAmount = _parseAmount(targetController.text);
                 final currentAmount = _parseAmount(currentController.text) ?? 0;
                 if (name.isEmpty || targetAmount == null || targetAmount <= 0) {
-                  _showMessage(context, 'Enter a goal name and target amount.');
+                  _showMessage(
+                    context,
+                    'Enter a goal name and target amount.',
+                    variant: AppSnackBarVariant.error,
+                  );
                   return;
                 }
 
-                final ownerUserId = await _ensureCurrentUserId(ref);
-                await ref
-                    .read(goalRepoProvider)
-                    .create(
-                      GoalsCompanion.insert(
-                        id: _makeId('goal'),
-                        ownerUserId: ownerUserId,
-                        name: name,
-                        goalType: goalType,
-                        targetAmount: targetAmount,
-                        currentAmount: Value(currentAmount),
-                      ),
-                    );
+                final goalRepo = ref.read(goalRepoProvider);
+                if (initial == null) {
+                  final ownerUserId = await _ensureCurrentUserId(ref);
+                  await goalRepo.create(
+                    GoalsCompanion.insert(
+                      id: _makeId('goal'),
+                      ownerUserId: ownerUserId,
+                      name: name,
+                      goalType: goalType,
+                      targetAmount: targetAmount,
+                      currentAmount: Value(currentAmount),
+                    ),
+                  );
+                } else {
+                  await goalRepo.update(
+                    GoalsCompanion(
+                      id: Value(initial.id),
+                      name: Value(name),
+                      goalType: Value(goalType),
+                      targetAmount: Value(targetAmount),
+                      currentAmount: Value(currentAmount),
+                    ),
+                  );
+                }
 
                 if (sheetContext.mounted) Navigator.of(sheetContext).pop();
-                _showMessage(context, 'Goal created.');
+                _showMessage(
+                  context,
+                  initial == null ? 'Goal created.' : 'Goal updated.',
+                  variant: AppSnackBarVariant.success,
+                );
               },
-              child: const Text('Save Goal'),
+              child: Text(initial == null ? 'Save Goal' : 'Save Changes'),
             ),
           ),
         ],
@@ -648,7 +708,11 @@ Future<void> showGoalContributionSheet(
               onPressed: () async {
                 final amount = _parseAmount(amountController.text);
                 if (amount == null || amount <= 0) {
-                  _showMessage(context, 'Enter a valid contribution amount.');
+                  _showMessage(
+                    context,
+                    'Enter a valid contribution amount.',
+                    variant: AppSnackBarVariant.error,
+                  );
                   return;
                 }
 
@@ -674,7 +738,11 @@ Future<void> showGoalContributionSheet(
                 }
 
                 if (sheetContext.mounted) Navigator.of(sheetContext).pop();
-                _showMessage(context, 'Contribution added.');
+                _showMessage(
+                  context,
+                  'Contribution added.',
+                  variant: AppSnackBarVariant.success,
+                );
               },
               child: const Text('Save Contribution'),
             ),
@@ -741,7 +809,11 @@ Future<void> showDebtPaymentSheet(
               onPressed: () async {
                 final amount = _parseAmount(amountController.text);
                 if (amount == null || amount <= 0) {
-                  _showMessage(context, 'Enter a valid payment amount.');
+                  _showMessage(
+                    context,
+                    'Enter a valid payment amount.',
+                    variant: AppSnackBarVariant.error,
+                  );
                   return;
                 }
 
@@ -807,6 +879,7 @@ Future<void> showDebtPaymentSheet(
                   status == DebtStatus.settled
                       ? 'Debt settled.'
                       : 'Payment recorded.',
+                  variant: AppSnackBarVariant.success,
                 );
               },
               child: Text(settle ? 'Settle' : 'Save Payment'),
@@ -917,7 +990,11 @@ Future<void> showRecurringSheet(
               onPressed: () async {
                 final amount = _parseAmount(amountController.text);
                 if (amount == null || amount <= 0) {
-                  _showMessage(context, 'Enter a valid amount.');
+                  _showMessage(
+                    context,
+                    'Enter a valid amount.',
+                    variant: AppSnackBarVariant.error,
+                  );
                   return;
                 }
 
@@ -968,6 +1045,7 @@ Future<void> showRecurringSheet(
                   initial == null
                       ? 'Recurring item created.'
                       : 'Recurring item updated.',
+                  variant: AppSnackBarVariant.success,
                 );
               },
               child: Text(
@@ -1127,7 +1205,11 @@ Future<void> showCategorySheet(
               onPressed: () async {
                 final name = nameController.text.trim();
                 if (name.isEmpty) {
-                  _showMessage(context, 'Category name is required.');
+                  _showMessage(
+                    context,
+                    'Category name is required.',
+                    variant: AppSnackBarVariant.error,
+                  );
                   return;
                 }
 
@@ -1158,6 +1240,7 @@ Future<void> showCategorySheet(
                 _showMessage(
                   context,
                   initial == null ? 'Category created.' : 'Category updated.',
+                  variant: AppSnackBarVariant.success,
                 );
               },
               child: Text(initial == null ? 'Save Category' : 'Save Changes'),
@@ -1207,7 +1290,11 @@ Future<void> showHouseholdSheet(
               onPressed: () async {
                 final name = nameController.text.trim();
                 if (name.isEmpty) {
-                  _showMessage(context, 'Household name is required.');
+                  _showMessage(
+                    context,
+                    'Household name is required.',
+                    variant: AppSnackBarVariant.error,
+                  );
                   return;
                 }
 
@@ -1243,6 +1330,7 @@ Future<void> showHouseholdSheet(
                 _showMessage(
                   context,
                   initial == null ? 'Household created.' : 'Household updated.',
+                  variant: AppSnackBarVariant.success,
                 );
               },
               child: Text(initial == null ? 'Save Household' : 'Save Changes'),
@@ -1306,7 +1394,11 @@ Future<void> showHouseholdMemberSheet(
               onPressed: () async {
                 final name = nameController.text.trim();
                 if (name.isEmpty) {
-                  _showMessage(context, 'Member name is required.');
+                  _showMessage(
+                    context,
+                    'Member name is required.',
+                    variant: AppSnackBarVariant.error,
+                  );
                   return;
                 }
 
@@ -1333,7 +1425,11 @@ Future<void> showHouseholdMemberSheet(
                     );
 
                 if (sheetContext.mounted) Navigator.of(sheetContext).pop();
-                _showMessage(context, 'Member added.');
+                _showMessage(
+                  context,
+                  'Member added.',
+                  variant: AppSnackBarVariant.success,
+                );
               },
               child: const Text('Add Member'),
             ),

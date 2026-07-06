@@ -345,6 +345,16 @@ class NLParser {
             !_incomeTokens.contains(w.toLowerCase()))
         .toList();
 
+    // Drop leading connector words left behind after meta words are removed,
+    // e.g. "Coffee at Starbucks" -> "at Starbucks" once "coffee" (a category
+    // token) is filtered out. The payee should be "Starbucks", not
+    // "at Starbucks".
+    const connectors = {'at', 'in', 'on', 'for'};
+    while (nonMetaWords.isNotEmpty &&
+        connectors.contains(nonMetaWords.first.toLowerCase())) {
+      nonMetaWords.removeAt(0);
+    }
+
     if (nonMetaWords.isEmpty) return null;
     final candidate = nonMetaWords.join(' ');
 

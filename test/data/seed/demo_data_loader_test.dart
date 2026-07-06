@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart' hide isNull;
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:lootr/data/database/app_database.dart';
@@ -38,7 +38,7 @@ void main() {
       expect(accounts.length, 4);
     });
 
-    test('creates 15 payees', () async {
+    test('creates 16 payees', () async {
       await seedCategories();
       const userId = 'demo-user-1';
       await db.into(db.users).insertOnConflictUpdate(
@@ -48,7 +48,7 @@ void main() {
       final loader = DemoDataLoader();
       final result = await loader.load(db, userId: userId);
 
-      expect(result.payeeIds.length, 15);
+      expect(result.payeeIds.length, 16);
     });
 
     test('creates 40+ transactions', () async {
@@ -88,6 +88,95 @@ void main() {
       final result = await loader.load(db, userId: userId);
 
       expect(result.goalIds.length, 2);
+    });
+
+    test('creates 3 debts', () async {
+      await seedCategories();
+      const userId = 'demo-user-1';
+      await db.into(db.users).insertOnConflictUpdate(
+            UsersCompanion.insert(id: userId, email: const Value('test@test.com')),
+          );
+
+      final loader = DemoDataLoader();
+      final result = await loader.load(db, userId: userId);
+
+      expect(result.debtIds.length, 3);
+      final debts = await db.select(db.debtRecords).get();
+      expect(debts.length, 3);
+    });
+
+    test('creates 4 recurring templates', () async {
+      await seedCategories();
+      const userId = 'demo-user-1';
+      await db.into(db.users).insertOnConflictUpdate(
+            UsersCompanion.insert(id: userId, email: const Value('test@test.com')),
+          );
+
+      final loader = DemoDataLoader();
+      final result = await loader.load(db, userId: userId);
+
+      expect(result.recurringIds.length, 4);
+      final templates = await db.select(db.recurringTemplates).get();
+      expect(templates.length, 4);
+    });
+
+    test('debts have valid directions, statuses, and balances', () async {
+      await seedCategories();
+      const userId = 'demo-user-1';
+      await db.into(db.users).insertOnConflictUpdate(
+            UsersCompanion.insert(id: userId, email: const Value('test@test.com')),
+          );
+
+      final loader = DemoDataLoader();
+      await loader.load(db, userId: userId);
+
+      final debts = await db.select(db.debtRecords).get();
+      for (final debt in debts) {
+        expect(['lent', 'borrowed'], contains(debt.debtDirection));
+        expect(['active', 'partially_paid', 'settled'], contains(debt.status));
+        expect(debt.amount, greaterThan(0));
+        expect(debt.remainingBalance, greaterThan(0));
+        expect(debt.remainingBalance, lessThanOrEqualTo(debt.amount));
+      }
+
+      final directions = debts.map((d) => d.debtDirection).toSet();
+      expect(directions, containsAll(['lent', 'borrowed']));
+
+      final creditCard =
+          debts.firstWhere((d) => d.counterpartyName == 'BPI Credit Card');
+      expect(creditCard.remainingBalance, 18500.0);
+      expect(creditCard.status, 'partially_paid');
+    });
+
+    test('recurring templates have valid rules and future due dates',
+        () async {
+      await seedCategories();
+      const userId = 'demo-user-1';
+      await db.into(db.users).insertOnConflictUpdate(
+            UsersCompanion.insert(id: userId, email: const Value('test@test.com')),
+          );
+
+      final loader = DemoDataLoader();
+      await loader.load(db, userId: userId);
+
+      final templates = await db.select(db.recurringTemplates).get();
+      const validRules = ['daily', 'weekly', 'biweekly', 'monthly', 'yearly'];
+      final now = DateTime.now();
+      for (final template in templates) {
+        expect(validRules, contains(template.recurrenceRule));
+        expect(template.amount, greaterThan(0));
+        expect(template.nextOccurrenceAt, isNotNull);
+        expect(template.nextOccurrenceAt!.isAfter(now), true);
+        expect(
+          template.nextOccurrenceAt!.isBefore(now.add(const Duration(days: 45))),
+          true,
+        );
+      }
+
+      final salary =
+          templates.firstWhere((t) => t.categoryId == 'default-cat-salary');
+      expect(salary.recurrenceRule, 'biweekly');
+      expect(salary.amount, 35000.0);
     });
 
     test('accounts have correct names and balances', () async {
@@ -320,6 +409,12 @@ void main() {
         expect(id, startsWith('demo-'));
       }
       for (final id in result.goalIds) {
+        expect(id, startsWith('demo-'));
+      }
+      for (final id in result.debtIds) {
+        expect(id, startsWith('demo-'));
+      }
+      for (final id in result.recurringIds) {
         expect(id, startsWith('demo-'));
       }
     });

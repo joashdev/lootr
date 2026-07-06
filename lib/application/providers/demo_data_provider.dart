@@ -50,16 +50,17 @@ class DemoDataNotifier extends AsyncNotifier<DemoDataState> {
   Future<void> clear() async {
     final db = ref.read(databaseProvider);
 
+    // Delete child rows before the accounts/payees/users they reference.
     await (db.delete(db.transactions)..where((t) => t.id.like('demo-%'))).go();
+    await (db.delete(
+      db.recurringTemplates,
+    )..where((t) => t.id.like('demo-%'))).go();
+    await (db.delete(db.debtRecords)..where((t) => t.id.like('demo-%'))).go();
     await (db.delete(db.accounts)..where((t) => t.id.like('demo-%'))).go();
     await (db.delete(db.categories)..where((t) => t.id.like('demo-%'))).go();
     await (db.delete(db.payees)..where((t) => t.id.like('demo-%'))).go();
     await (db.delete(db.budgets)..where((t) => t.id.like('demo-%'))).go();
     await (db.delete(db.goals)..where((t) => t.id.like('demo-%'))).go();
-    await (db.delete(
-      db.recurringTemplates,
-    )..where((t) => t.id.like('demo-%'))).go();
-    await (db.delete(db.debtRecords)..where((t) => t.id.like('demo-%'))).go();
     await (db.delete(db.users)..where((t) => t.id.like('demo-%'))).go();
 
     final syncRepo = ref.read(syncMetadataRepoProvider);

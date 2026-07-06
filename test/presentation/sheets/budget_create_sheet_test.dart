@@ -53,6 +53,23 @@ void main() {
   });
 
   group('BudgetCreateSheet', () {
+    testWidgets(
+      'uses New Budget title, Save Budget cta, and 0.00 amount hint',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrapWithProviders(db, const BudgetCreateSheet()),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('New Budget'), findsOneWidget);
+        expect(find.text('Save Budget'), findsOneWidget);
+        expect(find.text('0.00'), findsOneWidget);
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpAndSettle();
+      },
+    );
+
     testWidgets('uses category autocomplete filtered from categoriesProvider', (
       tester,
     ) async {
@@ -93,6 +110,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Food'), findsOneWidget);
+      expect(find.text('Edit Budget'), findsOneWidget);
+      expect(find.text('Save Changes'), findsOneWidget);
 
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pumpAndSettle();

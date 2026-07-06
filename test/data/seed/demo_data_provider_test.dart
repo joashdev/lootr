@@ -84,6 +84,12 @@ void main() {
       var transactions = await db.select(db.transactions).get();
       expect(transactions.any((t) => t.id.startsWith('demo-')), true);
 
+      var debts = await db.select(db.debtRecords).get();
+      expect(debts.any((d) => d.id.startsWith('demo-')), true);
+
+      var recurring = await db.select(db.recurringTemplates).get();
+      expect(recurring.any((r) => r.id.startsWith('demo-')), true);
+
       await notifier.clear();
 
       accounts = await db.select(db.accounts).get();
@@ -91,6 +97,12 @@ void main() {
 
       transactions = await db.select(db.transactions).get();
       expect(transactions.any((t) => t.id.startsWith('demo-')), false);
+
+      debts = await db.select(db.debtRecords).get();
+      expect(debts.any((d) => d.id.startsWith('demo-')), false);
+
+      recurring = await db.select(db.recurringTemplates).get();
+      expect(recurring.any((r) => r.id.startsWith('demo-')), false);
     });
 
     test('seed is idempotent', () async {

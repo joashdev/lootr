@@ -140,6 +140,7 @@ class HouseholdDetailScreen extends ConsumerWidget {
                         AppSnackBar.show(
                           context,
                           '${member.displayName} is now ${roleLabel(role).toLowerCase()}.',
+                          variant: AppSnackBarVariant.success,
                         );
                       },
                     );

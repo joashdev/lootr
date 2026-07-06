@@ -272,10 +272,14 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     return fuzzyMatch?.id;
   }
 
-  String? _matchCategoryId(String label, List<Category> categories) {
+  String? _matchCategoryId(
+    String label,
+    List<Category> categories, {
+    String? direction,
+  }) {
     final normalized = _normalize(label);
     if (normalized.isEmpty) return null;
-    final group = _direction == fields.TransactionDirection.income
+    final group = (direction ?? _direction) == fields.TransactionDirection.income
         ? fields.CategoryGroup.income
         : fields.CategoryGroup.expense;
     final candidates = categories
@@ -677,6 +681,17 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     router.push('/scan');
   }
 
+  void _handleEntryModeSelected(EntryMode mode) {
+    switch (mode) {
+      case EntryMode.quick:
+        setState(() => _isQuickMode = true);
+      case EntryMode.manual:
+        setState(() => _isQuickMode = false);
+      case EntryMode.scan:
+        _openScan();
+    }
+  }
+
   void _openAccounts() {
     final router = GoRouter.of(context);
     context.pop();
@@ -744,13 +759,6 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                       ],
                     ),
                   ),
-                  if (!_isTransactionEditing && !_isTransferEditing)
-                    _EntryModeMenu(
-                      isQuickMode: _isQuickMode,
-                      onManual: () => setState(() => _isQuickMode = false),
-                      onQuick: () => setState(() => _isQuickMode = true),
-                      onScan: _openScan,
-                    ),
                   IconButton(
                     onPressed: () => context.pop(),
                     icon: const Icon(Icons.close),
@@ -758,6 +766,14 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                 ],
               ),
             ),
+            if (!_isTransactionEditing && !_isTransferEditing)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
+                child: EntryModeTabs(
+                  selected: _isQuickMode ? EntryMode.quick : EntryMode.manual,
+                  onSelected: _handleEntryModeSelected,
+                ),
+              ),
             const Divider(height: 1),
             Flexible(
               child: SingleChildScrollView(
@@ -955,7 +971,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
         ],
         if (_parsedPreview != null) ...[
           const SizedBox(height: 16),
-          _buildPreviewCard(_parsedPreview!),
+          _buildPreviewCard(_parsedPreview!, categories),
           const SizedBox(height: 16),
           PrimaryButton(
             label: 'Add Transaction',
@@ -989,8 +1005,26 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     );
   }
 
-  Widget _buildPreviewCard(ParsedTransaction parsed) {
+  /// Resolves the parsed category label against the user's real categories.
+  /// Falls back to "Uncategorized" when nothing matches, so the preview never
+  /// shows a category that would silently disappear on save.
+  String _previewCategoryLabel(
+    ParsedTransaction parsed,
+    List<Category> categories,
+  ) {
+    final matchedId = _matchCategoryId(
+      parsed.category!,
+      categories,
+      direction: parsed.direction,
+    );
+    if (matchedId == null) return 'Uncategorized';
+    return categories.firstWhere((category) => category.id == matchedId).name;
+  }
+
+  Widget _buildPreviewCard(ParsedTransaction parsed, List<Category> categories) {
     final lootrColors = context.lootrColors;
+    // The parser produces a single overall confidence, so it is surfaced once
+    // below the rows rather than repeated per field.
     final confidence = parsed.confidence;
 
     Widget previewRow(String label, String value) {
@@ -1015,7 +1049,6 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                 ),
               ),
             ),
-            _ConfidenceDot(confidence: confidence),
           ],
         ),
       );
@@ -1042,7 +1075,8 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
             previewRow('Amount', MoneyFormat.exact(parsed.amount!, 'PHP')),
           if (parsed.payee != null) previewRow('Payee', parsed.payee!),
           if (parsed.account != null) previewRow('Account', parsed.account!),
-          if (parsed.category != null) previewRow('Category', parsed.category!),
+          if (parsed.category != null)
+            previewRow('Category', _previewCategoryLabel(parsed, categories)),
           if (parsed.direction != null)
             previewRow('Direction', _directionLabel(parsed.direction!)),
           Row(
@@ -1401,69 +1435,48 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   }
 }
 
-enum _EntryMode { manual, quick, scan }
+/// Entry modes offered at the top of the add-transaction surfaces.
+enum EntryMode { quick, manual, scan }
 
-class _EntryModeMenu extends StatelessWidget {
-  const _EntryModeMenu({
-    required this.isQuickMode,
-    required this.onManual,
-    required this.onQuick,
-    required this.onScan,
+/// Quick | Manual | Scan segmented control shown at the top of the
+/// add-transaction sheet (and reused by the quick-actions sheet). Mirrors the
+/// Expense/Income/Transfer tab styling so the two segmented rows read as one
+/// design language. The highlighted segment always reflects the ACTIVE mode —
+/// selection is fully controlled by [selected], never by internal state.
+class EntryModeTabs extends StatelessWidget {
+  const EntryModeTabs({
+    super.key,
+    required this.selected,
+    required this.onSelected,
   });
 
-  final bool isQuickMode;
-  final VoidCallback onManual;
-  final VoidCallback onQuick;
-  final VoidCallback onScan;
+  final EntryMode selected;
+  final ValueChanged<EntryMode> onSelected;
+
+  String _label(EntryMode mode) {
+    switch (mode) {
+      case EntryMode.quick:
+        return 'Quick';
+      case EntryMode.manual:
+        return 'Manual';
+      case EntryMode.scan:
+        return 'Scan';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final selected = isQuickMode ? _EntryMode.quick : _EntryMode.manual;
-    final label = isQuickMode ? 'Quick' : 'Manual';
-
-    return PopupMenuButton<_EntryMode>(
-      initialValue: selected,
-      onSelected: (mode) {
-        switch (mode) {
-          case _EntryMode.manual:
-            onManual();
-          case _EntryMode.quick:
-            onQuick();
-          case _EntryMode.scan:
-            onScan();
-        }
-      },
-      itemBuilder: (context) => const [
-        PopupMenuItem(value: _EntryMode.manual, child: Text('Manual')),
-        PopupMenuItem(value: _EntryMode.quick, child: Text('Quick')),
-        PopupMenuItem(value: _EntryMode.scan, child: Text('Scan')),
+    return Row(
+      children: [
+        for (final mode in EntryMode.values)
+          Expanded(
+            child: _TransactionTypeTab(
+              label: _label(mode),
+              isSelected: selected == mode,
+              onTap: () => onSelected(mode),
+            ),
+          ),
       ],
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(AppRadius.full),
-          border: Border.all(color: colorScheme.outlineVariant),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: AppTypography.captionMedium.copyWith(
-                color: colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Icon(
-              LucideIcons.chevronDown,
-              size: 16,
-              color: context.lootrColors.textSecondary,
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

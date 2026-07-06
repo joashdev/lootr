@@ -138,17 +138,29 @@ class _QuickActionsSheetBodyState extends State<_QuickActionsSheetBody> {
                     ),
                   ),
                 ),
-                _EntryModeDropdown(
-                  onManual: () => widget.onNavigate('/transactions/new'),
-                  onScan: () => widget.onNavigate('/scan'),
-                ),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
                   icon: const Icon(Icons.close),
                 ),
               ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
+            // This sheet IS quick (NL) mode, so Quick is always the active
+            // segment; Manual/Scan hand off to their dedicated flows in one tap.
+            EntryModeTabs(
+              selected: EntryMode.quick,
+              onSelected: (mode) {
+                switch (mode) {
+                  case EntryMode.quick:
+                    break; // Already in quick mode.
+                  case EntryMode.manual:
+                    widget.onNavigate('/transactions/new');
+                  case EntryMode.scan:
+                    widget.onNavigate('/scan');
+                }
+              },
+            ),
+            const SizedBox(height: 12),
             Text(
               'Describe it below, or pick a mode above.',
               style: AppTypography.body.copyWith(
@@ -210,65 +222,6 @@ class _QuickActionsSheetBodyState extends State<_QuickActionsSheetBody> {
               ),
             ),
             const SizedBox(height: 24),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-enum _EntryMode { manual, scan }
-
-/// Bordered "Manual ▾" dropdown pill for the quick-actions header, mirroring the
-/// mode dropdown in the Add Transaction sheet. Selecting an option triggers the
-/// matching entry flow immediately (Manual opens the full Add Transaction sheet,
-/// Scan opens the OCR scan route).
-class _EntryModeDropdown extends StatelessWidget {
-  const _EntryModeDropdown({required this.onManual, required this.onScan});
-
-  final VoidCallback onManual;
-  final VoidCallback onScan;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return PopupMenuButton<_EntryMode>(
-      initialValue: _EntryMode.manual,
-      onSelected: (mode) {
-        switch (mode) {
-          case _EntryMode.manual:
-            onManual();
-          case _EntryMode.scan:
-            onScan();
-        }
-      },
-      itemBuilder: (context) => const [
-        PopupMenuItem(value: _EntryMode.manual, child: Text('Manual')),
-        PopupMenuItem(value: _EntryMode.scan, child: Text('Scan')),
-      ],
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(AppRadius.full),
-          border: Border.all(color: colorScheme.outlineVariant),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Manual',
-              style: AppTypography.captionMedium.copyWith(
-                color: colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Icon(
-              LucideIcons.chevronDown,
-              size: 16,
-              color: context.lootrColors.textSecondary,
-            ),
           ],
         ),
       ),

@@ -253,6 +253,7 @@ class RecurringDetailScreen extends ConsumerWidget {
                                 AppSnackBar.show(
                                   context,
                                   'Recurring item deleted.',
+                                  variant: AppSnackBarVariant.success,
                                 );
                                 Navigator.of(context).pop();
                               },
@@ -284,6 +285,7 @@ class RecurringDetailScreen extends ConsumerWidget {
                             template.autoCreateDisabled
                                 ? 'Recurring item enabled.'
                                 : 'Recurring item disabled.',
+                            variant: AppSnackBarVariant.success,
                           );
                         },
                       ),

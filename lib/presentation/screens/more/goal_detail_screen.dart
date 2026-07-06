@@ -26,9 +26,21 @@ class GoalDetailScreen extends ConsumerWidget {
     final contributionsAsync = ref.watch(goalContributionsProvider(id));
     final lootrColors = context.lootrColors;
     final colorScheme = Theme.of(context).colorScheme;
+    final loadedGoal = goalAsync.asData?.value;
 
     return Scaffold(
-      appBar: AppBar(centerTitle: false, title: const Text('Goal')),
+      appBar: AppBar(
+        centerTitle: false,
+        title: const Text('Goal'),
+        actions: [
+          if (loadedGoal != null)
+            IconButton(
+              tooltip: 'Edit goal',
+              icon: const Icon(LucideIcons.pencil, size: 20),
+              onPressed: () => showGoalSheet(context, ref, initial: loadedGoal),
+            ),
+        ],
+      ),
       body: goalAsync.when(
         data: (goal) {
           if (goal == null) {

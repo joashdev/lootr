@@ -67,11 +67,15 @@ class PayeeDetailScreen extends ConsumerWidget {
       await ref.read(payeeRepoProvider).updateName(payee.id, nextName);
     } on PayeeNameConflictException catch (e) {
       if (!context.mounted) return;
-      AppSnackBar.show(context, e.toString());
+      AppSnackBar.show(context, e.toString(), variant: AppSnackBarVariant.error);
       return;
     }
     if (!context.mounted) return;
-    AppSnackBar.show(context, 'Payee updated.');
+    AppSnackBar.show(
+      context,
+      'Payee updated.',
+      variant: AppSnackBarVariant.success,
+    );
   }
 
   @override

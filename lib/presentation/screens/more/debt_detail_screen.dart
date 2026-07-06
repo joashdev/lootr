@@ -26,9 +26,21 @@ class DebtDetailScreen extends ConsumerWidget {
     final paymentsAsync = ref.watch(debtPaymentsProvider(id));
     final lootrColors = context.lootrColors;
     final colorScheme = Theme.of(context).colorScheme;
+    final loadedDebt = debtAsync.asData?.value;
 
     return Scaffold(
-      appBar: AppBar(centerTitle: false, title: const Text('Debt')),
+      appBar: AppBar(
+        centerTitle: false,
+        title: const Text('Debt'),
+        actions: [
+          if (loadedDebt != null)
+            IconButton(
+              tooltip: 'Edit debt',
+              icon: const Icon(LucideIcons.pencil, size: 20),
+              onPressed: () => showDebtSheet(context, ref, initial: loadedDebt),
+            ),
+        ],
+      ),
       body: debtAsync.when(
         data: (debt) {
           if (debt == null) {

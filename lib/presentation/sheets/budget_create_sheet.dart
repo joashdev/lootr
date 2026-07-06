@@ -236,7 +236,7 @@ class _BudgetCreateSheetState extends ConsumerState<BudgetCreateSheet> {
                   children: [
                     Expanded(
                       child: Text(
-                        isEditing ? 'Edit Budget' : 'Create Budget',
+                        isEditing ? 'Edit Budget' : 'New Budget',
                         style: AppTypography.h2.copyWith(
                           color: colorScheme.onSurface,
                         ),
@@ -324,7 +324,7 @@ class _BudgetCreateSheetState extends ConsumerState<BudgetCreateSheet> {
                           controller: _amountController,
                           enabled: !isReadOnly,
                           keyboardType: const TextInputType.numberWithOptions(
-                            decimal: false,
+                            decimal: true,
                           ),
                           style: AppTypography.mono.copyWith(
                             fontSize: 24,
@@ -332,7 +332,7 @@ class _BudgetCreateSheetState extends ConsumerState<BudgetCreateSheet> {
                             color: colorScheme.onSurface,
                           ),
                           decoration: InputDecoration(
-                            hintText: '0',
+                            hintText: '0.00',
                             hintStyle: AppTypography.mono.copyWith(
                               fontSize: 24,
                               fontWeight: FontWeight.w600,
@@ -383,7 +383,7 @@ class _BudgetCreateSheetState extends ConsumerState<BudgetCreateSheet> {
                       ),
                     ),
                     child: Text(
-                      isEditing ? 'Save Changes' : 'Save',
+                      isEditing ? 'Save Changes' : 'Save Budget',
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
