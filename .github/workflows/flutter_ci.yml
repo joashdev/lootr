@@ -25,17 +25,15 @@ jobs:
       - run: dart run build_runner build --delete-conflicting-outputs
       - run: flutter analyze --no-pub --no-fatal-infos --no-fatal-warnings
       - run: flutter test --no-pub
-      # Headless integration smoke test: uses an in-memory Drift DB and pumps no
-      # widgets, so it runs under flutter_tester without an emulator. Must be a
-      # separate `flutter test` invocation — the tool refuses to run unit and
-      # integration tests in one call.
-      - run: flutter test --no-pub integration_test/test_infrastructure_flow_test.dart
 
-# NOTE: the storyboard_*_test.dart files under integration_test/ are NOT run in
-# CI. They are `flutter drive` screenshot-capture tools that boot the whole app
-# and drive full user journeys to regenerate docs/storyboard-shots/. They are
-# far too heavy for a hosted runner's nested-virtualization emulator (they hang
-# QEMU) and require the integration_test driver + a real device. Run them
+# NOTE: everything under integration_test/ is intentionally NOT run in CI, and
+# there is no emulator job. Integration tests require a connected device; on a
+# hosted runner that means the Android emulator, whose nested-virtualization
+# QEMU hangs under the heavy storyboard_*_test.dart screenshot-capture tools
+# (they boot the whole app and drive full user journeys). The one lightweight
+# smoke test (test_infrastructure_flow_test.dart) only exercises the Drift repos,
+# which the unit suite already covers more thoroughly (see
+# test/data/repositories/transaction_repo_test.dart). Run integration tests
 # locally against a simulator, e.g.:
 #   flutter drive \
 #     --driver=test_driver/integration_test.dart \
