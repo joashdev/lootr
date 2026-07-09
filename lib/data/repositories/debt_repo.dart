@@ -8,9 +8,9 @@ class DebtRepo {
   DebtRepo(this._db);
 
   Stream<List<DebtRecordData>> watchAll() {
-    return (_db.select(_db.debtRecords)
-          ..where((d) => d.deletedAt.isNull()))
-        .watch();
+    return (_db.select(
+      _db.debtRecords,
+    )..where((d) => d.deletedAt.isNull())).watch();
   }
 
   Stream<DebtRecordData?> watchById(String id) {
@@ -30,22 +30,39 @@ class DebtRepo {
   Future<void> update(DebtRecordsCompanion d) async {
     if (!d.id.present) throw ArgumentError('id is required for update');
     final id = d.id.value;
-    await (_db.update(_db.debtRecords)..where((row) => row.id.equals(id)))
-        .write(d);
-    await (_db.update(_db.debtRecords)..where((row) => row.id.equals(id)))
-        .write(DebtRecordsCompanion(
-      syncStatus: const Value('pending_sync'),
-      updatedAt: Value(DateTime.now()),
-    ));
+    await (_db.update(
+      _db.debtRecords,
+    )..where((row) => row.id.equals(id))).write(d);
+    await (_db.update(
+      _db.debtRecords,
+    )..where((row) => row.id.equals(id))).write(
+      DebtRecordsCompanion(
+        syncStatus: const Value('pending_sync'),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
   }
 
   Future<void> settle(String id) async {
-    await (_db.update(_db.debtRecords)..where((d) => d.id.equals(id)))
-        .write(DebtRecordsCompanion(
-      status: const Value('settled'),
-      remainingBalance: const Value(0.0),
-      syncStatus: const Value('pending_sync'),
-      updatedAt: Value(DateTime.now()),
-    ));
+    await (_db.update(_db.debtRecords)..where((d) => d.id.equals(id))).write(
+      DebtRecordsCompanion(
+        status: const Value('settled'),
+        remainingBalance: const Value(0.0),
+        syncStatus: const Value('pending_sync'),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  Future<void> softDelete(String id) async {
+    await (_db.update(
+      _db.debtRecords,
+    )..where((row) => row.id.equals(id))).write(
+      DebtRecordsCompanion(
+        deletedAt: Value(DateTime.now()),
+        syncStatus: const Value('pending_sync'),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
   }
 }

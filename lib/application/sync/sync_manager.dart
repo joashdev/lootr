@@ -25,6 +25,7 @@ class SyncManager {
   final String? _storedAccessToken;
   final String? Function()? _onTokenExpiredSync;
   final Future<String?> Function()? _onTokenExpired;
+  final Future<void> Function()? _postSyncHook;
 
   Timer? _retryTimer;
   int _retryDelay = 30;
@@ -39,23 +40,25 @@ class SyncManager {
     String? Function()? onTokenExpired,
     Future<String?> Function()? onTokenExpiredAsync,
     ConflictApplier? conflictApplier,
-  })  : _db = db,
-        _syncMetadataRepo = syncMetadataRepo,
-        _connectivityMonitor = connectivityMonitor,
-        _storedAccessToken = accessToken,
-        _onTokenExpiredSync = onTokenExpired,
-        _onTokenExpired = onTokenExpiredAsync,
-        _pushClient = PushClient(
-          db: db,
-          httpClient: httpClient,
-          syncMetadataRepo: syncMetadataRepo,
-        ),
-        _pullClient = PullClient(
-          db: db,
-          httpClient: httpClient,
-          syncMetadataRepo: syncMetadataRepo,
-          conflictApplier: conflictApplier ?? ConflictApplier(),
-        );
+    Future<void> Function()? postSyncHook,
+  }) : _db = db,
+       _syncMetadataRepo = syncMetadataRepo,
+       _connectivityMonitor = connectivityMonitor,
+       _storedAccessToken = accessToken,
+       _onTokenExpiredSync = onTokenExpired,
+       _onTokenExpired = onTokenExpiredAsync,
+       _postSyncHook = postSyncHook,
+       _pushClient = PushClient(
+         db: db,
+         httpClient: httpClient,
+         syncMetadataRepo: syncMetadataRepo,
+       ),
+       _pullClient = PullClient(
+         db: db,
+         httpClient: httpClient,
+         syncMetadataRepo: syncMetadataRepo,
+         conflictApplier: conflictApplier ?? ConflictApplier(),
+       );
 
   Stream<void> get onSyncComplete => _syncCompleteController.stream;
 
@@ -71,19 +74,25 @@ class SyncManager {
     try {
       final now = DateTime.now().toUtc();
       await _syncMetadataRepo.set(
-          SyncMetadataRepo.keyLastSyncAttemptAt, now.toIso8601String());
+        SyncMetadataRepo.keyLastSyncAttemptAt,
+        now.toIso8601String(),
+      );
 
       final isAuthenticated = token != null;
       if (!isAuthenticated) {
         await _syncMetadataRepo.set(
-            SyncMetadataRepo.keyLastSyncStatus, 'aborted_auth');
+          SyncMetadataRepo.keyLastSyncStatus,
+          'aborted_auth',
+        );
         return;
       }
 
       final online = await _connectivityMonitor.isOnline;
       if (!online) {
         await _syncMetadataRepo.set(
-            SyncMetadataRepo.keyLastSyncStatus, 'aborted_offline');
+          SyncMetadataRepo.keyLastSyncStatus,
+          'aborted_offline',
+        );
         return;
       }
 
@@ -91,9 +100,13 @@ class SyncManager {
       final pushResult = await _pushClient.push(accessToken: effectiveToken);
       if (!pushResult.success) {
         await _syncMetadataRepo.set(
-            SyncMetadataRepo.keyLastSyncStatus, 'failed');
+          SyncMetadataRepo.keyLastSyncStatus,
+          'failed',
+        );
         await _syncMetadataRepo.set(
-            SyncMetadataRepo.keyLastSyncError, pushResult.error ?? 'Push failed');
+          SyncMetadataRepo.keyLastSyncError,
+          pushResult.error ?? 'Push failed',
+        );
 
         if (pushResult.error?.contains('Unauthorized') == true ||
             pushResult.error?.contains('401') == true) {
@@ -103,13 +116,15 @@ class SyncManager {
           } else if (onTokenExpired != null) {
             newToken = onTokenExpired();
           } else if (_onTokenExpired != null) {
-            newToken = await _onTokenExpired!();
+            newToken = await _onTokenExpired();
           } else if (_onTokenExpiredSync != null) {
-            newToken = _onTokenExpiredSync!();
+            newToken = _onTokenExpiredSync();
           }
           if (newToken != null) {
             effectiveToken = newToken;
-            final retryPush = await _pushClient.push(accessToken: effectiveToken);
+            final retryPush = await _pushClient.push(
+              accessToken: effectiveToken,
+            );
             if (!retryPush.success) {
               await _scheduleRetry();
               return;
@@ -127,10 +142,13 @@ class SyncManager {
       final pullResult = await _pullClient.pull(accessToken: effectiveToken);
       if (!pullResult.success) {
         await _syncMetadataRepo.set(
-            SyncMetadataRepo.keyLastSyncStatus, 'partial');
+          SyncMetadataRepo.keyLastSyncStatus,
+          'partial',
+        );
         await _syncMetadataRepo.set(
-            SyncMetadataRepo.keyLastSyncError,
-            pullResult.error ?? 'Pull failed (push was successful)');
+          SyncMetadataRepo.keyLastSyncError,
+          pullResult.error ?? 'Pull failed (push was successful)',
+        );
       }
 
       await _postSyncHooks();
@@ -139,10 +157,11 @@ class SyncManager {
 
       await _updateSyncMetadata(true);
     } catch (e) {
+      await _syncMetadataRepo.set(SyncMetadataRepo.keyLastSyncStatus, 'failed');
       await _syncMetadataRepo.set(
-          SyncMetadataRepo.keyLastSyncStatus, 'failed');
-      await _syncMetadataRepo.set(
-          SyncMetadataRepo.keyLastSyncError, e.toString());
+        SyncMetadataRepo.keyLastSyncError,
+        e.toString(),
+      );
       await _scheduleRetry();
     } finally {
       _releaseLock();
@@ -171,6 +190,10 @@ class SyncManager {
     try {
       await _countSyncRecords();
     } catch (_) {}
+
+    try {
+      await _postSyncHook?.call();
+    } catch (_) {}
   }
 
   Future<void> _countSyncRecords() async {
@@ -192,9 +215,13 @@ class SyncManager {
       }
     }
     await _syncMetadataRepo.set(
-        SyncMetadataRepo.keySyncFailedCount, failedCount.toString());
+      SyncMetadataRepo.keySyncFailedCount,
+      failedCount.toString(),
+    );
     await _syncMetadataRepo.set(
-        SyncMetadataRepo.keySyncPendingCount, pendingCount.toString());
+      SyncMetadataRepo.keySyncPendingCount,
+      pendingCount.toString(),
+    );
   }
 
   int _parseCount(dynamic cnt) {
@@ -209,17 +236,22 @@ class SyncManager {
       await _countSyncRecords();
 
       if (success) {
-        final failedCount =
-            await _syncMetadataRepo.get(SyncMetadataRepo.keySyncFailedCount);
+        final failedCount = await _syncMetadataRepo.get(
+          SyncMetadataRepo.keySyncFailedCount,
+        );
         if (failedCount != null && int.tryParse(failedCount) != null) {
           if (int.parse(failedCount) > 0) {
             await _syncMetadataRepo.set(
-                SyncMetadataRepo.keyLastSyncStatus, 'partial');
+              SyncMetadataRepo.keyLastSyncStatus,
+              'partial',
+            );
             return;
           }
         }
         await _syncMetadataRepo.set(
-            SyncMetadataRepo.keyLastSyncStatus, 'success');
+          SyncMetadataRepo.keyLastSyncStatus,
+          'success',
+        );
       }
     } catch (_) {}
   }

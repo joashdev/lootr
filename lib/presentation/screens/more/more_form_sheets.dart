@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../application/providers/repo_providers.dart';
+import '../../../application/providers/notification_provider.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/radius.dart';
 import '../../../core/theme/spacing.dart';
@@ -42,6 +43,37 @@ double? _parseAmount(String raw) {
   final cleaned = raw.trim().replaceAll(',', '');
   if (cleaned.isEmpty) return null;
   return double.tryParse(cleaned);
+}
+
+Future<void> _rebuildNotifications(WidgetRef ref) =>
+    ref.read(notificationSchedulerProvider).rebuildSchedule();
+
+DateTime? _parseDateOnly(String raw) {
+  final trimmed = raw.trim();
+  if (trimmed.isEmpty) return null;
+
+  final parts = trimmed.split('-');
+  if (parts.length != 3) return null;
+
+  final year = int.tryParse(parts[0]);
+  final month = int.tryParse(parts[1]);
+  final day = int.tryParse(parts[2]);
+  if (year == null || month == null || day == null) return null;
+
+  final parsed = DateTime(year, month, day);
+  if (parsed.year != year || parsed.month != month || parsed.day != day) {
+    return null;
+  }
+
+  return DateTime(year, month, day, 9);
+}
+
+String _formatDateOnly(DateTime? date) {
+  if (date == null) return '';
+
+  final month = date.month.toString().padLeft(2, '0');
+  final day = date.day.toString().padLeft(2, '0');
+  return '${date.year}-$month-$day';
 }
 
 DateTime _nextOccurrenceForRule(String rule, {DateTime? from}) {
@@ -362,6 +394,9 @@ Future<void> showDebtSheet(
   final remainingController = TextEditingController(
     text: initial == null ? '' : initial.remainingBalance.toStringAsFixed(2),
   );
+  final dueDateController = TextEditingController(
+    text: _formatDateOnly(initial?.dueDate),
+  );
   final noteController = TextEditingController(text: initial?.note ?? '');
   var direction = initial?.debtDirection ?? DebtDirection.borrowed;
 
@@ -427,6 +462,18 @@ Future<void> showDebtSheet(
           ),
           const SizedBox(height: AppSpacing.space3),
           _LabeledField(
+            label: 'Due Date (Optional)',
+            child: TextField(
+              controller: dueDateController,
+              decoration: const InputDecoration(
+                hintText: 'YYYY-MM-DD',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.datetime,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.space3),
+          _LabeledField(
             label: 'Note (Optional)',
             child: TextField(
               controller: noteController,
@@ -446,10 +493,23 @@ Future<void> showDebtSheet(
                 final amount = _parseAmount(amountController.text);
                 final remaining =
                     _parseAmount(remainingController.text) ?? amount ?? 0;
+                final dueDateRaw = dueDateController.text.trim();
                 if (counterparty.isEmpty || amount == null || amount <= 0) {
                   _showMessage(
                     context,
                     'Enter who this is with and a valid amount.',
+                    variant: AppSnackBarVariant.error,
+                  );
+                  return;
+                }
+
+                final dueDate = dueDateRaw.isEmpty
+                    ? null
+                    : _parseDateOnly(dueDateRaw);
+                if (dueDateRaw.isNotEmpty && dueDate == null) {
+                  _showMessage(
+                    context,
+                    'Enter due date as YYYY-MM-DD.',
                     variant: AppSnackBarVariant.error,
                   );
                   return;
@@ -473,6 +533,7 @@ Future<void> showDebtSheet(
                       debtDirection: direction,
                       amount: amount,
                       remainingBalance: remaining.clamp(0, amount).toDouble(),
+                      dueDate: Value(dueDate),
                       note: Value(note.isEmpty ? null : note),
                       status: status,
                     ),
@@ -487,11 +548,13 @@ Future<void> showDebtSheet(
                       remainingBalance: Value(
                         remaining.clamp(0, amount).toDouble(),
                       ),
+                      dueDate: Value(dueDate),
                       note: Value(note.isEmpty ? null : note),
                       status: Value(status),
                     ),
                   );
                 }
+                await _rebuildNotifications(ref);
 
                 if (sheetContext.mounted) Navigator.of(sheetContext).pop();
                 _showMessage(
@@ -735,6 +798,7 @@ Future<void> showGoalContributionSheet(
                           occurredAt: DateTime.now(),
                         ),
                       );
+                  await _rebuildNotifications(ref);
                 }
 
                 if (sheetContext.mounted) Navigator.of(sheetContext).pop();
@@ -872,6 +936,7 @@ Future<void> showDebtPaymentSheet(
                         ),
                       );
                 }
+                await _rebuildNotifications(ref);
 
                 if (sheetContext.mounted) Navigator.of(sheetContext).pop();
                 _showMessage(
@@ -1038,6 +1103,7 @@ Future<void> showRecurringSheet(
                     ),
                   );
                 }
+                await _rebuildNotifications(ref);
 
                 if (sheetContext.mounted) Navigator.of(sheetContext).pop();
                 _showMessage(
@@ -1145,7 +1211,9 @@ Future<void> showCategorySheet(
                         shape: BoxShape.circle,
                         border: Border.all(
                           color: isSelected
-                              ? Theme.of(sheetContext).colorScheme.surface.withValues(alpha: 0.6)
+                              ? Theme.of(
+                                  sheetContext,
+                                ).colorScheme.surface.withValues(alpha: 0.6)
                               : Colors.transparent,
                           width: 3,
                         ),

@@ -1,16 +1,15 @@
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../application/providers/debts_provider.dart';
+import '../../../application/providers/notification_provider.dart';
 import '../../../application/providers/repo_providers.dart';
 import '../../../core/format/money_format.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
-import '../../../data/database/app_database.dart';
 import '../../../domain/entities/debt_record.dart';
 import '../../../domain/value_objects/field_types.dart';
 import '../../shared/components/app_snackbar.dart';
@@ -167,14 +166,8 @@ class _DebtRow extends ConsumerWidget {
       ),
     );
     if (confirmed != true) return;
-    await ref
-        .read(debtRepoProvider)
-        .update(
-          DebtRecordsCompanion(
-            id: Value(debt.id),
-            deletedAt: Value(DateTime.now()),
-          ),
-        );
+    await ref.read(debtRepoProvider).softDelete(debt.id);
+    await ref.read(notificationSchedulerProvider).rebuildSchedule();
     if (!context.mounted) return;
     AppSnackBar.show(
       context,

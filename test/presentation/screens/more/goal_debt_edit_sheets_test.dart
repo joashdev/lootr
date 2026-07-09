@@ -43,10 +43,10 @@ Future<void> _openSheet(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-Future<void> _save(WidgetTester tester) async {
-  await tester.ensureVisible(find.text('Save Changes'));
+Future<void> _save(WidgetTester tester, {String label = 'Save Changes'}) async {
+  await tester.ensureVisible(find.text(label));
   await tester.pumpAndSettle();
-  await tester.tap(find.text('Save Changes'));
+  await tester.tap(find.text(label));
   await tester.pumpAndSettle();
 }
 
@@ -152,6 +152,42 @@ void main() {
     });
   });
 
+  group('showDebtSheet create mode', () {
+    testWidgets('saving persists an entered due date', (tester) async {
+      await tester.pumpWidget(
+        _wrapWithProviders(
+          db,
+          _SheetHost(onOpen: (context, ref) => showDebtSheet(context, ref)),
+        ),
+      );
+      await _openSheet(tester);
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Who is this with?'),
+        'Paolo',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, '0.00').first,
+        '3200',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, 'YYYY-MM-DD'),
+        '2026-08-01',
+      );
+      await _save(tester, label: 'Save Debt');
+
+      final rows = await db.select(db.debtRecords).get();
+      expect(rows, hasLength(1));
+      expect(rows.single.counterpartyName, 'Paolo');
+      expect(rows.single.dueDate, DateTime(2026, 8, 1, 9));
+      expect(find.text('Debt created.'), findsOneWidget);
+      await _expireSnackBar(tester);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    });
+  });
+
   group('showDebtSheet edit mode', () {
     final debt = DebtRecord(
       id: 'debt-1',
@@ -161,6 +197,7 @@ void main() {
       amount: 5000,
       remainingBalance: 2000,
       note: 'Lunch money',
+      dueDate: DateTime(2026, 3, 15, 9),
       status: DebtStatus.partiallyPaid,
       createdAt: DateTime(2026, 1, 1),
       updatedAt: DateTime(2026, 1, 1),
@@ -175,6 +212,7 @@ void main() {
           debtDirection: DebtDirection.borrowed,
           amount: 5000,
           remainingBalance: 2000,
+          dueDate: Value(DateTime(2026, 3, 15, 9)),
           note: const Value('Lunch money'),
           status: DebtStatus.partiallyPaid,
         ),
@@ -198,6 +236,7 @@ void main() {
       expect(find.text('Maria'), findsOneWidget);
       expect(find.text('5000.00'), findsOneWidget);
       expect(find.text('2000.00'), findsOneWidget);
+      expect(find.text('2026-03-15'), findsOneWidget);
       expect(find.text('Lunch money'), findsOneWidget);
 
       await tester.pumpWidget(const SizedBox.shrink());
@@ -220,9 +259,10 @@ void main() {
         find.widgetWithText(TextField, 'Maria'),
         'Maria Santos',
       );
+      await tester.enterText(find.widgetWithText(TextField, '2000.00'), '0');
       await tester.enterText(
-        find.widgetWithText(TextField, '2000.00'),
-        '0',
+        find.widgetWithText(TextField, '2026-03-15'),
+        '2026-04-20',
       );
       await _save(tester);
 
@@ -232,6 +272,7 @@ void main() {
       expect(rows.single.counterpartyName, 'Maria Santos');
       expect(rows.single.amount, 5000);
       expect(rows.single.remainingBalance, 0);
+      expect(rows.single.dueDate, DateTime(2026, 4, 20, 9));
       expect(rows.single.status, DebtStatus.settled);
       expect(find.text('Debt updated.'), findsOneWidget);
       await _expireSnackBar(tester);

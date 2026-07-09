@@ -1,6 +1,6 @@
 # Task 19 — Local Notifications
 
-**Status:** [ ]
+**Status:** [x]
 
 ---
 
@@ -73,15 +73,15 @@ Wire into `go_router` deep link handling.
 
 ## Acceptance Criteria
 
-- [ ] Recurring reminders are scheduled for templates with `reminder_enabled=true`
-- [ ] Notification fires at correct date/time
-- [ ] Tapping notification deep links to correct screen
-- [ ] Notification settings toggles enable/disable per type
-- [ ] Permissions are requested and handled gracefully
-- [ ] `notifications` table is updated (is_completed=true) on delivery
-- [ ] Rescheduling works after app restart
-- [ ] Deleted templates/debts cancel their scheduled notifications
-- [ ] iOS 64-notification limit is respected
+- [x] Recurring reminders are scheduled for templates with `reminder_enabled=true`
+- [x] Notification fires at correct date/time
+- [x] Tapping notification deep links to correct screen
+- [x] Notification settings toggles enable/disable per type
+- [x] Permissions are requested and handled gracefully
+- [x] `notifications` table is updated (is_completed=true) on delivery
+- [x] Rescheduling works after app restart
+- [x] Deleted templates/debts cancel their scheduled notifications
+- [x] iOS 64-notification limit is respected
 
 ## Files Likely Affected
 

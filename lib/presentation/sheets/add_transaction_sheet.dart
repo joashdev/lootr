@@ -9,6 +9,7 @@ import '../../application/providers/accounts_provider.dart';
 import '../../application/providers/categories_provider.dart';
 import '../../application/providers/debts_provider.dart';
 import '../../application/providers/filtered_transactions_provider.dart';
+import '../../application/providers/notification_provider.dart';
 import '../../application/providers/payees_provider.dart';
 import '../../application/providers/repo_providers.dart';
 import '../../application/providers/undo_stack_provider.dart';
@@ -279,7 +280,8 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   }) {
     final normalized = _normalize(label);
     if (normalized.isEmpty) return null;
-    final group = (direction ?? _direction) == fields.TransactionDirection.income
+    final group =
+        (direction ?? _direction) == fields.TransactionDirection.income
         ? fields.CategoryGroup.income
         : fields.CategoryGroup.expense;
     final candidates = categories
@@ -500,6 +502,9 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
           transactionRepo,
           accountRepo,
         ).call(transaction);
+        if (result.isSuccess) {
+          await ref.read(notificationSchedulerProvider).rebuildSchedule();
+        }
         if (!mounted) return;
         result.fold(
           onSuccess: (_) => _handleSaveSuccess(
@@ -514,6 +519,9 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
           transactionRepo,
           accountRepo,
         ).call(transaction);
+        if (result.isSuccess) {
+          await ref.read(notificationSchedulerProvider).rebuildSchedule();
+        }
         if (!mounted) return;
         result.fold(
           onSuccess: (transactionId) =>
@@ -597,9 +605,11 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                 await ref
                     .read(transactionRepoProvider)
                     .update(previousTransaction.toUpdateCompanion());
+                await ref.read(notificationSchedulerProvider).rebuildSchedule();
                 return;
               }
               await ref.read(transactionRepoProvider).softDelete(transactionId);
+              await ref.read(notificationSchedulerProvider).rebuildSchedule();
             },
             createdAt: DateTime.now(),
           ),
@@ -928,7 +938,9 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  tooltip: _isListening ? 'Stop listening' : 'Start voice input',
+                  tooltip: _isListening
+                      ? 'Stop listening'
+                      : 'Start voice input',
                   onPressed: _toggleSpeechInput,
                   icon: Icon(
                     _isListening ? LucideIcons.audioLines : LucideIcons.mic,
@@ -1021,7 +1033,10 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     return categories.firstWhere((category) => category.id == matchedId).name;
   }
 
-  Widget _buildPreviewCard(ParsedTransaction parsed, List<Category> categories) {
+  Widget _buildPreviewCard(
+    ParsedTransaction parsed,
+    List<Category> categories,
+  ) {
     final lootrColors = context.lootrColors;
     // The parser produces a single overall confidence, so it is surfaced once
     // below the rows rather than repeated per field.

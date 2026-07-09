@@ -30,8 +30,7 @@ class TransactionRepo {
   TransactionRepo(this._db);
 
   Stream<List<TransactionData>> watchFiltered(TransactionRepoFilters filters) {
-    final q = _db.select(_db.transactions)
-      ..where((t) => t.deletedAt.isNull());
+    final q = _db.select(_db.transactions)..where((t) => t.deletedAt.isNull());
 
     if (filters.accountId != null) {
       q.where((t) => t.accountId.equals(filters.accountId!));
@@ -82,27 +81,31 @@ class TransactionRepo {
     await _db.transaction(() async {
       await _db.into(_db.transactions).insert(tx);
 
-      final row = await (_db.select(_db.transactions)
-            ..where((t) => t.id.equals(txId))
-            ..limit(1))
-          .getSingle();
+      final row =
+          await (_db.select(_db.transactions)
+                ..where((t) => t.id.equals(txId))
+                ..limit(1))
+              .getSingle();
 
       final balanceChange = row.transactionDirection == 'income'
           ? row.amount
           : -row.amount;
 
-      final account = await (_db.select(_db.accounts)
-            ..where((a) => a.id.equals(row.accountId))
-            ..limit(1))
-          .getSingle();
+      final account =
+          await (_db.select(_db.accounts)
+                ..where((a) => a.id.equals(row.accountId))
+                ..limit(1))
+              .getSingle();
 
-      await (_db.update(_db.accounts)
-            ..where((a) => a.id.equals(row.accountId)))
-          .write(AccountsCompanion(
-        balance: Value(account.balance + balanceChange),
-        syncStatus: const Value('pending_sync'),
-        updatedAt: Value(DateTime.now()),
-      ));
+      await (_db.update(
+        _db.accounts,
+      )..where((a) => a.id.equals(row.accountId))).write(
+        AccountsCompanion(
+          balance: Value(account.balance + balanceChange),
+          syncStatus: const Value('pending_sync'),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
 
       if (row.recurringTemplateId != null) {
         await _advanceNextOccurrence(row.recurringTemplateId!);
@@ -117,92 +120,109 @@ class TransactionRepo {
     final id = tx.id.value;
 
     await _db.transaction(() async {
-      final old = await (_db.select(_db.transactions)
-            ..where((t) => t.id.equals(id))
-            ..limit(1))
-          .getSingle();
+      final old =
+          await (_db.select(_db.transactions)
+                ..where((t) => t.id.equals(id))
+                ..limit(1))
+              .getSingle();
 
-      final oldImpact =
-          old.transactionDirection == 'income' ? old.amount : -old.amount;
+      final oldImpact = old.transactionDirection == 'income'
+          ? old.amount
+          : -old.amount;
 
-      final oldAccount = await (_db.select(_db.accounts)
-            ..where((a) => a.id.equals(old.accountId))
-            ..limit(1))
-          .getSingle();
+      final oldAccount =
+          await (_db.select(_db.accounts)
+                ..where((a) => a.id.equals(old.accountId))
+                ..limit(1))
+              .getSingle();
 
-      await (_db.update(_db.accounts)
-            ..where((a) => a.id.equals(old.accountId)))
-          .write(AccountsCompanion(
-        balance: Value(oldAccount.balance - oldImpact),
-        syncStatus: const Value('pending_sync'),
-        updatedAt: Value(DateTime.now()),
-      ));
+      await (_db.update(
+        _db.accounts,
+      )..where((a) => a.id.equals(old.accountId))).write(
+        AccountsCompanion(
+          balance: Value(oldAccount.balance - oldImpact),
+          syncStatus: const Value('pending_sync'),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
 
-      await (_db.update(_db.transactions)..where((t) => t.id.equals(id)))
-          .write(tx);
+      await (_db.update(
+        _db.transactions,
+      )..where((t) => t.id.equals(id))).write(tx);
 
-      await (_db.update(_db.transactions)..where((t) => t.id.equals(id)))
-          .write(TransactionsCompanion(
-        syncStatus: const Value('pending_sync'),
-        updatedAt: Value(DateTime.now()),
-      ));
+      await (_db.update(_db.transactions)..where((t) => t.id.equals(id))).write(
+        TransactionsCompanion(
+          syncStatus: const Value('pending_sync'),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
 
-      final updated = await (_db.select(_db.transactions)
-            ..where((t) => t.id.equals(id))
-            ..limit(1))
-          .getSingle();
+      final updated =
+          await (_db.select(_db.transactions)
+                ..where((t) => t.id.equals(id))
+                ..limit(1))
+              .getSingle();
 
       final newImpact = updated.transactionDirection == 'income'
           ? updated.amount
           : -updated.amount;
 
-      final newAccount = await (_db.select(_db.accounts)
-            ..where((a) => a.id.equals(updated.accountId))
-            ..limit(1))
-          .getSingle();
+      final newAccount =
+          await (_db.select(_db.accounts)
+                ..where((a) => a.id.equals(updated.accountId))
+                ..limit(1))
+              .getSingle();
 
-      await (_db.update(_db.accounts)
-            ..where((a) => a.id.equals(updated.accountId)))
-          .write(AccountsCompanion(
-        balance: Value(newAccount.balance + newImpact),
-        syncStatus: const Value('pending_sync'),
-        updatedAt: Value(DateTime.now()),
-      ));
+      await (_db.update(
+        _db.accounts,
+      )..where((a) => a.id.equals(updated.accountId))).write(
+        AccountsCompanion(
+          balance: Value(newAccount.balance + newImpact),
+          syncStatus: const Value('pending_sync'),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
     });
   }
 
   Future<void> softDelete(String id) async {
     await _db.transaction(() async {
-      final rows = await (_db.select(_db.transactions)
-            ..where((t) => t.id.equals(id) & t.deletedAt.isNull())
-            ..limit(1))
-          .get();
+      final rows =
+          await (_db.select(_db.transactions)
+                ..where((t) => t.id.equals(id) & t.deletedAt.isNull())
+                ..limit(1))
+              .get();
       if (rows.isEmpty) return;
       final txn = rows.first;
 
-      final impact =
-          txn.transactionDirection == 'income' ? txn.amount : -txn.amount;
+      final impact = txn.transactionDirection == 'income'
+          ? txn.amount
+          : -txn.amount;
 
-      final account = await (_db.select(_db.accounts)
-            ..where((a) => a.id.equals(txn.accountId))
-            ..limit(1))
-          .getSingle();
+      final account =
+          await (_db.select(_db.accounts)
+                ..where((a) => a.id.equals(txn.accountId))
+                ..limit(1))
+              .getSingle();
 
-      await (_db.update(_db.accounts)
-            ..where((a) => a.id.equals(txn.accountId)))
-          .write(AccountsCompanion(
-        balance: Value(account.balance - impact),
-        syncStatus: const Value('pending_sync'),
-        updatedAt: Value(DateTime.now()),
-      ));
+      await (_db.update(
+        _db.accounts,
+      )..where((a) => a.id.equals(txn.accountId))).write(
+        AccountsCompanion(
+          balance: Value(account.balance - impact),
+          syncStatus: const Value('pending_sync'),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
 
       final now = DateTime.now();
-      await (_db.update(_db.transactions)..where((t) => t.id.equals(id)))
-          .write(TransactionsCompanion(
-        deletedAt: Value(now),
-        syncStatus: const Value('pending_sync'),
-        updatedAt: Value(now),
-      ));
+      await (_db.update(_db.transactions)..where((t) => t.id.equals(id))).write(
+        TransactionsCompanion(
+          deletedAt: Value(now),
+          syncStatus: const Value('pending_sync'),
+          updatedAt: Value(now),
+        ),
+      );
     });
   }
 
@@ -211,57 +231,68 @@ class TransactionRepo {
   /// its id (sync-friendly — the same row flips back to pending_sync).
   Future<void> restore(String id) async {
     await _db.transaction(() async {
-      final rows = await (_db.select(_db.transactions)
-            ..where((t) => t.id.equals(id) & t.deletedAt.isNotNull())
-            ..limit(1))
-          .get();
+      final rows =
+          await (_db.select(_db.transactions)
+                ..where((t) => t.id.equals(id) & t.deletedAt.isNotNull())
+                ..limit(1))
+              .get();
       if (rows.isEmpty) return;
       final txn = rows.first;
 
-      final impact =
-          txn.transactionDirection == 'income' ? txn.amount : -txn.amount;
+      final impact = txn.transactionDirection == 'income'
+          ? txn.amount
+          : -txn.amount;
 
-      final account = await (_db.select(_db.accounts)
-            ..where((a) => a.id.equals(txn.accountId))
-            ..limit(1))
-          .getSingle();
+      final account =
+          await (_db.select(_db.accounts)
+                ..where((a) => a.id.equals(txn.accountId))
+                ..limit(1))
+              .getSingle();
 
-      await (_db.update(_db.accounts)
-            ..where((a) => a.id.equals(txn.accountId)))
-          .write(AccountsCompanion(
-        balance: Value(account.balance + impact),
-        syncStatus: const Value('pending_sync'),
-        updatedAt: Value(DateTime.now()),
-      ));
+      await (_db.update(
+        _db.accounts,
+      )..where((a) => a.id.equals(txn.accountId))).write(
+        AccountsCompanion(
+          balance: Value(account.balance + impact),
+          syncStatus: const Value('pending_sync'),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
 
-      await (_db.update(_db.transactions)..where((t) => t.id.equals(id)))
-          .write(TransactionsCompanion(
-        deletedAt: const Value(null),
-        syncStatus: const Value('pending_sync'),
-        updatedAt: Value(DateTime.now()),
-      ));
+      await (_db.update(_db.transactions)..where((t) => t.id.equals(id))).write(
+        TransactionsCompanion(
+          deletedAt: const Value(null),
+          syncStatus: const Value('pending_sync'),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
     });
   }
 
   Future<void> _advanceNextOccurrence(String templateId) async {
-    final template = await (_db.select(_db.recurringTemplates)
-          ..where((t) => t.id.equals(templateId))
-          ..limit(1))
-        .getSingle();
+    final template =
+        await (_db.select(_db.recurringTemplates)
+              ..where((t) => t.id.equals(templateId))
+              ..limit(1))
+            .getSingle();
 
     if (template.nextOccurrenceAt == null) return;
 
     final next = _computeNext(
-        template.nextOccurrenceAt!, template.recurrenceRule);
+      template.nextOccurrenceAt!,
+      template.recurrenceRule,
+    );
     if (next == null) return;
 
-    await (_db.update(_db.recurringTemplates)
-          ..where((t) => t.id.equals(templateId)))
-        .write(RecurringTemplatesCompanion(
-      nextOccurrenceAt: Value(next),
-      syncStatus: const Value('pending_sync'),
-      updatedAt: Value(DateTime.now()),
-    ));
+    await (_db.update(
+      _db.recurringTemplates,
+    )..where((t) => t.id.equals(templateId))).write(
+      RecurringTemplatesCompanion(
+        nextOccurrenceAt: Value(next),
+        syncStatus: const Value('pending_sync'),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
   }
 
   DateTime? _computeNext(DateTime current, String rule) {
@@ -278,8 +309,11 @@ class TransactionRepo {
         final d = current.day > 28 ? 28 : current.day;
         return DateTime(y, m, d);
       case 'yearly':
-        return DateTime(current.year + 1, current.month,
-            current.day > 28 ? 28 : current.day);
+        return DateTime(
+          current.year + 1,
+          current.month,
+          current.day > 28 ? 28 : current.day,
+        );
       default:
         return null;
     }
