@@ -8,9 +8,9 @@ class RecurringRepo {
   RecurringRepo(this._db);
 
   Stream<List<RecurringTemplateData>> watchAll() {
-    return (_db.select(_db.recurringTemplates)
-          ..where((r) => r.deletedAt.isNull()))
-        .watch();
+    return (_db.select(
+      _db.recurringTemplates,
+    )..where((r) => r.deletedAt.isNull())).watch();
   }
 
   Stream<RecurringTemplateData?> watchById(String id) {
@@ -23,8 +23,7 @@ class RecurringRepo {
 
   Stream<List<RecurringTemplateData>> watchDue({DateTime? before}) {
     final q = _db.select(_db.recurringTemplates)
-      ..where(
-          (r) => r.deletedAt.isNull() & r.autoCreateDisabled.equals(false));
+      ..where((r) => r.deletedAt.isNull() & r.autoCreateDisabled.equals(false));
 
     if (before != null) {
       q.where((r) => r.nextOccurrenceAt.isSmallerOrEqualValue(before));
@@ -44,37 +43,57 @@ class RecurringRepo {
   Future<void> update(RecurringTemplatesCompanion r) async {
     if (!r.id.present) throw ArgumentError('id is required for update');
     final id = r.id.value;
-    await (_db.update(_db.recurringTemplates)
-          ..where((row) => row.id.equals(id)))
-        .write(r);
-    await (_db.update(_db.recurringTemplates)
-          ..where((row) => row.id.equals(id)))
-        .write(RecurringTemplatesCompanion(
-      syncStatus: const Value('pending_sync'),
-      updatedAt: Value(DateTime.now()),
-    ));
+    await (_db.update(
+      _db.recurringTemplates,
+    )..where((row) => row.id.equals(id))).write(r);
+    await (_db.update(
+      _db.recurringTemplates,
+    )..where((row) => row.id.equals(id))).write(
+      RecurringTemplatesCompanion(
+        syncStatus: const Value('pending_sync'),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
   }
 
   Future<void> advanceNextOccurrence(String id) async {
     await _db.transaction(() async {
-      final template = await (_db.select(_db.recurringTemplates)
-            ..where((t) => t.id.equals(id))
-            ..limit(1))
-          .getSingle();
+      final template =
+          await (_db.select(_db.recurringTemplates)
+                ..where((t) => t.id.equals(id))
+                ..limit(1))
+              .getSingle();
 
       if (template.nextOccurrenceAt == null) return;
 
       final next = _computeNext(
-          template.nextOccurrenceAt!, template.recurrenceRule);
+        template.nextOccurrenceAt!,
+        template.recurrenceRule,
+      );
       if (next == null) return;
 
-      await (_db.update(_db.recurringTemplates)..where((t) => t.id.equals(id)))
-          .write(RecurringTemplatesCompanion(
-        nextOccurrenceAt: Value(next),
+      await (_db.update(
+        _db.recurringTemplates,
+      )..where((t) => t.id.equals(id))).write(
+        RecurringTemplatesCompanion(
+          nextOccurrenceAt: Value(next),
+          syncStatus: const Value('pending_sync'),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+    });
+  }
+
+  Future<void> softDelete(String id) async {
+    await (_db.update(
+      _db.recurringTemplates,
+    )..where((row) => row.id.equals(id))).write(
+      RecurringTemplatesCompanion(
+        deletedAt: Value(DateTime.now()),
         syncStatus: const Value('pending_sync'),
         updatedAt: Value(DateTime.now()),
-      ));
-    });
+      ),
+    );
   }
 
   DateTime? _computeNext(DateTime current, String rule) {
@@ -91,8 +110,11 @@ class RecurringRepo {
         final d = current.day > 28 ? 28 : current.day;
         return DateTime(y, m, d);
       case 'yearly':
-        return DateTime(current.year + 1, current.month,
-            current.day > 28 ? 28 : current.day);
+        return DateTime(
+          current.year + 1,
+          current.month,
+          current.day > 28 ? 28 : current.day,
+        );
       default:
         return null;
     }

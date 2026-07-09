@@ -104,6 +104,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         redirect: (context, state) => '/more/settings/sync',
       ),
       GoRoute(
+        path: '/recurring',
+        redirect: (context, state) {
+          final filter = state.uri.queryParameters['filter'];
+          final suffix = filter == null ? '' : '?filter=$filter';
+          return '/more/recurring$suffix';
+        },
+      ),
+      GoRoute(
         path: '/recurring/:templateId',
         redirect: (context, state) =>
             '/more/recurring/${state.pathParameters['templateId']}',
@@ -160,7 +168,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/transactions',
-                builder: (context, state) => const TransactionsScreen(),
+                builder: (context, state) => TransactionsScreen(
+                  initialModeFilter: state.uri.queryParameters['filter'],
+                ),
                 routes: [
                   GoRoute(
                     path: ':id',
@@ -240,8 +250,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   ),
                   GoRoute(
                     path: 'recurring',
-                    pageBuilder: (context, state) =>
-                        _pushPage(const RecurringScreen(), key: state.pageKey),
+                    pageBuilder: (context, state) => _pushPage(
+                      RecurringScreen(
+                        initialFilter: state.uri.queryParameters['filter'],
+                      ),
+                      key: state.pageKey,
+                    ),
                     routes: [
                       GoRoute(
                         path: ':id',

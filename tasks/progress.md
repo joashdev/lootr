@@ -2,6 +2,11 @@
 
 ---
 
+## 2026-07-07 — Task 19 Complete
+
+**Task:** 19 — Local Notifications ✅
+**Summary:** Added a local-first notifications layer built around `NotificationScheduler`, a testable `LocalNotificationsClient` wrapper for `flutter_local_notifications`, and Riverpod-backed notification settings persisted in `SharedPreferences`. The scheduler now rebuilds reminders on app start, after sync, and after recurring/debt/transaction mutations via repository callbacks and a new sync post-hook. It schedules recurring, subscription, debt, bill-due, and installment-due notifications, writes active rows into the `notifications` table, marks delivered rows complete once they fall out of the pending plugin queue, deletes completed rows after 7 days, cancels orphaned reminders for deleted records, and caps pending reminders at 64. Deep-link payloads now route taps into `go_router` (`/transactions?filter=installment`, `/recurring/:id`, `/debts/:id`, `/recurring?filter=subscription`) with app bootstrap listening for notification opens. Notification settings screen toggles are now live and reschedule immediately. Added focused scheduler/provider/router/settings tests. Verification in the task worktree included `flutter pub get`, `dart run build_runner build --delete-conflicting-outputs`, targeted `flutter analyze --no-pub --no-fatal-infos`, and focused `flutter test --no-pub` for the new notification suite, all passing.
+
 ## 2026-06-28 — Task 18 Complete
 
 **Task:** 18 — Demo Data & Seed Data ✅

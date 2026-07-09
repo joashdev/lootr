@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../application/providers/accounts_provider.dart';
 import '../../../application/providers/categories_provider.dart';
 import '../../../application/providers/filtered_transactions_provider.dart';
+import '../../../application/providers/notification_provider.dart';
 import '../../../application/providers/payees_provider.dart';
 import '../../../application/providers/repo_providers.dart';
 import '../../../application/providers/sync_providers.dart';
@@ -23,6 +24,7 @@ import '../../../domain/entities/transaction.dart';
 import '../../../domain/use_cases/delete_transaction.dart';
 import '../../../domain/use_cases/delete_transfer.dart';
 import '../../../domain/value_objects/transaction_filters.dart';
+import '../../../domain/value_objects/undo_entry.dart';
 import '../more/more_form_sheets.dart';
 import '../../sheets/filter_sheet.dart';
 import '../../shared/category_visuals.dart';
@@ -37,7 +39,9 @@ import 'widgets/transaction_row.dart';
 import 'widgets/transaction_shimmer.dart';
 
 class TransactionsScreen extends ConsumerStatefulWidget {
-  const TransactionsScreen({super.key});
+  const TransactionsScreen({super.key, this.initialModeFilter});
+
+  final String? initialModeFilter;
 
   @override
   ConsumerState<TransactionsScreen> createState() => _TransactionsScreenState();
@@ -46,6 +50,53 @@ class TransactionsScreen extends ConsumerStatefulWidget {
 class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
+  String? _lastAppliedRouteModeFilter;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _applyRouteModeFilterIfNeeded();
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant TransactionsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialModeFilter == widget.initialModeFilter) {
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _applyRouteModeFilterIfNeeded();
+    });
+  }
+
+  void _applyRouteModeFilterIfNeeded() {
+    if (!mounted) {
+      return;
+    }
+
+    final filterNotifier = ref.read(transactionFiltersProvider.notifier);
+    final routeModeFilter = widget.initialModeFilter;
+    if (routeModeFilter == null || routeModeFilter.isEmpty) {
+      final lastAppliedRouteModeFilter = _lastAppliedRouteModeFilter;
+      _lastAppliedRouteModeFilter = null;
+      if (lastAppliedRouteModeFilter != null &&
+          ref.read(transactionFiltersProvider).mode ==
+              lastAppliedRouteModeFilter) {
+        filterNotifier.setMode(null);
+      }
+      return;
+    }
+
+    if (_lastAppliedRouteModeFilter == routeModeFilter) {
+      return;
+    }
+
+    _lastAppliedRouteModeFilter = routeModeFilter;
+    filterNotifier.setMode(routeModeFilter);
+  }
 
   @override
   void dispose() {
@@ -103,12 +154,11 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     }
 
     final sorted = Map<String, List<Transaction>>.fromEntries(
-      grouped.entries.toList()
-        ..sort((a, b) {
-          final dateA = DateFormat('dd/MM/yyyy').parse(a.key);
-          final dateB = DateFormat('dd/MM/yyyy').parse(b.key);
-          return dateB.compareTo(dateA);
-        }),
+      grouped.entries.toList()..sort((a, b) {
+        final dateA = DateFormat('dd/MM/yyyy').parse(a.key);
+        final dateB = DateFormat('dd/MM/yyyy').parse(b.key);
+        return dateB.compareTo(dateA);
+      }),
     );
 
     return sorted;
@@ -156,10 +206,27 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final result = isTransfer
         ? await DeleteTransfer(ref.read(transferRepoProvider)).call(id)
         : await DeleteTransaction(ref.read(transactionRepoProvider)).call(id);
+    if (!isTransfer && result.isSuccess) {
+      await ref.read(notificationSchedulerProvider).rebuildSchedule();
+    }
 
     result.fold(
       onSuccess: (undoEntry) {
-        ref.read(undoStackProvider.notifier).push(undoEntry);
+        ref
+            .read(undoStackProvider.notifier)
+            .push(
+              UndoEntry(
+                transactionId: undoEntry.transactionId,
+                message: undoEntry.message,
+                rollback: () async {
+                  await undoEntry.rollback();
+                  await ref
+                      .read(notificationSchedulerProvider)
+                      .rebuildSchedule();
+                },
+                createdAt: undoEntry.createdAt,
+              ),
+            );
         if (mounted) {
           AppSnackBar.show(
             context,
@@ -175,11 +242,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       },
       onFailure: (message, _) {
         if (mounted) {
-          AppSnackBar.show(
-            context,
-            message,
-            variant: AppSnackBarVariant.error,
-          );
+          AppSnackBar.show(context, message, variant: AppSnackBarVariant.error);
         }
       },
     );
@@ -383,7 +446,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                         label: 'Clear Search',
                         onPressed: () {
                           _searchController.clear();
-                          ref.read(transactionSearchQueryProvider.notifier).clear();
+                          ref
+                              .read(transactionSearchQueryProvider.notifier)
+                              .clear();
                         },
                         isExpanded: false,
                       ),
@@ -393,8 +458,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                       constraints: const BoxConstraints(minWidth: 220),
                       child: PrimaryButton(
                         label: 'Clear Filters',
-                        onPressed: () =>
-                            ref.read(transactionFiltersProvider.notifier).reset(),
+                        onPressed: () => ref
+                            .read(transactionFiltersProvider.notifier)
+                            .reset(),
                         isExpanded: false,
                       ),
                     ),
@@ -580,11 +646,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     if (isTransferEntry(transaction)) {
       backgroundColor = context.lootrColors.transfer.withValues(alpha: 0.12);
       foregroundColor = context.lootrColors.transfer;
-      child = Icon(
-        Icons.swap_horiz_rounded,
-        color: foregroundColor,
-        size: 18,
-      );
+      child = Icon(Icons.swap_horiz_rounded, color: foregroundColor, size: 18);
     } else if (category != null) {
       foregroundColor = category.color != null && category.color!.isNotEmpty
           ? parseCategoryColor(category.color)
@@ -647,5 +709,4 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         return Icons.account_balance_outlined;
     }
   }
-
 }

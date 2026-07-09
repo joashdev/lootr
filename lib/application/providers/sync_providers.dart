@@ -9,6 +9,7 @@ import '../sync/sync_http_client.dart';
 import '../sync/sync_manager.dart';
 import '../sync/sync_triggers.dart';
 import 'database_provider.dart';
+import 'notification_provider.dart';
 import 'repo_providers.dart';
 
 final conflictApplierProvider = Provider<ConflictApplier>((ref) {
@@ -22,10 +23,7 @@ final syncHttpClientProvider = Provider<SyncHttpClient>((ref) {
   );
   final client = http.Client();
   ref.onDispose(client.close);
-  return SyncHttpClientImpl(
-    httpClient: client,
-    baseUrl: baseUrl,
-  );
+  return SyncHttpClientImpl(httpClient: client, baseUrl: baseUrl);
 });
 
 final connectivityMonitorProvider = Provider<ConnectivityMonitor>((ref) {
@@ -38,6 +36,7 @@ final syncManagerProvider = Provider<SyncManager>((ref) {
   final httpClient = ref.watch(syncHttpClientProvider);
   final conflictApplier = ref.watch(conflictApplierProvider);
   final connectivityMonitor = ref.watch(connectivityMonitorProvider);
+  final notificationScheduler = ref.watch(notificationSchedulerProvider);
 
   final manager = SyncManager(
     db: db,
@@ -45,6 +44,7 @@ final syncManagerProvider = Provider<SyncManager>((ref) {
     httpClient: httpClient,
     connectivityMonitor: connectivityMonitor,
     conflictApplier: conflictApplier,
+    postSyncHook: notificationScheduler.rebuildSchedule,
   );
 
   ref.onDispose(manager.dispose);
@@ -71,7 +71,7 @@ final syncHealthProvider = Provider<SyncHealth>((ref) {
   return healthAsync.when(
     data: (h) => h,
     loading: () => const SyncHealth(),
-    error: (_, __) => const SyncHealth(),
+    error: (_, _) => const SyncHealth(),
   );
 });
 
@@ -81,19 +81,24 @@ final syncHealthStreamProvider = StreamProvider<SyncHealth>((ref) {
   return Stream.periodic(const Duration(seconds: 10)).asyncMap((_) async {
     final lastSyncedStr = await syncRepo.get(SyncMetadataRepo.keyLastSyncedAt);
     final lastStatus = await syncRepo.get(SyncMetadataRepo.keyLastSyncStatus);
-    final failedCountStr =
-        await syncRepo.get(SyncMetadataRepo.keySyncFailedCount);
-    final pendingCountStr =
-        await syncRepo.get(SyncMetadataRepo.keySyncPendingCount);
+    final failedCountStr = await syncRepo.get(
+      SyncMetadataRepo.keySyncFailedCount,
+    );
+    final pendingCountStr = await syncRepo.get(
+      SyncMetadataRepo.keySyncPendingCount,
+    );
 
-    final failedCount =
-        failedCountStr != null ? int.tryParse(failedCountStr) ?? 0 : 0;
-    final pendingCount =
-        pendingCountStr != null ? int.tryParse(pendingCountStr) ?? 0 : 0;
+    final failedCount = failedCountStr != null
+        ? int.tryParse(failedCountStr) ?? 0
+        : 0;
+    final pendingCount = pendingCountStr != null
+        ? int.tryParse(pendingCountStr) ?? 0
+        : 0;
 
     return SyncHealth(
-      lastSyncedAt:
-          lastSyncedStr != null ? DateTime.tryParse(lastSyncedStr) : null,
+      lastSyncedAt: lastSyncedStr != null
+          ? DateTime.tryParse(lastSyncedStr)
+          : null,
       pendingCount: pendingCount,
       failedCount: failedCount,
       lastStatus: lastStatus ?? 'healthy',
@@ -112,6 +117,6 @@ final syncStatusIconProvider = Provider<SyncIconState>((ref) {
       return SyncIconState.pending;
     },
     loading: () => SyncIconState.syncing,
-    error: (_, __) => SyncIconState.failed,
+    error: (_, _) => SyncIconState.failed,
   );
 });

@@ -6,6 +6,7 @@ import 'package:rxdart/rxdart.dart';
 
 import '../../../application/providers/accounts_provider.dart';
 import '../../../application/providers/categories_provider.dart';
+import '../../../application/providers/notification_provider.dart';
 import '../../../application/providers/payees_provider.dart';
 import '../../../application/providers/repo_providers.dart';
 import '../../../application/providers/transaction_entry_support.dart';
@@ -23,6 +24,7 @@ import '../../../domain/entities/transaction.dart';
 import '../../../domain/entities/transfer.dart';
 import '../../../domain/use_cases/delete_transaction.dart';
 import '../../../domain/use_cases/delete_transfer.dart';
+import '../../../domain/value_objects/undo_entry.dart';
 import '../../shared/category_visuals.dart';
 import '../../shared/components/buttons/ghost_button.dart';
 import '../../shared/components/buttons/secondary_button.dart';
@@ -197,10 +199,27 @@ class _TransactionDetailScreenState
         : await DeleteTransaction(
             ref.read(transactionRepoProvider),
           ).call(entry.transaction.id);
+    if (!isTransfer && result.isSuccess) {
+      await ref.read(notificationSchedulerProvider).rebuildSchedule();
+    }
 
     result.fold(
       onSuccess: (undoEntry) {
-        ref.read(undoStackProvider.notifier).push(undoEntry);
+        ref
+            .read(undoStackProvider.notifier)
+            .push(
+              UndoEntry(
+                transactionId: undoEntry.transactionId,
+                message: undoEntry.message,
+                rollback: () async {
+                  await undoEntry.rollback();
+                  await ref
+                      .read(notificationSchedulerProvider)
+                      .rebuildSchedule();
+                },
+                createdAt: undoEntry.createdAt,
+              ),
+            );
         if (mounted) {
           final navigator = Navigator.of(context);
           context.pop();

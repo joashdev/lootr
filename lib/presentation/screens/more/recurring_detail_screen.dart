@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../application/providers/accounts_provider.dart';
 import '../../../application/providers/categories_provider.dart';
+import '../../../application/providers/notification_provider.dart';
 import '../../../application/providers/payees_provider.dart';
 import '../../../application/providers/repo_providers.dart';
 import '../../../application/providers/recurring_detail_provider.dart';
@@ -243,12 +244,10 @@ class RecurringDetailScreen extends ConsumerWidget {
                                 if (confirmed != true) return;
                                 await ref
                                     .read(recurringRepoProvider)
-                                    .update(
-                                      RecurringTemplatesCompanion(
-                                        id: Value(template.id),
-                                        deletedAt: Value(DateTime.now()),
-                                      ),
-                                    );
+                                    .softDelete(template.id);
+                                await ref
+                                    .read(notificationSchedulerProvider)
+                                    .rebuildSchedule();
                                 if (!context.mounted) return;
                                 AppSnackBar.show(
                                   context,
@@ -279,6 +278,9 @@ class RecurringDetailScreen extends ConsumerWidget {
                                   ),
                                 ),
                               );
+                          await ref
+                              .read(notificationSchedulerProvider)
+                              .rebuildSchedule();
                           if (!context.mounted) return;
                           AppSnackBar.show(
                             context,

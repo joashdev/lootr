@@ -1,4 +1,3 @@
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,12 +6,12 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../application/providers/accounts_provider.dart';
 import '../../../application/providers/payees_provider.dart';
 import '../../../application/providers/recurring_provider.dart';
+import '../../../application/providers/notification_provider.dart';
 import '../../../application/providers/repo_providers.dart';
 import '../../../core/format/money_format.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
-import '../../../data/database/app_database.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/entities/payee.dart';
 import '../../../domain/entities/recurring_template.dart';
@@ -23,11 +22,16 @@ import '../../shared/components/swipe_action_row.dart';
 import 'more_form_sheets.dart';
 
 class RecurringScreen extends ConsumerWidget {
-  const RecurringScreen({super.key});
+  const RecurringScreen({super.key, this.initialFilter});
+
+  final String? initialFilter;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final recurringAsync = ref.watch(recurringProvider);
+    final subscriptionTemplateIdsAsync = ref.watch(
+      subscriptionRecurringTemplateIdsProvider,
+    );
     final hasRecurring = recurringAsync.asData?.value.isNotEmpty ?? false;
     final accounts = ref.watch(accountsProvider).asData?.value ?? const [];
     final payees = ref.watch(payeesProvider).asData?.value ?? const <Payee>[];
@@ -52,25 +56,67 @@ class RecurringScreen extends ConsumerWidget {
       ),
       body: recurringAsync.when(
         data: (templates) {
-          if (templates.isEmpty) {
-            return EmptyState(
-              headline: 'No recurring items',
-              subtext:
-                  'Set up recurring transactions for bills and subscriptions.',
-              ctaLabel: 'Add Recurring',
-              onCtaPressed: () =>
-                  showRecurringSheet(context, ref, accounts: accounts),
+          if (initialFilter == 'subscription') {
+            return subscriptionTemplateIdsAsync.when(
+              data: (subscriptionTemplateIds) => _buildTemplateState(
+                context,
+                ref,
+                accounts: accounts,
+                payeeNames: payeeNames,
+                templates: templates
+                    .where(
+                      (template) =>
+                          subscriptionTemplateIds.contains(template.id),
+                    )
+                    .toList(),
+              ),
+              error: (err, _) => Center(child: Text('Error: $err')),
+              loading: () => const Center(child: CircularProgressIndicator()),
             );
           }
-          return _RecurringList(
-            templates: templates,
-            payeeNames: payeeNames,
+
+          return _buildTemplateState(
+            context,
+            ref,
             accounts: accounts,
+            payeeNames: payeeNames,
+            templates: templates,
           );
         },
         error: (err, _) => Center(child: Text('Error: $err')),
         loading: () => const Center(child: CircularProgressIndicator()),
       ),
+    );
+  }
+
+  Widget _buildTemplateState(
+    BuildContext context,
+    WidgetRef ref, {
+    required List<Account> accounts,
+    required Map<String, String> payeeNames,
+    required List<RecurringTemplate> templates,
+  }) {
+    if (templates.isEmpty) {
+      return EmptyState(
+        headline: initialFilter == 'subscription'
+            ? 'No subscriptions found'
+            : 'No recurring items',
+        subtext: initialFilter == 'subscription'
+            ? 'Subscription reminders appear here when a recurring item is tagged like a subscription.'
+            : 'Set up recurring transactions for bills and subscriptions.',
+        ctaLabel: initialFilter == 'subscription'
+            ? 'View All Recurring'
+            : 'Add Recurring',
+        onCtaPressed: () => initialFilter == 'subscription'
+            ? context.go('/more/recurring')
+            : showRecurringSheet(context, ref, accounts: accounts),
+      );
+    }
+
+    return _RecurringList(
+      templates: templates,
+      payeeNames: payeeNames,
+      accounts: accounts,
     );
   }
 }
@@ -116,14 +162,8 @@ class _RecurringList extends ConsumerWidget {
       ),
     );
     if (confirmed != true) return;
-    await ref
-        .read(recurringRepoProvider)
-        .update(
-          RecurringTemplatesCompanion(
-            id: Value(template.id),
-            deletedAt: Value(DateTime.now()),
-          ),
-        );
+    await ref.read(recurringRepoProvider).softDelete(template.id);
+    await ref.read(notificationSchedulerProvider).rebuildSchedule();
     if (!context.mounted) return;
     AppSnackBar.show(
       context,

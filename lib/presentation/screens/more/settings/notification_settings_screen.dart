@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../../application/providers/notification_provider.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/typography.dart';
@@ -12,6 +13,7 @@ class NotificationSettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
+    final settings = ref.watch(notificationSettingsProvider);
 
     return Scaffold(
       appBar: AppBar(centerTitle: false, title: const Text('Notifications')),
@@ -29,7 +31,9 @@ class NotificationSettingsScreen extends ConsumerWidget {
                 ),
                 title: 'Recurring Reminders',
                 subtitle: 'Get notified before recurring transactions',
-                value: true,
+                value: settings.recurringReminder,
+                onChanged: (value) =>
+                    _updateSetting(ref, 'recurring_reminder', value),
               ),
               _SwitchTile(
                 leading: Icon(
@@ -39,7 +43,8 @@ class NotificationSettingsScreen extends ConsumerWidget {
                 ),
                 title: 'Bill Due',
                 subtitle: 'Get notified before bills are due',
-                value: true,
+                value: settings.billDue,
+                onChanged: (value) => _updateSetting(ref, 'bill_due', value),
               ),
               _SwitchTile(
                 leading: Icon(
@@ -49,7 +54,9 @@ class NotificationSettingsScreen extends ConsumerWidget {
                 ),
                 title: 'Installment Due',
                 subtitle: 'Get notified for upcoming installments',
-                value: false,
+                value: settings.installmentDue,
+                onChanged: (value) =>
+                    _updateSetting(ref, 'installment_due', value),
               ),
               _SwitchTile(
                 leading: Icon(
@@ -59,13 +66,38 @@ class NotificationSettingsScreen extends ConsumerWidget {
                 ),
                 title: 'Debt Reminders',
                 subtitle: 'Get notified about debt deadlines',
-                value: true,
+                value: settings.debtReminder,
+                onChanged: (value) =>
+                    _updateSetting(ref, 'debt_reminder', value),
+              ),
+              _SwitchTile(
+                leading: Icon(
+                  LucideIcons.badgeDollarSign,
+                  size: 20,
+                  color: colorScheme.primary,
+                ),
+                title: 'Subscription Reminders',
+                subtitle: 'Get notified about recurring subscriptions',
+                value: settings.subscriptionReminder,
+                onChanged: (value) =>
+                    _updateSetting(ref, 'subscription_reminder', value),
               ),
             ],
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _updateSetting(
+    WidgetRef ref,
+    String notificationType,
+    bool value,
+  ) async {
+    await ref
+        .read(notificationSettingsProvider.notifier)
+        .setEnabled(notificationType, value);
+    await ref.read(notificationSchedulerProvider).rebuildSchedule();
   }
 }
 
@@ -104,31 +136,20 @@ class _SettingsSection extends StatelessWidget {
   }
 }
 
-class _SwitchTile extends StatefulWidget {
+class _SwitchTile extends StatelessWidget {
   const _SwitchTile({
     required this.leading,
     required this.title,
     required this.subtitle,
     required this.value,
+    required this.onChanged,
   });
 
   final Widget leading;
   final String title;
   final String subtitle;
   final bool value;
-
-  @override
-  State<_SwitchTile> createState() => _SwitchTileState();
-}
-
-class _SwitchTileState extends State<_SwitchTile> {
-  late bool _value;
-
-  @override
-  void initState() {
-    super.initState();
-    _value = widget.value;
-  }
+  final ValueChanged<bool> onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -139,19 +160,17 @@ class _SwitchTileState extends State<_SwitchTile> {
       contentPadding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.pagePaddingMobile,
       ),
-      secondary: widget.leading,
+      secondary: leading,
       title: Text(
-        widget.title,
+        title,
         style: AppTypography.bodyMedium.copyWith(color: colorScheme.onSurface),
       ),
       subtitle: Text(
-        widget.subtitle,
+        subtitle,
         style: AppTypography.caption.copyWith(color: lootrColors.textSecondary),
       ),
-      value: _value,
-      onChanged: (v) {
-        setState(() => _value = v);
-      },
+      value: value,
+      onChanged: onChanged,
     );
   }
 }

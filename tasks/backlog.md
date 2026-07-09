@@ -26,7 +26,7 @@ Derived from `docs/solutions-arch.md`. Build order follows the dependency rule: 
 | 16 | Presentation — Filter Sheet & Search | 10, 02, 07 | Medium | [x] |
 | 17 | Presentation — Onboarding | 10, 02 | Medium | [x] |
 | 18 | Demo Data & Seed Data | 04 | Medium | [x] |
-| 19 | Local Notifications | 04, 03 | Medium |
+| 19 | Local Notifications | 04, 03 | Medium | [x] |
 | 20 | Testing Infrastructure | 01 | High | [x] |
 | 21 | Backend — NestJS Setup & Auth | — | Medium |
 | 22 | Backend — Sync Endpoints | 21 | Medium |
