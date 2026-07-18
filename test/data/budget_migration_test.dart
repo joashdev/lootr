@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lootr/data/database/app_database.dart';
 
 void main() {
-  group('schema v1 -> v2 migration (budgets icon/color)', () {
+  group('schema v1 -> current migration (budgets icon/color)', () {
     test('adds nullable icon/color columns and keeps existing rows', () async {
       // Build a raw v1 database: minimal tables the budgets FKs point at,
       // the v1 budgets table (no icon/color), one existing row, and
@@ -15,8 +15,23 @@ void main() {
           raw
             ..execute('CREATE TABLE users (id TEXT NOT NULL PRIMARY KEY)')
             ..execute('CREATE TABLE households (id TEXT NOT NULL PRIMARY KEY)')
+            ..execute('CREATE TABLE categories (id TEXT NOT NULL PRIMARY KEY)')
+            ..execute('CREATE TABLE accounts (id TEXT NOT NULL PRIMARY KEY)')
             ..execute(
-              'CREATE TABLE categories (id TEXT NOT NULL PRIMARY KEY)',
+              'CREATE TABLE account_balance_snapshots '
+              '(id TEXT NOT NULL PRIMARY KEY)',
+            )
+            ..execute(
+              'CREATE TABLE transactions (id TEXT NOT NULL PRIMARY KEY)',
+            )
+            ..execute('CREATE TABLE transfers (id TEXT NOT NULL PRIMARY KEY)')
+            ..execute(
+              'CREATE TABLE recurring_templates '
+              '(id TEXT NOT NULL PRIMARY KEY)',
+            )
+            ..execute('CREATE TABLE goals (id TEXT NOT NULL PRIMARY KEY)')
+            ..execute(
+              'CREATE TABLE debt_records (id TEXT NOT NULL PRIMARY KEY)',
             )
             ..execute('''
               CREATE TABLE budgets (
@@ -69,15 +84,14 @@ void main() {
           color: const Value('#E11D48'),
         ),
       );
-      final inserted = await (db.budgets.select()
-            ..where((t) => t.id.equals('bud-2')))
-          .getSingle();
+      final inserted =
+          await (db.budgets.select()..where((t) => t.id.equals('bud-2')))
+              .getSingle();
       expect(inserted.icon, 'travel');
       expect(inserted.color, '#E11D48');
 
-      final version =
-          await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.read<int>('user_version'), 2);
+      final version = await db.customSelect('PRAGMA user_version').getSingle();
+      expect(version.read<int>('user_version'), 3);
     });
 
     test('fresh database creates budgets with icon/color columns', () async {

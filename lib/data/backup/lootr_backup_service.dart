@@ -1,0 +1,235 @@
+import 'dart:io';
+
+import 'package:crypto/crypto.dart';
+import 'package:sqlite3/sqlite3.dart' as sqlite;
+
+import '../security/database_key_store.dart';
+import '../security/secure_file_lifecycle.dart';
+
+class LootrBackupService {
+  LootrBackupService({
+    required this.keyStore,
+    this.secureFiles = const SecureFileLifecycle(),
+  });
+
+  static const formatVersion = 1;
+
+  final DatabaseKeyStore keyStore;
+  final SecureFileLifecycle secureFiles;
+
+  Future<BackupResult> create({
+    required File liveDatabase,
+    required File destination,
+  }) async {
+    final key = await keyStore.loadOrCreate();
+    final temporary = File('${destination.path}.creating');
+    await secureFiles.bestEffortDelete(temporary);
+
+    // SQLCipher requires a writable connection to create an attached export
+    // even though the main database is only read.
+    final source = _openEncrypted(liveDatabase, key, readOnly: false);
+    var phase = 'attach';
+    try {
+      final targetPath = _sqlLiteral(temporary.path);
+      source.execute(
+        'ATTACH DATABASE $targetPath AS backup KEY ${_hexKeyLiteral(key)}',
+      );
+      phase = 'export';
+      source.select("SELECT sqlcipher_export('backup')");
+      phase = 'manifest';
+      final schemaVersion =
+          source.select('PRAGMA main.user_version').first.columnAt(0) as int;
+      source.execute('PRAGMA backup.user_version = $schemaVersion');
+      source.execute('''
+        CREATE TABLE backup.lootr_backup_manifest (
+          format_version INTEGER NOT NULL,
+          schema_version INTEGER NOT NULL,
+          created_at_utc TEXT NOT NULL
+        )
+      ''');
+      source.execute(
+        'INSERT INTO backup.lootr_backup_manifest VALUES '
+        '($formatVersion, $schemaVersion, ${_sqlLiteral(DateTime.now().toUtc().toIso8601String())})',
+      );
+      phase = 'detach';
+      source.execute('DETACH DATABASE backup');
+    } on sqlite.SqliteException catch (error) {
+      await secureFiles.bestEffortDelete(temporary);
+      throw BackupFailure(
+        'backup_creation_${phase}_failed_${error.extendedResultCode}',
+      );
+    } catch (_) {
+      await secureFiles.bestEffortDelete(temporary);
+      throw const BackupFailure('backup_creation_failed_unknown');
+    } finally {
+      source.close();
+    }
+
+    final manifest = _verify(temporary, key);
+    if (await destination.exists()) {
+      await secureFiles.bestEffortDelete(destination);
+    }
+    await temporary.rename(destination.path);
+    final fingerprint = await sha256.bind(destination.openRead()).first;
+    return BackupResult(
+      file: destination,
+      fingerprint: fingerprint.toString(),
+      manifest: manifest,
+    );
+  }
+
+  Future<BackupManifest> verify(File backup) async {
+    final key = await keyStore.loadOrCreate();
+    return _verify(backup, key);
+  }
+
+  /// Caller must close Drift and hold the maintenance lock before invoking.
+  /// The returned checkpoint can be retained until the reopened database has
+  /// passed application-level reconciliation.
+  Future<File> restoreAtomically({
+    required File backup,
+    required File liveDatabase,
+  }) async {
+    final key = await keyStore.loadOrCreate();
+    _verify(backup, key);
+
+    final staged = File('${liveDatabase.path}.restoring');
+    final checkpoint = File('${liveDatabase.path}.pre-restore');
+    await secureFiles.bestEffortDelete(staged);
+    await backup.copy(staged.path);
+    _verify(staged, key);
+
+    if (await checkpoint.exists()) {
+      await secureFiles.bestEffortDelete(checkpoint);
+    }
+    try {
+      if (await liveDatabase.exists()) {
+        await liveDatabase.rename(checkpoint.path);
+      }
+      await staged.rename(liveDatabase.path);
+    } catch (_) {
+      if (!await liveDatabase.exists() && await checkpoint.exists()) {
+        await checkpoint.rename(liveDatabase.path);
+      }
+      throw const BackupFailure('restore_replace_failed');
+    }
+    return checkpoint;
+  }
+
+  Future<void> discardCheckpoint(File checkpoint) {
+    return secureFiles.bestEffortDelete(checkpoint);
+  }
+
+  BackupManifest _verify(File file, List<int> key) {
+    if (!file.existsSync()) {
+      throw const BackupFailure('backup_missing');
+    }
+    final database = _openEncrypted(file, key, readOnly: true);
+    try {
+      final cipherIntegrity = database.select('PRAGMA cipher_integrity_check');
+      if (cipherIntegrity.isNotEmpty &&
+          cipherIntegrity.first.columnAt(0).toString().toLowerCase() != 'ok') {
+        throw const BackupFailure('backup_cipher_integrity_failed');
+      }
+      if (database.select('PRAGMA quick_check').first.columnAt(0) != 'ok') {
+        throw const BackupFailure('backup_integrity_failed');
+      }
+      if (database.select('PRAGMA foreign_key_check').isNotEmpty) {
+        throw const BackupFailure('backup_foreign_key_failed');
+      }
+      final rows = database.select(
+        'SELECT format_version, schema_version, created_at_utc '
+        'FROM lootr_backup_manifest',
+      );
+      if (rows.length != 1) {
+        throw const BackupFailure('backup_manifest_missing');
+      }
+      final format = rows.first['format_version'] as int;
+      if (format != formatVersion) {
+        throw const BackupFailure('backup_format_unsupported');
+      }
+      return BackupManifest(
+        formatVersion: format,
+        schemaVersion: rows.first['schema_version'] as int,
+        createdAt: DateTime.parse(rows.first['created_at_utc'] as String),
+      );
+    } on sqlite.SqliteException {
+      throw const BackupFailure('backup_unreadable');
+    } finally {
+      database.close();
+    }
+  }
+
+  sqlite.Database _openEncrypted(
+    File file,
+    List<int> key, {
+    required bool readOnly,
+  }) {
+    final database = sqlite.sqlite3.open(
+      file.path,
+      mode: readOnly
+          ? sqlite.OpenMode.readOnly
+          : sqlite.OpenMode.readWriteCreate,
+    );
+    try {
+      database.execute('PRAGMA key = ${_hexKeyLiteral(key)}');
+      if (database.select('PRAGMA cipher_version').isEmpty) {
+        throw const BackupFailure('sqlcipher_unavailable');
+      }
+      database.select('SELECT count(*) FROM sqlite_master');
+      if (readOnly) database.execute('PRAGMA query_only = ON');
+      return database;
+    } on BackupFailure {
+      database.close();
+      rethrow;
+    } on sqlite.SqliteException {
+      database.close();
+      throw const BackupFailure('backup_key_or_cipher_invalid');
+    } catch (_) {
+      database.close();
+      throw const BackupFailure('backup_open_failed');
+    }
+  }
+}
+
+class BackupResult {
+  const BackupResult({
+    required this.file,
+    required this.fingerprint,
+    required this.manifest,
+  });
+
+  final File file;
+  final String fingerprint;
+  final BackupManifest manifest;
+}
+
+class BackupManifest {
+  const BackupManifest({
+    required this.formatVersion,
+    required this.schemaVersion,
+    required this.createdAt,
+  });
+
+  final int formatVersion;
+  final int schemaVersion;
+  final DateTime createdAt;
+}
+
+class BackupFailure implements Exception {
+  const BackupFailure(this.code);
+
+  final String code;
+
+  @override
+  String toString() => 'BackupFailure($code)';
+}
+
+String _hexKeyLiteral(List<int> bytes) {
+  final hex = bytes
+      .map((byte) => byte.toRadixString(16).padLeft(2, '0'))
+      .join();
+  return '"x\'$hex\'"';
+}
+
+String _sqlLiteral(String value) => "'${value.replaceAll("'", "''")}'";

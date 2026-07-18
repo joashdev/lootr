@@ -36,7 +36,11 @@ dependencies:
   go_router: 17.3.0
   drift: 2.34.0
   drift_flutter: 0.3.0
+  sqlite3: ^3.3.3
+  path: ^1.9.1
   path_provider: 2.1.6
+  file_selector: ^1.1.0
+  crypto: ^3.0.7
   google_fonts: ^8.1.0
 
   lucide_icons_flutter: ^3.1.14
@@ -74,7 +78,7 @@ dev_dependencies:
 hooks:
   user_defines:
     sqlite3:
-      source: system
+      source: sqlcipher
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

@@ -4,14 +4,27 @@ import 'categories.dart';
 import 'households.dart';
 
 @DataClassName('BudgetData')
-@TableIndex(name: 'idx_budgets_owner_period', columns: {#ownerUserId, #month, #year})
-@TableIndex(name: 'uq_budget_category_period', columns: {#ownerUserId, #categoryId, #month, #year}, unique: true)
+@TableIndex(
+  name: 'idx_budgets_owner_period',
+  columns: {#ownerUserId, #month, #year},
+)
+@TableIndex(
+  name: 'uq_budget_category_period',
+  columns: {#ownerUserId, #categoryId, #month, #year},
+  unique: true,
+)
 class Budgets extends Table {
   TextColumn get id => text()();
-  TextColumn get householdId => text().named('household_id').nullable().references(Households, #id)();
-  TextColumn get ownerUserId => text().named('owner_user_id').references(Users, #id)();
-  TextColumn get categoryId => text().named('category_id').references(Categories, #id)();
+  TextColumn get householdId =>
+      text().named('household_id').nullable().references(Households, #id)();
+  TextColumn get ownerUserId =>
+      text().named('owner_user_id').references(Users, #id)();
+  TextColumn get categoryId =>
+      text().named('category_id').references(Categories, #id)();
   RealColumn get amount => real()();
+  TextColumn get amountAtoms => text().named('amount_atoms').nullable()();
+  IntColumn get amountScale => integer().named('amount_scale').nullable()();
+  TextColumn get currencyCode => text().named('currency_code').nullable()();
   IntColumn get month => integer()();
   IntColumn get year => integer()();
 
@@ -19,18 +32,23 @@ class Budgets extends Table {
   /// of its category (resolved in the presentation layer).
   TextColumn get icon => text().nullable()();
   TextColumn get color => text().nullable()();
-  DateTimeColumn get createdAt => dateTime().named('created_at').withDefault(currentDateAndTime)();
-  DateTimeColumn get updatedAt => dateTime().named('updated_at').withDefault(currentDateAndTime)();
+  DateTimeColumn get createdAt =>
+      dateTime().named('created_at').withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt =>
+      dateTime().named('updated_at').withDefault(currentDateAndTime)();
   DateTimeColumn get deletedAt => dateTime().named('deleted_at').nullable()();
-  TextColumn get syncStatus => text().named('sync_status').withDefault(const Constant('local_only'))();
-  DateTimeColumn get lastSyncedAt => dateTime().named('last_synced_at').nullable()();
+  TextColumn get syncStatus =>
+      text().named('sync_status').withDefault(const Constant('local_only'))();
+  DateTimeColumn get lastSyncedAt =>
+      dateTime().named('last_synced_at').nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
 
   @override
   List<String> get customConstraints => [
-        'CHECK (month BETWEEN 1 AND 12)',
-        'CHECK (sync_status IN (\'local_only\', \'pending_sync\', \'synced\', \'sync_failed\'))',
-      ];
+    'CHECK (month BETWEEN 1 AND 12)',
+    'CHECK (amount_scale IS NULL OR amount_scale >= 0)',
+    'CHECK (sync_status IN (\'local_only\', \'pending_sync\', \'synced\', \'sync_failed\'))',
+  ];
 }
