@@ -31,6 +31,10 @@ import '../../presentation/screens/more/settings/about_screen.dart';
 import '../../presentation/screens/more/settings/ai_logs_screen.dart';
 import '../../presentation/screens/more/settings/ai_settings_screen.dart';
 import '../../presentation/screens/more/settings/appearance_screen.dart';
+import '../../presentation/screens/more/settings/data/cashew_import_prepare_screen.dart';
+import '../../presentation/screens/more/settings/data/cashew_migration_run_screen.dart';
+import '../../presentation/screens/more/settings/data/data_backup_screen.dart';
+import '../../presentation/screens/more/settings/data/migration_run_summary_screen.dart';
 import '../../presentation/screens/more/settings/notification_settings_screen.dart';
 import '../../presentation/screens/more/settings/profile_screen.dart';
 import '../../presentation/screens/more/settings/security_screen.dart';
@@ -47,6 +51,7 @@ Page<void> _pushPage(Widget child, {LocalKey? key}) {
     key: key,
     child: child,
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      if (MediaQuery.disableAnimationsOf(context)) return child;
       return SlideTransition(
         position: Tween<Offset>(begin: const Offset(1.0, 0.0), end: Offset.zero)
             .animate(
@@ -64,6 +69,7 @@ Page<void> _sheetPage(Widget child, {LocalKey? key}) {
     key: key,
     child: child,
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      if (MediaQuery.disableAnimationsOf(context)) return child;
       return SlideTransition(
         position: Tween<Offset>(begin: const Offset(0.0, 1.0), end: Offset.zero)
             .animate(
@@ -361,6 +367,40 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                       const SyncSettingsScreen(),
                       key: state.pageKey,
                     ),
+                  ),
+                  GoRoute(
+                    path: 'settings/data',
+                    pageBuilder: (context, state) =>
+                        _pushPage(const DataBackupScreen(), key: state.pageKey),
+                    routes: [
+                      GoRoute(
+                        path: 'import-cashew',
+                        pageBuilder: (context, state) => _pushPage(
+                          const CashewImportPrepareScreen(),
+                          key: state.pageKey,
+                        ),
+                        routes: [
+                          GoRoute(
+                            path: ':runId',
+                            pageBuilder: (context, state) => _pushPage(
+                              CashewMigrationRunScreen(
+                                runId: state.pathParameters['runId']!,
+                              ),
+                              key: state.pageKey,
+                            ),
+                          ),
+                        ],
+                      ),
+                      GoRoute(
+                        path: 'imports/:runId',
+                        pageBuilder: (context, state) => _pushPage(
+                          MigrationRunSummaryScreen(
+                            runId: state.pathParameters['runId']!,
+                          ),
+                          key: state.pageKey,
+                        ),
+                      ),
+                    ],
                   ),
                   GoRoute(
                     path: 'settings/appearance',

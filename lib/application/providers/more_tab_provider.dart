@@ -78,6 +78,11 @@ final moreTabProvider = Provider<List<MoreSectionGroup>>((ref) {
           route: '/more/settings/sync',
         ),
         MoreItem(
+          label: 'Data & Backup',
+          icon: 'database',
+          route: '/more/settings/data',
+        ),
+        MoreItem(
           label: 'Appearance',
           icon: 'palette',
           route: '/more/settings/appearance',

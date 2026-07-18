@@ -26,6 +26,7 @@ class MoreScreen extends ConsumerWidget {
     'bell': LucideIcons.bell,
     'brain': LucideIcons.brain,
     'cloud': LucideIcons.cloud,
+    'database': LucideIcons.database,
     'palette': LucideIcons.palette,
     'shield-check': LucideIcons.shieldCheck,
     'info': LucideIcons.info,
