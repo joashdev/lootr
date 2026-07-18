@@ -72,6 +72,7 @@ class CashewStagingService {
 
       return StagedCashewSource(
         file: staged,
+        stagingToken: token,
         sourceFingerprint: before,
         byteLength: size,
         originalFilename: p.basename(selected.name),
@@ -96,6 +97,33 @@ class CashewStagingService {
     }
   }
 
+  Future<StagedCashewSource> resolve({
+    required String stagingToken,
+    required String sourceFingerprint,
+  }) async {
+    if (!RegExp(r'^[a-f0-9]{32}$').hasMatch(stagingToken)) {
+      throw const StagingFailure('invalid_staging_token');
+    }
+    final root = await _supportDirectory();
+    final file = File(
+      p.join(root.path, 'cashew-import', stagingToken, 'source.sqlite'),
+    );
+    if (!await file.exists()) {
+      throw const StagingFailure('staged_source_missing');
+    }
+    final fingerprint = await _digest(file.openRead);
+    if (fingerprint != sourceFingerprint) {
+      throw const StagingFailure('staged_source_changed');
+    }
+    return StagedCashewSource(
+      file: file,
+      stagingToken: stagingToken,
+      sourceFingerprint: fingerprint,
+      byteLength: await file.length(),
+      originalFilename: '',
+    );
+  }
+
   Future<String> _digest(Stream<List<int>> Function() openRead) async {
     final digest = await sha256.bind(openRead()).first;
     return digest.toString();
@@ -116,12 +144,14 @@ class CashewStagingService {
 class StagedCashewSource {
   const StagedCashewSource({
     required this.file,
+    required this.stagingToken,
     required this.sourceFingerprint,
     required this.byteLength,
     required this.originalFilename,
   });
 
   final File file;
+  final String stagingToken;
   final String sourceFingerprint;
   final int byteLength;
 

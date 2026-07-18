@@ -23,9 +23,7 @@ void main() {
     final live = File('${temporary.path}/live.sqlite');
     _createEncryptedDatabase(live, key, marker: 'synthetic-before');
     final destination = File('${temporary.path}/backup.lootr');
-    final service = LootrBackupService(
-      keyStore: InMemoryDatabaseKeyStore(key),
-    );
+    final service = LootrBackupService(keyStore: InMemoryDatabaseKeyStore(key));
 
     final result = await service.create(
       liveDatabase: live,
@@ -42,6 +40,7 @@ void main() {
       liveDatabase: live,
     );
     expect(_readMarker(live, key), 'synthetic-before');
+    expect(_hasTable(live, key, 'lootr_backup_manifest'), isFalse);
     expect(await checkpoint.exists(), isTrue);
     await service.discardCheckpoint(checkpoint);
   });
@@ -50,9 +49,7 @@ void main() {
     final live = File('${temporary.path}/live.sqlite');
     _createEncryptedDatabase(live, key, marker: 'synthetic');
     final destination = File('${temporary.path}/backup.lootr');
-    final service = LootrBackupService(
-      keyStore: InMemoryDatabaseKeyStore(key),
-    );
+    final service = LootrBackupService(keyStore: InMemoryDatabaseKeyStore(key));
     await service.create(liveDatabase: live, destination: destination);
 
     final wrongKey = List<int>.filled(32, 9);
@@ -64,6 +61,19 @@ void main() {
       throwsA(isA<BackupFailure>()),
     );
   });
+}
+
+bool _hasTable(File file, List<int> key, String table) {
+  final database = sqlite3.open(file.path);
+  try {
+    database.execute('PRAGMA key = ${_keyLiteral(key)}');
+    return database.select(
+      'SELECT 1 FROM sqlite_schema WHERE type = ? AND name = ?',
+      ['table', table],
+    ).isNotEmpty;
+  } finally {
+    database.close();
+  }
 }
 
 void _createEncryptedDatabase(
@@ -119,7 +129,9 @@ bool _hasPlaintextHeader(File file) {
 }
 
 String _keyLiteral(List<int> bytes) {
-  final hex = bytes.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();
+  final hex = bytes
+      .map((byte) => byte.toRadixString(16).padLeft(2, '0'))
+      .join();
   return '"x\'$hex\'"';
 }
 

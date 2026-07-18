@@ -98,6 +98,7 @@ class LootrBackupService {
     await secureFiles.bestEffortDelete(staged);
     await backup.copy(staged.path);
     _verify(staged, key);
+    _removeBackupManifest(staged, key);
 
     if (await checkpoint.exists()) {
       await secureFiles.bestEffortDelete(checkpoint);
@@ -114,6 +115,21 @@ class LootrBackupService {
       throw const BackupFailure('restore_replace_failed');
     }
     return checkpoint;
+  }
+
+  void _removeBackupManifest(File staged, List<int> key) {
+    final database = _openEncrypted(staged, key, readOnly: false);
+    try {
+      database.execute('DROP TABLE lootr_backup_manifest');
+      if (database.select('PRAGMA quick_check').first.columnAt(0) != 'ok' ||
+          database.select('PRAGMA foreign_key_check').isNotEmpty) {
+        throw const BackupFailure('restored_database_integrity_failed');
+      }
+    } on sqlite.SqliteException {
+      throw const BackupFailure('restored_database_prepare_failed');
+    } finally {
+      database.close();
+    }
   }
 
   Future<void> discardCheckpoint(File checkpoint) {

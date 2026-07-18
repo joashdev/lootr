@@ -542,7 +542,15 @@ void main() {
       expect(sections[2].header, 'Manage');
       expect(sections[2].items.length, 3);
       expect(sections[3].header, 'Settings');
-      expect(sections[3].items.length, 7);
+      expect(sections[3].items.length, 8);
+      expect(
+        sections[3].items.any(
+          (item) =>
+              item.label == 'Data & Backup' &&
+              item.route == '/more/settings/data',
+        ),
+        isTrue,
+      );
     });
 
     test('Insights section includes Insights when AI enabled', () {
