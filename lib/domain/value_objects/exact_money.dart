@@ -139,6 +139,11 @@ class ExactMoney implements Comparable<ExactMoney> {
     return '$sign${digits.substring(0, split)}.${digits.substring(split)}';
   }
 
+  /// Compatibility projection for widgets and chart packages.
+  ///
+  /// Financial storage, comparisons, and aggregation must remain exact.
+  double toDouble() => double.parse(toDecimalString());
+
   @override
   int compareTo(ExactMoney other) {
     _requireSameCurrency(other);

@@ -1,6 +1,8 @@
 import 'package:drift/drift.dart' hide isNull;
 
 import '../database/app_database.dart';
+import '../../domain/value_objects/exact_money.dart';
+import 'exact_money_codec.dart';
 
 class TransactionRepoFilters {
   final String? accountId;
@@ -87,24 +89,17 @@ class TransactionRepo {
                 ..limit(1))
               .getSingle();
 
-      final balanceChange = row.transactionDirection == 'income'
-          ? row.amount
-          : -row.amount;
-
       final account =
           await (_db.select(_db.accounts)
                 ..where((a) => a.id.equals(row.accountId))
                 ..limit(1))
               .getSingle();
-
-      await (_db.update(
-        _db.accounts,
-      )..where((a) => a.id.equals(row.accountId))).write(
-        AccountsCompanion(
-          balance: Value(account.balance + balanceChange),
-          syncStatus: const Value('pending_sync'),
-          updatedAt: Value(DateTime.now()),
-        ),
+      final amount = ExactMoneyCodec.transactionAmount(row, account);
+      ExactMoneyCodec.requirePositive(amount, 'amount');
+      await _normalizeExactColumns(row.id, amount);
+      await _applyAccountImpact(
+        account,
+        _signedImpact(amount, row.transactionDirection),
       );
 
       if (row.recurringTemplateId != null) {
@@ -126,24 +121,15 @@ class TransactionRepo {
                 ..limit(1))
               .getSingle();
 
-      final oldImpact = old.transactionDirection == 'income'
-          ? old.amount
-          : -old.amount;
-
       final oldAccount =
           await (_db.select(_db.accounts)
                 ..where((a) => a.id.equals(old.accountId))
                 ..limit(1))
               .getSingle();
-
-      await (_db.update(
-        _db.accounts,
-      )..where((a) => a.id.equals(old.accountId))).write(
-        AccountsCompanion(
-          balance: Value(oldAccount.balance - oldImpact),
-          syncStatus: const Value('pending_sync'),
-          updatedAt: Value(DateTime.now()),
-        ),
+      final oldAmount = ExactMoneyCodec.transactionAmount(old, oldAccount);
+      await _applyAccountImpact(
+        oldAccount,
+        -_signedImpact(oldAmount, old.transactionDirection),
       );
 
       await (_db.update(
@@ -163,24 +149,26 @@ class TransactionRepo {
                 ..limit(1))
               .getSingle();
 
-      final newImpact = updated.transactionDirection == 'income'
-          ? updated.amount
-          : -updated.amount;
-
       final newAccount =
           await (_db.select(_db.accounts)
                 ..where((a) => a.id.equals(updated.accountId))
                 ..limit(1))
               .getSingle();
-
-      await (_db.update(
-        _db.accounts,
-      )..where((a) => a.id.equals(updated.accountId))).write(
-        AccountsCompanion(
-          balance: Value(newAccount.balance + newImpact),
-          syncStatus: const Value('pending_sync'),
-          updatedAt: Value(DateTime.now()),
-        ),
+      final preferLegacyProjection =
+          tx.amount.present &&
+          !tx.amountAtoms.present &&
+          !tx.amountScale.present &&
+          !tx.currencyCode.present;
+      final newAmount = ExactMoneyCodec.transactionAmount(
+        updated,
+        newAccount,
+        preferLegacyProjection: preferLegacyProjection,
+      );
+      ExactMoneyCodec.requirePositive(newAmount, 'amount');
+      await _normalizeExactColumns(updated.id, newAmount);
+      await _applyAccountImpact(
+        newAccount,
+        _signedImpact(newAmount, updated.transactionDirection),
       );
     });
   }
@@ -195,24 +183,15 @@ class TransactionRepo {
       if (rows.isEmpty) return;
       final txn = rows.first;
 
-      final impact = txn.transactionDirection == 'income'
-          ? txn.amount
-          : -txn.amount;
-
       final account =
           await (_db.select(_db.accounts)
                 ..where((a) => a.id.equals(txn.accountId))
                 ..limit(1))
               .getSingle();
-
-      await (_db.update(
-        _db.accounts,
-      )..where((a) => a.id.equals(txn.accountId))).write(
-        AccountsCompanion(
-          balance: Value(account.balance - impact),
-          syncStatus: const Value('pending_sync'),
-          updatedAt: Value(DateTime.now()),
-        ),
+      final amount = ExactMoneyCodec.transactionAmount(txn, account);
+      await _applyAccountImpact(
+        account,
+        -_signedImpact(amount, txn.transactionDirection),
       );
 
       final now = DateTime.now();
@@ -239,24 +218,15 @@ class TransactionRepo {
       if (rows.isEmpty) return;
       final txn = rows.first;
 
-      final impact = txn.transactionDirection == 'income'
-          ? txn.amount
-          : -txn.amount;
-
       final account =
           await (_db.select(_db.accounts)
                 ..where((a) => a.id.equals(txn.accountId))
                 ..limit(1))
               .getSingle();
-
-      await (_db.update(
-        _db.accounts,
-      )..where((a) => a.id.equals(txn.accountId))).write(
-        AccountsCompanion(
-          balance: Value(account.balance + impact),
-          syncStatus: const Value('pending_sync'),
-          updatedAt: Value(DateTime.now()),
-        ),
+      final amount = ExactMoneyCodec.transactionAmount(txn, account);
+      await _applyAccountImpact(
+        account,
+        _signedImpact(amount, txn.transactionDirection),
       );
 
       await (_db.update(_db.transactions)..where((t) => t.id.equals(id))).write(
@@ -317,5 +287,46 @@ class TransactionRepo {
       default:
         return null;
     }
+  }
+
+  ExactMoney _signedImpact(ExactMoney amount, String direction) {
+    return switch (direction) {
+      'income' => amount,
+      'expense' => -amount,
+      _ => throw ArgumentError.value(direction, 'direction', 'is invalid'),
+    };
+  }
+
+  Future<void> _normalizeExactColumns(String transactionId, ExactMoney amount) {
+    return (_db.update(
+      _db.transactions,
+    )..where((row) => row.id.equals(transactionId))).write(
+      TransactionsCompanion(
+        amount: Value(ExactMoneyCodec.legacyProjection(amount)),
+        amountAtoms: Value(amount.coefficient.toString()),
+        amountScale: Value(amount.scale),
+        currencyCode: Value(amount.currencyCode),
+      ),
+    );
+  }
+
+  Future<void> _applyAccountImpact(
+    AccountData account,
+    ExactMoney impact,
+  ) async {
+    final current = ExactMoneyCodec.accountBalance(account);
+    final normalizedImpact = ExactMoneyCodec.atAccountScale(impact, account);
+    final updated = current + normalizedImpact;
+    await (_db.update(
+      _db.accounts,
+    )..where((row) => row.id.equals(account.id))).write(
+      AccountsCompanion(
+        balance: Value(ExactMoneyCodec.legacyProjection(updated)),
+        balanceAtoms: Value(updated.coefficient.toString()),
+        currencyPrecision: Value(updated.scale),
+        syncStatus: const Value('pending_sync'),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
   }
 }

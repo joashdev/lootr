@@ -138,7 +138,7 @@ class _TransactionRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '$prefix${MoneyFormat.exact(txn.amount, currencyCode)}',
+                    '$prefix${MoneyFormat.exact(txn.amount, txn.currencyCode)}',
                     style: AppTypography.mono.copyWith(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,

@@ -11,6 +11,8 @@ import '../../domain/entities/category.dart';
 import '../../domain/entities/mappers.dart';
 import '../../domain/entities/transaction.dart';
 import '../../domain/entities/user.dart';
+import '../../domain/services/currency_aggregation.dart';
+import '../../domain/value_objects/exact_money.dart';
 import 'repo_providers.dart';
 
 /// Injectable clock so report aggregation windows are testable.
@@ -156,6 +158,13 @@ class BudgetPerformanceReport {
   bool get isEmpty => rows.isEmpty;
 }
 
+class _BudgetWithExactSpent {
+  const _BudgetWithExactSpent(this.budget, this.spent);
+
+  final Budget budget;
+  final ExactMoney spent;
+}
+
 // ---------------------------------------------------------------------------
 // Providers
 // ---------------------------------------------------------------------------
@@ -192,12 +201,22 @@ final categorySpendingReportProvider = StreamProvider<CategorySpendingReport>((
       for (final category in categories) category.id: category,
     };
 
-    final totals = <String?, double>{};
+    final currencyCode = user?.currencyCode ?? 'PHP';
+    final totals = <String?, ExactMoney>{};
     for (final txn in transactions) {
-      if (txn.direction != 'expense') continue;
-      totals[txn.categoryId] = (totals[txn.categoryId] ?? 0) + txn.amount;
+      if (txn.direction != 'expense' ||
+          txn.exactAmount.currencyCode != currencyCode) {
+        continue;
+      }
+      totals.update(
+        txn.categoryId,
+        (current) => current + txn.exactAmount,
+        ifAbsent: () => txn.exactAmount,
+      );
     }
-    final total = totals.values.fold<double>(0, (sum, v) => sum + v);
+    final total = totals.values.isEmpty
+        ? null
+        : totals.values.reduce((left, right) => left + right);
 
     final slices = totals.entries.map((entry) {
       final category = entry.key == null ? null : categoryById[entry.key];
@@ -205,15 +224,17 @@ final categorySpendingReportProvider = StreamProvider<CategorySpendingReport>((
         categoryId: entry.key,
         name: category?.name ?? 'Uncategorized',
         color: categoryColorFromHex(category?.color),
-        amount: entry.value,
-        percentage: total == 0 ? 0 : entry.value / total,
+        amount: entry.value.toDouble(),
+        percentage: total == null || total.isZero
+            ? 0
+            : entry.value.toDouble() / total.toDouble(),
       );
     }).toList()..sort((a, b) => b.amount.compareTo(a.amount));
 
     return CategorySpendingReport(
-      currencyCode: user?.currencyCode ?? 'PHP',
+      currencyCode: currencyCode,
       periodLabel: DateFormat.yMMMM().format(monthStart),
-      total: total,
+      total: total?.toDouble() ?? 0,
       slices: slices,
     );
   });
@@ -239,36 +260,58 @@ final monthlyFlowReportProvider = StreamProvider<MonthlyFlowReport>((ref) {
     userStream,
     transactionsStream,
     (user, transactions) {
-      final incomeByMonth = <int, double>{};
-      final expenseByMonth = <int, double>{};
+      final currencyCode = user?.currencyCode ?? 'PHP';
+      final incomeByMonth = <int, ExactMoney>{};
+      final expenseByMonth = <int, ExactMoney>{};
       for (final txn in transactions) {
+        if (txn.exactAmount.currencyCode != currencyCode) continue;
         final key = txn.occurredAt.year * 12 + (txn.occurredAt.month - 1);
         if (txn.direction == 'income') {
-          incomeByMonth[key] = (incomeByMonth[key] ?? 0) + txn.amount;
+          incomeByMonth.update(
+            key,
+            (current) => current + txn.exactAmount,
+            ifAbsent: () => txn.exactAmount,
+          );
         } else if (txn.direction == 'expense') {
-          expenseByMonth[key] = (expenseByMonth[key] ?? 0) + txn.amount;
+          expenseByMonth.update(
+            key,
+            (current) => current + txn.exactAmount,
+            ifAbsent: () => txn.exactAmount,
+          );
         }
       }
 
       final months = <MonthlyFlowPoint>[];
+      ExactMoney? totalIncome;
+      ExactMoney? totalExpense;
       for (var i = 5; i >= 0; i--) {
         final month = DateTime(now.year, now.month - i);
         final key = month.year * 12 + (month.month - 1);
+        final income = incomeByMonth[key];
+        final expense = expenseByMonth[key];
+        if (income != null) {
+          totalIncome = totalIncome == null ? income : totalIncome + income;
+        }
+        if (expense != null) {
+          totalExpense = totalExpense == null
+              ? expense
+              : totalExpense + expense;
+        }
         months.add(
           MonthlyFlowPoint(
             year: month.year,
             month: month.month,
-            income: incomeByMonth[key] ?? 0,
-            expense: expenseByMonth[key] ?? 0,
+            income: income?.toDouble() ?? 0,
+            expense: expense?.toDouble() ?? 0,
           ),
         );
       }
 
       return MonthlyFlowReport(
-        currencyCode: user?.currencyCode ?? 'PHP',
+        currencyCode: currencyCode,
         months: months,
-        totalIncome: months.fold<double>(0, (sum, m) => sum + m.income),
-        totalExpense: months.fold<double>(0, (sum, m) => sum + m.expense),
+        totalIncome: totalIncome?.toDouble() ?? 0,
+        totalExpense: totalExpense?.toDouble() ?? 0,
       );
     },
   );
@@ -314,19 +357,26 @@ final netWorthReportProvider = StreamProvider<NetWorthReport>((ref) {
     accounts,
     transactions,
   ) {
-    double assets = 0;
-    double liabilities = 0;
-    for (final account in accounts) {
-      if (isLiabilityAccountType(account.accountType)) {
-        liabilities += account.balance.abs();
-      } else {
-        assets += account.balance;
-      }
-    }
-    final netWorth = assets - liabilities;
+    final currencyCode = user?.currencyCode ?? 'PHP';
+    final currencyAccounts = accounts
+        .where((account) => account.currencyCode == currencyCode)
+        .toList();
+    final exactBalances = CurrencyAggregation.balances(
+      currencyAccounts,
+      isLiability: isLiabilityAccountType,
+    )[currencyCode];
+    final exactNetWorth =
+        exactBalances?.netWorth ??
+        ExactMoney(
+          coefficient: BigInt.zero,
+          scale: 2,
+          currencyCode: currencyCode,
+        );
+    final netWorth = exactNetWorth.toDouble();
 
-    final impactByDay = <int, double>{};
+    final impactByDay = <int, ExactMoney>{};
     for (final txn in transactions) {
+      if (txn.exactAmount.currencyCode != currencyCode) continue;
       final day = DateTime(
         txn.occurredAt.year,
         txn.occurredAt.month,
@@ -335,19 +385,32 @@ final netWorthReportProvider = StreamProvider<NetWorthReport>((ref) {
       final index = day.difference(windowStart).inDays;
       if (index < 0 || index >= days) continue;
       final impact = switch (txn.direction) {
-        'income' => txn.amount,
-        'expense' => -txn.amount,
-        _ => 0.0,
+        'income' => txn.exactAmount,
+        'expense' => -txn.exactAmount,
+        _ => null,
       };
-      impactByDay[index] = (impactByDay[index] ?? 0) + impact;
+      if (impact == null) continue;
+      impactByDay.update(
+        index,
+        (current) => current + impact,
+        ifAbsent: () => impact,
+      );
     }
 
-    final totalImpact = impactByDay.values.fold<double>(0, (sum, v) => sum + v);
-    var running = netWorth - totalImpact;
+    final zero = ExactMoney(
+      coefficient: BigInt.zero,
+      scale: exactNetWorth.scale,
+      currencyCode: currencyCode,
+    );
+    final totalImpact = impactByDay.values.fold<ExactMoney>(
+      zero,
+      (sum, value) => sum + value,
+    );
+    var running = exactNetWorth - totalImpact;
     final series = <double>[];
     for (var i = 0; i < days; i++) {
-      running += impactByDay[i] ?? 0;
-      series.add(running);
+      running += impactByDay[i] ?? zero;
+      series.add(running.toDouble());
     }
 
     final first = series.first;
@@ -356,13 +419,13 @@ final netWorthReportProvider = StreamProvider<NetWorthReport>((ref) {
         : ((series.last - first) / first.abs()) * 100;
 
     return NetWorthReport(
-      currencyCode: user?.currencyCode ?? 'PHP',
+      currencyCode: currencyCode,
       current: netWorth,
       series: series,
       changePercent: changePercent,
       startDate: windowStart,
       endDate: today,
-      hasAccounts: accounts.isNotEmpty,
+      hasAccounts: currencyAccounts.isNotEmpty,
     );
   });
 });
@@ -388,14 +451,18 @@ final budgetPerformanceReportProvider = StreamProvider<BudgetPerformanceReport>(
               .toList(),
         )
         .switchMap((budgets) {
-          if (budgets.isEmpty) return Stream.value(<Budget>[]);
+          if (budgets.isEmpty) {
+            return Stream.value(<_BudgetWithExactSpent>[]);
+          }
 
-          return Rx.combineLatestList<double>(
-            budgets.map((budget) => budgetRepo.watchSpentForBudget(budget.id)),
+          return Rx.combineLatestList<ExactMoney>(
+            budgets.map(
+              (budget) => budgetRepo.watchExactSpentForBudget(budget.id),
+            ),
           ).map((spentValues) {
             return [
               for (var i = 0; i < budgets.length; i++)
-                budgets[i].copyWith(spent: spentValues[i]),
+                _BudgetWithExactSpent(budgets[i], spentValues[i]),
             ];
           });
         });
@@ -403,30 +470,50 @@ final budgetPerformanceReportProvider = StreamProvider<BudgetPerformanceReport>(
     return Rx.combineLatest3<
       User?,
       List<Category>,
-      List<Budget>,
+      List<_BudgetWithExactSpent>,
       BudgetPerformanceReport
-    >(userStream, categoriesStream, budgetsStream, (user, categories, budgets) {
+    >(userStream, categoriesStream, budgetsStream, (user, categories, entries) {
+      final currencyCode = user?.currencyCode ?? 'PHP';
       final categoryById = {
         for (final category in categories) category.id: category,
       };
 
-      final rows = budgets.map((budget) {
+      final selected = entries
+          .where(
+            (entry) =>
+                entry.budget.exactAmount.currencyCode == currencyCode &&
+                entry.spent.currencyCode == currencyCode,
+          )
+          .toList();
+      final rows = selected.map((entry) {
+        final budget = entry.budget;
         final category = categoryById[budget.categoryId];
         return BudgetPerformanceRow(
           budgetId: budget.id,
           name: category?.name ?? 'Budget',
           color: categoryColorFromHex(category?.color),
-          budgeted: budget.amount,
-          spent: budget.spent,
+          budgeted: budget.exactAmount.toDouble(),
+          spent: entry.spent.toDouble(),
         );
       }).toList()..sort((a, b) => b.progress.compareTo(a.progress));
 
+      ExactMoney? totalBudgeted;
+      ExactMoney? totalSpent;
+      for (final entry in selected) {
+        totalBudgeted = totalBudgeted == null
+            ? entry.budget.exactAmount
+            : totalBudgeted + entry.budget.exactAmount;
+        totalSpent = totalSpent == null
+            ? entry.spent
+            : totalSpent + entry.spent;
+      }
+
       return BudgetPerformanceReport(
-        currencyCode: user?.currencyCode ?? 'PHP',
+        currencyCode: currencyCode,
         periodLabel: DateFormat.yMMMM().format(DateTime(now.year, now.month)),
         rows: rows,
-        totalBudgeted: rows.fold<double>(0, (sum, r) => sum + r.budgeted),
-        totalSpent: rows.fold<double>(0, (sum, r) => sum + r.spent),
+        totalBudgeted: totalBudgeted?.toDouble() ?? 0,
+        totalSpent: totalSpent?.toDouble() ?? 0,
       );
     });
   },

@@ -3,6 +3,7 @@ import 'package:rxdart/rxdart.dart';
 import '../../core/extensions/async_value_x.dart';
 import '../../domain/entities/budget.dart';
 import '../../domain/entities/mappers.dart';
+import '../../domain/value_objects/exact_money.dart';
 import 'repo_providers.dart';
 
 bool isPastBudgetPeriod(int month, int year) {
@@ -41,12 +42,15 @@ final budgetsTabProvider = StreamProvider<List<Budget>>((ref) {
     final budgets = rows.map((row) => row.toEntity()).toList();
     if (budgets.isEmpty) return Stream.value(<Budget>[]);
 
-    return Rx.combineLatestList<double>(
-      budgets.map((budget) => budgetRepo.watchSpentForBudget(budget.id)),
+    return Rx.combineLatestList<ExactMoney>(
+      budgets.map((budget) => budgetRepo.watchExactSpentForBudget(budget.id)),
     ).map((spentValues) {
       return [
         for (var i = 0; i < budgets.length; i++)
-          budgets[i].copyWith(spent: spentValues[i]),
+          budgets[i].copyWith(
+            spent: spentValues[i].toDouble(),
+            exactSpent: () => spentValues[i],
+          ),
       ];
     });
   });
@@ -56,11 +60,21 @@ final budgetSummaryProvider = Provider<({double spent, double budgeted})>((
   ref,
 ) {
   final budgets = ref.watch(budgetsTabProvider).valueOrNull ?? [];
-  double totalBudgeted = 0;
-  double totalSpent = 0;
-  for (final b in budgets) {
-    totalBudgeted += b.amount;
-    totalSpent += b.spent;
+  if (budgets.isEmpty) return (spent: 0, budgeted: 0);
+  final currency = budgets.first.exactAmount.currencyCode;
+  ExactMoney? totalBudgeted;
+  ExactMoney? totalSpent;
+  for (final budget in budgets) {
+    if (budget.exactAmount.currencyCode != currency) continue;
+    final spent = budget.exactSpent;
+    if (spent == null || spent.currencyCode != currency) continue;
+    totalBudgeted = totalBudgeted == null
+        ? budget.exactAmount
+        : totalBudgeted + budget.exactAmount;
+    totalSpent = totalSpent == null ? spent : totalSpent + spent;
   }
-  return (spent: totalSpent, budgeted: totalBudgeted);
+  return (
+    spent: totalSpent?.toDouble() ?? 0,
+    budgeted: totalBudgeted?.toDouble() ?? 0,
+  );
 });

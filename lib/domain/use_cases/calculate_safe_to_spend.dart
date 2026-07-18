@@ -1,6 +1,7 @@
 import '../entities/account.dart';
 import '../entities/budget.dart';
 import '../entities/recurring_template.dart';
+import '../value_objects/exact_money.dart';
 import '../value_objects/field_types.dart';
 
 /// Which data the safe-to-spend figure was derived from, so the UI can
@@ -90,10 +91,7 @@ class CalculateSafeToSpend {
     AccountType.savings,
   };
 
-  static const _nearTermDebtTypes = {
-    AccountType.creditCard,
-    AccountType.bnpl,
-  };
+  static const _nearTermDebtTypes = {AccountType.creditCard, AccountType.bnpl};
 
   SafeToSpendResult call({
     required List<Account> accounts,
@@ -102,57 +100,84 @@ class CalculateSafeToSpend {
     required double monthlyIncome,
     required double monthlyExpense,
     required DateTime now,
+    String currencyCode = 'PHP',
+    ExactMoney? exactMonthlyIncome,
+    ExactMoney? exactMonthlyExpense,
   }) {
     final monthEndExclusive = DateTime(now.year, now.month + 1);
+    final income =
+        exactMonthlyIncome ??
+        ExactMoney.parse(monthlyIncome.toStringAsFixed(2), currencyCode);
+    final expense =
+        exactMonthlyExpense ??
+        ExactMoney.parse(monthlyExpense.toStringAsFixed(2), currencyCode);
+    var zero = ExactMoney(
+      coefficient: BigInt.zero,
+      scale: income.scale > expense.scale ? income.scale : expense.scale,
+      currencyCode: currencyCode,
+    );
 
     final activeBudgets = budgets
-        .where((budget) => budget.deletedAt == null)
+        .where(
+          (budget) =>
+              budget.deletedAt == null &&
+              budget.exactAmount.currencyCode == currencyCode,
+        )
         .toList();
     final budgetedCategoryIds = activeBudgets
         .map((budget) => budget.categoryId)
         .toSet();
 
-    final budgetHeadroom = activeBudgets.fold<double>(
-      0,
-      (sum, budget) =>
-          sum + (budget.amount - budget.spent).clamp(0, double.infinity),
-    );
+    var budgetHeadroom = zero;
+    for (final budget in activeBudgets) {
+      final spent =
+          budget.exactSpent ??
+          ExactMoney.parse(
+            budget.spent.toStringAsFixed(budget.exactAmount.scale),
+            currencyCode,
+          );
+      final headroom = budget.exactAmount - spent;
+      if (!headroom.isNegative) {
+        budgetHeadroom += headroom;
+      }
+    }
 
-    final unbudgetedRecurringDue = recurringTemplates
-        .where(
-          (template) =>
-              template.deletedAt == null &&
-              !template.autoCreateDisabled &&
-              template.nextOccurrenceAt != null &&
-              template.nextOccurrenceAt!.isBefore(monthEndExclusive) &&
-              (template.categoryId == null ||
-                  !budgetedCategoryIds.contains(template.categoryId)),
-        )
-        .fold<double>(0, (sum, template) => sum + template.amount);
+    var unbudgetedRecurringDue = zero;
+    for (final template in recurringTemplates) {
+      if (template.deletedAt != null ||
+          template.autoCreateDisabled ||
+          template.nextOccurrenceAt == null ||
+          !template.nextOccurrenceAt!.isBefore(monthEndExclusive) ||
+          template.exactAmount.currencyCode != currencyCode ||
+          (template.categoryId != null &&
+              budgetedCategoryIds.contains(template.categoryId))) {
+        continue;
+      }
+      unbudgetedRecurringDue += template.exactAmount;
+    }
 
     var committedOutflows = budgetHeadroom + unbudgetedRecurringDue;
 
     final activeAccounts = accounts.where(
       (account) =>
-          !account.isArchived &&
-          !account.isHidden &&
-          account.deletedAt == null,
+          !account.isArchived && !account.isHidden && account.deletedAt == null,
     );
-    double liquidBalance = 0;
-    double nearTermDebt = 0;
+    var liquidBalance = zero;
+    var nearTermDebt = zero;
     for (final account in activeAccounts) {
+      if (account.currencyCode != currencyCode) continue;
       if (_liquidTypes.contains(account.accountType)) {
-        liquidBalance += account.balance;
+        liquidBalance += account.exactBalance;
       } else if (_nearTermDebtTypes.contains(account.accountType)) {
-        nearTermDebt += account.balance.abs();
+        nearTermDebt += account.exactBalance.abs();
       }
     }
 
-    final double amount;
+    final ExactMoney amount;
     final SafeToSpendBasis basis;
-    if (monthlyIncome > 0) {
+    if (income.coefficient > BigInt.zero) {
       basis = SafeToSpendBasis.monthlyIncome;
-      amount = monthlyIncome - monthlyExpense - committedOutflows;
+      amount = income - expense - committedOutflows;
     } else {
       basis = SafeToSpendBasis.liquidBalances;
       committedOutflows += nearTermDebt;
@@ -160,12 +185,12 @@ class CalculateSafeToSpend {
     }
 
     return SafeToSpendResult(
-      amount: amount,
+      amount: amount.toDouble(),
       basis: basis,
-      monthlyIncome: monthlyIncome,
-      spentThisMonth: monthlyExpense,
-      committedOutflows: committedOutflows,
-      liquidBalance: liquidBalance,
+      monthlyIncome: income.toDouble(),
+      spentThisMonth: expense.toDouble(),
+      committedOutflows: committedOutflows.toDouble(),
+      liquidBalance: liquidBalance.toDouble(),
     );
   }
 }
