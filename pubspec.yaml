@@ -85,6 +85,10 @@ hooks:
 
 # The following section is specific to Flutter packages.
 flutter:
+  # Two required ML Kit plugins are CocoaPods-only. Keep dependency resolution
+  # on one manager until they support Swift Package Manager.
+  config:
+    enable-swift-package-manager: false
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
