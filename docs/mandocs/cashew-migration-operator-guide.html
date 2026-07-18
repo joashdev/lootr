@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cashew Migration Operator Guide — Personal Finance App</title>
+<style>
+  :root { --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; --mono: "SF Mono", "Fira Code", monospace; --bg: #fafafa; --surface: #fff; --border: #e2e4e8; --text: #1b1b1f; --muted: #63666e; --accent: #5c64cc; --accent-light: #eeeffe; --warning: #fff8e6; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.6 var(--font); }
+  main { max-width: 960px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { margin: 0 0 8px; font-size: 28px; line-height: 1.25; }
+  h2 { margin: 40px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); font-size: 21px; }
+  p { margin: 0 0 12px; }
+  li { margin-bottom: 5px; }
+  code { padding: 2px 6px; border-radius: 4px; background: #f2f4f7; font: 13px var(--mono); overflow-wrap: anywhere; }
+  table { display: block; width: 100%; margin: 12px 0 22px; overflow-x: auto; border: 1px solid var(--border); border-collapse: collapse; background: var(--surface); font-size: 14px; }
+  th, td { padding: 9px 12px; border: 1px solid var(--border); text-align: left; vertical-align: top; }
+  th { background: #f2f4f7; }
+  .references { color: var(--muted); }
+  .note { padding: 14px 16px; border-left: 3px solid var(--accent); border-radius: 6px; background: var(--accent-light); }
+  .diagram { padding: 16px 20px; border-left: 3px solid var(--accent); border-radius: 8px; background: #1e1e2e; color: #cdd6f4; font: 13px/1.6 var(--mono); overflow-x: auto; }
+  @media (max-width: 700px) { main { padding: 24px 16px 60px; } h1 { font-size: 25px; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Cashew Migration Operator Guide — Personal Finance App</h1>
+<p class="references"><strong>References:</strong> <code>cashew-data-migration.md</code> (migration contract), <code>security-model.md</code> (local protection), <code>database-schema.md</code> (target and import storage).</p>
+<p>Safe operating instructions for moving a Cashew data-file export into Lootr.</p>
+<hr>
+<h2>1. Safety Before Starting</h2>
+<ul>
+  <li>Keep the original Cashew export outside the Lootr repository and retain an untouched copy.</li>
+  <li>Select Cashew's <strong>Export data file</strong> output. It has a <code>.sql</code> extension but is a SQLite database, not a text script.</li>
+  <li>Do not open, rename, edit, or run database migrations against the source.</li>
+  <li>Make a current Lootr backup before importing into a database that already contains data.</li>
+  <li>Keep the device powered and Lootr in the foreground during publication. Analysis can be cancelled safely before publication.</li>
+</ul>
+<p>Lootr copies the selected file into app-private staging, opens it read-only with SQLite query-only mode, and fingerprints it before analysis. Staging is removed after completion, cancellation, rollback, or a recoverable failure. Flash storage may retain historical blocks despite best-effort overwrite and deletion, so device encryption remains part of the protection model.</p>
+<h2>2. Run a Privacy-Preserving Dry Run</h2>
+<ol>
+  <li>Open <strong>More → Settings → Data &amp; Backup → Import from Cashew</strong>.</li>
+  <li>Choose the Cashew data file.</li>
+  <li>Select <strong>Analyze on this device</strong>.</li>
+  <li>Confirm that the detected schema is supported and the source integrity check passes.</li>
+  <li>Review only the redacted structural summary: accounts, date range, currencies, source-row dispositions, warnings, review groups, and blocking issues.</li>
+</ol>
+<p class="note">Analysis does not write financial records to Lootr. Unknown future schemas, failed integrity checks, invalid enum domains, malformed dates, and broken required relationships block publication. Valid information without a safe editable equivalent is labeled <strong>Preserved for later</strong>.</p>
+<h2>3. Review Discrepancies and Policies</h2>
+<p>Resolve every <strong>Needs review</strong> group or explicitly accept its conservative disposition. Pay particular attention to:</p>
+<ul>
+  <li>transfer exceptions, including unequal, dangling, same-account, or non-transfer pairs;</li>
+  <li>missing or deleted account references in budgets and objectives;</li>
+  <li>future, unpaid, skipped, and ambiguous recurring occurrences;</li>
+  <li>attachment links, scanner settings, tags, and source-only metadata;</li>
+  <li>budget inclusion and exclusion memberships.</li>
+</ul>
+<p>Confirm the timezone used to interpret source timestamps. Then choose the reversible title/payee policy. Exact learned-title rules take precedence over contains rules; archived or inactive rules do not apply.</p>
+<p>Lootr never infers a currency conversion rate. Missing-wallet monetary metadata remains exact, uses an explicit unknown-currency review state, and is preserved for correction.</p>
+<h2>4. Publish and Reconcile</h2>
+<p>Choose <strong>Import</strong> only after the review groups and policies are acceptable. Lootr creates a pre-import checkpoint, applies the approved canonical data in one database transaction, verifies foreign keys and exact per-account/per-currency balances, and then publishes the completed run.</p>
+<p>No partially imported dataset becomes visible. Exact transfer pairs are stored as transfers and excluded from spending. Cross-currency transfers retain separate source and destination amounts. Reports remain grouped by currency unless the user supplies an explicit conversion rate, source, timestamp, and rounding policy.</p>
+<p>After completion, Lootr opens the latest imported month. The import summary provides redacted counts, provenance, preserved records, and rollback.</p>
+<h2>5. Resume, Cancel, or Recover</h2>
+<ul>
+  <li><strong>Before publication:</strong> cancel removes private staging and leaves Lootr financial data unchanged.</li>
+  <li><strong>Interrupted analysis:</strong> reopen the run and analyze again.</li>
+  <li><strong>Interrupted publication or verification:</strong> select <strong>Reconcile</strong>. Lootr verifies a complete atomic publication; if no publication occurred, it returns the run to review; a partial or invalid result restores the checkpoint.</li>
+  <li><strong>Completed import:</strong> use <strong>Roll back import</strong> to restore the exact pre-import database state.</li>
+</ul>
+<p>Do not delete app data while a recovery or rollback is running.</p>
+<h2>6. Re-Import Safely</h2>
+<p>Re-importing the same source with the same policy is idempotent and creates no duplicate financial records. Lootr matches source fingerprint, stable source identity, and payload fingerprint.</p>
+<p>For a newer Cashew export, Lootr does not silently overwrite a mapped record that was edited after import. The conflicting record remains review-required until the user resolves it.</p>
+<h2>7. Lootr Backup, Restore, and CSV</h2>
+<p>From <strong>Data &amp; Backup</strong>:</p>
+<ul>
+  <li><strong>Create encrypted backup</strong> writes a versioned encrypted Lootr database package with a verified manifest.</li>
+  <li><strong>Restore backup</strong> validates the package version, key, integrity, foreign keys, and schema before replacing the live database.</li>
+  <li><strong>Export transaction CSV</strong> creates a readable, currency-aware transaction export. Treat it as plaintext and store or share it accordingly.</li>
+</ul>
+<p>A backup includes imported relationships, provenance, review records, and preserved payloads. Restoring a backup reopens the database before repositories resume access. The backup-only manifest is not retained as live application data.</p>
+<h2>8. Verification Checklist</h2>
+<table>
+<thead><tr><th>Check</th><th>Expected result</th><th>Action if different</th></tr></thead>
+<tbody>
+<tr><td>Source fingerprint</td><td>Same before and after use</td><td>Stop and restore the untouched source copy</td></tr>
+<tr><td>Source integrity</td><td>Pass</td><td>Do not import</td></tr>
+<tr><td>Source-row dispositions</td><td>Every row classified</td><td>Do not import</td></tr>
+<tr><td>Blocking issues</td><td>Zero</td><td>Correct the source or use a supported export</td></tr>
+<tr><td>Reconciliation</td><td>Zero delta at each source precision</td><td>Review the named structural group</td></tr>
+<tr><td>Repeat import</td><td>Zero new financial records</td><td>Roll back and retain the diagnostic run</td></tr>
+<tr><td>Rollback</td><td>Pre-import state restored</td><td>Restore the pre-import Lootr backup</td></tr>
+<tr><td>Backup restore</td><td>Counts, relations, currencies, and balances match</td><td>Keep the original backup and stop</td></tr>
+</tbody>
+</table>
+<h2>9. Current Deliberate Limitations</h2>
+<ul>
+  <li>Attachment URLs are preserved without downloading or claiming migration of attachment bytes.</li>
+  <li>Tags and tag links are adapted and preserved; dedicated tag-management UI remains deferred.</li>
+  <li>Scanner defaults and other source-only settings are preserved but not executed.</li>
+  <li>Ambiguous or missing-reference budgets/objectives remain visible in a useful read-only review state.</li>
+  <li>Only structurally exact Cashew prediction chains become editable recurring templates; other valid history remains queryable and preserved.</li>
+  <li>CSV is an export format, not a lossless Cashew import substitute.</li>
+</ul>
+</main>
+</body>
+</html>

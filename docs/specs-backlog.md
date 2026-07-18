@@ -238,4 +238,18 @@ Each spec, when written, should be a standalone markdown doc that is concrete en
 
 ---
 
+## 15. Cashew Migration Operator Guide ✅
+
+**Status:** Done.
+**Produces:** `docs/cashew-migration-operator-guide.md` + `docs/mandocs/cashew-migration-operator-guide.html`
+**Purpose:** Provide safe, privacy-preserving operating and recovery instructions for the complete Cashew migration flow.
+**Coverage:**
+- Source-file safety, private staging, dry run, and review
+- Timezone/title policy, atomic publication, and exact reconciliation
+- Cancellation, interruption recovery, rollback, and idempotent re-import
+- Encrypted backup/restore, currency-aware CSV, and limitations
+**Priority:** Critical
+
+---
+
 > **Suggested work order:** Write specs 1–3 → start coding foundation → write 4–6 in parallel → write 7–10 before leaving foundation phase → 11–12 before launch.

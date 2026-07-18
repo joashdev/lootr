@@ -654,6 +654,7 @@ staged_issues
 <li>Ledgers, budgets, balances, reports, filters, drill-downs, CSV, and backup summaries group by currency by default.</li>
 <li>Never sum unrelated currencies or label their raw sum as a base currency.</li>
 <li>Optional conversion requires an explicit rate, source, effective timestamp, source/destination currencies, and half-even rounding policy. Missing rate data means no converted total.</li>
+<li>A monetary source row whose wallet is missing keeps its exact coefficient and scale with the explicit <code>UNKNOWN</code> currency marker. It is review-required, remains read-only, and is never aggregated with a real currency.</li>
 </ul>
 <h3>11.3 Time</h3>
 <p>Cashew has no separate transaction timezone field. The adapter must inspect the physical value and schema version before decoding.</p>
@@ -675,7 +676,7 @@ staged_issues
 <p>Fallback pairs are always reviewable.</p>
 <p>Cross-currency pairs map to a dedicated transfer with distinct source and destination exact amounts and currency snapshots. If either leg or currency is missing, the relationship is review-required or blocking; it is never converted into income and expense. The importer does not infer an exchange rate.</p>
 <h3>11.5 Recurring series</h3>
-<p>Group only when source series identity is exact or user-approved. Import paid non-skipped occurrences as history, preserve skipped occurrences, use the latest valid unpaid occurrence as next due, and create one reminder/template with an RRULE.</p>
+<p>Group only when source series identity is exact or user-approved. Import paid non-skipped occurrences as history, preserve skipped occurrences, use the latest valid unpaid occurrence as next due, and create one reminder/template with an RRULE. For schema 48, only structurally complete prediction chains become editable templates; loose recurring history remains queryable with source provenance and a visible preserved disposition.</p>
 <p>Keep Lootr confirm-before-finalize. Cashew auto-pay preference may be preserved as metadata but must not enable silent writes.</p>
 <p>One-off upcoming rows remain preserved-only unless a planned-entry model is added.</p>
 <h3>11.6 Goals and debt</h3>
@@ -790,6 +791,7 @@ complete → rolled_back
 <li>keep the source archive and report unless the user explicitly purges them.</li>
 </ul>
 <p>Never identify rollback rows by name, time, or similarity.</p>
+<p>Encrypted Lootr backups contain a versioned manifest for validation. Restore verifies that manifest, integrity, foreign keys, and schema before replacing the live database, then removes the backup-only manifest so it cannot become application state.</p>
 <hr>
 <h2 id="s15">15. Validation and Reconciliation</h2>
 <h3>15.1 Source checks</h3>

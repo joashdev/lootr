@@ -391,6 +391,7 @@ The original Cashew `REAL` may already contain binary representation error; Loot
 - Ledgers, budgets, balances, reports, filters, drill-downs, CSV, and backup summaries group by currency by default.
 - Never sum unrelated currencies or label their raw sum as a base currency.
 - Optional conversion requires an explicit rate, source, effective timestamp, source/destination currencies, and half-even rounding policy. Missing rate data means no converted total.
+- A monetary source row whose wallet is missing keeps its exact coefficient and scale with the explicit `UNKNOWN` currency marker. It is review-required, remains read-only, and is never aggregated with a real currency.
 
 ### 11.3 Time
 
@@ -417,7 +418,7 @@ Cross-currency pairs map to a dedicated transfer with distinct source and destin
 
 ### 11.5 Recurring series
 
-Group only when source series identity is exact or user-approved. Import paid non-skipped occurrences as history, preserve skipped occurrences, use the latest valid unpaid occurrence as next due, and create one reminder/template with an RRULE.
+Group only when source series identity is exact or user-approved. Import paid non-skipped occurrences as history, preserve skipped occurrences, use the latest valid unpaid occurrence as next due, and create one reminder/template with an RRULE. For schema 48, only structurally complete prediction chains become editable templates; loose recurring history remains queryable with source provenance and a visible preserved disposition.
 
 Keep Lootr confirm-before-finalize. Cashew auto-pay preference may be preserved as metadata but must not enable silent writes.
 
@@ -560,6 +561,8 @@ Rollback:
 - keep the source archive and report unless the user explicitly purges them.
 
 Never identify rollback rows by name, time, or similarity.
+
+Encrypted Lootr backups contain a versioned manifest for validation. Restore verifies that manifest, integrity, foreign keys, and schema before replacing the live database, then removes the backup-only manifest so it cannot become application state.
 
 ---
 
