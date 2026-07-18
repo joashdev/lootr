@@ -515,3 +515,52 @@ Drift generates data classes (`Users`, `Account`, etc.) and companion classes (`
 | notifications | idx_notifications_type | notification_type |
 | ai_processing_logs | idx_ai_logs_source | source_type |
 | ai_processing_logs | idx_ai_logs_reference | source_reference_id |
+
+---
+
+## 8. Cashew Migration V1 Schema Amendment
+
+This section supersedes the `REAL` money, one-amount transfer, and one-category monthly budget shapes above for schema version 3 and later. References: `cashew-data-migration.md §8–15`.
+
+### 8.1 Exact money representation
+
+Every monetary field is stored as:
+
+| **Column** | **Type** | **Rule** |
+|---|---|---|
+| `*_atoms` | TEXT | Canonical signed or magnitude `BigInt` coefficient; no leading zeroes except `0` |
+| `*_scale` | INTEGER | Decimal places, 0–18; imported account precision is preserved |
+| `*_currency` | TEXT | Opaque nonblank source/ISO identifier |
+
+Dart calculation uses `BigInt`, aligns scales before same-currency arithmetic, and rejects cross-currency addition. Legacy `REAL` columns remain only for additive migration compatibility and are no longer authoritative after exact values are backfilled.
+
+### 8.2 Financial table additions
+
+- `accounts`: `balance_atoms`, `currency_scale`, `icon`, `emoji`, `color`, `sort_order`.
+- `transactions`: `amount_atoms`, `amount_scale`, `currency_code_snapshot`, `source_title`.
+- `transfers`: `source_amount_atoms`, `source_scale`, `source_currency`, `destination_amount_atoms`, `destination_scale`, `destination_currency`, plus exact source-currency fee fields. Same-currency legs must be equal after scale alignment.
+- `budgets`, `goals`, `debt_records`, `recurring_templates`, and `account_balance_snapshots`: exact amount/currency fields matching §8.1.
+
+### 8.3 Queryable behavior tables
+
+| **Table** | **Purpose** | **Key fields** |
+|---|---|---|
+| `budget_account_memberships` | Include/exclude accounts, including unresolved imports | budget, account nullable, source locator, mode, review state |
+| `budget_category_memberships` | Include/exclude categories | budget, category nullable, source locator, mode, review state |
+| `budget_transaction_memberships` | Explicitly attach/exclude transactions | budget, transaction nullable, source locator, mode |
+| `recurring_occurrences` | Due/resolution history | template, transaction nullable, status, due/resolved/original due, source series/occurrence |
+| `goal_events` | Immutable contribution/adjustment ledger | goal, transaction nullable, exact amount/currency, event type/time |
+| `debt_events` | Immutable payment/adjustment ledger | debt, transaction nullable, exact amount/currency, event type/time |
+| `categorization_rules` | Durable title/payee suggestions | field, match kind, pattern, category, active/archive, priority |
+
+Budgets store period type (`monthly` or `custom`), start/end/cycle fields, direction filter, explicit-only flag, currency, imported/read-only flag, and review state. The old owner/category/month uniqueness constraint no longer defines budget identity.
+
+### 8.4 Local-only migration and recovery tables
+
+`import_runs`, `import_source_entities`, `import_source_relations`, `import_mappings`, `import_discrepancies`, `import_preserved_payloads`, `import_checkpoints`, and `rollback_checkpoints` are local-only and excluded from sync. Disposition is constrained to `exact_import`, `transformed_import`, `preserved_only`, `review_required`, `ignored_safe`, or `invalid_blocking`.
+
+Backups include every syncable and local-only table required to reproduce the ledger, provenance, preservation archive, and rollback state. Backup manifests record format/schema version, cipher/KDF metadata, created time, and payload hash without private row content.
+
+### 8.5 Migration strategy
+
+Schema v3 is additive: add exact columns/tables, backfill legacy values deterministically, verify exact reconstructed balances, then switch repositories/providers to exact columns. New databases create only authoritative exact behavior. Migration tests cover v1→v2→v3, foreign keys, wrong-key rejection, rollback, and backup restore.

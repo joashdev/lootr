@@ -594,3 +594,21 @@ No explicit provider invalidation needed — the Drift `.watch()` stream handles
 | Demo data | `demoDataProvider` seeds via repos; clear invalidates all watching providers |
 | AI preview | Local `StatefulWidget` state; only persisted on confirm |
 | Testing | Override `databaseProvider` with in-memory Drift at `ProviderContainer` level |
+
+---
+
+## 15. Migration, Maintenance, and Database Lifecycle
+
+The migration flow uses durable database state rather than widget-only progress.
+
+| **Provider** | **Scope** | **Responsibility** |
+|---|---|---|
+| `databaseLifecycleProvider` | App-wide | Open/close/reopen encrypted DB; quiesce consumers for restore |
+| `maintenanceLockProvider` | App-wide | Exclude sync, notification rebuild, import publication, rollback, and restore |
+| `migrationCoordinatorProvider` | App-wide | Resume/checkpoint/cancel workers and project safe run state |
+| `importRunProvider(runId)` | Screen | Watch durable run, dispositions, issues, reconciliation, and cleanup |
+| `backupProvider` | App-wide | Create/verify/restore versioned encrypted backups and CSV exports |
+
+Source picker, filesystem, clock, UUID, secure-key storage, and fault injection are injectable providers. Startup recovery scans nonterminal runs. UI cancellation writes `cancel_requested`; the worker closes handles, cleans staging, and records `cancelled`. `applying` and `verifying` are non-cancellable because publication must commit or roll back atomically.
+
+Database restore/rollback acquires the maintenance lock, closes Drift, verifies and atomically replaces the file, reopens it, then invalidates database-dependent providers and rebuilds notifications. Raw migration exceptions never enter `AsyncError` text; only a redacted `SafeMigrationFailure` reaches the UI.

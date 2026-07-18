@@ -737,6 +737,41 @@ transactions ──── recurring_templates
 </tbody>
 </table>
 
+<hr>
+<h2 id="s8">8. Cashew Migration V1 Schema Amendment</h2>
+<p>This section supersedes the <code>REAL</code> money, one-amount transfer, and one-category monthly budget shapes above for schema version 3 and later. References: <code>cashew-data-migration.md §8–15</code>.</p>
+<h3>8.1 Exact money representation</h3>
+<p>Every monetary field is stored as:</p>
+<table><thead><tr><th>Column</th><th>Type</th><th>Rule</th></tr></thead><tbody>
+<tr><td><code>*_atoms</code></td><td>TEXT</td><td>Canonical signed or magnitude <code>BigInt</code> coefficient; no leading zeroes except <code>0</code></td></tr>
+<tr><td><code>*_scale</code></td><td>INTEGER</td><td>Decimal places, 0–18; imported account precision is preserved</td></tr>
+<tr><td><code>*_currency</code></td><td>TEXT</td><td>Opaque nonblank source/ISO identifier</td></tr>
+</tbody></table>
+<p>Dart calculation uses <code>BigInt</code>, aligns scales before same-currency arithmetic, and rejects cross-currency addition. Legacy <code>REAL</code> columns remain only for additive migration compatibility and are no longer authoritative after exact values are backfilled.</p>
+<h3>8.2 Financial table additions</h3>
+<ul>
+<li><code>accounts</code>: <code>balance_atoms</code>, <code>currency_scale</code>, <code>icon</code>, <code>emoji</code>, <code>color</code>, <code>sort_order</code>.</li>
+<li><code>transactions</code>: <code>amount_atoms</code>, <code>amount_scale</code>, <code>currency_code_snapshot</code>, <code>source_title</code>.</li>
+<li><code>transfers</code>: distinct source/destination atoms, scales, currencies, and exact source-currency fee. Same-currency legs must be equal after scale alignment.</li>
+<li><code>budgets</code>, <code>goals</code>, <code>debt_records</code>, <code>recurring_templates</code>, and snapshots: exact amount/currency fields matching §8.1.</li>
+</ul>
+<h3>8.3 Queryable behavior tables</h3>
+<table><thead><tr><th>Table</th><th>Purpose</th><th>Key fields</th></tr></thead><tbody>
+<tr><td><code>budget_account_memberships</code></td><td>Include/exclude accounts, including unresolved imports</td><td>budget, account nullable, source locator, mode, review state</td></tr>
+<tr><td><code>budget_category_memberships</code></td><td>Include/exclude categories</td><td>budget, category nullable, source locator, mode, review state</td></tr>
+<tr><td><code>budget_transaction_memberships</code></td><td>Explicitly attach/exclude transactions</td><td>budget, transaction nullable, source locator, mode</td></tr>
+<tr><td><code>recurring_occurrences</code></td><td>Due/resolution history</td><td>template, transaction nullable, status, due/resolved/original due, source series/occurrence</td></tr>
+<tr><td><code>goal_events</code></td><td>Immutable contribution/adjustment ledger</td><td>goal, transaction nullable, exact amount/currency, event type/time</td></tr>
+<tr><td><code>debt_events</code></td><td>Immutable payment/adjustment ledger</td><td>debt, transaction nullable, exact amount/currency, event type/time</td></tr>
+<tr><td><code>categorization_rules</code></td><td>Durable title/payee suggestions</td><td>field, match kind, pattern, category, active/archive, priority</td></tr>
+</tbody></table>
+<p>Budgets store period, direction, membership, currency, imported/read-only, and review policies. The old owner/category/month uniqueness constraint no longer defines budget identity.</p>
+<h3>8.4 Local-only migration and recovery tables</h3>
+<p><code>import_runs</code>, <code>import_source_entities</code>, <code>import_source_relations</code>, <code>import_mappings</code>, <code>import_discrepancies</code>, <code>import_preserved_payloads</code>, <code>import_checkpoints</code>, and <code>rollback_checkpoints</code> are local-only and excluded from sync. Disposition is constrained to <code>exact_import</code>, <code>transformed_import</code>, <code>preserved_only</code>, <code>review_required</code>, <code>ignored_safe</code>, or <code>invalid_blocking</code>.</p>
+<p>Backups include every table required to reproduce the ledger, provenance, preservation archive, and rollback state. Manifests record format/schema version, cipher/KDF metadata, created time, and payload hash without private row content.</p>
+<h3>8.5 Migration strategy</h3>
+<p>Schema v3 is additive: add exact columns/tables, backfill legacy values deterministically, verify exact reconstructed balances, then switch repositories/providers to exact columns. Migration tests cover v1→v2→v3, foreign keys, wrong-key rejection, rollback, and backup restore.</p>
+
 </div>
 </body>
 </html>

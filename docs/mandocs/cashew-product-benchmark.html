@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cashew Product Benchmark — Personal Finance App</title>
+<style>
+  :root {
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    --bg: #fafafa;
+    --surface: #ffffff;
+    --border: #e2e4e8;
+    --text: #1b1b1f;
+    --text-secondary: #63666e;
+    --accent: #5c64cc;
+    --accent-light: #eeeffe;
+    --green: #059669;
+    --green-light: #ecfdf5;
+    --orange: #d97706;
+    --orange-light: #fffbeb;
+    --red: #d97757;
+    --red-light: #fff4ef;
+    --code-bg: #1e1e2e;
+    --code-text: #cdd6f4;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.6; }
+  .wrapper { max-width: 1100px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 28px; line-height: 1.25; font-weight: 700; margin: 0 0 8px; letter-spacing: -0.5px; }
+  h2 { font-size: 21px; line-height: 1.35; font-weight: 600; margin: 40px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 17px; line-height: 1.4; font-weight: 600; margin: 28px 0 8px; }
+  h4 { font-size: 14px; font-weight: 600; margin: 20px 0 6px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+  p, li { font-size: 15px; }
+  p { margin: 0 0 12px; }
+  ul, ol { margin: 8px 0 16px 22px; padding: 0; }
+  li { margin-bottom: 5px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  strong { font-weight: 600; }
+  hr { border: 0; border-top: 1px solid var(--border); margin: 30px 0; }
+  code { font-family: var(--mono); font-size: 13px; background: #f2f4f7; padding: 2px 6px; border-radius: 4px; overflow-wrap: anywhere; }
+  pre { background: var(--code-bg); color: var(--code-text); border-radius: 8px; padding: 16px 20px; font-family: var(--mono); font-size: 13px; line-height: 1.6; overflow-x: auto; margin: 12px 0 20px; }
+  pre code { background: none; color: inherit; padding: 0; font-size: 13px; overflow-wrap: normal; }
+  pre.diagram { border-left: 3px solid var(--accent); }
+  blockquote { margin: 16px 0 20px; padding: 12px 16px; background: var(--accent-light); border-left: 3px solid var(--accent); border-radius: 6px; color: var(--text); }
+  blockquote p:last-child { margin-bottom: 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 12px 0 22px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; display: block; overflow-x: auto; }
+  thead { background: #f2f4f7; border-bottom: 1px solid var(--border); }
+  tbody, thead { min-width: 100%; width: max-content; display: table; table-layout: fixed; }
+  th { font-weight: 600; text-align: left; padding: 10px 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.45px; color: var(--text-secondary); }
+  td { padding: 9px 12px; border-top: 1px solid var(--border); vertical-align: top; overflow-wrap: anywhere; }
+  tr:first-child td { border-top: none; }
+  .toc { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin: 28px 0 34px; }
+  .toc h3 { margin: 0 0 10px; font-size: 15px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); }
+  .toc ol { margin: 0; columns: 2; column-gap: 32px; }
+  .toc li { break-inside: avoid; font-size: 14px; margin: 0 0 5px; }
+  .toc a { color: var(--text); }
+  .source-note { color: var(--text-secondary); }
+  @media (max-width: 760px) {
+    .wrapper { padding: 24px 16px 60px; }
+    .toc ol { columns: 1; }
+    h1 { font-size: 25px; }
+    h2 { font-size: 20px; }
+    tbody, thead { min-width: 720px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+<h1>Cashew Product Benchmark — Personal Finance App</h1>
+<p class="source-note"><strong>References:</strong> <code>product-strategy.md</code> (Lootr principles and V1 scope), <code>database-schema.md</code> (current domain capacity), <code>navigation-arch.md</code> (interaction model), <code>design.md</code> (visual and accessibility rules), <code>security-model.md</code> (target privacy controls), <code>cashew-data-migration.md</code> (continuity plan).</p>
+<p>What Lootr should preserve, adopt, improve, defer, and deliberately avoid after comparing the current app with Cashew.</p>
+<hr>
+<div class="toc" role="navigation" aria-label="Table of contents">
+  <h3>Table of Contents</h3>
+  <ol><li><a href="#s1">1. Decision Summary</a></li>
+<li><a href="#s2">2. Scope, Evidence, and Truth Model</a></li>
+<li><a href="#s3">3. Comparative Capability Matrix</a></li>
+<li><a href="#s4">4. Important Features Cashew Has That Lootr Lacks</a></li>
+<li><a href="#s5">5. Lootr Advantages Worth Protecting</a></li>
+<li><a href="#s6">6. V1 Adoption Portfolio</a></li>
+<li><a href="#s7">7. UI/UX Principles to Carry Forward</a></li>
+<li><a href="#s8">8. Required V1 Model Changes</a></li>
+<li><a href="#s9">9. Constraints and Non-Negotiables</a></li>
+<li><a href="#s10">10. Risks and Corrections to Existing Claims</a></li>
+<li><a href="#s11">11. Licensing Boundary</a></li>
+<li><a href="#s12">12. Acceptance Criteria</a></li>
+<li><a href="#s13">13. Bottom Line</a></li></ol>
+</div>
+<h2 id="s1">1. Decision Summary</h2>
+<p>Lootr should not attempt Cashew feature parity in V1. Cashew is a mature general-purpose tracker whose main strength is <strong>progressive power</strong>: fast daily entry backed by flexible budgets, persistent filters, rich recurrence, detailed reports, broad personalization, multi-currency controls, bulk tools, and proven data escape hatches.</p>
+<p>Lootr&#39;s stronger product direction is <strong>opinionated clarity</strong>: one-tap assisted capture, dedicated transfer semantics, normalized payees, salary-deduction support, explicit debt domains, a no-login local runtime, confirm-before-save assistance, and a calmer information hierarchy.</p>
+<p>The V1 strategy is therefore:</p>
+<ol>
+<li><strong>Remove switching risk</strong> — lossless Cashew import, reconciliation, rollback, and a versioned Lootr backup/export.</li>
+<li><strong>Finish the privacy promise</strong> — encrypted local storage and a real device lock before importing the user&#39;s financial history.</li>
+<li><strong>Protect familiar daily habits</strong> — persistent filters, month/cycle review, learned payee/category suggestions, richer recurring states, report drill-down, and a small amount of dashboard customization.</li>
+<li><strong>Keep Lootr&#39;s model cleaner</strong> — do not copy Cashew&#39;s overloaded transaction record, file-level sync, hidden-gesture dependence, or configuration sprawl.</li>
+<li><strong>Preserve unsupported Cashew semantics</strong> — complex budgets, settings, and relationships must remain recoverable even when Lootr cannot make them editable in V1.</li>
+</ol>
+<blockquote>
+<p><strong>Replacement-readiness verdict:</strong> Lootr has a credible implemented core, but it is not yet a safe replacement for the user&#39;s Cashew installation. Import/export, backup/restore, SQLCipher, biometric/PIN lock, and mixed-currency correctness are launch gates for this migration.</p>
+</blockquote>
+<hr>
+<h2 id="s2">2. Scope, Evidence, and Truth Model</h2>
+<p>The comparison uses the local Cashew repository at commit <code>9cfbe50c16d95429891d44faf5f2c77a3abdb93b</code> and the current Lootr <code>main</code> branch as inspected on 2026-07-18.</p>
+<p>Cashew claims are based on its first-party README, Drift schema, Flutter pages/widgets, settings defaults, import/export code, and promotional screenshots. Lootr claims are checked against both specs and current Flutter source.</p>
+<table>
+<thead>
+<tr>
+<th><strong>Label</strong></th>
+<th><strong>Meaning</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>Implemented</code></td>
+<td>Connected source-level UI/domain/persistence path exists. It was not necessarily device-tested for this assessment.</td>
+</tr>
+<tr>
+<td><code>Partial</code></td>
+<td>A real path exists, but an important behavior is stubbed, internally inconsistent, or disabled.</td>
+</tr>
+<tr>
+<td><code>Spec-only</code></td>
+<td>Documented as a target but absent from the running implementation.</td>
+</tr>
+<tr>
+<td><code>Deferred</code></td>
+<td>Explicitly outside the initial V1 boundary.</td>
+</tr>
+<tr>
+<td><code>Recommendation</code></td>
+<td>A product decision derived from the evidence, not a statement about current behavior.</td>
+</tr>
+</tbody></table>
+<p>This distinction matters because Cashew is a shipped, mature app while several Lootr advantages are currently architectural intent rather than completed runtime behavior.</p>
+<hr>
+<h2 id="s3">3. Comparative Capability Matrix</h2>
+<table>
+<thead>
+<tr>
+<th><strong>Capability</strong></th>
+<th><strong>Cashew today</strong></th>
+<th><strong>Lootr today</strong></th>
+<th><strong>V1 decision</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Core ledger</td>
+<td>Mature expense/income ledger with deep transaction attributes</td>
+<td>Implemented accounts, categories, payees, transactions, and transfers</td>
+<td>Preserve Lootr model</td>
+</tr>
+<tr>
+<td>Fast capture</td>
+<td>Calculator amount input, remembered titles, contextual defaults</td>
+<td>Implemented NL quick add, voice dictation, OCR, manual form, preview, Undo</td>
+<td>Combine strengths</td>
+</tr>
+<tr>
+<td>Transfers</td>
+<td>Paired transaction rows via <code>pairedTransactionFk</code></td>
+<td>Dedicated transfer entity excluded from spend analytics</td>
+<td>Keep Lootr</td>
+</tr>
+<tr>
+<td>Payees/titles</td>
+<td>Free-text titles plus exact/contains category rules</td>
+<td>Normalized payees; durable learned rules absent</td>
+<td>Add local rules</td>
+</tr>
+<tr>
+<td>Search/filter</td>
+<td>Broad, persistent, visible, month-aware filters and bulk selection</td>
+<td>Search/filter UI exists, but narrower and less persistent/visible</td>
+<td>Expand in V1</td>
+</tr>
+<tr>
+<td>Month review</td>
+<td>Infinite month paging and synchronized selector</td>
+<td>Date-grouped list; no equivalent month-first review surface</td>
+<td>Add in V1</td>
+</tr>
+<tr>
+<td>Budget periods</td>
+<td>Daily, weekly, monthly, yearly, and custom</td>
+<td>Calendar-month category targets only</td>
+<td>Preserve on import; limited V1 expansion</td>
+</tr>
+<tr>
+<td>Budget composition</td>
+<td>Multi-account/category include/exclude rules, added-only mode, nested category limits</td>
+<td>One category per budget</td>
+<td>Defer full parity</td>
+</tr>
+<tr>
+<td>Budget history</td>
+<td>Historical cycles and comparisons</td>
+<td>Month navigation and report calculation exist</td>
+<td>Strengthen history/drill-down</td>
+</tr>
+<tr>
+<td>Recurring lifecycle</td>
+<td>Upcoming/subscription/repetitive, pay, skip, due-date provenance, optional auto-pay</td>
+<td>Templates and local reminders exist; finalization is confirm-first</td>
+<td>Add pay/skip/due history</td>
+</tr>
+<tr>
+<td>Goals</td>
+<td>Transaction-linked objective progress</td>
+<td>Goal CRUD works; contribution history is only partially wired</td>
+<td>Fix audit trail before import</td>
+</tr>
+<tr>
+<td>Debts/loans</td>
+<td>Credit/debt transaction types plus loan objectives</td>
+<td>Separate social debt and liability-account domains; payment history partial</td>
+<td>Keep model, fix events</td>
+</tr>
+<tr>
+<td>Reports</td>
+<td>Interactive line/pie/net-worth/budget views with ledger drill-down</td>
+<td>Real category, income/expense, net-worth, and budget reports</td>
+<td>Standardize drill-down</td>
+</tr>
+<tr>
+<td>Dashboard</td>
+<td>Deep module visibility/order and account scope controls</td>
+<td>Curated safe-to-spend dashboard</td>
+<td>Add bounded customization</td>
+</tr>
+<tr>
+<td>Multi-currency</td>
+<td>Account currency, precision, cached/custom rates, converted views</td>
+<td>Currency labels exist; aggregates do not convert correctly</td>
+<td>Gate mixed-currency reports</td>
+</tr>
+<tr>
+<td>Bulk operations</td>
+<td>Multi-select, total, delete, duplicate, reassign, attach</td>
+<td>Primarily row-level actions</td>
+<td>Add cleanup-focused subset</td>
+</tr>
+<tr>
+<td>Import</td>
+<td>Mature generic CSV mapping and Google Sheets import</td>
+<td>No import path</td>
+<td>Cashew importer is V1-critical</td>
+</tr>
+<tr>
+<td>Export/backup</td>
+<td>Paid-transaction CSV plus full SQLite file export/restore</td>
+<td>No implemented export or restore</td>
+<td>Versioned export is V1-critical</td>
+</tr>
+<tr>
+<td>Cloud continuity</td>
+<td>Google Drive backup/file-level device sync</td>
+<td>V1 sync/auth disabled</td>
+<td>Local backup first; keep V2 sync model</td>
+</tr>
+<tr>
+<td>Device security</td>
+<td>Biometric/device-credential lock available</td>
+<td>Security screen is placeholder; DB is plain SQLite</td>
+<td>Implement before real-data import</td>
+</tr>
+<tr>
+<td>Privacy posture</td>
+<td>Local-first core with optional Google/Drive/Gmail/sharing surfaces</td>
+<td>No-login local runtime; on-device assistance; hardening incomplete</td>
+<td>Lootr advantage after hardening</td>
+</tr>
+<tr>
+<td>Household model</td>
+<td>Feature-specific shared-budget machinery</td>
+<td>Systematic user/household/role model, but V2-gated</td>
+<td>Keep Lootr, defer activation</td>
+</tr>
+<tr>
+<td>Automation</td>
+<td>App links, quick actions, Sheets, Gmail/notification templates</td>
+<td>Manual-first; NL/OCR/voice capture</td>
+<td>Defer broad automation</td>
+</tr>
+<tr>
+<td>Responsive UI</td>
+<td>Mobile, web/PWA, side rail, double-column layouts</td>
+<td>Mobile-first; responsive design specified</td>
+<td>Tablet adaptation, not PWA parity</td>
+</tr>
+<tr>
+<td>Personalization</td>
+<td>Accent, fonts, icons, home, nav, number pad, formats, motion</td>
+<td>Theme mode and curated design system</td>
+<td>Bounded options only</td>
+</tr>
+<tr>
+<td>Accessibility</td>
+<td>Some semantics, tooltips, keyboard, contrast/motion controls; forced text scaling in places</td>
+<td>Stronger documented rules; implementation needs runtime audit</td>
+<td>Preserve Lootr rules</td>
+</tr>
+</tbody></table>
+<p>Primary Cashew evidence: <code>Cashew/budget/lib/database/tables.dart:42-115,250-539</code>, <code>Cashew/budget/lib/pages/transactionFilters.dart:26-469</code>, <code>Cashew/budget/lib/pages/homePage/homePage.dart:178-219</code>, <code>Cashew/budget/lib/widgets/importCSV.dart</code>, <code>Cashew/budget/lib/widgets/exportDB.dart:11-64</code>.</p>
+<p>Primary Lootr evidence: <code>lib/data/database/app_database.dart:25-73</code>, <code>lib/core/router/app_router.dart:85-376</code>, <code>lib/ai/nl_parser.dart:135-209</code>, <code>lib/ai/ocr_pipeline.dart:47-168</code>, <code>lib/application/providers/reports_provider.dart:163-433</code>.</p>
+<hr>
+<h2 id="s4">4. Important Features Cashew Has That Lootr Lacks</h2>
+<h3>4.1 Data ownership and switching safety</h3>
+<p>Cashew can export and restore its full SQLite database. Its normal CSV is useful for human inspection but exports only paid transactions and omits recurrence, transfer relationships, unpaid/skipped states, budget rules, and settings (<code>Cashew/budget/lib/widgets/exportCSV.dart:84-140</code>; <code>Cashew/budget/lib/widgets/exportDB.dart:11-64</code>).</p>
+<p>Lootr currently has no import, versioned export, or backup/restore path. This is the largest practical gap because a local-first app without an escape hatch can lose the user&#39;s entire history on uninstall or device loss.</p>
+<p><strong>Required response:</strong> make a lossless Cashew importer and a versioned Lootr backup/export part of V1 acceptance, not a post-launch tool.</p>
+<h3>4.2 Flexible budgets</h3>
+<p>Cashew budgets are reusable queries with limits. They can span arbitrary periods, selected accounts, selected or excluded categories, explicitly added transactions, income or expense polarity, and per-category limits (<code>Cashew/budget/lib/database/tables.dart:375-388,422-475</code>).</p>
+<p>Lootr currently models one advisory target for one category in one calendar month (<code>database-schema.md §3.9</code>). This is simpler and more teachable, but it cannot represent trip budgets, pay-cycle budgets, annual envelopes, broad category sets, or historical Cashew rules.</p>
+<p><strong>Required response:</strong> do not force complex imported budgets into incorrect monthly rows. Preserve the source rule losslessly and expose an imported read-only view; add flexible date-range/event budgets only if the user&#39;s real backup proves they are needed.</p>
+<h3>4.3 Recurring state and due-date history</h3>
+<p>Cashew treats scheduled money as a lifecycle: upcoming, subscription, repetitive, paid, skipped, original due date, next occurrence, optional end date, and notification (<code>Cashew/budget/lib/database/tables.dart:298-317</code>; <code>Cashew/budget/lib/struct/upcomingTransactionsFunctions.dart:192-323</code>).</p>
+<p>Lootr has recurring templates and notifications, but not the same pay/skip state machine or original-due-date record.</p>
+<p><strong>Required response:</strong> add <code>due_at</code>, <code>resolved_at</code>, <code>resolution</code> (<code>paid</code>, <code>skipped</code>, <code>dismissed</code>), and occurrence provenance while retaining Lootr&#39;s rule that a reminder does not silently finalize a ledger entry.</p>
+<h3>4.4 Durable categorization memory</h3>
+<p>Cashew stores title-to-category rules with exact or partial matching (<code>Cashew/budget/lib/database/tables.dart:390-408</code>). Lootr normalizes payees and has deterministic categorization heuristics, but it lacks a durable user-correction rule model.</p>
+<p><strong>Required response:</strong> add an on-device rule table keyed by normalized payee/title, with visible suggestion, confidence/source, one-tap override, exact-before-contains precedence, and no silent retroactive mutation.</p>
+<h3>4.5 Persistent filters and bulk cleanup</h3>
+<p>Cashew persists filter state, shows active filters as selected controls/chips, supports month paging, interprets amount/month searches, and provides a selection mode for high-volume cleanup (<code>Cashew/budget/lib/pages/transactionFilters.dart:185-469</code>; <code>Cashew/budget/lib/widgets/selectedTransactionsAppBar.dart:76-805</code>).</p>
+<p>Lootr&#39;s unified list and filter sheet are a sound base, but migration will expose the need for bulk recategorization, account movement, and deletion.</p>
+<p><strong>Required response:</strong> ship persistent visible filters and a narrow bulk-action set. Do not copy every Cashew batch operation into V1.</p>
+<h3>4.6 Correct multi-currency aggregation</h3>
+<p>Lootr accounts store a currency code, but current reports sum raw values across accounts and label the result using the selected user currency. This can misstate totals (<code>lib/application/providers/reports_provider.dart:191-219,317-365</code>).</p>
+<p>Cashew has account precision, exchange-rate settings, cached/custom rates, and converted views (<code>Cashew/budget/lib/database/tables.dart:250-271</code>; <code>Cashew/budget/lib/pages/exchangeRatesPage.dart:240-320</code>).</p>
+<p><strong>Required response:</strong> until a rate model exists, separate aggregate reports by currency or block mixed-currency totals. Never display an unconverted sum as if it were a valid base-currency amount.</p>
+<h3>4.7 Actual local security controls</h3>
+<p>Lootr&#39;s security spec promises SQLCipher and device lock, but the current production database opens ordinary Drift SQLite and the biometric/PIN controls are placeholders (<code>lib/data/database/app_database.dart:50-73</code>; <code>lib/presentation/screens/more/settings/security_screen.dart:25-80</code>).</p>
+<p>Cashew already exposes biometric/device-credential locking.</p>
+<p><strong>Required response:</strong> implement and verify encryption and lock migration before real Cashew data is imported. Until then, “encrypted at rest” must not be used as a current product claim.</p>
+<hr>
+<h2 id="s5">5. Lootr Advantages Worth Protecting</h2>
+<h3>5.1 Assisted entry is cohesive and user-controlled</h3>
+<p>Lootr&#39;s global Add island combines natural language, voice, OCR, manual entry, preview, confirmation, and Undo. Cashew has excellent calculator entry and automation, but Lootr&#39;s single “type, speak, scan, or fill” model is more coherent.</p>
+<p>Keep deterministic parsing first. Model AI remains optional, on-device, explainable, and unable to mutate the ledger without confirmation.</p>
+<h3>5.2 Transfers are a real domain object</h3>
+<p>Cashew represents a transfer as paired transaction rows. Lootr stores a dedicated transfer with source, destination, amount, fee, time, and note (<code>database-schema.md §3.6</code>). This prevents transfers from leaking into spending and budget totals and makes edit/delete behavior easier to audit.</p>
+<p>The importer should recognize Cashew pairs and produce Lootr transfers rather than preserving the overloaded source representation.</p>
+<h3>5.3 Payees are normalized</h3>
+<p>Lootr separates payee identity from transaction notes and categories. This creates a better foundation for deduplication, recurring detection, merchant history, and local categorization rules than free-text titles alone.</p>
+<p>The importer must still retain Cashew&#39;s exact title in provenance so a normalized mapping never destroys user-entered wording.</p>
+<h3>5.4 Salary deductions fit the intended user</h3>
+<p>Parent income plus child deduction entries can represent Philippine salary realities such as tax, SSS, PhilHealth, Pag-IBIG, insurance, and custom deductions without becoming payroll software (<code>product-strategy.md §Income Deductions</code>).</p>
+<p>This is more personally relevant than copying another generic analytics widget.</p>
+<h3>5.5 Debt semantics are clearer</h3>
+<p>Lootr distinguishes social debt from institutional liability accounts. Cashew&#39;s debt, credit, and loan behaviors are powerful but spread across transaction types and objectives.</p>
+<p>Keep Lootr&#39;s clearer model, then fix its missing immutable contribution/payment history before importing linked Cashew data.</p>
+<h3>5.6 The local runtime has a stronger boundary</h3>
+<p>Lootr V1 requires no login and no network in the UI read/write path. Cashew is locally capable, but optional Drive, Gmail, attachments, sharing, and cross-device file sync widen its privacy surface.</p>
+<p>This is a real Lootr advantage only after encryption, backup, and device lock are implemented.</p>
+<h3>5.7 Calm defaults beat configuration debt</h3>
+<p>Lootr uses a fixed primary navigation, a canonical transaction list, restrained semantic color, whitespace, and no streaks or guilt-based engagement. Cashew&#39;s flexibility is useful, but its deep settings and long-press conventions increase learning and QA cost.</p>
+<p>Adopt meaningful customization without turning the settings screen into a second product.</p>
+<h3>5.8 Household ownership is systematic</h3>
+<p>Lootr&#39;s planned owner/member/viewer roles and personal/shared ownership are modeled across the domain and authorization boundary. Cashew&#39;s current sharing is more available, but more feature-specific.</p>
+<p>Keep Lootr&#39;s model and V2 gate; do not pull live collaboration into V1 merely for parity.</p>
+<hr>
+<h2 id="s6">6. V1 Adoption Portfolio</h2>
+<h3>6.1 P0 — replacement gates</h3>
+<table>
+<thead>
+<tr>
+<th><strong>Adoption</strong></th>
+<th><strong>Concrete V1 outcome</strong></th>
+<th><strong>Why P0</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Cashew SQLite importer</td>
+<td>Dry run, source detection, entity mapping, warnings, atomic commit, reconciliation, rollback</td>
+<td>The user cannot switch safely without it</td>
+</tr>
+<tr>
+<td>Lootr backup/restore</td>
+<td>Versioned, encrypted, full-fidelity local backup plus readable transaction CSV</td>
+<td>Local-first must not mean device-bound</td>
+</tr>
+<tr>
+<td>SQLCipher migration</td>
+<td>Existing and imported databases encrypted with keystore-managed key</td>
+<td>Required for the privacy claim</td>
+</tr>
+<tr>
+<td>Device lock</td>
+<td>Biometric/device credential with working fallback and auto-lock</td>
+<td>Cashew already protects sensitive data</td>
+</tr>
+<tr>
+<td>Currency guardrails</td>
+<td>Per-currency totals until conversion is correctly modeled</td>
+<td>Prevents false financial reporting</td>
+</tr>
+<tr>
+<td>Goal/debt event integrity</td>
+<td>Contributions/payments create immutable linked events and reconcile scalars</td>
+<td>Required to preserve Cashew history</td>
+</tr>
+</tbody></table>
+<h3>6.2 P1 — familiar daily-use leverage</h3>
+<table>
+<thead>
+<tr>
+<th><strong>Adoption</strong></th>
+<th><strong>Lootr interpretation</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Remembered title/category behavior</td>
+<td>Local payee/title rules learned from explicit correction</td>
+</tr>
+<tr>
+<td>Persistent filters</td>
+<td>Restore list filters, show active chips, and keep a clear “Reset”</td>
+</tr>
+<tr>
+<td>Month/cycle review</td>
+<td>Shared period selector across ledger, budgets, and reports</td>
+</tr>
+<tr>
+<td>Report drill-down</td>
+<td>Every aggregate opens the exact filtered records behind it</td>
+</tr>
+<tr>
+<td>Recurring pay/skip</td>
+<td>Occurrence lifecycle with original due date and confirm-before-post</td>
+</tr>
+<tr>
+<td>Calculator fallback</td>
+<td>Deterministic amount calculator beside NL/voice/OCR</td>
+</tr>
+<tr>
+<td>Bounded dashboard customization</td>
+<td>Hide/show/reorder 4–6 secondary cards below a fixed safe-to-spend hero</td>
+</tr>
+<tr>
+<td>Cleanup bulk actions</td>
+<td>Recategorize, move account, and delete in one atomic operation</td>
+</tr>
+</tbody></table>
+<h3>6.3 P2 — adopt only if the real backup demands it</h3>
+<ul>
+<li>flexible one-time or date-range budgets;</li>
+<li>imported historical budget-cycle browser;</li>
+<li>custom per-account decimal precision;</li>
+<li>manually managed exchange rates;</li>
+<li>transaction duplication and “duplicate for today”;</li>
+<li>local receipt attachment lifecycle;</li>
+<li>More-section favorites on tablet;</li>
+<li>app/OS quick actions.</li>
+</ul>
+<h3>6.4 Defer</h3>
+<ul>
+<li>composite budgets with every Cashew include/exclude/filter rule;</li>
+<li>Google Drive merge sync;</li>
+<li>Gmail or notification scraping;</li>
+<li>Google Sheets import;</li>
+<li>shared budgets in V1;</li>
+<li>arbitrary bottom-navigation replacement;</li>
+<li>configurable fonts, icon families, number-pad layouts, animation speeds, and dozens of formatting switches;</li>
+<li>heat maps, bill splitting, and elaborate loan subproducts;</li>
+<li>PWA/desktop parity;</li>
+<li>AI coaching or automatic financial mutation.</li>
+</ul>
+<h3>6.5 Deliberately reject</h3>
+<ul>
+<li>representing transfers, debts, subscriptions, and goals only as flags on one transaction table;</li>
+<li>file-level database replacement as the normal sync protocol;</li>
+<li>hidden long press as the only way to discover a consequential action;</li>
+<li>forced text scaling in charts or category visuals;</li>
+<li>automatic recurring posting without an explicit opt-in and auditable state transition;</li>
+<li>copied Cashew source code, branding, icons, illustrations, or translation text.</li>
+</ul>
+<hr>
+<h2 id="s7">7. UI/UX Principles to Carry Forward</h2>
+<h3>7.1 Progressive power</h3>
+<p>The default path should remain short, but advanced attributes should stay nearby.</p>
+<pre class="diagram"><code class="language-text">Quick Add
+  → inferred amount / account / category / payee
+  → visible preview and one-tap correction
+  → Save
+
+Need more?
+  → date, recurrence, note, goal/debt link, source metadata
+  → same transaction context, progressively disclosed
+</code></pre>
+<p>Do not force a user into a separate administration screen to correct the transaction they are already entering.</p>
+<h3>7.2 Remember intent, not authority</h3>
+<p>Remember last-used account, list filters, report period, and explicit payee/category corrections. Use them as visible defaults or suggestions.</p>
+<p>Never reinterpret old records or silently change a saved category because a new rule was learned.</p>
+<h3>7.3 Every number must explain itself</h3>
+<p>Use one drill-down contract:</p>
+<pre class="diagram"><code class="language-text">summary
+  → human-readable filter description
+  → canonical transaction list
+  → editable record
+  → back restores the summary and scroll/filter state
+</code></pre>
+<p>This matters more than adding another chart type.</p>
+<h3>7.4 Treat time as navigation</h3>
+<p>“This month,” “last cycle,” “due,” and “paid on” are primary finance questions. Use one consistent period selector across transactions, budgets, and reports. Preserve filters while moving between periods.</p>
+<h3>7.5 Layer feedback without judgment</h3>
+<p>Combine text, icons, color, optional haptics, and Undo. Do not rely on red/green alone. Keep budget and overdue language factual; avoid streaks, shame, or false urgency.</p>
+<h3>7.6 Personalize within a stable frame</h3>
+<p>Allow a small curated set of home modules to be hidden or reordered. Keep the safe-to-spend hero, four tabs, Add island, and canonical transaction list stable.</p>
+<h3>7.7 Visible actions first, gestures second</h3>
+<p>Swipe and long press may accelerate expert use, but every destructive, batch, or settings-changing action must also have a visible menu or button. Teach gestures after first use rather than making users guess.</p>
+<h3>7.8 Migration is onboarding</h3>
+<p>The first-run experience for an existing Cashew user is not a generic feature carousel. It is:</p>
+<ol>
+<li>choose the Cashew backup;</li>
+<li>inspect detected accounts, dates, currencies, and special records;</li>
+<li>review warnings and mapping decisions;</li>
+<li>import into a reversible workspace;</li>
+<li>reconcile balances and counts;</li>
+<li>land on a familiar month with the imported ledger already filtered and explainable.</li>
+</ol>
+<hr>
+<h2 id="s8">8. Required V1 Model Changes</h2>
+<p>The comparison exposes data gaps that should be resolved before broad feature work:</p>
+<table>
+<thead>
+<tr>
+<th><strong>Model change</strong></th>
+<th><strong>Purpose</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Import run + source mapping tables</td>
+<td>Idempotency, provenance, warnings, rollback, and raw-value preservation</td>
+</tr>
+<tr>
+<td>Goal contribution events or explicit transaction FK</td>
+<td>Immutable progress history</td>
+</tr>
+<tr>
+<td>Debt payment events or explicit transaction FK</td>
+<td>Immutable repayment history</td>
+</tr>
+<tr>
+<td>Recurring occurrence state</td>
+<td>Due, paid, skipped, resolved, source occurrence</td>
+</tr>
+<tr>
+<td>Categorization rule table</td>
+<td>Durable exact/contains payee/title suggestions</td>
+</tr>
+<tr>
+<td>Backup format/version metadata</td>
+<td>Reliable future restore</td>
+</tr>
+<tr>
+<td>Currency policy</td>
+<td>Base currency, rate source/time, conversion/rounding, or strict per-currency separation</td>
+</tr>
+<tr>
+<td>Optional legacy record store</td>
+<td>Lossless preservation for unsupported Cashew budgets/settings</td>
+</tr>
+</tbody></table>
+<p><code>metadata</code> may hold source residue for audit, but queryable financial behavior must not live indefinitely in opaque JSON.</p>
+<hr>
+<h2 id="s9">9. Constraints and Non-Negotiables</h2>
+<p>Any adopted behavior must:</p>
+<ul>
+<li>work without login or network;</li>
+<li>write to SQLite first and update related money state atomically;</li>
+<li>remain compatible with additive migrations and future row sync;</li>
+<li>never require bank credentials;</li>
+<li>keep AI optional, on-device, and confirm-before-save;</li>
+<li>preserve dedicated transfer semantics;</li>
+<li>preserve the four tabs plus rightmost Add island;</li>
+<li>use progressive disclosure for advanced finance controls;</li>
+<li>provide screen-reader labels, dynamic type, non-color status cues, and reduced motion;</li>
+<li>expose source/provenance and reconciliation for imported records.</li>
+</ul>
+<hr>
+<h2 id="s10">10. Risks and Corrections to Existing Claims</h2>
+<table>
+<thead>
+<tr>
+<th><strong>Risk</strong></th>
+<th><strong>Current reality</strong></th>
+<th><strong>Correction</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>“Privacy-first” implies encryption</td>
+<td>Production DB is ordinary SQLite</td>
+<td>Implement/verify SQLCipher before claiming encryption</td>
+</tr>
+<tr>
+<td>Multi-currency reports look valid</td>
+<td>Raw values are aggregated without conversion</td>
+<td>Separate or block mixed-currency totals</td>
+</tr>
+<tr>
+<td>Goal history appears available</td>
+<td>Contribution action mutates a scalar without creating the expected event</td>
+<td>Choose and enforce one authoritative event model</td>
+</tr>
+<tr>
+<td>Debt history appears available</td>
+<td>Settlement mutates remaining balance/status without an immutable payment event</td>
+<td>Link payments and derive/reconcile balance</td>
+</tr>
+<tr>
+<td>Rollover appears in UX</td>
+<td>Budget schema has no rollover field/policy</td>
+<td>Remove from V1 UI or add explicit semantics</td>
+</tr>
+<tr>
+<td>“Local-first” implies recoverable</td>
+<td>No backup/restore exists</td>
+<td>Make data portability a launch gate</td>
+</tr>
+<tr>
+<td>Insights appears implemented</td>
+<td>Current insight text is static</td>
+<td>Remove from V1 claims or replace with computed deterministic summaries</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="s11">11. Licensing Boundary</h2>
+<p>The inspected Cashew repository is licensed under GNU GPL v3. This benchmark recommends adopting general product behaviors and independently implementing them.</p>
+<p>Do not copy Cashew source code, branded copy, icons, screenshots, illustrations, translations, or bundled assets into Lootr unless Lootr intentionally accepts the applicable GPL obligations and the specific asset rights are verified. This is a product-engineering boundary, not legal advice.</p>
+<hr>
+<h2 id="s12">12. Acceptance Criteria</h2>
+<p>The comparison work is actionable when:</p>
+<ul>
+<li>every matrix item is labeled as Cashew implemented, Lootr implemented/partial/spec-only, or deferred;</li>
+<li>the V1 roadmap contains every P0 replacement gate;</li>
+<li>a Cashew SQLite backup can complete a dry run without mutating Lootr;</li>
+<li>imported counts, per-account currency totals, date bounds, transfer pairs, recurring items, goals, debts, and unsupported records are reconciled;</li>
+<li>the import can be rolled back and repeated without duplicates;</li>
+<li>Lootr can create and restore its own full-fidelity backup;</li>
+<li>the production database is demonstrably encrypted and the device lock is functional;</li>
+<li>mixed-currency reports cannot present invalid totals;</li>
+<li>every aggregate report drills into its source ledger rows;</li>
+<li>filter and month state survive navigation;</li>
+<li>advanced options remain discoverable without relying only on long press;</li>
+<li>no Cashew code or assets are copied into Lootr.</li>
+</ul>
+<hr>
+<h2 id="s13">13. Bottom Line</h2>
+<p>Cashew is ahead in maturity, flexibility, portability, recurrence, multi-currency, and power-user workflow. Lootr is already more coherent in assisted capture, transfers, payees, salary deductions, debt boundaries, and calm information design.</p>
+<p>The winning V1 is not “Cashew, rewritten.” It is a trustworthy personal migration into a smaller, clearer tool that keeps the user&#39;s most valuable habits, fixes the data-model ambiguities that migration exposes, and earns the privacy-first claim through working security and portability rather than intention.</p>
+
+</div>
+</body>
+</html>

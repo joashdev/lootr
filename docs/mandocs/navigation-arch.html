@@ -1171,5 +1171,15 @@ Return to previous screen
 </ul>
 
 </div>
+<hr>
+<h2 id="s18">18. Data Migration and Backup Routes</h2>
+<p>Settings gains a visible <strong>Data &amp; backup</strong> entry.</p>
+<pre class="diagram"><code>/more/settings/data
+├── /more/settings/data/import-cashew
+├── /more/settings/data/import-cashew/:runId
+└── /more/settings/data/imports/:runId</code></pre>
+<p>The hub exposes Import from Cashew, encrypted Lootr backup creation/restore, readable transaction CSV export, previous import summaries, preserved records, and a resume banner for nonterminal runs.</p>
+<p>The pushed-page wizard has Prepare, Choose, Analyze, Review, Reconcile, Apply, and Complete stages. It collects timezone and reversible title/payee policy in-app. Cancellation is available before publication; Apply/Verify uses <code>PopScope</code> to explain why the atomic step cannot be interrupted. Completion links to the latest imported month with visible filters restored.</p>
+<p>Accessibility requires 48dp targets, semantic stage headings and “Step n of n,” phase-only live announcements, icon plus text status, accessible currency partitions, 200% text scaling, reduced motion, and focus on the first blocking group. Screenshots use synthetic/redacted data only.</p>
 </body>
 </html>

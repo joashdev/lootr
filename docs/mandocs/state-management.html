@@ -575,5 +575,17 @@ Widget clears local state, sheet dismisses</div>
 </table>
 
 </div>
+<hr>
+<h2 id="s15">15. Migration, Maintenance, and Database Lifecycle</h2>
+<p>The migration flow uses durable database state rather than widget-only progress.</p>
+<table><thead><tr><th>Provider</th><th>Scope</th><th>Responsibility</th></tr></thead><tbody>
+<tr><td><code>databaseLifecycleProvider</code></td><td>App-wide</td><td>Open/close/reopen encrypted DB; quiesce consumers for restore</td></tr>
+<tr><td><code>maintenanceLockProvider</code></td><td>App-wide</td><td>Exclude sync, notification rebuild, publication, rollback, and restore</td></tr>
+<tr><td><code>migrationCoordinatorProvider</code></td><td>App-wide</td><td>Resume/checkpoint/cancel workers and project safe run state</td></tr>
+<tr><td><code>importRunProvider(runId)</code></td><td>Screen</td><td>Watch durable run, dispositions, issues, reconciliation, and cleanup</td></tr>
+<tr><td><code>backupProvider</code></td><td>App-wide</td><td>Create/verify/restore encrypted backups and CSV exports</td></tr>
+</tbody></table>
+<p>Picker, filesystem, clock, UUID, key storage, and fault injection are injectable. Startup scans nonterminal runs. Cancellation writes <code>cancel_requested</code>; the worker closes handles, cleans staging, and records <code>cancelled</code>. Apply/verify remains non-cancellable so publication commits or rolls back atomically.</p>
+<p>Restore/rollback acquires the maintenance lock, closes Drift, verifies and atomically replaces the file, reopens it, invalidates dependent providers, and rebuilds notifications. Only redacted <code>SafeMigrationFailure</code> values reach the UI.</p>
 </body>
 </html>

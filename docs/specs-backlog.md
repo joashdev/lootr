@@ -206,4 +206,36 @@ Each spec, when written, should be a standalone markdown doc that is concrete en
 
 ---
 
+# Supporting Product & Migration Specs ✅
+
+## 13. Cashew Product Benchmark ✅
+
+**Status:** Done.
+**Produces:** `docs/cashew-product-benchmark.md` + `docs/mandocs/cashew-product-benchmark.html`
+**Purpose:** Compare Cashew's shipped capabilities with Lootr's implemented and planned product, then select V1 adoption priorities.
+**Coverage:**
+- Feature matrix with implemented/partial/spec-only distinctions
+- Lootr advantages and Cashew capability gaps
+- V1 P0/P1/P2/defer/reject decisions
+- UI/UX principles worth adopting
+- Required model changes, constraints, risks, and acceptance criteria
+**Priority:** High
+
+---
+
+## 14. Cashew Data Migration ✅
+
+**Status:** Done.
+**Produces:** `docs/cashew-data-migration.md` + `docs/mandocs/cashew-data-migration.html`
+**Purpose:** Define a loss-minimizing, local-only migration from a Cashew SQLite backup into Lootr.
+**Coverage:**
+- Source acquisition, schema detection, and integrity preflight
+- Canonical staging, entity mapping, and difficult transformations
+- Provenance, preserved payloads, idempotency, and rollback
+- Balance reconciliation, privacy, UX, test strategy, and V1 boundary
+- Schema-48 real-export audit, blockers, and completion criteria
+**Priority:** Critical
+
+---
+
 > **Suggested work order:** Write specs 1–3 → start coding foundation → write 4–6 in parallel → write 7–10 before leaving foundation phase → 11–12 before launch.

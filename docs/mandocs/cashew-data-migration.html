@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cashew Data Migration — Personal Finance App</title>
+<style>
+  :root {
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    --bg: #fafafa;
+    --surface: #ffffff;
+    --border: #e2e4e8;
+    --text: #1b1b1f;
+    --text-secondary: #63666e;
+    --accent: #5c64cc;
+    --accent-light: #eeeffe;
+    --green: #059669;
+    --green-light: #ecfdf5;
+    --orange: #d97706;
+    --orange-light: #fffbeb;
+    --red: #d97757;
+    --red-light: #fff4ef;
+    --code-bg: #1e1e2e;
+    --code-text: #cdd6f4;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.6; }
+  .wrapper { max-width: 1100px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 28px; line-height: 1.25; font-weight: 700; margin: 0 0 8px; letter-spacing: -0.5px; }
+  h2 { font-size: 21px; line-height: 1.35; font-weight: 600; margin: 40px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 17px; line-height: 1.4; font-weight: 600; margin: 28px 0 8px; }
+  h4 { font-size: 14px; font-weight: 600; margin: 20px 0 6px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+  p, li { font-size: 15px; }
+  p { margin: 0 0 12px; }
+  ul, ol { margin: 8px 0 16px 22px; padding: 0; }
+  li { margin-bottom: 5px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  strong { font-weight: 600; }
+  hr { border: 0; border-top: 1px solid var(--border); margin: 30px 0; }
+  code { font-family: var(--mono); font-size: 13px; background: #f2f4f7; padding: 2px 6px; border-radius: 4px; overflow-wrap: anywhere; }
+  pre { background: var(--code-bg); color: var(--code-text); border-radius: 8px; padding: 16px 20px; font-family: var(--mono); font-size: 13px; line-height: 1.6; overflow-x: auto; margin: 12px 0 20px; }
+  pre code { background: none; color: inherit; padding: 0; font-size: 13px; overflow-wrap: normal; }
+  pre.diagram { border-left: 3px solid var(--accent); }
+  blockquote { margin: 16px 0 20px; padding: 12px 16px; background: var(--accent-light); border-left: 3px solid var(--accent); border-radius: 6px; color: var(--text); }
+  blockquote p:last-child { margin-bottom: 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 12px 0 22px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; display: block; overflow-x: auto; }
+  thead { background: #f2f4f7; border-bottom: 1px solid var(--border); }
+  tbody, thead { min-width: 100%; width: max-content; display: table; table-layout: fixed; }
+  th { font-weight: 600; text-align: left; padding: 10px 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.45px; color: var(--text-secondary); }
+  td { padding: 9px 12px; border-top: 1px solid var(--border); vertical-align: top; overflow-wrap: anywhere; }
+  tr:first-child td { border-top: none; }
+  .toc { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin: 28px 0 34px; }
+  .toc h3 { margin: 0 0 10px; font-size: 15px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); }
+  .toc ol { margin: 0; columns: 2; column-gap: 32px; }
+  .toc li { break-inside: avoid; font-size: 14px; margin: 0 0 5px; }
+  .toc a { color: var(--text); }
+  .source-note { color: var(--text-secondary); }
+  @media (max-width: 760px) {
+    .wrapper { padding: 24px 16px 60px; }
+    .toc ol { columns: 1; }
+    h1 { font-size: 25px; }
+    h2 { font-size: 20px; }
+    tbody, thead { min-width: 720px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+<h1>Cashew Data Migration — Personal Finance App</h1>
+<p class="source-note"><strong>References:</strong> <code>cashew-product-benchmark.md</code> (V1 adoption decisions), <code>database-schema.md</code> (Lootr target tables), <code>domain-model.md</code> (financial semantics), <code>security-model.md</code> (local data protection), <code>sync-engine.md</code> (future row-sync rules), <code>research/cashew-schema-48-delta.md</code> (current source schema), <code>research/cashew-real-export-audit.md</code> (redacted real-data validation).</p>
+<p>Loss-minimizing, local-only migration from an existing Cashew history into Lootr.</p>
+<hr>
+<div class="toc" role="navigation" aria-label="Table of contents">
+  <h3>Table of Contents</h3>
+  <ol><li><a href="#s1">1. Outcome and Recommendation</a></li>
+<li><a href="#s2">2. Non-Negotiable Invariants</a></li>
+<li><a href="#s3">3. Source Snapshot and Evidence Labels</a></li>
+<li><a href="#s4">4. Source Acquisition</a></li>
+<li><a href="#s5">5. Verified Cashew Data Inventory</a></li>
+<li><a href="#s6">6. Cashew Semantics That Affect Mapping</a></li>
+<li><a href="#s7">7. Lootr Readiness Gaps</a></li>
+<li><a href="#s8">8. Schema Additions Before Implementation</a></li>
+<li><a href="#s9">9. Staging Architecture</a></li>
+<li><a href="#s10">10. Core Entity Mapping</a></li>
+<li><a href="#s11">11. Difficult Transformation Rules</a></li>
+<li><a href="#s12">12. Unsupported Data Preservation</a></li>
+<li><a href="#s13">13. Identity, Idempotency, and Re-Import</a></li>
+<li><a href="#s14">14. Import State Machine and Failure Recovery</a></li>
+<li><a href="#s15">15. Validation and Reconciliation</a></li>
+<li><a href="#s16">16. User Experience</a></li>
+<li><a href="#s17">17. Privacy and Security</a></li>
+<li><a href="#s18">18. V1 Scope</a></li>
+<li><a href="#s19">19. Real-Export Audit and Decisions</a></li>
+<li><a href="#s20">20. Test Strategy</a></li>
+<li><a href="#s21">21. Acceptance Criteria</a></li>
+<li><a href="#s22">22. Bottom Line</a></li></ol>
+</div>
+<h2 id="s1">1. Outcome and Recommendation</h2>
+<p>Use Cashew&#39;s <strong>Export data file</strong> as the primary source. The resulting <code>.sql</code> file is a raw SQLite database copy, not SQL text (<code>Cashew/budget/lib/widgets/exportDB.dart:11-44</code>). Cashew&#39;s CSV is a degraded fallback because it contains only paid transactions and omits source IDs, relationships, recurring state, budget definitions, settings, and modification history (<code>Cashew/budget/lib/widgets/exportCSV.dart:84-151</code>).</p>
+<p>The migration must:</p>
+<ol>
+<li>analyze the source without modifying it;</li>
+<li>classify every source row as exact import, transformed import, preserved-only, review-required, or invalid;</li>
+<li>reconcile counts and balances before any target write;</li>
+<li>apply the approved import atomically;</li>
+<li>retain source-to-target provenance;</li>
+<li>preserve unsupported source semantics rather than discard them;</li>
+<li>support safe re-import and rollback;</li>
+<li>run entirely on device;</li>
+<li>keep the original Cashew export untouched.</li>
+</ol>
+<blockquote>
+<p><strong>Definition of intact:</strong> every source row and relationship is either represented as a first-class Lootr record or retained in a versioned, user-exportable preserved payload with a documented reason. “Imported without errors” is not sufficient if unsupported data was silently dropped.</p>
+</blockquote>
+<hr>
+<h2 id="s2">2. Non-Negotiable Invariants</h2>
+<ul>
+<li>The source file is opened read-only and never migrated in place.</li>
+<li>No source row is left without a disposition.</li>
+<li>Same source + same policy can be applied twice with zero duplicate financial records.</li>
+<li>Imported account balances reconcile to Cashew&#39;s paid-row sums within currency precision.</li>
+<li>Same-currency transfers remain excluded from spending analytics.</li>
+<li>Cross-currency transfers are never silently flattened into one amount.</li>
+<li>Unpaid future and skipped recurring rows never become finalized spending.</li>
+<li>Goal and debt history is not reduced to an unexplained scalar without retaining the linked source rows.</li>
+<li>User edits made after import are not overwritten automatically by a later import.</li>
+<li>A crash cannot expose a partially published dataset.</li>
+<li>Rollback restores the exact pre-import Lootr state.</li>
+<li>Parsing, staging, diagnostics, and reconciliation never upload financial data.</li>
+<li>Temporary plaintext is deleted after completion or rollback.</li>
+</ul>
+<hr>
+<h2 id="s3">3. Source Snapshot and Evidence Labels</h2>
+<p>This specification was initially derived from the local Cashew repository at commit <code>9cfbe50c16d95429891d44faf5f2c77a3abdb93b</code>, app version <code>5.4.3+416</code>, declared schema version <code>46</code>, and Lootr <code>main</code> as inspected on 2026-07-18. It has since been validated against the user&#39;s fresh schema-48 export and Cashew&#39;s official deployed <code>6.6.11+510</code> build. The exact installed Android patch is not encoded in the export.</p>
+<table>
+<thead>
+<tr>
+<th><strong>Label</strong></th>
+<th><strong>Meaning</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>Verified</code></td>
+<td>Directly supported by the inspected source.</td>
+</tr>
+<tr>
+<td><code>Inferred</code></td>
+<td>A defensible interpretation that must be checked against the user&#39;s real database.</td>
+</tr>
+<tr>
+<td><code>Decision</code></td>
+<td>Required Lootr behavior.</td>
+</tr>
+<tr>
+<td><code>Blocker</code></td>
+<td>Must be resolved before “complete migration” can be claimed.</td>
+</tr>
+</tbody></table>
+<p>Schema 48 is the primary V1 adapter target; schema 46 and 47 remain compatibility targets. Historical databases may contain data produced by older versions. Enum ordinals and timestamp encoding must be selected from the exported file&#39;s schema version and physical DDL, not assumed from the public source snapshot.</p>
+<hr>
+<h2 id="s4">4. Source Acquisition</h2>
+<h3>4.1 Preferred: fresh manual data-file export</h3>
+<p>Cashew serializes settings into <code>app_settings</code>, reads the current database bytes, and saves them with a <code>.sql</code> extension. On native platforms the underlying file is <code>db.sqlite</code> (<code>Cashew/budget/lib/widgets/exportDB.dart:11-44</code>; <code>Cashew/budget/lib/database/platform/native.dart:10-36</code>).</p>
+<p>User preparation:</p>
+<ol>
+<li>finish pending Cashew edits;</li>
+<li>wait for the save to complete;</li>
+<li>restart Cashew once;</li>
+<li>export a new data file;</li>
+<li>keep that original until Lootr reconciliation has passed and the user has used Lootr successfully.</li>
+</ol>
+<p>Importer preflight:</p>
+<ul>
+<li>verify the <code>SQLite format 3\0</code> header;</li>
+<li>copy into app-private staging;</li>
+<li>compute SHA-256 before reading records;</li>
+<li>enable query-only/read-only mode;</li>
+<li>run SQLite integrity checks;</li>
+<li>record <code>PRAGMA user_version</code>, DDL, row counts, and latest modification time.</li>
+</ul>
+<p>Cashew&#39;s export code does not explicitly checkpoint a WAL before copying the database. A failed integrity or relationship audit must request a fresh export rather than attempting repair.</p>
+<h3>4.2 Acceptable: downloaded Cashew Drive backup</h3>
+<p>Cashew&#39;s Google Drive backup stores the same database bytes. A downloaded backup may be older than the current device state; show source schema, date range, row counts, and last modification before continuing.</p>
+<h3>4.3 Recovery-only: direct <code>db.sqlite</code></h3>
+<p>Direct sandbox extraction is platform-specific. The normal product flow must not instruct users to root, jailbreak, or alter Cashew&#39;s private storage.</p>
+<h3>4.4 Degraded fallback: CSV</h3>
+<p>CSV may recover finalized transactions, account names, categories, title, note, date, direction, currency label, budget name, and objective name.</p>
+<p>It cannot reliably recover:</p>
+<ul>
+<li>source IDs;</li>
+<li>modification timestamps;</li>
+<li>transfer pairs;</li>
+<li>recurrence chains;</li>
+<li>unpaid/upcoming/skipped state;</li>
+<li>budget definitions and category limits;</li>
+<li>goal/debt definitions and linked history;</li>
+<li>category hierarchy identity;</li>
+<li>associated-title rules;</li>
+<li>scanner templates;</li>
+<li>settings or delete logs.</li>
+</ul>
+<p>The UI must label this mode <strong>transaction-history only</strong> and preserve the CSV file hash and import warnings.</p>
+<hr>
+<h2 id="s5">5. Verified Cashew Data Inventory</h2>
+<p>The public schema-46 source registers ten tables (<code>Cashew/budget/lib/database/tables.dart:679-691</code>). Schema 48 retains them and adds first-class tags plus a transaction-tag junction.</p>
+<table>
+<thead>
+<tr>
+<th><strong>Source table</strong></th>
+<th><strong>Role</strong></th>
+<th><strong>Important data</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>wallets</code></td>
+<td>Account containers</td>
+<td>Name, currency, decimals, color, icon, ordering, home scope</td>
+</tr>
+<tr>
+<td><code>transactions</code></td>
+<td>Final, planned, recurring, debt, correction, and transfer legs</td>
+<td>Signed amount, title, note, wallet/category, dates, type/state, pair/objective links</td>
+</tr>
+<tr>
+<td><code>categories</code></td>
+<td>Income/expense hierarchy</td>
+<td>Parent, order, color, asset icon, emoji</td>
+</tr>
+<tr>
+<td><code>category_budget_limits</code></td>
+<td>Nested budget allocations</td>
+<td>Budget, category, amount, wallet</td>
+</tr>
+<tr>
+<td><code>associated_titles</code></td>
+<td>Categorization memory</td>
+<td>Exact/contains title → category</td>
+</tr>
+<tr>
+<td><code>budgets</code></td>
+<td>Flexible budget definitions</td>
+<td>Period, category/account scope, filters, sharing, limits</td>
+</tr>
+<tr>
+<td><code>app_settings</code></td>
+<td>Serialized preferences</td>
+<td>Currency rates, locale, notifications, display settings</td>
+</tr>
+<tr>
+<td><code>scanner_templates</code></td>
+<td>Email parsing rules</td>
+<td>Match delimiters, default category/account</td>
+</tr>
+<tr>
+<td><code>delete_logs</code></td>
+<td>Cashew sync tombstones</td>
+<td>Deleted source PK and entity type</td>
+</tr>
+<tr>
+<td><code>objectives</code></td>
+<td>Goals and long-term loans</td>
+<td>Type, target/offset, dates, visuals, wallet</td>
+</tr>
+<tr>
+<td><code>tags</code></td>
+<td>Orthogonal transaction labels</td>
+<td>Name, color, icon, order, archive state</td>
+</tr>
+<tr>
+<td><code>transaction_to_tag_links</code></td>
+<td>Many-to-many tag membership</td>
+<td>Transaction and tag source keys</td>
+</tr>
+</tbody></table>
+<p>Schema 47 adds archive state to wallets and categories. Schema 48 adds wallet emoji, archived associated-title rules, scanner default title, and the two tag tables. <code>DeleteLogType</code> ordinals <code>6–8</code> were reassigned without rewriting old rows, so V1 must not interpret tombstones as authoritative entity types.</p>
+<p>Data not fully contained in the raw export:</p>
+<ul>
+<li>attachment bytes remain in Google Drive; only URLs in notes are preserved;</li>
+<li>unfinished bill-splitter draft state is stored in separate shared preferences;</li>
+<li>cloud credentials/tokens are neither needed nor eligible for migration.</li>
+</ul>
+<hr>
+<h2 id="s6">6. Cashew Semantics That Affect Mapping</h2>
+<h3>6.1 Wallet balances</h3>
+<p>Cashew wallets do not store a balance. Balance is the sum of <code>transactions.amount</code> where <code>paid = true</code> (<code>Cashew/budget/lib/database/tables.dart:6767-6786</code>).</p>
+<p>Lootr must recalculate each imported account from the imported ledger and compare it with this source sum.</p>
+<h3>6.2 Signed transactions</h3>
+<p>Cashew stores signed REAL amounts plus an <code>income</code> flag. Normal income is positive and expense is negative. Lootr stores positive magnitude plus explicit direction.</p>
+<p>A sign/flag disagreement is blocking; it must not be silently corrected.</p>
+<h3>6.3 Transfers and corrections</h3>
+<p>Cashew transfers are paired category-<code>&quot;0&quot;</code> rows with opposite signs and usually one side referencing the other. Cross-currency pairs may have different absolute values (<code>Cashew/budget/lib/pages/addWalletPage.dart:985-1018,1181-1207</code>).</p>
+<p>An unpaired category-<code>&quot;0&quot;</code> row is a balance correction. Only the earliest qualifying correction near wallet creation may be classified as opening balance; later corrections remain explicit adjustments.</p>
+<h3>6.4 Recurring rows</h3>
+<p>Subscriptions and repetitive rows create successor rows. Predictable IDs use <code>{base-id}::predict::{occurrence}</code>. Paid, skipped, original due date, successor creation, period, end date, and notification state all affect interpretation (<code>Cashew/budget/lib/struct/upcomingTransactionsFunctions.dart:21-47,98-107,192-354</code>).</p>
+<h3>6.5 Debt and credit</h3>
+<p>Standalone <code>credit</code> means lent/receivable; <code>debt</code> means borrowed/payable. Their <code>paid</code> semantics are unusual: active amounts remain counted while settlement removes their balance effect. Partial settlement can convert them into loan objectives.</p>
+<h3>6.6 Goals and loan objectives</h3>
+<p>Objective progress is derived from linked paid transactions, not just the objective row. Goal links use <code>objective_fk</code>; loan links use <code>objective_loan_fk</code>.</p>
+<h3>6.7 Budgets</h3>
+<p>Cashew budgets can be custom/daily/weekly/monthly/yearly, span multiple wallets and categories, include or exclude categories, include only explicitly attached transactions, carry nested category limits, and contain sharing/filter behavior.</p>
+<p>Most cannot map directly to Lootr&#39;s one-category calendar-month budget.</p>
+<hr>
+<h2 id="s7">7. Lootr Readiness Gaps</h2>
+<table>
+<thead>
+<tr>
+<th><strong>Source concept</strong></th>
+<th><strong>Current Lootr gap</strong></th>
+<th><strong>Required response</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Import audit/idempotency</td>
+<td>No run or provenance model</td>
+<td>Add import tables before importer</td>
+</tr>
+<tr>
+<td>Unsupported source fields</td>
+<td>No preserved-payload store</td>
+<td>Add encrypted, versioned archive</td>
+</tr>
+<tr>
+<td>Wallet visuals/precision</td>
+<td>Account lacks icon/color/order/decimals</td>
+<td>Preserve; optionally extend account</td>
+</tr>
+<tr>
+<td>Cross-currency transfer</td>
+<td>One transfer amount only</td>
+<td>Add two-leg/dual-amount model or preserve-only</td>
+</tr>
+<tr>
+<td>Free transaction title</td>
+<td>Payee + note only</td>
+<td>Infer payee; retain exact title</td>
+</tr>
+<tr>
+<td>One-off upcoming item</td>
+<td>No planned-entry entity</td>
+<td>Add model or preserve-only</td>
+</tr>
+<tr>
+<td>Recurring end/type/due history</td>
+<td>Template is narrower</td>
+<td>Add occurrence lifecycle and source series</td>
+</tr>
+<tr>
+<td>Goal contribution history</td>
+<td>Scalar goal amount; no enforced relation</td>
+<td>Add contribution events/FK</td>
+</tr>
+<tr>
+<td>Debt payment history</td>
+<td>Aggregate balance; no enforced relation</td>
+<td>Add payment events/FK</td>
+</tr>
+<tr>
+<td>Flexible budget</td>
+<td>Month + category only</td>
+<td>Direct-map exact cases; preserve others</td>
+</tr>
+<tr>
+<td>Categorization rules</td>
+<td>No durable rule table</td>
+<td>Add local rule model or preserve</td>
+</tr>
+<tr>
+<td>Attachment bytes</td>
+<td>No local attachment entity</td>
+<td>Keep URLs; defer authorized download</td>
+</tr>
+<tr>
+<td>At-rest encryption</td>
+<td>Security spec not implemented</td>
+<td>Implement before retaining real import archive</td>
+</tr>
+</tbody></table>
+<p>These are target-model gaps, not parser details. A parser cannot make an unrepresentable concept lossless.</p>
+<hr>
+<h2 id="s8">8. Schema Additions Before Implementation</h2>
+<h3>8.1 Minimum local-only tables</h3>
+<pre class="diagram"><code class="language-text">import_runs
+  id
+  source_system
+  source_sha256
+  source_filename
+  source_schema_version
+  source_app_version
+  assumed_timezone
+  state
+  policy_json
+  counts_json
+  started_at
+  completed_at
+
+import_provenance
+  id
+  import_run_id
+  source_system
+  source_fingerprint
+  source_entity_type
+  source_entity_id
+  source_payload_sha256
+  target_table
+  target_id
+  mapping_role
+  imported_target_sha256
+  imported_at
+
+import_preserved_payloads
+  id
+  import_run_id
+  source_locator
+  payload_json
+  reason_code
+  related_target_table
+  related_target_id
+  created_at
+</code></pre>
+<p>Required uniqueness:</p>
+<pre class="diagram"><code class="language-text">(source_system, source_fingerprint, source_entity_type,
+ source_entity_id, target_table, target_id, mapping_role)
+</code></pre>
+<h3>8.2 Required V1 model changes</h3>
+<p>Implement in this order for the user&#39;s migration:</p>
+<ol>
+<li>Exact decimal money values backed by a signed <code>BigInt</code> coefficient and explicit scale. SQLite persists the coefficient as canonical decimal text so values are not limited by 64-bit integer range.</li>
+<li>Per-account currency identifier, configured scale, exact stored balance coefficient, visual metadata, order, and archive state.</li>
+<li>Dual-leg transfers with distinct source and destination coefficients, scales, and currency snapshots. Same-currency transfers use equal values at the same scale; cross-currency transfers never become expense plus income.</li>
+<li>Goal contribution and debt payment relations.</li>
+<li>Recurring occurrence relation with due, paid, unpaid, skipped, dismissed, resolved, original-due, and source-series state.</li>
+<li>Durable payee/title categorization rules, including inactive imported rules and exact-before-contains precedence.</li>
+<li>Composite budgets with multi-account and multi-category include/exclude membership, explicit transaction membership, income/expense filtering, monthly and custom date-range periods, deterministic overlap behavior, and historical drill-down.</li>
+<li>First-class transaction tags in the source adapter and lossless preserved tag links; tag-management UI may remain deferred when no rows exist.</li>
+<li>Local attachment metadata that preserves URL text without claiming attachment-byte migration.</li>
+</ol>
+<p>Items 1–7 are V1 launch requirements even where a shape is not exercised by this export. They prevent the importer from baking known loss or false financial semantics into the target model. Items 8–9 must be structurally supported and recoverable; the audited export has no tag rows, tag links, or scanner templates.</p>
+<p>All additions must remain compatible with additive migrations and the future sync model. Migration archive tables are local-only and excluded from V2 sync by default.</p>
+<hr>
+<h2 id="s9">9. Staging Architecture</h2>
+<p>Use a separate temporary SQLite staging database. Direct source-to-target inserts are prohibited because source rows may collapse, fan out, or remain preserved-only.</p>
+<pre class="diagram"><code class="language-text">Cashew backup (read-only)
+          │
+          ▼
+  source adapter by schema version
+          │
+          ▼
+  canonical staged records + relations
+          │
+          ├── exact import
+          ├── transformed import
+          ├── preserved-only
+          ├── review required
+          └── blocking error
+          │
+          ▼
+  dry-run reconciliation and user policy
+          │
+          ▼
+  one atomic Lootr apply transaction
+          │
+          ▼
+  post-write reconciliation + publish
+</code></pre>
+<p>Temporary tables:</p>
+<pre class="diagram"><code class="language-text">staged_records
+  run_id
+  source_table
+  source_pk
+  raw_payload_json
+  raw_payload_sha256
+  canonical_kind
+  canonical_payload_json
+  disposition
+  issue_code
+
+staged_relations
+  run_id
+  source_from
+  relation_kind
+  source_to
+
+staged_issues
+  run_id
+  severity
+  issue_code
+  source_locator
+  message
+  proposed_resolution_json
+</code></pre>
+<p>Money remains exact decimal text in staging and is converted to a normalized <code>(coefficient_text, scale, currency_identifier)</code> tuple at the final boundary. No migration or ledger path converts imported money to binary floating point.</p>
+<hr>
+<h2 id="s10">10. Core Entity Mapping</h2>
+<table>
+<thead>
+<tr>
+<th><strong>Cashew</strong></th>
+<th><strong>Lootr</strong></th>
+<th><strong>Mapping</strong></th>
+<th><strong>Preservation rule</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Wallet</td>
+<td>Account</td>
+<td>New target UUID; exact name/currency; reviewed account type</td>
+<td>Keep visuals/order/decimals</td>
+</tr>
+<tr>
+<td>Wallet balance</td>
+<td>Account balance</td>
+<td>Recalculate from imported financial events</td>
+<td>Compare to source paid sum</td>
+</tr>
+<tr>
+<td>Category</td>
+<td>Category</td>
+<td>New UUID; parent after all categories stage</td>
+<td>Keep both icon fields and source order</td>
+</tr>
+<tr>
+<td>Title</td>
+<td>Payee candidate</td>
+<td>Exact display, normalized key</td>
+<td>Keep exact source title</td>
+</tr>
+<tr>
+<td>Signed transaction</td>
+<td>Transaction</td>
+<td>Absolute amount + direction</td>
+<td>Quarantine sign/flag mismatch</td>
+</tr>
+<tr>
+<td>Category/subcategory</td>
+<td>Category FK</td>
+<td>Prefer mapped subcategory; retain parent</td>
+<td>Keep both source links</td>
+</tr>
+<tr>
+<td>Note</td>
+<td>Note</td>
+<td>Exact text</td>
+<td>Never strip Drive URLs</td>
+</tr>
+<tr>
+<td>Paid normal row</td>
+<td>Final transaction</td>
+<td>One-time ledger entry</td>
+<td>Source provenance in metadata</td>
+</tr>
+<tr>
+<td>Paid recurring row</td>
+<td>Final transaction</td>
+<td>Recurring mode + template link</td>
+<td>Keep due and series data</td>
+</tr>
+<tr>
+<td>Paired same-currency rows</td>
+<td>Transfer</td>
+<td>Collapse to one dedicated dual-leg transfer with equal source/destination values</td>
+<td>Two provenance links</td>
+</tr>
+<tr>
+<td>Paired cross-currency rows</td>
+<td>Transfer</td>
+<td>One dedicated dual-leg transfer with distinct exact source/destination values and currencies</td>
+<td>Two provenance links; never infer a rate</td>
+</tr>
+<tr>
+<td>Unpaired category-0 row</td>
+<td>Opening/adjustment transaction</td>
+<td>Conservative classification</td>
+<td>Show review class</td>
+</tr>
+<tr>
+<td>Standalone credit/debt</td>
+<td>Debt record + optional event</td>
+<td>Map direction/status/principal</td>
+<td>Keep source financial row</td>
+</tr>
+<tr>
+<td>Goal objective</td>
+<td>Goal</td>
+<td>Target/date/current linked sum</td>
+<td>Keep wallet/visual/archive fields</td>
+</tr>
+<tr>
+<td>Loan objective</td>
+<td>Debt record</td>
+<td>Derive direction/principal/balance</td>
+<td>Keep all loan ledger rows</td>
+</tr>
+<tr>
+<td>Monthly or custom budget</td>
+<td>Composite budget</td>
+<td>Map scopes, filters, memberships, and period exactly</td>
+<td>Keep source definition and membership provenance</td>
+</tr>
+<tr>
+<td>Unsafe legacy budget</td>
+<td>Read-only imported budget</td>
+<td>Queryable preserved definition and drill-down</td>
+<td>Never flatten or hide</td>
+</tr>
+<tr>
+<td>Associated title</td>
+<td>Categorization rule or preserved record</td>
+<td>Import only after rule model exists</td>
+<td>Never auto-create payee</td>
+</tr>
+<tr>
+<td>Scanner template</td>
+<td>Preserved record</td>
+<td>No V1 execution</td>
+<td>Keep parser delimiters/defaults</td>
+</tr>
+<tr>
+<td>Settings</td>
+<td>Safe preference subset + archive</td>
+<td>Currency/time interpretation only</td>
+<td>Exclude auth/purchase/sync credentials</td>
+</tr>
+<tr>
+<td>Delete log</td>
+<td>Preserved audit</td>
+<td>Do not replay blindly</td>
+<td>Keep entity type and source PK</td>
+</tr>
+</tbody></table>
+<p>For every transformed record, store the exact source row hash and source-to-target mapping.</p>
+<hr>
+<h2 id="s11">11. Difficult Transformation Rules</h2>
+<h3>11.1 Amount precision</h3>
+<ol>
+<li>Read the source SQLite numeric value through its shortest round-tripping decimal representation.</li>
+<li>Require sign and <code>income</code> flag agreement.</li>
+<li>Quantize once to the source wallet&#39;s configured scale using deterministic half-even rounding and record whether quantization changed the source representation.</li>
+<li>Store magnitude as a canonical non-negative <code>BigInt</code> coefficient string plus scale and currency identifier.</li>
+<li>Store account balances, budget limits, goal/debt amounts, transfer legs, CSV values, and backup values using the same representation.</li>
+<li>Add, subtract, compare, aggregate, and reconcile only values with matching currency identifiers after aligning scales exactly.</li>
+<li>Reconciliation is coefficient equality at the source scale. A nonzero coefficient delta is blocking.</li>
+</ol>
+<p>The original Cashew <code>REAL</code> may already contain binary representation error; Lootr cannot recover precision Cashew discarded. The adapter therefore retains the raw SQLite numeric text in the encrypted preserved payload, records any source-scale quantization as a transformed disposition, and never introduces further floating-point aggregation.</p>
+<h3>11.2 Currency</h3>
+<ul>
+<li>Preserve each transaction in its wallet currency.</li>
+<li>Preserve the wallet-configured scale, including 2, 4, and 12 decimals.</li>
+<li>Do not rewrite history using today&#39;s rate.</li>
+<li>Preserve cached/custom rate snapshots and their source timestamp.</li>
+<li>Invalid/custom currency identifiers require review.</li>
+<li>Ledgers, budgets, balances, reports, filters, drill-downs, CSV, and backup summaries group by currency by default.</li>
+<li>Never sum unrelated currencies or label their raw sum as a base currency.</li>
+<li>Optional conversion requires an explicit rate, source, effective timestamp, source/destination currencies, and half-even rounding policy. Missing rate data means no converted total.</li>
+</ul>
+<h3>11.3 Time</h3>
+<p>Cashew has no separate transaction timezone field. The adapter must inspect the physical value and schema version before decoding.</p>
+<ul>
+<li>Explicit UTC/offset values remain instants.</li>
+<li>Epoch values use the correct seconds/milliseconds unit for that Drift version.</li>
+<li>Only offset-free wall times use the user-confirmed source timezone.</li>
+<li>Preserve raw value, decoded instant, displayed wall time, zone, and offset.</li>
+<li>Require the user to verify at least one known transaction timestamp before apply.</li>
+</ul>
+<h3>11.4 Transfer pairing</h3>
+<p>Pair candidates in this order:</p>
+<ol>
+<li>explicit <code>paired_transaction_fk</code>;</li>
+<li>reciprocal pair;</li>
+<li>predictable recurrence relationship;</li>
+<li>conservative category-0 fallback: different wallets, opposite signs, within two seconds, compatible text, equal amounts for same currency.</li>
+</ol>
+<p>Fallback pairs are always reviewable.</p>
+<p>Cross-currency pairs map to a dedicated transfer with distinct source and destination exact amounts and currency snapshots. If either leg or currency is missing, the relationship is review-required or blocking; it is never converted into income and expense. The importer does not infer an exchange rate.</p>
+<h3>11.5 Recurring series</h3>
+<p>Group only when source series identity is exact or user-approved. Import paid non-skipped occurrences as history, preserve skipped occurrences, use the latest valid unpaid occurrence as next due, and create one reminder/template with an RRULE.</p>
+<p>Keep Lootr confirm-before-finalize. Cashew auto-pay preference may be preserved as metadata but must not enable silent writes.</p>
+<p>One-off upcoming rows remain preserved-only unless a planned-entry model is added.</p>
+<h3>11.6 Goals and debt</h3>
+<p>Goal <code>current_amount</code> is derived from linked paid rows. Debt remaining balance is derived from its source ledger. If explicit goal/debt event relations are not added, import the aggregate record and preserve every linked source row, but label history as not yet first-class.</p>
+<h3>11.7 Budgets</h3>
+<p>V1 budgets are reusable, queryable definitions rather than one-category month rows. Each budget stores:</p>
+<ul>
+<li>an exact limit amount and currency;</li>
+<li>monthly or bounded custom date-range/cycle period;</li>
+<li>zero or more included/excluded account memberships;</li>
+<li>zero or more included/excluded category memberships;</li>
+<li>zero or more explicit transaction memberships;</li>
+<li>expense, income, or both direction filter;</li>
+<li>an explicit-membership-only flag;</li>
+<li>imported source provenance and review state for missing/deleted references.</li>
+</ul>
+<p>Membership evaluation is deterministic:</p>
+<ol>
+<li>Reject records outside the evaluated historical period.</li>
+<li>Apply the direction filter.</li>
+<li>If explicit-membership-only, include only attached transactions.</li>
+<li>Otherwise apply account and category includes; an empty include set means all.</li>
+<li>Apply excludes after includes; exclude wins.</li>
+<li>Explicitly attached transactions are added after normal includes but cannot override period, direction, or an explicit exclusion.</li>
+<li>Each budget calculates independently. A transaction may contribute to overlapping budgets; UI totals never add overlapping budgets together as if they were disjoint.</li>
+</ol>
+<p>Every budget detail exposes the exact matching transaction list and a human-readable reason per record. Deleted or missing source account/category references create a review state and remain visible in an imported-budget view. If a future source shape cannot be edited without semantic loss, retain the queryable source definition as read-only; no valid budget may disappear or be flattened into false one-category rows.</p>
+<h3>11.8 Titles and payees</h3>
+<p>Cashew titles may be merchants, descriptions, or a mixture. Offer:</p>
+<ul>
+<li>create/merge payees from titles;</li>
+<li>preserve titles only;</li>
+<li>review ambiguous/high-frequency names.</li>
+</ul>
+<p>The exact source title is always recoverable.</p>
+<h3>11.9 Attachments</h3>
+<p>V1 preserves Drive URLs in notes and inventories likely attachment links. Link checking is explicit and non-blocking. Downloading attachment bytes requires a later user-authorized Google flow and a local encrypted attachment model.</p>
+<hr>
+<h2 id="s12">12. Unsupported Data Preservation</h2>
+<p>Preserve exact source payloads for:</p>
+<ul>
+<li>every source row before transformation;</li>
+<li>wallet appearance/order/precision;</li>
+<li>complex budget rules, limits, sharing, and member filters;</li>
+<li>associated-title and scanner rules;</li>
+<li>delete logs;</li>
+<li>objective visuals/archive/pin/wallet;</li>
+<li>transaction sharing fields and budget exclusions;</li>
+<li>custom/cached exchange rates;</li>
+<li>skipped and upcoming rows;</li>
+<li>ambiguous transfer candidates;</li>
+<li>source settings needed to interpret data;</li>
+<li>inaccessible attachment URLs.</li>
+</ul>
+<p>The archive must be:</p>
+<ul>
+<li>local-only;</li>
+<li>encrypted once SQLCipher is active;</li>
+<li>versioned;</li>
+<li>user-exportable as documented JSON;</li>
+<li>separately purgeable;</li>
+<li>upgradeable into new first-class entities in later Lootr releases.</li>
+</ul>
+<p>Never preserve OAuth tokens, reusable credentials, purchase identifiers, logging queues, or device sync state.</p>
+<hr>
+<h2 id="s13">13. Identity, Idempotency, and Re-Import</h2>
+<p>Target records keep UUID v4 IDs. Generate them once during staging and persist the mapping.</p>
+<p>Canonical import identity:</p>
+<pre class="diagram"><code class="language-text">(source_system, source_sha256, source_table,
+ source_pk, target_table, mapping_role)
+</code></pre>
+<p>Re-import rules:</p>
+<ol>
+<li>Same source fingerprint and source row hash → skip.</li>
+<li>Same source fingerprint, changed source row, untouched target → offer mapped update.</li>
+<li>Same source fingerprint, changed source row, user-edited target → preserve Lootr edit and show conflict.</li>
+<li>Different source fingerprint with same embedded Cashew PK → propose continuation, never auto-merge materially different content.</li>
+<li>CSV without stable IDs → similarity match is advisory and collisions require review.</li>
+</ol>
+<p>Never merge accounts or categories by name alone. Source PK and hierarchy are authoritative.</p>
+<hr>
+<h2 id="s14">14. Import State Machine and Failure Recovery</h2>
+<pre class="diagram"><code class="language-text">selected
+   → validating
+   → validated
+   → staged
+   → needs_review ─────┐
+   → ready             │ user resolves
+   → applying          ◀──────┘
+   → verifying
+   → complete
+
+selected through ready → cancel_requested → cancelled
+validating through staged → interrupted → resume from checkpoint
+applying/verifying interruption → transaction rollback → interrupted
+Any state → failed
+complete → rolled_back
+</code></pre>
+<p>Staging checkpoints by source table and PK. A changed file hash starts a new run.</p>
+<p>Cancellation remains available until atomic publication begins. During <code>applying</code> and <code>verifying</code>, back/cancel is disabled with a calm explanation because the database transaction must finish or roll back as one unit. Each run persists cleanup status and attempt count. Startup recovery scans nonterminal runs, verifies the private staging copy and fingerprint, and resumes from the last checkpoint; if staging is missing, the user is asked to reselect the same source without losing the redacted review report.</p>
+<p>Apply target records and provenance in one database transaction. If very large datasets require batching, keep all imported rows unpublished until the final run-complete transaction.</p>
+<p>Before apply:</p>
+<ul>
+<li>create a verified Lootr backup;</li>
+<li>record pre-import row counts and hashes.</li>
+</ul>
+<p>Rollback:</p>
+<ul>
+<li>failed apply → automatic transaction rollback;</li>
+<li>completed import with no edits → remove provenance-linked targets in reverse dependency order;</li>
+<li>completed import with user edits → restore the verified pre-import backup by default;</li>
+<li>keep the source archive and report unless the user explicitly purges them.</li>
+</ul>
+<p>Never identify rollback rows by name, time, or similarity.</p>
+<hr>
+<h2 id="s15">15. Validation and Reconciliation</h2>
+<h3>15.1 Source checks</h3>
+<pre><code class="language-sql">PRAGMA query_only = ON;
+PRAGMA quick_check;
+PRAGMA integrity_check;
+PRAGMA foreign_key_check;
+PRAGMA user_version;
+SELECT name, sql
+FROM sqlite_master
+WHERE type = 'table'
+ORDER BY name;
+</code></pre>
+<p>Validate required tables/columns, unique/nonblank PKs, relationships, parseable settings, known enum values, finite amounts, and plausible timestamps.</p>
+<h3>15.2 Dry-run inventory</h3>
+<p>Show:</p>
+<ul>
+<li>rows per source table;</li>
+<li>finalized transactions;</li>
+<li>recurring history and next occurrences;</li>
+<li>skipped/upcoming rows;</li>
+<li>exact/inferred transfer pairs;</li>
+<li>cross-currency transfers;</li>
+<li>corrections/opening candidates;</li>
+<li>standalone and objective debts;</li>
+<li>goals and contribution rows;</li>
+<li>exact/complex budgets;</li>
+<li>attachment links;</li>
+<li>exact/transformed/preserved/review/error counts.</li>
+</ul>
+<h3>15.3 Financial reconciliation</h3>
+<p>Per account and currency:</p>
+<pre class="diagram"><code class="language-text">Cashew closing balance
+  = SUM(source amount WHERE paid = true)
+
+Lootr reconstructed balance
+  = income
+  - expense
+  + inbound transfers
+  - outbound transfers
+</code></pre>
+<p>Also compare:</p>
+<ul>
+<li>paid row count by wallet;</li>
+<li>income/expense totals by wallet and month;</li>
+<li>category totals by wallet and month;</li>
+<li>pair counts and transfer-leg totals;</li>
+<li>debt principal, payments, and remaining balance;</li>
+<li>goal linked-row total and current amount;</li>
+<li>earliest/latest timestamp;</li>
+<li>count/amount excluded from live balances.</li>
+</ul>
+<p>All monetary comparisons use exact coefficients at the account or budget currency scale. Summary reports may expose counts and pass/fail state without exposing amounts. Cross-currency totals remain partitioned unless an explicit conversion record is selected.</p>
+<h3>15.4 Post-apply checks</h3>
+<ul>
+<li>target <code>PRAGMA foreign_key_check</code> passes;</li>
+<li>every imported target has provenance;</li>
+<li>every source row has target or preserved payload;</li>
+<li>account stored balances equal reconstructed ledgers;</li>
+<li>every budget membership can explain each included transaction;</li>
+<li>every transfer preserves both account/currency legs and is excluded from spending;</li>
+<li>same source rerun produces zero inserts and zero financial delta.</li>
+</ul>
+<p>Any nonzero balance delta is blocking by default.</p>
+<hr>
+<h2 id="s16">16. User Experience</h2>
+<p>Entry point: <strong>Settings → Data → Import from Cashew</strong>.</p>
+<p>Suggested copy:</p>
+<blockquote>
+<p>Bring over your Cashew history. Lootr analyzes the backup on this device, shows what maps cleanly, and preserves anything it cannot represent yet.</p>
+</blockquote>
+<p>Flow:</p>
+<ol>
+<li><strong>Prepare</strong> — fresh-export instructions, timezone, local-processing notice.</li>
+<li><strong>Choose file</strong> — detect SQLite or degraded CSV; show fingerprint, schema, dates, counts.</li>
+<li><strong>Analyze</strong> — domain progress; no target writes.</li>
+<li><strong>Review accounts</strong> — account types, currencies, custom identifiers.</li>
+<li><strong>Review mappings</strong> — payees, transfers, recurrence, budgets, upcoming rows, sharing.</li>
+<li><strong>Reconcile</strong> — account-by-account totals, exact/transformed/preserved counts.</li>
+<li><strong>Import</strong> — atomic local apply; safe retry after interruption.</li>
+<li><strong>Verify</strong> — repeat reconciliation and deep-link to imported records.</li>
+<li><strong>Retain or purge archive</strong> — recommend retention until the user has validated normal use.</li>
+</ol>
+<p>Use neutral language: <strong>Needs review</strong> and <strong>Preserved for later</strong>, not <strong>Failed</strong>, when the source is valid but Lootr lacks an equivalent.</p>
+<p>The post-import landing view should open the most recent imported month with visible filters and an explanation of imported/preserved counts.</p>
+<hr>
+<h2 id="s17">17. Privacy and Security</h2>
+<p>Treat the selected Cashew database as sensitive plaintext.</p>
+<ul>
+<li>Use the platform file picker.</li>
+<li>Copy only into app-private storage.</li>
+<li>Never upload for parsing.</li>
+<li>Never log notes, titles, emails, URLs, or row contents.</li>
+<li>Redact financial values in diagnostics by default.</li>
+<li>Disable sync while apply runs.</li>
+<li>Delete temporary plaintext after success/rollback.</li>
+<li>Explain that secure deletion is best-effort on flash storage.</li>
+<li>Leave the user-selected original untouched.</li>
+</ul>
+<p>The preserved archive should not be retained until Lootr&#39;s SQLCipher implementation is working, or the user must receive an explicit plaintext-at-rest disclosure.</p>
+<p>Attachment checks require separate explicit authorization and must not change Drive sharing permissions.</p>
+<hr>
+<h2 id="s18">18. V1 Scope</h2>
+<h3>18.1 Hard scope</h3>
+<ul>
+<li>Raw Cashew SQLite selection and validation.</li>
+<li>Explicit schema-46/47/48 adapters, with schema 48 tested against the user&#39;s actual export.</li>
+<li>Wallets/accounts, reviewed account types, archive state, and source precision up to 12 decimals.</li>
+<li>Exact coefficient-and-scale money storage across all financial domains and reports.</li>
+<li>Categories/subcategories and visuals.</li>
+<li>Finalized ordinary transaction history.</li>
+<li>Exact-title preservation and payee policy.</li>
+<li>Same-currency transfer collapse.</li>
+<li>Cross-currency dual-leg transfers with explicit source and destination amounts/currencies.</li>
+<li>Review of same-account, unequal-value, non-transfer-category, and tombstoned transfer exceptions.</li>
+<li>Corrections/opening classification.</li>
+<li>Exact recurring history, occurrence state, and template reconstruction.</li>
+<li>Standalone credit/debt.</li>
+<li>First-class goal contribution and debt payment relations.</li>
+<li>Composite monthly/custom-cycle budgets with multi-account/category include/exclude membership, explicit transaction membership, historical drill-down, deterministic overlap behavior, and deleted-wallet review.</li>
+<li>Imported associated-title categorization rules.</li>
+<li>Currency/time interpretation settings.</li>
+<li>Attachment URL retention.</li>
+<li>Provenance, preserved payload, dry run, reconciliation, idempotency, resumability, and rollback.</li>
+</ul>
+<h3>18.2 Preserved-only until model support exists</h3>
+<ul>
+<li>one-off upcoming rows;</li>
+<li>ambiguous recurrence groups;</li>
+<li>sharing/member semantics;</li>
+<li>scanner rules and tag-management UI state not represented by first-class tables;</li>
+<li>delete-log payloads and ambiguous tombstone type codes;</li>
+<li>custom-currency conversion when no explicit rate/source/timestamp exists;</li>
+<li>bill-splitter drafts outside the database.</li>
+</ul>
+<h3>18.3 Later upgrades</h3>
+<ul>
+<li>planned one-off transactions;</li>
+<li>first-class tags and scanner automation;</li>
+<li>local encrypted attachments;</li>
+<li>confirmed household identity migration;</li>
+<li>incremental import of newer Cashew changes.</li>
+</ul>
+<hr>
+<h2 id="s19">19. Real-Export Audit and Decisions</h2>
+<p>The fresh 2026-07-18 export has been audited read-only. The source remains outside the repository; <code>research/cashew-real-export-audit.md</code> contains only redacted structure, counts, aliases, and pass/fail results.</p>
+<table>
+<thead>
+<tr>
+<th><strong>Area</strong></th>
+<th><strong>Verified result</strong></th>
+<th><strong>Migration decision</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Health</td>
+<td>SQLite integrity and quick checks pass</td>
+<td>Suitable as the primary development oracle</td>
+</tr>
+<tr>
+<td>Source format</td>
+<td>Schema 48; 12 application tables</td>
+<td>Implement explicit schema-48 adapter first</td>
+</tr>
+<tr>
+<td>Ledger</td>
+<td>19 accounts, 2,065 transactions, 3 currencies; projected direction transform reconciles with zero delta</td>
+<td>Preserve wallet precision and reconcile per account/currency</td>
+</tr>
+<tr>
+<td>Precision</td>
+<td>2-, 4-, and 12-decimal wallets are present</td>
+<td>Never assume two decimals or round before reconciliation</td>
+</tr>
+<tr>
+<td>Transfers</td>
+<td>269 resolved pairs; all same-currency; eight structural exceptions</td>
+<td>Collapse exact pairs; require review for exceptions</td>
+</tr>
+<tr>
+<td>Corrections</td>
+<td>65 paid unpaired category-0 rows across 16 accounts</td>
+<td>Classify opening candidates conservatively; keep later adjustments explicit</td>
+</tr>
+<tr>
+<td>Scheduled history</td>
+<td>31 prediction series, long chains, 18 unpaid rows, and future occurrences</td>
+<td>Add recurring occurrence lifecycle before import</td>
+</tr>
+<tr>
+<td>Goals and loans</td>
+<td>All eight objectives have linked history; 235 linked financial rows</td>
+<td>Add contribution/payment relations in V1</td>
+</tr>
+<tr>
+<td>Budgets</td>
+<td>Five monthly definitions; four use explicitly added transactions; three reference a deleted wallet</td>
+<td>Add membership semantics and a deleted-wallet review policy</td>
+</tr>
+<tr>
+<td>Learned rules</td>
+<td>277 active contains-title rules</td>
+<td>Import into a durable inactive-capable local rule model</td>
+</tr>
+<tr>
+<td>Attachments</td>
+<td>36 Drive-link occurrences across 35 notes</td>
+<td>Preserve URL text; do not claim byte migration</td>
+</tr>
+<tr>
+<td>Orphans</td>
+<td>15 FK findings, all explained by three deleted parent identities in Cashew&#39;s logs</td>
+<td>Preserve survivor plus tombstone evidence; never recreate parent silently</td>
+</tr>
+<tr>
+<td>Tags/automation</td>
+<td>Tag, tag-link, and scanner-template tables are empty</td>
+<td>Support in adapter/preservation; defer first-class UI</td>
+</tr>
+<tr>
+<td>Archive state</td>
+<td>No live wallets, categories, or rules are archived</td>
+<td>Preserve the field, but no archived-user-data UI blocker exists</td>
+</tr>
+<tr>
+<td>Settings</td>
+<td>Valid JSON; three source currencies and custom-currency settings exist</td>
+<td>Import only interpretation-safe settings; keep sensitive values encrypted</td>
+</tr>
+</tbody></table>
+<p>Core schema-48 transaction, recurrence, budget, objective, and sharing ordinals match schema 46. Cashew reassigned delete-log type ordinals <code>6–8</code>; therefore live tables are authoritative and V1 must not replay or semantically decode tombstones.</p>
+<p>Two questions remain private apply-time confirmations rather than research blockers:</p>
+<ol>
+<li>compare one known date in Cashew and Lootr to confirm the intended timezone;</li>
+<li>review how exact titles should map to payees without exposing them in logs or fixtures.</li>
+</ol>
+<p>Build only anonymized synthetic fixtures from these shapes. Never copy source rows, names, IDs, URLs, settings values, or monetary values into source control.</p>
+<hr>
+<h2 id="s20">20. Test Strategy</h2>
+<p>Required fixtures:</p>
+<ul>
+<li>clean schema-46 SQLite export;</li>
+<li>schema-47 archive-state export;</li>
+<li>schema-48 export with empty and populated tag-link tables;</li>
+<li>same-currency transfer pair;</li>
+<li>cross-currency transfer pair;</li>
+<li>same-account, unequal-value, non-category-0, and tombstoned pair exceptions;</li>
+<li>unpaired opening and later correction;</li>
+<li>paid/skipped/future recurring chain;</li>
+<li>standalone and objective-based debt;</li>
+<li>goal with linked contributions;</li>
+<li>simple, explicit-membership, deleted-wallet, and complex budgets;</li>
+<li>custom category hierarchy and duplicate names;</li>
+<li>malformed/orphaned references;</li>
+<li>2-, 4-, and 12-decimal currencies;</li>
+<li>Drive link in note;</li>
+<li>CSV fallback;</li>
+<li>rerun after user edits;</li>
+<li>interruption at every state transition.</li>
+</ul>
+<p>Required test layers:</p>
+<table>
+<thead>
+<tr>
+<th><strong>Layer</strong></th>
+<th><strong>Coverage</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Adapter unit</td>
+<td>Schema detection, enums, timestamp decoding, decimal serialization</td>
+</tr>
+<tr>
+<td>Mapping unit</td>
+<td>Every entity/field rule and issue code</td>
+</tr>
+<tr>
+<td>Property</td>
+<td>No source row lacks a disposition; idempotency; totals preserved</td>
+</tr>
+<tr>
+<td>Database integration</td>
+<td>Read-only source, atomic apply, FK checks, rollback</td>
+</tr>
+<tr>
+<td>Golden report</td>
+<td>Stable dry-run and reconciliation summaries</td>
+</tr>
+<tr>
+<td>Widget</td>
+<td>Review, conflicts, warnings, cancellation, accessibility</td>
+</tr>
+<tr>
+<td>Device</td>
+<td>Large file, app backgrounding, storage pressure, biometric/lock</td>
+</tr>
+<tr>
+<td>Security</td>
+<td>Plaintext lifecycle, log redaction, archive encryption</td>
+</tr>
+</tbody></table>
+<p>Migration release requires a restore drill: import into a clean Lootr database, export a Lootr backup, restore it into another clean database, and reproduce counts, relationships, and balances.</p>
+<hr>
+<h2 id="s21">21. Acceptance Criteria</h2>
+<p>The migration is acceptable when:</p>
+<ul>
+<li>the same source imports twice with no duplicates;</li>
+<li>every source row is imported, preserved, or explicitly ignored;</li>
+<li>every account reconciles within currency precision;</li>
+<li>same-currency transfers do not affect spending;</li>
+<li>cross-currency pairs are never silently flattened;</li>
+<li>unpaid/skipped rows do not inflate balances;</li>
+<li>settled debt is not treated as active spending;</li>
+<li>source titles, notes, IDs, timestamps, and attachment URLs remain recoverable;</li>
+<li>post-import Lootr edits survive re-import by default;</li>
+<li>interruption never publishes partial data;</li>
+<li>rollback restores the pre-import database exactly;</li>
+<li>all processing is local and logs are redacted;</li>
+<li>the report distinguishes exact, inferred, preserved-only, and ignored mappings;</li>
+<li>a Lootr backup/restore round trip reproduces the imported state;</li>
+<li>the importer has been validated against the user&#39;s real export;</li>
+<li>schema-48 archive/tag fields and tombstone ordinal ambiguity are handled explicitly.</li>
+</ul>
+<hr>
+<h2 id="s22">22. Bottom Line</h2>
+<p>The migration is feasible, and the real export is healthy enough to serve as the primary development oracle. It is not a CSV-parser task and the current Lootr target model needs additions. The correct design is a schema-48-aware, read-only Cashew adapter feeding a canonical staging model, followed by user-reviewed transformation, atomic apply, and ledger reconciliation.</p>
+<p>The implementation order is SQLCipher and temporary-plaintext verification, import/provenance foundation, exact decimal target migration, and a schema-48 dry run. Then add dual-leg transfers, recurring occurrences, goal/debt events, composite budget membership, learned-title rules, atomic publication, rollback, and backup/restore. Tags, scanner automation, and attachment bytes are not exercised by this export and may remain losslessly preserved with visible reasons, but their source rows and relationships must still receive dispositions.</p>
+</div>
+</body>
+</html>
