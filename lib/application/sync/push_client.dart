@@ -21,8 +21,12 @@ class PushClient {
     required AppDatabase db,
     required SyncHttpClient httpClient,
     required SyncMetadataRepo syncMetadataRepo,
-  }) : _db = db,
+  }) : // Keep public named arguments stable while storing them privately.
+       // ignore: prefer_initializing_formals
+       _db = db,
+       // ignore: prefer_initializing_formals
        _httpClient = httpClient,
+       // ignore: prefer_initializing_formals
        _syncMetadataRepo = syncMetadataRepo;
 
   Future<PushResult> push({String? accessToken}) async {

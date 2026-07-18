@@ -16,10 +16,7 @@ class OcrResult {
   final OcrPayload payload;
   final List<String> textLines;
 
-  const OcrResult({
-    required this.payload,
-    required this.textLines,
-  });
+  const OcrResult({required this.payload, required this.textLines});
 }
 
 class OCRPipeline {
@@ -33,11 +30,14 @@ class OCRPipeline {
     AiProcessingLogRepo? logRepo,
     bool aiEnabled = true,
     TextLineExtractor? textExtractor,
-  })  : _nlParser = nlParser ?? const NLParser(),
-        _logRepo = logRepo,
-        _aiEnabled = aiEnabled,
-        // ignore: prefer_initializing_formals
-        _textExtractor = textExtractor;
+  }) : _nlParser = nlParser ?? const NLParser(),
+       // Keep public named arguments stable while storing them privately.
+       // ignore: prefer_initializing_formals
+       _logRepo = logRepo,
+       // ignore: prefer_initializing_formals
+       _aiEnabled = aiEnabled,
+       // ignore: prefer_initializing_formals
+       _textExtractor = textExtractor;
 
   String _generateId() {
     final r = Random();
@@ -82,10 +82,9 @@ class OCRPipeline {
     final result = _parseReceiptFields(rawText);
     final parseResult = _nlParser.parse(rawText);
 
-    final extractedFields = parseResult?.parsed ?? ParsedTransaction(
-      note: rawText,
-      confidence: 0.0,
-    );
+    final extractedFields =
+        parseResult?.parsed ??
+        ParsedTransaction(note: rawText, confidence: 0.0);
 
     final amount = result.amount ?? extractedFields.amount;
     final payee = result.payee ?? extractedFields.payee;
@@ -129,10 +128,7 @@ class OCRPipeline {
       confidenceScore: confidence,
     );
 
-    return OcrResult(
-      payload: payload,
-      textLines: textLines,
-    );
+    return OcrResult(payload: payload, textLines: textLines);
   }
 
   Future<List<String>> _extractTextLines(String imagePath) async {
@@ -150,8 +146,7 @@ class OCRPipeline {
       }
 
       final inputImage = InputImage.fromFilePath(imagePath);
-      final recognizer =
-          TextRecognizer(script: TextRecognitionScript.latin);
+      final recognizer = TextRecognizer(script: TextRecognitionScript.latin);
       try {
         final recognizedText = await recognizer.processImage(inputImage);
         return recognizedText.blocks
@@ -181,16 +176,13 @@ class OCRPipeline {
         .toList();
 
     if (lines.isNotEmpty) {
-      storeName = lines.firstWhere(
-        (line) {
-          final lower = line.toLowerCase();
-          return !lower.contains('vat') &&
-              !lower.contains('tin') &&
-              !lower.contains('receipt') &&
-              !RegExp(r'^\d+$').hasMatch(lower);
-        },
-        orElse: () => lines.first,
-      );
+      storeName = lines.firstWhere((line) {
+        final lower = line.toLowerCase();
+        return !lower.contains('vat') &&
+            !lower.contains('tin') &&
+            !lower.contains('receipt') &&
+            !RegExp(r'^\d+$').hasMatch(lower);
+      }, orElse: () => lines.first);
     }
 
     for (final line in lines) {
@@ -254,7 +246,12 @@ class _ReceiptFields {
   final String? date;
   final double confidence;
 
-  const _ReceiptFields({this.storeName, this.amount, this.date, this.confidence = 0.0});
+  const _ReceiptFields({
+    this.storeName,
+    this.amount,
+    this.date,
+    this.confidence = 0.0,
+  });
 
   String? get payee => storeName;
 }

@@ -50,13 +50,16 @@ class TransactionFilters {
 
   List<Transaction> apply(List<Transaction> transactions) {
     return transactions.where((t) {
-      if (directions.isNotEmpty && !directions.contains(t.direction))
+      if (directions.isNotEmpty && !directions.contains(t.direction)) {
         return false;
+      }
       if (modes.isNotEmpty && !modes.contains(t.mode)) return false;
-      if (accountIds.isNotEmpty && !accountIds.contains(t.accountId))
+      if (accountIds.isNotEmpty && !accountIds.contains(t.accountId)) {
         return false;
-      if (categoryIds.isNotEmpty && !categoryIds.contains(t.categoryId))
+      }
+      if (categoryIds.isNotEmpty && !categoryIds.contains(t.categoryId)) {
         return false;
+      }
       if (minAmount != null && t.amount < minAmount!) return false;
       if (maxAmount != null && t.amount > maxAmount!) return false;
       if (dateRange != null && !dateRange!.contains(t.occurredAt)) return false;

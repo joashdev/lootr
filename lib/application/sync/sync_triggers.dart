@@ -17,8 +17,11 @@ class SyncTriggers {
   SyncTriggers({
     required SyncManager syncManager,
     required ConnectivityMonitor connectivityMonitor,
-  })  : _syncManager = syncManager,
-        _connectivityMonitor = connectivityMonitor;
+  }) : // Keep public named arguments stable while storing them privately.
+       // ignore: prefer_initializing_formals
+       _syncManager = syncManager,
+       // ignore: prefer_initializing_formals
+       _connectivityMonitor = connectivityMonitor;
 
   void start({bool enablePeriodic = false}) {
     if (_disposed) return;
@@ -27,7 +30,9 @@ class SyncTriggers {
       _startPeriodic();
     }
 
-    _connectivitySubscription = _connectivityMonitor.onlineStream.listen((online) {
+    _connectivitySubscription = _connectivityMonitor.onlineStream.listen((
+      online,
+    ) {
       if (online && !_disposed) {
         _connectivityTimer?.cancel();
         _connectivityTimer = Timer(const Duration(seconds: 5), () {
@@ -46,7 +51,8 @@ class SyncTriggers {
   void onAppResumed() {
     if (_disposed) return;
 
-    final shouldSync = _lastSyncTime == null ||
+    final shouldSync =
+        _lastSyncTime == null ||
         DateTime.now().difference(_lastSyncTime!) > const Duration(minutes: 5);
 
     if (shouldSync) {

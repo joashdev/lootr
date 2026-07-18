@@ -41,12 +41,16 @@ class SyncManager {
     Future<String?> Function()? onTokenExpiredAsync,
     ConflictApplier? conflictApplier,
     Future<void> Function()? postSyncHook,
-  }) : _db = db,
+  }) : // Keep public named arguments stable while storing them privately.
+       // ignore: prefer_initializing_formals
+       _db = db,
        _syncMetadataRepo = syncMetadataRepo,
+       // ignore: prefer_initializing_formals
        _connectivityMonitor = connectivityMonitor,
        _storedAccessToken = accessToken,
        _onTokenExpiredSync = onTokenExpired,
        _onTokenExpired = onTokenExpiredAsync,
+       // ignore: prefer_initializing_formals
        _postSyncHook = postSyncHook,
        _pushClient = PushClient(
          db: db,

@@ -201,8 +201,6 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
 
     setState(() => _isListening = true);
     await _speech.listen(
-      listenMode: ListenMode.dictation,
-      partialResults: true,
       onResult: (result) {
         if (!mounted) return;
         setState(() {
@@ -212,6 +210,10 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
           );
         });
       },
+      listenOptions: SpeechListenOptions(
+        listenMode: ListenMode.dictation,
+        partialResults: true,
+      ),
     );
   }
 

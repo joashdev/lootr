@@ -280,7 +280,7 @@ Future<void> showAccountSheet(
           _LabeledField(
             label: 'Account Type',
             child: DropdownButtonFormField<String>(
-              value: accountType,
+              initialValue: accountType,
               decoration: const InputDecoration(border: OutlineInputBorder()),
               items: const [
                 DropdownMenuItem(value: AccountType.cash, child: Text('Cash')),
@@ -364,7 +364,8 @@ Future<void> showAccountSheet(
                   );
                 }
 
-                if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+                if (!sheetContext.mounted || !context.mounted) return;
+                Navigator.of(sheetContext).pop();
                 _showMessage(
                   context,
                   initial == null ? 'Account created.' : 'Account updated.',
@@ -556,7 +557,8 @@ Future<void> showDebtSheet(
                 }
                 await _rebuildNotifications(ref);
 
-                if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+                if (!sheetContext.mounted || !context.mounted) return;
+                Navigator.of(sheetContext).pop();
                 _showMessage(
                   context,
                   initial == null ? 'Debt created.' : 'Debt updated.',
@@ -613,7 +615,7 @@ Future<void> showGoalSheet(
           _LabeledField(
             label: 'Goal Type',
             child: DropdownButtonFormField<String>(
-              value: goalType,
+              initialValue: goalType,
               decoration: const InputDecoration(border: OutlineInputBorder()),
               items: const [
                 DropdownMenuItem(
@@ -702,7 +704,8 @@ Future<void> showGoalSheet(
                   );
                 }
 
-                if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+                if (!sheetContext.mounted || !context.mounted) return;
+                Navigator.of(sheetContext).pop();
                 _showMessage(
                   context,
                   initial == null ? 'Goal created.' : 'Goal updated.',
@@ -749,7 +752,7 @@ Future<void> showGoalContributionSheet(
           if (accounts.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.space3),
             DropdownButtonFormField<String>(
-              value: selectedAccountId,
+              initialValue: selectedAccountId,
               decoration: _fieldDecoration('Source Account'),
               items: accounts
                   .map(
@@ -801,7 +804,8 @@ Future<void> showGoalContributionSheet(
                   await _rebuildNotifications(ref);
                 }
 
-                if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+                if (!sheetContext.mounted || !context.mounted) return;
+                Navigator.of(sheetContext).pop();
                 _showMessage(
                   context,
                   'Contribution added.',
@@ -851,7 +855,7 @@ Future<void> showDebtPaymentSheet(
           if (accounts.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.space3),
             DropdownButtonFormField<String>(
-              value: selectedAccountId,
+              initialValue: selectedAccountId,
               decoration: _fieldDecoration('Account'),
               items: accounts
                   .map(
@@ -938,7 +942,8 @@ Future<void> showDebtPaymentSheet(
                 }
                 await _rebuildNotifications(ref);
 
-                if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+                if (!sheetContext.mounted || !context.mounted) return;
+                Navigator.of(sheetContext).pop();
                 _showMessage(
                   context,
                   status == DebtStatus.settled
@@ -1014,7 +1019,7 @@ Future<void> showRecurringSheet(
           _LabeledField(
             label: 'Account',
             child: DropdownButtonFormField<String>(
-              value: selectedAccountId,
+              initialValue: selectedAccountId,
               decoration: const InputDecoration(border: OutlineInputBorder()),
               items: accounts
                   .map(
@@ -1033,7 +1038,7 @@ Future<void> showRecurringSheet(
           _LabeledField(
             label: 'Frequency',
             child: DropdownButtonFormField<String>(
-              value: recurrenceRule,
+              initialValue: recurrenceRule,
               decoration: const InputDecoration(border: OutlineInputBorder()),
               items: const [
                 DropdownMenuItem(value: 'daily', child: Text('Daily')),
@@ -1105,7 +1110,8 @@ Future<void> showRecurringSheet(
                 }
                 await _rebuildNotifications(ref);
 
-                if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+                if (!sheetContext.mounted || !context.mounted) return;
+                Navigator.of(sheetContext).pop();
                 _showMessage(
                   context,
                   initial == null
@@ -1169,7 +1175,7 @@ Future<void> showCategorySheet(
           ),
           const SizedBox(height: AppSpacing.space3),
           DropdownButtonFormField<String>(
-            value: group,
+            initialValue: group,
             decoration: _fieldDecoration('Group'),
             items: const [
               DropdownMenuItem(
@@ -1304,7 +1310,8 @@ Future<void> showCategorySheet(
                   );
                 }
 
-                if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+                if (!sheetContext.mounted || !context.mounted) return;
+                Navigator.of(sheetContext).pop();
                 _showMessage(
                   context,
                   initial == null ? 'Category created.' : 'Category updated.',
@@ -1394,7 +1401,8 @@ Future<void> showHouseholdSheet(
                   );
                 }
 
-                if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+                if (!sheetContext.mounted || !context.mounted) return;
+                Navigator.of(sheetContext).pop();
                 _showMessage(
                   context,
                   initial == null ? 'Household created.' : 'Household updated.',
@@ -1439,7 +1447,7 @@ Future<void> showHouseholdMemberSheet(
           ),
           const SizedBox(height: AppSpacing.space3),
           DropdownButtonFormField<String>(
-            value: role,
+            initialValue: role,
             decoration: _fieldDecoration('Role'),
             items: const [
               DropdownMenuItem(
@@ -1492,7 +1500,8 @@ Future<void> showHouseholdMemberSheet(
                       ),
                     );
 
-                if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+                if (!sheetContext.mounted || !context.mounted) return;
+                Navigator.of(sheetContext).pop();
                 _showMessage(
                   context,
                   'Member added.',

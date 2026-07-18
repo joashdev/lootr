@@ -15,7 +15,7 @@ import 'package:lootr/main.dart' as app;
 /// Run with:
 ///   flutter drive \
 ///     --driver=test_driver/integration_test.dart \
-///     --target=integration_test/storyboard_capture_test.dart -d <device>
+///     --target=integration_test/storyboard_capture_test.dart -d `device`
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 

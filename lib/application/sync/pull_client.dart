@@ -11,11 +11,7 @@ class PullResult {
   final String? error;
   final DateTime? newLastSyncedAt;
 
-  const PullResult({
-    required this.success,
-    this.error,
-    this.newLastSyncedAt,
-  });
+  const PullResult({required this.success, this.error, this.newLastSyncedAt});
 }
 
 class PullClient {
@@ -29,15 +25,21 @@ class PullClient {
     required SyncHttpClient httpClient,
     required SyncMetadataRepo syncMetadataRepo,
     required ConflictApplier conflictApplier,
-  })  : _db = db,
-        _httpClient = httpClient,
-        _syncMetadataRepo = syncMetadataRepo,
-        _conflictApplier = conflictApplier;
+  }) : // Keep public named arguments stable while storing them privately.
+       // ignore: prefer_initializing_formals
+       _db = db,
+       // ignore: prefer_initializing_formals
+       _httpClient = httpClient,
+       // ignore: prefer_initializing_formals
+       _syncMetadataRepo = syncMetadataRepo,
+       // ignore: prefer_initializing_formals
+       _conflictApplier = conflictApplier;
 
   Future<PullResult> pull({String? accessToken}) async {
     try {
-      final lastSyncedAtStr =
-          await _syncMetadataRepo.get(SyncMetadataRepo.keyLastSyncedAt);
+      final lastSyncedAtStr = await _syncMetadataRepo.get(
+        SyncMetadataRepo.keyLastSyncedAt,
+      );
 
       String? cursor;
       DateTime? serverTime;
@@ -77,7 +79,9 @@ class PullClient {
 
               for (final record in records) {
                 await _applyPullRecord(
-                    tableName, record as Map<String, dynamic>);
+                  tableName,
+                  record as Map<String, dynamic>,
+                );
               }
             }
           });
@@ -103,7 +107,9 @@ class PullClient {
   }
 
   Future<void> _applyPullRecord(
-      String tableName, Map<String, dynamic> serverRecord) async {
+    String tableName,
+    Map<String, dynamic> serverRecord,
+  ) async {
     final id = serverRecord['id'] as String;
     final serverUpdatedAtStr = serverRecord['updated_at'] as String?;
     final serverUpdatedAt = serverUpdatedAtStr != null
@@ -119,12 +125,10 @@ class PullClient {
 
     final localUpdatedAt = _parseDateTime(existing['updated_at']);
 
-    if (_conflictApplier.serverWins(
-        serverUpdatedAt, localUpdatedAt)) {
+    if (_conflictApplier.serverWins(serverUpdatedAt, localUpdatedAt)) {
       final serverDeletedAt = serverRecord['deleted_at'] as String?;
       if (serverDeletedAt != null) {
-        await _softDeleteLocal(
-            tableName, id, DateTime.parse(serverDeletedAt));
+        await _softDeleteLocal(tableName, id, DateTime.parse(serverDeletedAt));
       } else {
         await _updateRecord(tableName, serverRecord, serverUpdatedAt);
       }
@@ -132,7 +136,9 @@ class PullClient {
   }
 
   Future<Map<String, dynamic>?> _getLocalRecord(
-      String tableName, String id) async {
+    String tableName,
+    String id,
+  ) async {
     final query = 'SELECT * FROM $tableName WHERE id = ? LIMIT 1';
     final rows = await _db
         .customSelect(query, variables: [Variable.withString(id)])
@@ -146,10 +152,9 @@ class PullClient {
     Map<String, dynamic> serverRecord,
     DateTime serverUpdatedAt,
   ) async {
-    final def = syncableTableDefinitions.cast<SyncTableDefinition?>().firstWhere(
-      (d) => d!.name == tableName,
-      orElse: () => null,
-    );
+    final def = syncableTableDefinitions
+        .cast<SyncTableDefinition?>()
+        .firstWhere((d) => d!.name == tableName, orElse: () => null);
     if (def == null) return;
 
     final columns = [...def.dataColumns, 'sync_status', 'last_synced_at'];
@@ -188,8 +193,7 @@ class PullClient {
     final sql =
         'INSERT INTO $tableName (${columns.join(', ')}) VALUES (${valueParts.join(', ')}) '
         'ON CONFLICT(id) DO UPDATE SET ${setParts.join(', ')}';
-    await _db.customUpdate(
-        sql, variables: [...valueVars, ...setVars]);
+    await _db.customUpdate(sql, variables: [...valueVars, ...setVars]);
   }
 
   Future<void> _updateRecord(
@@ -215,8 +219,7 @@ class PullClient {
     setClauses.add("last_synced_at = ?");
     variables.add(Variable.withDateTime(serverUpdatedAt.toUtc()));
 
-    final sql =
-        'UPDATE $tableName SET ${setClauses.join(', ')} WHERE id = ?';
+    final sql = 'UPDATE $tableName SET ${setClauses.join(', ')} WHERE id = ?';
     variables.add(_variableFor(id));
     await _db.customUpdate(sql, variables: variables);
   }
