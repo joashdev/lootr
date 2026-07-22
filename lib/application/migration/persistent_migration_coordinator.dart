@@ -118,6 +118,7 @@ class PersistentMigrationCoordinator implements MigrationCoordinator {
 
   @override
   Future<void> analyze(String runId) async {
+    await _startupRecovery;
     final run = await _requireRun(runId);
     if (!const {'staged', 'selected', 'interrupted'}.contains(run.state)) {
       return;
@@ -153,6 +154,7 @@ class PersistentMigrationCoordinator implements MigrationCoordinator {
 
   @override
   Future<void> resolveReviewGroup(String runId, String groupId) async {
+    await _startupRecovery;
     final run = await _requireRun(runId);
     if (run.state != 'needs_review') return;
     final discrepancies = database().importDiscrepancies;
@@ -175,6 +177,7 @@ class PersistentMigrationCoordinator implements MigrationCoordinator {
 
   @override
   Future<void> reconcile(String runId) async {
+    await _startupRecovery;
     final run = await _requireRun(runId);
     if (run.state == 'interrupted') {
       final mappings =
@@ -236,6 +239,7 @@ class PersistentMigrationCoordinator implements MigrationCoordinator {
 
   @override
   Future<void> apply(String runId) async {
+    await _startupRecovery;
     var run = await _requireRun(runId);
     if (run.state != 'ready') return;
     final analysis = await _loadAnalysis(run);
@@ -294,6 +298,7 @@ class PersistentMigrationCoordinator implements MigrationCoordinator {
 
   @override
   Future<void> cancel(String runId) async {
+    await _startupRecovery;
     final run = await _requireRun(runId);
     if (!const {
       'selected',
@@ -314,6 +319,7 @@ class PersistentMigrationCoordinator implements MigrationCoordinator {
 
   @override
   Future<void> rollback(String runId) async {
+    await _startupRecovery;
     final run = await _requireRun(runId);
     if (run.state != 'complete' &&
         run.state != 'failed' &&
@@ -1074,6 +1080,7 @@ class PersistentMigrationCoordinator implements MigrationCoordinator {
   }
 
   Future<void> _cleanup(ImportRunData run) async {
+    if (run.cleanupStatus == 'complete' && run.stagingToken == null) return;
     await (database().update(
       database().importRuns,
     )..where((row) => row.id.equals(run.id))).write(
