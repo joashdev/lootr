@@ -544,9 +544,9 @@ complete → rolled_back
 
 Staging checkpoints by source table and PK. A changed file hash starts a new run.
 
-Cancellation remains available until atomic publication begins. During `applying` and `verifying`, back/cancel is disabled with a calm explanation because the database transaction must finish or roll back as one unit. Each run persists cleanup status and attempt count. Startup recovery scans nonterminal runs, verifies the private staging copy and fingerprint, and resumes from the last checkpoint; if staging is missing, the user is asked to reselect the same source without losing the redacted review report.
+Cancellation remains available until atomic publication begins. During `applying` and `verifying`, back/cancel is disabled with a calm explanation because the database transaction must finish or roll back as one unit. Each run persists cleanup status and attempt count. Startup recovery scans nonterminal runs, verifies the private staging copy and fingerprint, and resumes from the last checkpoint; if staging is missing, the user is asked to reselect the same source without losing the redacted review report. Recovery and orphan cleanup must finish before a new staging directory is created, so a newly selected source can never be mistaken for an abandoned run.
 
-Apply target records and provenance in one database transaction. If very large datasets require batching, keep all imported rows unpublished until the final run-complete transaction.
+Apply target records, provenance, dispositions, and an encrypted canonical source-row archive in one database transaction. Every source row receives an archive entry even when it also becomes an editable Lootr record; unsupported semantics additionally receive a preserved-payload entry with a visible reason. If very large datasets require batching, keep all imported rows unpublished until the final run-complete transaction.
 
 Before apply:
 
@@ -634,8 +634,9 @@ All monetary comparisons use exact coefficients at the account or budget currenc
 - target `PRAGMA foreign_key_check` passes;
 - every imported target has provenance;
 - every source row has target or preserved payload;
-- account stored balances equal reconstructed ledgers;
+- imported-account stored balances equal reconstructed ledgers at each account's source scale;
 - every budget membership can explain each included transaction;
+- goal contribution and debt payment event counts and per-currency/scale totals match their valid source links;
 - every transfer preserves both account/currency legs and is excluded from spending;
 - same source rerun produces zero inserts and zero financial delta.
 
@@ -665,7 +666,7 @@ Flow:
 
 Use neutral language: **Needs review** and **Preserved for later**, not **Failed**, when the source is valid but Lootr lacks an equivalent.
 
-The post-import landing view should open the most recent imported month with visible filters and an explanation of imported/preserved counts.
+Timezone and title/payee handling are explicit reversible confirmations in the review step, not hidden defaults. The post-import landing view opens the most recent imported month with the imported account and currency filters visible. Composite imported budgets remain visible in Budgets, Dashboard, and currency-grouped reports; unsafe source shapes use a read-only detail and exact transaction drill-down instead of being flattened.
 
 ---
 
@@ -679,6 +680,7 @@ Treat the selected Cashew database as sensitive plaintext.
 - Never log notes, titles, emails, URLs, or row contents.
 - Redact financial values in diagnostics by default.
 - Disable sync while apply runs.
+- Exclude migration/provenance tables and provenance-linked imported rows from future sync until the user deliberately adopts or edits them.
 - Delete temporary plaintext after success/rollback.
 - Explain that secure deletion is best-effort on flash storage.
 - Leave the user-selected original untouched.
