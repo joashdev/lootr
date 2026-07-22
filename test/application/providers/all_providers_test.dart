@@ -199,6 +199,7 @@ void main() {
               id: 'txn-income',
               accountId: 'acc-1',
               amount: 50000.0,
+              title: const Value('Imported income'),
               transactionDirection: 'income',
               transactionMode: 'one_time',
               occurredAt: now.subtract(const Duration(days: 2)),
@@ -252,6 +253,12 @@ void main() {
       expect(dashboard, isNotNull);
       expect(dashboard!.accounts.length, 1);
       expect(dashboard.recentTransactions.length, 2);
+      expect(
+        dashboard.recentTransactions
+            .singleWhere((item) => item.id == 'txn-income')
+            .payeeName,
+        'Imported income',
+      );
       expect(dashboard.budgets.single.name, 'Food');
       expect(dashboard.spendingByCategory.single.name, 'Food');
       expect(dashboard.upcomingRecurring.single.payeeName, 'Food');

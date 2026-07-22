@@ -22,12 +22,15 @@ class TransactionCsvExportService {
     var count = 0;
     try {
       sink.writeln(
-        'occurred_at,direction,account,currency,amount,category,payee,title,note',
+        'occurred_at,direction,account,currency,amount,'
+        'destination_account,destination_currency,destination_amount,'
+        'category,payee,title,note',
       );
       final rows = await database
           .customSelect(
             '''
         SELECT
+          t.id AS entry_id,
           t.occurred_at,
           t.transaction_direction,
           a.name AS account_name,
@@ -35,6 +38,11 @@ class TransactionCsvExportService {
           t.amount_atoms,
           t.amount_scale,
           t.amount,
+          NULL AS destination_account_name,
+          NULL AS destination_currency_code,
+          NULL AS destination_amount_atoms,
+          NULL AS destination_amount_scale,
+          NULL AS destination_amount,
           c.name AS category_name,
           COALESCE(p.display_name, p.normalized_name) AS payee_name,
           t.title,
@@ -44,10 +52,36 @@ class TransactionCsvExportService {
         LEFT JOIN categories c ON c.id = t.category_id
         LEFT JOIN payees p ON p.id = t.payee_id
         WHERE t.deleted_at IS NULL
-        ORDER BY t.occurred_at, t.id
+        UNION ALL
+        SELECT
+          tr.id AS entry_id,
+          tr.occurred_at,
+          'transfer' AS transaction_direction,
+          source.name AS account_name,
+          COALESCE(tr.source_currency_code, source.currency_code)
+            AS currency_code,
+          tr.source_amount_atoms AS amount_atoms,
+          tr.source_amount_scale AS amount_scale,
+          tr.amount,
+          destination.name AS destination_account_name,
+          COALESCE(tr.destination_currency_code, destination.currency_code)
+            AS destination_currency_code,
+          tr.destination_amount_atoms,
+          tr.destination_amount_scale,
+          tr.amount AS destination_amount,
+          NULL AS category_name,
+          NULL AS payee_name,
+          NULL AS title,
+          tr.note
+        FROM transfers tr
+        JOIN accounts source ON source.id = tr.source_account_id
+        JOIN accounts destination ON destination.id = tr.destination_account_id
+        WHERE tr.deleted_at IS NULL
+        ORDER BY occurred_at, entry_id
         ''',
             readsFrom: {
               database.transactions,
+              database.transfers,
               database.accounts,
               database.categories,
               database.payees,
@@ -61,6 +95,19 @@ class TransactionCsvExportService {
         final amount = atoms != null && scale != null
             ? _formatAtoms(atoms, scale)
             : row.read<double>('amount').toString();
+        final destinationAtoms = row.readNullable<String>(
+          'destination_amount_atoms',
+        );
+        final destinationScale = row.readNullable<int>(
+          'destination_amount_scale',
+        );
+        final destinationProjection = row.readNullable<double>(
+          'destination_amount',
+        );
+        final destinationAmount =
+            destinationAtoms != null && destinationScale != null
+            ? _formatAtoms(destinationAtoms, destinationScale)
+            : destinationProjection?.toString();
         sink.writeln(
           <Object?>[
             row.read<DateTime>('occurred_at').toUtc().toIso8601String(),
@@ -68,6 +115,9 @@ class TransactionCsvExportService {
             row.read<String>('account_name'),
             row.read<String>('currency_code'),
             amount,
+            row.readNullable<String>('destination_account_name'),
+            row.readNullable<String>('destination_currency_code'),
+            destinationAmount,
             row.readNullable<String>('category_name'),
             row.readNullable<String>('payee_name'),
             row.readNullable<String>('title'),

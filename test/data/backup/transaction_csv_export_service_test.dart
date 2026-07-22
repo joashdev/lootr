@@ -74,4 +74,59 @@ void main() {
       expect(await File('${destination.path}.creating').exists(), isFalse);
     },
   );
+
+  test('exports both exact legs of a cross-currency transfer', () async {
+    await database
+        .into(database.accounts)
+        .insert(
+          AccountsCompanion.insert(
+            id: 'destination',
+            ownerUserId: 'owner',
+            name: 'Destination',
+            accountType: 'bank',
+            currencyCode: const Value('DST'),
+            currencyPrecision: const Value(4),
+          ),
+        );
+    await database
+        .into(database.transfers)
+        .insert(
+          TransfersCompanion.insert(
+            id: 'transfer',
+            sourceAccountId: 'account',
+            destinationAccountId: 'destination',
+            amount: 1.25,
+            sourceAmountAtoms: const Value('1250000000000'),
+            sourceAmountScale: const Value(12),
+            sourceCurrencyCode: const Value('TST'),
+            destinationAmountAtoms: const Value('25000'),
+            destinationAmountScale: const Value(4),
+            destinationCurrencyCode: const Value('DST'),
+            occurredAt: DateTime.utc(2026, 7, 18),
+          ),
+        );
+
+    final destination = File('${temporary.path}/transactions.csv');
+    final count = await const TransactionCsvExportService().export(
+      database: database,
+      destination: destination,
+    );
+    final text = await destination.readAsString();
+
+    expect(count, 1);
+    expect(
+      text,
+      startsWith(
+        'occurred_at,direction,account,currency,amount,'
+        'destination_account,destination_currency,destination_amount',
+      ),
+    );
+    expect(
+      text,
+      contains(
+        'transfer,"Account, quoted",TST,1.250000000000,'
+        'Destination,DST,2.5000',
+      ),
+    );
+  });
 }

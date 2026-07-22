@@ -25,6 +25,7 @@ class Transaction extends Equatable {
   final String? amountAtoms;
   final int? amountScale;
   final String? currencyCode;
+  final String? title;
   @JsonKey(name: 'transaction_direction')
   final String direction;
   @JsonKey(name: 'transaction_mode')
@@ -49,6 +50,7 @@ class Transaction extends Equatable {
     this.amountAtoms,
     this.amountScale,
     this.currencyCode,
+    this.title,
     required this.direction,
     required this.mode,
     this.subtype,
@@ -90,6 +92,7 @@ class Transaction extends Equatable {
     String? Function()? amountAtoms,
     int? Function()? amountScale,
     String? Function()? currencyCode,
+    String? Function()? title,
     String? direction,
     String? mode,
     String? Function()? subtype,
@@ -115,6 +118,7 @@ class Transaction extends Equatable {
       amountAtoms: amountAtoms != null ? amountAtoms() : this.amountAtoms,
       amountScale: amountScale != null ? amountScale() : this.amountScale,
       currencyCode: currencyCode != null ? currencyCode() : this.currencyCode,
+      title: title != null ? title() : this.title,
       direction: direction ?? this.direction,
       mode: mode ?? this.mode,
       subtype: subtype != null ? subtype() : this.subtype,
@@ -139,6 +143,7 @@ class Transaction extends Equatable {
     amountAtoms,
     amountScale,
     currencyCode,
+    title,
     direction,
     mode,
     subtype,

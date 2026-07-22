@@ -37,4 +37,37 @@ void main() {
 
     expect(find.text('-BTC0.000000000001'), findsOneWidget);
   });
+
+  testWidgets('uses a preserved title when no payee is attached', (
+    tester,
+  ) async {
+    final now = DateTime(2026, 7, 22, 12);
+    final transaction = Transaction(
+      id: 'transaction-title',
+      accountId: 'account-1',
+      amount: 10,
+      title: 'Imported merchant',
+      note: 'Imported note',
+      direction: 'expense',
+      mode: 'one_time',
+      occurredAt: now,
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: TransactionRowWidget(
+            transaction: transaction,
+            accountName: 'Account',
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Imported merchant'), findsOneWidget);
+    expect(find.text('Imported note'), findsNothing);
+  });
 }

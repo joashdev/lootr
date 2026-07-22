@@ -43,6 +43,7 @@ void main() {
         transactionDirection: 'income',
         transactionMode: 'recurring',
         transactionSubtype: 'salary',
+        title: 'Imported title',
         note: 'Monthly salary',
         metadata: {'source': 'company'},
         occurredAt: now,
@@ -55,12 +56,14 @@ void main() {
       final entity = row.toEntity();
       expect(entity.categoryId, 'cat-1');
       expect(entity.payeeId, 'pay-1');
+      expect(entity.title, 'Imported title');
       expect(entity.note, 'Monthly salary');
       expect(entity.metadata, {'source': 'company'});
       expect(entity.deletedAt, now);
 
       final companion = entity.toCompanion();
       expect(companion.categoryId.value, 'cat-1');
+      expect(companion.title.value, 'Imported title');
       expect(companion.note.value, 'Monthly salary');
       expect(companion.metadata.value, {'source': 'company'});
       expect(companion.deletedAt.value, now);

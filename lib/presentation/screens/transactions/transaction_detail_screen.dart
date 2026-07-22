@@ -314,6 +314,10 @@ class _TransactionDetailScreenState
     final isTransfer = transfer != null;
     final directionColor = _directionColor(transaction);
     final amountStr = MoneyFormat.exactMoney(transaction.exactAmount);
+    final isCrossCurrencyTransfer =
+        isTransfer &&
+        transfer.exactSourceAmount.currencyCode !=
+            transfer.exactDestinationAmount.currencyCode;
     final transferDestinationName = isTransfer
         ? _accountName(transfer.destinationAccountId, accounts)
         : null;
@@ -349,6 +353,14 @@ class _TransactionDetailScreenState
                   ? <String, dynamic>{
                       'From': _accountName(transfer.sourceAccountId, accounts),
                       'To': transferDestinationName,
+                      if (isCrossCurrencyTransfer)
+                        'Sent': MoneyFormat.exactMoney(
+                          transfer.exactSourceAmount,
+                        ),
+                      if (isCrossCurrencyTransfer)
+                        'Received': MoneyFormat.exactMoney(
+                          transfer.exactDestinationAmount,
+                        ),
                       if (!transfer.exactFeeAmount.isZero)
                         'Fee': MoneyFormat.exactMoney(transfer.exactFeeAmount),
                     }

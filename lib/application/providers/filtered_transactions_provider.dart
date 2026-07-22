@@ -47,7 +47,6 @@ final filteredTransactionsProvider = StreamProvider<List<Transaction>>((ref) {
 
     final filteredTransfers = transfers
         .where((transfer) {
-          final amount = transfer.exactSourceAmount;
           if (filters.directions.isNotEmpty &&
               !filters.directions.contains('transfer')) {
             return false;
@@ -63,11 +62,20 @@ final filteredTransactionsProvider = StreamProvider<List<Transaction>>((ref) {
               !filters.dateRange!.contains(transfer.occurredAt)) {
             return false;
           }
-          if (filters.currencyCode != null &&
-              amount.currencyCode != filters.currencyCode) {
-            return false;
-          }
-          if (filters.hasExactAmountRange) {
+          final candidateAmounts = <ExactMoney>[
+            if (filters.accountIds.isEmpty ||
+                filters.accountIds.contains(transfer.sourceAccountId))
+              transfer.exactSourceAmount,
+            if (filters.accountIds.isEmpty ||
+                filters.accountIds.contains(transfer.destinationAccountId))
+              transfer.exactDestinationAmount,
+          ];
+          return candidateAmounts.any((amount) {
+            if (filters.currencyCode != null &&
+                amount.currencyCode != filters.currencyCode) {
+              return false;
+            }
+            if (!filters.hasExactAmountRange) return true;
             if (filters.minAmountCoefficient != null) {
               final minimum = ExactMoney(
                 coefficient: BigInt.parse(filters.minAmountCoefficient!),
@@ -84,8 +92,8 @@ final filteredTransactionsProvider = StreamProvider<List<Transaction>>((ref) {
               );
               if (amount.compareTo(maximum) > 0) return false;
             }
-          }
-          return true;
+            return true;
+          });
         })
         .map(mapTransferToTransaction);
 
@@ -110,6 +118,7 @@ bool _matchesSearch(
   String normalizedQuery,
 ) {
   final values = <String?>[
+    transaction.title,
     transaction.note,
     transaction.amount.toString(),
     transaction.amount.toStringAsFixed(2),

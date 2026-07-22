@@ -488,6 +488,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
             : null,
         recurringTemplateId: previous?.recurringTemplateId,
         amount: amount,
+        title: previous?.title,
         direction: _direction,
         mode: _mode,
         subtype: previous?.subtype,

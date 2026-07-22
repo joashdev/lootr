@@ -416,7 +416,12 @@ final dashboardProvider = StreamProvider<DashboardData>((ref) {
       final account = accountById[txn.accountId];
       return DashboardTransactionItem(
         id: txn.id,
-        payeeName: payee?.displayName ?? payee?.normalizedName ?? 'Transaction',
+        payeeName:
+            payee?.displayName ??
+            payee?.normalizedName ??
+            _nonBlank(txn.title) ??
+            _nonBlank(txn.note) ??
+            'Transaction',
         accountName: account?.name ?? 'Account',
         categoryName: category?.name ?? _fallbackCategoryName(txn.direction),
         categoryIcon: category?.icon,
@@ -566,6 +571,11 @@ List<double> _buildNetWorthSeries({
   }
 
   return series;
+}
+
+String? _nonBlank(String? value) {
+  final trimmed = value?.trim();
+  return trimmed == null || trimmed.isEmpty ? null : trimmed;
 }
 
 ExactMoney? _netWorthImpact(Transaction txn) {
