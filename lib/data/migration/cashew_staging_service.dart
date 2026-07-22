@@ -89,11 +89,58 @@ class CashewStagingService {
   }
 
   Future<void> cleanup(StagedCashewSource source) async {
-    await secureFiles.bestEffortDelete(source.file);
+    await cleanupToken(source.stagingToken);
+  }
+
+  /// Idempotently removes the private staging area owned by [stagingToken].
+  ///
+  /// Cleanup must not require reopening the source: the file may already have
+  /// been deleted before a process interruption.
+  Future<void> cleanupToken(String stagingToken) async {
+    if (!RegExp(r'^[a-f0-9]{32}$').hasMatch(stagingToken)) {
+      throw const StagingFailure('invalid_staging_token');
+    }
+    final root = await _supportDirectory();
+    final directory = Directory(
+      p.join(root.path, 'cashew-import', stagingToken),
+    );
+    final file = File(p.join(directory.path, 'source.sqlite'));
+    await secureFiles.bestEffortDelete(file);
+    if (await file.exists()) {
+      throw const StagingFailure('cleanup_incomplete');
+    }
     try {
-      await source.file.parent.delete(recursive: true);
+      if (await directory.exists()) {
+        await directory.delete(recursive: true);
+      }
     } on FileSystemException {
-      // Best effort, disclosed in the migration UI.
+      if (await directory.exists()) {
+        throw const StagingFailure('cleanup_incomplete');
+      }
+    }
+  }
+
+  /// Removes private staging directories that are not owned by a persisted run.
+  ///
+  /// This closes the narrow window where staging succeeds but recording the run
+  /// fails. Deletion remains best-effort on flash storage and is retried on the
+  /// next startup when an orphan cannot be removed.
+  Future<void> cleanupOrphans(Set<String> activeTokens) async {
+    final root = await _supportDirectory();
+    final stagingRoot = Directory(p.join(root.path, 'cashew-import'));
+    if (!await stagingRoot.exists()) return;
+    await for (final entity in stagingRoot.list(followLinks: false)) {
+      if (entity is! Directory) continue;
+      final token = p.basename(entity.path);
+      if (activeTokens.contains(token)) continue;
+      final file = File(p.join(entity.path, 'source.sqlite'));
+      await secureFiles.bestEffortDelete(file);
+      if (await file.exists()) continue;
+      try {
+        await entity.delete(recursive: true);
+      } on FileSystemException {
+        // A later startup retries the same orphan without exposing its path.
+      }
     }
   }
 

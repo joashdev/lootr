@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,21 +28,36 @@ final class DatabaseSession {
 }
 
 class DatabaseSessionNotifier extends Notifier<DatabaseSession> {
+  DatabaseSessionNotifier({
+    AppDatabase Function()? databaseFactory,
+    Future<File> Function()? liveFile,
+  }) : _databaseFactory = databaseFactory ?? AppDatabase.defaultDatabase,
+       _liveFile =
+           liveFile ??
+           (() => getApplicationDocumentsDirectory().then(
+             (directory) => File(p.join(directory.path, 'lootr.sqlite')),
+           ));
+
+  final AppDatabase Function() _databaseFactory;
+  final Future<File> Function() _liveFile;
+  AppDatabase? _activeDatabase;
+
   @override
   DatabaseSession build() {
-    final database = AppDatabase.defaultDatabase();
-    ref.onDispose(() => state.database.close());
-    return DatabaseSession(
-      database: database,
-      liveFile: getApplicationDocumentsDirectory().then(
-        (directory) => File(p.join(directory.path, 'lootr.sqlite')),
-      ),
-    );
+    final database = _databaseFactory();
+    _activeDatabase = database;
+    ref.onDispose(() {
+      final active = _activeDatabase;
+      _activeDatabase = null;
+      if (active != null) unawaited(active.close());
+    });
+    return DatabaseSession(database: database, liveFile: _liveFile());
   }
 
   Future<T> whileDatabaseClosed<T>(
-    Future<T> Function(File liveFile) operation,
-  ) async {
+    Future<T> Function(File liveFile) operation, {
+    Future<void> Function(T result, File liveFile)? restoreOnReopenFailure,
+  }) async {
     if (state.isUnderMaintenance) {
       throw StateError('Database maintenance is already in progress.');
     }
@@ -51,16 +67,64 @@ class DatabaseSessionNotifier extends Notifier<DatabaseSession> {
     final liveFile = await current.liveFile;
     await current.database.close();
 
+    late T result;
     try {
-      final result = await operation(liveFile);
-      final reopened = AppDatabase.defaultDatabase();
-      await reopened.customSelect('SELECT 1').getSingle();
-      state = DatabaseSession(database: reopened, liveFile: current.liveFile);
-      return result;
+      result = await operation(liveFile);
     } catch (_) {
-      final reopened = AppDatabase.defaultDatabase();
-      state = DatabaseSession(database: reopened, liveFile: current.liveFile);
+      final reopened = await _openValidated();
+      _publish(reopened, current.liveFile);
       rethrow;
+    }
+
+    try {
+      final reopened = await _openValidated();
+      _publish(reopened, current.liveFile);
+      return result;
+    } catch (error, stackTrace) {
+      if (restoreOnReopenFailure != null) {
+        try {
+          await restoreOnReopenFailure(result, liveFile);
+        } catch (recoveryError, recoveryStackTrace) {
+          try {
+            final fallback = await _openValidated();
+            _publish(fallback, current.liveFile);
+          } catch (_) {
+            // The recovery error below is the actionable failure.
+          }
+          Error.throwWithStackTrace(recoveryError, recoveryStackTrace);
+        }
+      }
+      final recovered = await _openValidated();
+      _publish(recovered, current.liveFile);
+      Error.throwWithStackTrace(error, stackTrace);
+    }
+  }
+
+  void _publish(AppDatabase database, Future<File> liveFile) {
+    _activeDatabase = database;
+    state = DatabaseSession(database: database, liveFile: liveFile);
+  }
+
+  Future<AppDatabase> _openValidated() async {
+    final database = _databaseFactory();
+    try {
+      await _validateReopened(database);
+      return database;
+    } catch (_) {
+      await database.close();
+      rethrow;
+    }
+  }
+
+  Future<void> _validateReopened(AppDatabase database) async {
+    await database.customSelect('SELECT 1').getSingle();
+    final quick = await database.customSelect('PRAGMA quick_check').get();
+    if (quick.isEmpty || quick.first.data.values.first != 'ok') {
+      throw StateError('Reopened database did not pass integrity checks.');
+    }
+    if ((await database.customSelect('PRAGMA foreign_key_check').get())
+        .isNotEmpty) {
+      throw StateError('Reopened database did not pass foreign-key checks.');
     }
   }
 }

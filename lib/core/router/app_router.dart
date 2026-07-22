@@ -8,6 +8,7 @@ import '../../domain/entities/transaction.dart';
 import '../../domain/entities/transfer.dart';
 import '../../presentation/screens/budgets/budget_detail_screen.dart';
 import '../../presentation/screens/budgets/budgets_screen.dart';
+import '../../presentation/screens/budgets/imported_budget_detail_screen.dart';
 import '../../presentation/screens/dashboard/dashboard_screen.dart';
 import '../../presentation/screens/more/account_detail_screen.dart';
 import '../../presentation/screens/more/accounts_screen.dart';
@@ -195,6 +196,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 path: '/budgets',
                 builder: (context, state) => const BudgetsScreen(),
                 routes: [
+                  GoRoute(
+                    path: 'imported/:id',
+                    pageBuilder: (context, state) => _pushPage(
+                      ImportedBudgetDetailScreen(
+                        id: state.pathParameters['id']!,
+                        year: int.tryParse(
+                          state.uri.queryParameters['year'] ?? '',
+                        ),
+                        month: int.tryParse(
+                          state.uri.queryParameters['month'] ?? '',
+                        ),
+                      ),
+                      key: state.pageKey,
+                    ),
+                  ),
                   GoRoute(
                     path: ':id',
                     pageBuilder: (context, state) => _pushPage(

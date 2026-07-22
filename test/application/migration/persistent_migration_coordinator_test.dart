@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:drift/drift.dart' show Value, Variable, driftRuntimeOptions;
@@ -80,9 +81,13 @@ void main() {
       expect(projection.accountCount, 3);
       expect(projection.partitions.map((row) => row.precision), [2, 4, 12]);
       expect(projection.dispositions.total, greaterThan(0));
+      expect(projection.phase, MigrationRunPhase.needsReview);
       expect(
-        projection.phase,
-        anyOf(MigrationRunPhase.needsReview, MigrationRunPhase.ready),
+        projection.reviewGroups.map((group) => group.id),
+        containsAll([
+          'policy.timezone_confirmation',
+          'policy.title_confirmation',
+        ]),
       );
 
       if (projection.phase == MigrationRunPhase.needsReview) {
@@ -142,10 +147,7 @@ void main() {
 
     final projection = await coordinator!.watchRun('resume-run').first;
     expect(projection?.schemaVersion, 48);
-    expect(
-      projection?.phase,
-      anyOf(MigrationRunPhase.needsReview, MigrationRunPhase.ready),
-    );
+    expect(projection?.phase, MigrationRunPhase.needsReview);
     expect((await _run(database, 'resume-run')).cleanupStatus, 'pending');
   });
 
@@ -170,7 +172,9 @@ void main() {
           _run(database, 'applying'),
           _run(database, 'verifying'),
         ]);
-        return states.every((run) => run.state == 'interrupted');
+        return states[0].state == 'staged' &&
+            states[1].state == 'interrupted' &&
+            states[2].state == 'interrupted';
       });
     },
   );
@@ -212,22 +216,16 @@ void main() {
     },
   );
 
-  test('missing staged copy records best-effort cleanup for retry', () async {
+  test('startup removes a staged copy that has no persisted run', () async {
     final source = await CashewFixtureBuilder(48).build();
     addTearDown(() async {
       if (await source.parent.exists()) {
         await source.parent.delete(recursive: true);
       }
     });
-    final staged = await staging.stage(XFile(source.path));
-    await staged.file.delete();
-    await _insertRun(
-      database,
-      id: 'cleanup-run',
-      state: 'ready',
-      fingerprint: staged.sourceFingerprint,
-      stagingToken: staged.stagingToken,
-    );
+    final orphan = await staging.stage(XFile(source.path));
+    expect(await orphan.file.exists(), isTrue);
+
     coordinator = _coordinator(
       database: database,
       staging: staging,
@@ -236,14 +234,81 @@ void main() {
       temporary: temporary,
     );
 
-    await coordinator!.cancel('cleanup-run');
-
-    final cancelled = await _run(database, 'cleanup-run');
-    expect(cancelled.state, 'cancelled');
-    expect(cancelled.cleanupStatus, 'best_effort_incomplete');
-    expect(cancelled.cleanupAttempts, 1);
-    expect(cancelled.stagingToken, staged.stagingToken);
+    await _eventually(() async => !await orphan.file.exists());
   });
+
+  test('creating a run waits for startup orphan cleanup', () async {
+    final source = await CashewFixtureBuilder(48).build();
+    addTearDown(() async {
+      if (await source.parent.exists()) {
+        await source.parent.delete(recursive: true);
+      }
+    });
+    final blockingStaging = _BlockingCleanupStagingService(temporary);
+    coordinator = _coordinator(
+      database: database,
+      staging: blockingStaging,
+      registry: registry,
+      backups: backups,
+      temporary: temporary,
+    );
+    final selection = registry.register(XFile(source.path));
+
+    final creating = coordinator!.createRun(
+      source: selection,
+      timezone: const MigrationTimezoneOption(id: 'UTC', label: 'UTC'),
+      titlePolicy: MigrationTitlePolicy.preserveOnly,
+    );
+    await blockingStaging.cleanupStarted.future;
+    var completed = false;
+    unawaited(creating.whenComplete(() => completed = true));
+    await Future<void>.delayed(Duration.zero);
+    expect(completed, isFalse);
+
+    blockingStaging.allowCleanup.complete();
+    final created = await creating;
+    final run = await _run(database, created.id);
+    final stagedFile = File(
+      '${temporary.path}/cashew-import/${run.stagingToken}/source.sqlite',
+    );
+    expect(await stagedFile.exists(), isTrue);
+  });
+
+  test(
+    'cleanup remains successful when the staged file is already absent',
+    () async {
+      final source = await CashewFixtureBuilder(48).build();
+      addTearDown(() async {
+        if (await source.parent.exists()) {
+          await source.parent.delete(recursive: true);
+        }
+      });
+      final staged = await staging.stage(XFile(source.path));
+      await staged.file.delete();
+      await _insertRun(
+        database,
+        id: 'cleanup-run',
+        state: 'ready',
+        fingerprint: staged.sourceFingerprint,
+        stagingToken: staged.stagingToken,
+      );
+      coordinator = _coordinator(
+        database: database,
+        staging: staging,
+        registry: registry,
+        backups: backups,
+        temporary: temporary,
+      );
+
+      await coordinator!.cancel('cleanup-run');
+
+      final cancelled = await _run(database, 'cleanup-run');
+      expect(cancelled.state, 'cancelled');
+      expect(cancelled.cleanupStatus, 'complete');
+      expect(cancelled.cleanupAttempts, 1);
+      expect(cancelled.stagingToken, isNull);
+    },
+  );
 
   test(
     'a crash after committed publication retains the whole set for recovery',
@@ -469,4 +534,19 @@ Future<void> _eventually(
     await Future<void>.delayed(const Duration(milliseconds: 10));
   }
   fail('Condition was not met before the redacted test timeout.');
+}
+
+class _BlockingCleanupStagingService extends CashewStagingService {
+  _BlockingCleanupStagingService(Directory support)
+    : super(supportDirectory: () async => support);
+
+  final cleanupStarted = Completer<void>();
+  final allowCleanup = Completer<void>();
+
+  @override
+  Future<void> cleanupOrphans(Set<String> activeTokens) async {
+    cleanupStarted.complete();
+    await allowCleanup.future;
+    await super.cleanupOrphans(activeTokens);
+  }
 }

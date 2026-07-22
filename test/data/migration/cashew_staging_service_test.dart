@@ -67,4 +67,25 @@ void main() {
         : const <File>[];
     expect(stagedFiles, isEmpty);
   });
+
+  test(
+    'cleanup is idempotent after the staged file is already absent',
+    () async {
+      final source = File('${temporary.path}/synthetic.sql');
+      await source.writeAsBytes([
+        ...'SQLite format 3\u0000'.codeUnits,
+        ...List<int>.filled(64, 0),
+      ]);
+      final staging = CashewStagingService(
+        supportDirectory: () async => Directory('${temporary.path}/support'),
+      );
+      final result = await staging.stage(XFile(source.path));
+
+      await result.file.delete();
+      await staging.cleanupToken(result.stagingToken);
+      await staging.cleanupToken(result.stagingToken);
+
+      expect(await result.file.parent.exists(), isFalse);
+    },
+  );
 }

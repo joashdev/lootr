@@ -31,7 +31,12 @@ class CashewPublicationEngine {
     );
     await database.transaction(() async {
       await context.publish();
-      await database.customStatement('PRAGMA foreign_key_check');
+      final foreignKeys = await database
+          .customSelect('PRAGMA foreign_key_check')
+          .get();
+      if (foreignKeys.isNotEmpty) {
+        throw const CashewPublicationFailure('target_foreign_key_failed');
+      }
     });
     return context.result();
   }
@@ -204,7 +209,7 @@ class _PublicationContext {
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ''',
         [
-          _id('issue', '$ordinal\u0000${issue.code}'),
+          'dry-$importRunId-$ordinal',
           importRunId,
           _severity(issue.severity),
           issue.code,
@@ -476,15 +481,19 @@ class _PublicationContext {
             (latest, value) =>
                 latest == null || value.isAfter(latest) ? value : latest,
           );
-      await _statement(
-        '''
+      final inserted = await _insertTarget(
+        table: 'recurring_templates',
+        id: templateId,
+        record: first,
+        sourceRecords: entry.value,
+        sql: '''
         INSERT OR IGNORE INTO recurring_templates (
           id, account_id, category_id, amount, amount_atoms, amount_scale,
           currency_code, transaction_direction, recurrence_rule,
           reminder_enabled, auto_create_disabled, next_occurrence_at, sync_status
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 'local_only')
         ''',
-        [
+        values: [
           templateId,
           accountId,
           categoryIds[row['sub_category_fk'] ?? row['category_fk']],
@@ -498,6 +507,7 @@ class _PublicationContext {
           next,
         ],
       );
+      if (inserted) insertedFinancialRecords++;
       for (final occurrence in entry.value) {
         final occurrenceRow = occurrence.privatePayload;
         final occurrenceAmount = _amount(
@@ -557,9 +567,10 @@ class _PublicationContext {
       final amount = _amount(row['amount']!, wallet);
       final targetId = _targetId('transaction', sourceId);
       transactionIds[sourceId] = targetId;
-      final payeeId = titlePolicy == 'createPayees'
-          ? await _payeeId(row['name']! as String)
+      final suggestedPayeeId = titlePolicy != 'preserveOnly'
+          ? await _payeeId(row['name']! as String, record)
           : null;
+      final payeeId = titlePolicy == 'createPayees' ? suggestedPayeeId : null;
       final recurrencePk = (sourceId as String).split('::predict::').first;
       final recurringTemplateId =
           row['period_length'] != null &&
@@ -993,20 +1004,7 @@ class _PublicationContext {
   }
 
   Future<void> _publishPreservedRows() async {
-    const alwaysPreservedTables = {
-      'app_settings',
-      'delete_logs',
-      'scanner_templates',
-      'tags',
-      'transaction_to_tag_links',
-    };
     for (final record in analysis.records) {
-      if (!alwaysPreservedTables.contains(record.sourceTable) &&
-          record.disposition != CashewDisposition.preservedOnly &&
-          record.disposition != CashewDisposition.reviewRequired &&
-          record.disposition != CashewDisposition.ignoredSafe) {
-        continue;
-      }
       final json = _canonicalJson(record.privatePayload);
       final preservedId = _targetId(
         'preserved',
@@ -1086,17 +1084,23 @@ class _PublicationContext {
     }
   }
 
-  Future<String?> _payeeId(String title) async {
+  Future<String?> _payeeId(
+    String title,
+    CanonicalCashewRecord sourceRecord,
+  ) async {
     final normalized = _normalize(title);
     if (normalized.isEmpty) return null;
     final id = _targetId('payee', normalized);
-    await _statement(
-      '''
-      INSERT OR IGNORE INTO payees (
-        id, normalized_name, display_name, sync_status
-      ) VALUES (?, ?, ?, 'local_only')
+    await _insertTarget(
+      table: 'payees',
+      id: id,
+      record: sourceRecord,
+      sql: '''
+        INSERT OR IGNORE INTO payees (
+          id, normalized_name, display_name, sync_status
+        ) VALUES (?, ?, ?, 'local_only')
       ''',
-      [id, normalized, title],
+      values: [id, normalized, title],
     );
     return id;
   }
@@ -1153,12 +1157,14 @@ class _PublicationContext {
     const allowed = {
       'accounts',
       'categories',
+      'payees',
       'transactions',
       'transfers',
       'goals',
       'debt_records',
       'budget_definitions',
       'categorization_rules',
+      'recurring_templates',
     };
     if (!allowed.contains(table)) {
       throw ArgumentError.value(table, 'table');

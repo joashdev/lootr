@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
+import '../database/database_versions.dart';
 import '../security/database_key_store.dart';
 import '../security/secure_file_lifecycle.dart';
 
@@ -65,7 +66,13 @@ class LootrBackupService {
       source.close();
     }
 
-    final manifest = _verify(temporary, key);
+    BackupManifest manifest;
+    try {
+      manifest = _verify(temporary, key);
+    } catch (_) {
+      await secureFiles.bestEffortDelete(temporary);
+      rethrow;
+    }
     if (await destination.exists()) {
       await secureFiles.bestEffortDelete(destination);
     }
@@ -91,19 +98,19 @@ class LootrBackupService {
     required File liveDatabase,
   }) async {
     final key = await keyStore.loadOrCreate();
+    await _recoverInterruptedRestore(liveDatabase, key);
     _verify(backup, key);
 
     final staged = File('${liveDatabase.path}.restoring');
     final checkpoint = File('${liveDatabase.path}.pre-restore');
+    final marker = File('${liveDatabase.path}.restore-pending');
     await secureFiles.bestEffortDelete(staged);
     await backup.copy(staged.path);
     _verify(staged, key);
     _removeBackupManifest(staged, key);
 
-    if (await checkpoint.exists()) {
-      await secureFiles.bestEffortDelete(checkpoint);
-    }
     try {
+      await marker.writeAsString('pending', flush: true);
       if (await liveDatabase.exists()) {
         await liveDatabase.rename(checkpoint.path);
       }
@@ -112,9 +119,38 @@ class LootrBackupService {
       if (!await liveDatabase.exists() && await checkpoint.exists()) {
         await checkpoint.rename(liveDatabase.path);
       }
+      await secureFiles.bestEffortDelete(staged);
+      await secureFiles.bestEffortDelete(marker);
       throw const BackupFailure('restore_replace_failed');
     }
     return checkpoint;
+  }
+
+  /// Restores the live file retained by [restoreAtomically] when application
+  /// reopening or post-restore validation fails.
+  Future<void> restoreCheckpointAtomically({
+    required File checkpoint,
+    required File liveDatabase,
+  }) async {
+    final key = await keyStore.loadOrCreate();
+    _verifyEncryptedDatabase(checkpoint, key);
+    final rejected = File('${liveDatabase.path}.rejected-restore');
+    await secureFiles.bestEffortDelete(rejected);
+    try {
+      if (await liveDatabase.exists()) {
+        await liveDatabase.rename(rejected.path);
+      }
+      await checkpoint.rename(liveDatabase.path);
+      _verifyEncryptedDatabase(liveDatabase, key);
+      await secureFiles.bestEffortDelete(rejected);
+      await _clearRestoreArtifacts(liveDatabase);
+    } catch (_) {
+      if (await rejected.exists()) {
+        await secureFiles.bestEffortDelete(liveDatabase);
+        await rejected.rename(liveDatabase.path);
+      }
+      throw const BackupFailure('restore_checkpoint_failed');
+    }
   }
 
   void _removeBackupManifest(File staged, List<int> key) {
@@ -133,7 +169,17 @@ class LootrBackupService {
   }
 
   Future<void> discardCheckpoint(File checkpoint) {
-    return secureFiles.bestEffortDelete(checkpoint);
+    return _discardCheckpoint(checkpoint);
+  }
+
+  Future<void> _discardCheckpoint(File checkpoint) async {
+    await secureFiles.bestEffortDelete(checkpoint);
+    final suffix = '.pre-restore';
+    if (!checkpoint.path.endsWith(suffix)) return;
+    final live = File(
+      checkpoint.path.substring(0, checkpoint.path.length - suffix.length),
+    );
+    await _clearRestoreArtifacts(live);
   }
 
   BackupManifest _verify(File file, List<int> key) {
@@ -164,9 +210,20 @@ class LootrBackupService {
       if (format != formatVersion) {
         throw const BackupFailure('backup_format_unsupported');
       }
+      final schema = rows.first['schema_version'] as int;
+      if (schema < 1 || schema > lootrSchemaVersion) {
+        throw const BackupFailure('backup_schema_unsupported');
+      }
+      final databaseSchema = database
+          .select('PRAGMA user_version')
+          .first
+          .columnAt(0);
+      if (databaseSchema != schema) {
+        throw const BackupFailure('backup_schema_mismatch');
+      }
       return BackupManifest(
         formatVersion: format,
-        schemaVersion: rows.first['schema_version'] as int,
+        schemaVersion: schema,
         createdAt: DateTime.parse(rows.first['created_at_utc'] as String),
       );
     } on sqlite.SqliteException {
@@ -174,6 +231,59 @@ class LootrBackupService {
     } finally {
       database.close();
     }
+  }
+
+  Future<void> _recoverInterruptedRestore(
+    File liveDatabase,
+    List<int> key,
+  ) async {
+    final checkpoint = File('${liveDatabase.path}.pre-restore');
+    final marker = File('${liveDatabase.path}.restore-pending');
+    if (!await checkpoint.exists()) {
+      await secureFiles.bestEffortDelete(marker);
+      return;
+    }
+    if (await liveDatabase.exists()) {
+      try {
+        _verifyEncryptedDatabase(liveDatabase, key);
+        await secureFiles.bestEffortDelete(checkpoint);
+        await _clearRestoreArtifacts(liveDatabase);
+        return;
+      } catch (_) {
+        await secureFiles.bestEffortDelete(liveDatabase);
+      }
+    }
+    await checkpoint.rename(liveDatabase.path);
+    _verifyEncryptedDatabase(liveDatabase, key);
+    await _clearRestoreArtifacts(liveDatabase);
+  }
+
+  void _verifyEncryptedDatabase(File file, List<int> key) {
+    final database = _openEncrypted(file, key, readOnly: true);
+    try {
+      final cipherIntegrity = database.select('PRAGMA cipher_integrity_check');
+      final cipherFailed =
+          cipherIntegrity.isNotEmpty &&
+          cipherIntegrity.first.columnAt(0).toString().toLowerCase() != 'ok';
+      if (cipherFailed ||
+          database.select('PRAGMA quick_check').first.columnAt(0) != 'ok' ||
+          database.select('PRAGMA foreign_key_check').isNotEmpty) {
+        throw const BackupFailure('database_checkpoint_invalid');
+      }
+      final version = database.select('PRAGMA user_version').first.columnAt(0);
+      if (version is! int || version < 0 || version > lootrSchemaVersion) {
+        throw const BackupFailure('database_schema_unsupported');
+      }
+    } finally {
+      database.close();
+    }
+  }
+
+  Future<void> _clearRestoreArtifacts(File liveDatabase) async {
+    await secureFiles.bestEffortDelete(
+      File('${liveDatabase.path}.restore-pending'),
+    );
+    await secureFiles.bestEffortDelete(File('${liveDatabase.path}.restoring'));
   }
 
   sqlite.Database _openEncrypted(

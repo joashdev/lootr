@@ -91,6 +91,11 @@ class PushClient {
         FROM ${table.name}
         WHERE sync_status IN ('local_only', 'pending_sync')
           AND deleted_at IS NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM import_provenance provenance
+            WHERE provenance.target_table = '${table.name}'
+              AND provenance.target_id = ${table.name}.id
+          )
       ''';
       final rows = await _db.customSelect(query).get();
       if (rows.isNotEmpty) {
@@ -117,6 +122,11 @@ class PushClient {
         FROM ${table.name}
         WHERE deleted_at IS NOT NULL
           AND sync_status != 'synced'
+          AND NOT EXISTS (
+            SELECT 1 FROM import_provenance provenance
+            WHERE provenance.target_table = '${table.name}'
+              AND provenance.target_id = ${table.name}.id
+          )
       ''';
       final rows = await _db.customSelect(query).get();
       if (rows.isNotEmpty) {

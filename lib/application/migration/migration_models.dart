@@ -6,6 +6,8 @@ enum MigrationRunPhase {
   ready,
   applying,
   verifying,
+  interrupted,
+  failed,
   complete,
   cancelled,
   rolledBack,
@@ -97,6 +99,7 @@ class MigrationReviewGroup {
     required this.count,
     required this.level,
     this.resolved = false,
+    this.items = const [],
   });
 
   final String id;
@@ -105,6 +108,7 @@ class MigrationReviewGroup {
   final int count;
   final MigrationIssueLevel level;
   final bool resolved;
+  final List<MigrationReviewItem> items;
 
   MigrationReviewGroup copyWith({bool? resolved}) {
     return MigrationReviewGroup(
@@ -114,8 +118,21 @@ class MigrationReviewGroup {
       count: count,
       level: level,
       resolved: resolved ?? this.resolved,
+      items: items,
     );
   }
+}
+
+class MigrationReviewItem {
+  const MigrationReviewItem({
+    required this.safeReference,
+    required this.issueCode,
+    required this.proposedResolution,
+  });
+
+  final String safeReference;
+  final String issueCode;
+  final String proposedResolution;
 }
 
 class MigrationCurrencyPartition {
@@ -156,6 +173,9 @@ class MigrationRunProjection {
     required this.reviewGroups,
     required this.partitions,
     this.cancelRequested = false,
+    this.canRollback = false,
+    this.latestImportedMonth,
+    this.preservedGroups = const [],
   });
 
   final String id;
@@ -176,6 +196,9 @@ class MigrationRunProjection {
   final List<MigrationReviewGroup> reviewGroups;
   final List<MigrationCurrencyPartition> partitions;
   final bool cancelRequested;
+  final bool canRollback;
+  final DateTime? latestImportedMonth;
+  final List<MigrationPreservedGroup> preservedGroups;
 
   bool get isTerminal => switch (phase) {
     MigrationRunPhase.complete ||
@@ -221,6 +244,9 @@ class MigrationRunProjection {
     List<MigrationReviewGroup>? reviewGroups,
     List<MigrationCurrencyPartition>? partitions,
     bool? cancelRequested,
+    bool? canRollback,
+    DateTime? Function()? latestImportedMonth,
+    List<MigrationPreservedGroup>? preservedGroups,
   }) {
     return MigrationRunProjection(
       id: id,
@@ -241,8 +267,23 @@ class MigrationRunProjection {
       reviewGroups: reviewGroups ?? this.reviewGroups,
       partitions: partitions ?? this.partitions,
       cancelRequested: cancelRequested ?? this.cancelRequested,
+      canRollback: canRollback ?? this.canRollback,
+      latestImportedMonth: latestImportedMonth != null
+          ? latestImportedMonth()
+          : this.latestImportedMonth,
+      preservedGroups: preservedGroups ?? this.preservedGroups,
     );
   }
+}
+
+class MigrationPreservedGroup {
+  const MigrationPreservedGroup({
+    required this.sourceKind,
+    required this.count,
+  });
+
+  final String sourceKind;
+  final int count;
 }
 
 class MigrationTimezoneOption {

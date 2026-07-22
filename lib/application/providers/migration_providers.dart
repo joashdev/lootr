@@ -92,6 +92,11 @@ Future<void> _restoreDatabase({
       .whileDatabaseClosed(
         (liveFile) =>
             backups.restoreAtomically(backup: backup, liveDatabase: liveFile),
+        restoreOnReopenFailure: (checkpoint, liveFile) =>
+            backups.restoreCheckpointAtomically(
+              checkpoint: checkpoint,
+              liveDatabase: liveFile,
+            ),
       );
   await backups.discardCheckpoint(checkpoint);
 }

@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 
 import '../security/encrypted_database_connection.dart';
+import 'database_versions.dart';
 import 'converters/type_converters.dart';
 import 'tables/users.dart';
 import 'tables/households.dart';
@@ -78,7 +79,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => lootrSchemaVersion;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(

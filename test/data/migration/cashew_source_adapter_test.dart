@@ -152,6 +152,11 @@ void main() {
         expect(domains.skippedOccurrences, 1);
         expect(domains.objectives, 1);
         expect(domains.objectiveFinancialRows, 1);
+        expect(analysis.report.objectiveEvents.goalPartitions, 1);
+        expect(analysis.report.objectiveEvents.goalEventRows, 1);
+        expect(analysis.report.objectiveEvents.zeroDeltaGoalPartitions, 1);
+        expect(analysis.report.objectiveEvents.debtPartitions, 0);
+        expect(analysis.report.objectiveEvents.passed, isTrue);
         expect(domains.budgets, 1);
         expect(domains.explicitBudgetMemberships, 1);
         expect(domains.categorizationRules, 1);
@@ -166,6 +171,82 @@ void main() {
         expect(skipped.privatePayload['canonical_original_due_utc'], isNull);
       },
     );
+
+    test(
+      'reconciles goal contributions and debt payments at source precision',
+      () async {
+        final fixture = await CashewFixtureBuilder(48).build();
+        addTearDown(() => fixture.parent.delete(recursive: true));
+        final database = sqlite3.open(fixture.path);
+        _insertSyntheticObjective(
+          database,
+          id: 'debt-1',
+          type: 1,
+          wallet: 'w-2dp',
+        );
+        database.execute(
+          "UPDATE transactions SET objective_loan_fk = 'debt-1' "
+          "WHERE transaction_pk = 'attachment'",
+        );
+        database.close();
+
+        final analysis = await const CashewSourceAdapter().analyzeFile(fixture);
+        final events = analysis.report.objectiveEvents;
+
+        expect(events.goalPartitions, 1);
+        expect(events.debtPartitions, 1);
+        expect(events.goalEventRows, 1);
+        expect(events.debtPaymentEventRows, 1);
+        expect(events.zeroDeltaGoalPartitions, 1);
+        expect(events.zeroDeltaDebtPartitions, 1);
+        expect(events.reviewRequiredPartitions, 0);
+        expect(events.mismatchedPartitions, 0);
+        expect(events.passed, isTrue);
+      },
+    );
+
+    test('reports redacted goal and debt event total mismatches', () async {
+      final fixture = await CashewFixtureBuilder(48).build();
+      addTearDown(() => fixture.parent.delete(recursive: true));
+      final database = sqlite3.open(fixture.path);
+      database.execute(
+        "UPDATE objectives SET wallet_fk = 'w-4dp' "
+        "WHERE objective_pk = 'goal-1'",
+      );
+      _insertSyntheticObjective(
+        database,
+        id: 'debt-1',
+        type: 1,
+        wallet: 'w-4dp',
+      );
+      database.execute(
+        "UPDATE transactions SET objective_loan_fk = 'debt-1' "
+        "WHERE transaction_pk = 'attachment'",
+      );
+      database.close();
+
+      final analysis = await const CashewSourceAdapter().analyzeFile(fixture);
+      final events = analysis.report.objectiveEvents;
+      final serialized = jsonEncode(events.toRedactedJson());
+
+      expect(events.goalPartitions, 1);
+      expect(events.debtPartitions, 1);
+      expect(events.zeroDeltaGoalPartitions, 0);
+      expect(events.zeroDeltaDebtPartitions, 0);
+      expect(events.mismatchedPartitions, 2);
+      expect(events.passed, isFalse);
+      expect(
+        analysis.report.issueCounts,
+        contains(CashewIssueCodes.goalContributionTotalMismatch),
+      );
+      expect(
+        analysis.report.issueCounts,
+        contains(CashewIssueCodes.debtPaymentTotalMismatch),
+      );
+      expect(serialized, isNot(contains('goal-1')));
+      expect(serialized, isNot(contains('debt-1')));
+      expect(serialized, isNot(contains('12.34')));
+    });
 
     test(
       'redacted serialization contains no canonical private values',
@@ -299,8 +380,42 @@ CashewDryRunReport _copyWithExplicitZeroBlockingDisposition(
     relationshipDispositions: source.relationshipDispositions,
     issueCounts: source.issueCounts,
     reconciliation: source.reconciliation,
+    objectiveEvents: source.objectiveEvents,
     transfers: source.transfers,
     domains: source.domains,
     sourceUnchanged: source.sourceUnchanged,
+  );
+}
+
+void _insertSyntheticObjective(
+  Database database, {
+  required String id,
+  required int type,
+  required String wallet,
+}) {
+  const now = 1767225600;
+  database.execute(
+    '''
+INSERT INTO objectives(
+  objective_pk,type,name,amount,"order",colour,date_created,end_date,
+  date_time_modified,icon_name,emoji_icon_name,income,pinned,archived,wallet_fk
+) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+    [
+      id,
+      type,
+      'Synthetic objective',
+      100.0,
+      0,
+      null,
+      now,
+      null,
+      now,
+      null,
+      null,
+      0,
+      1,
+      0,
+      wallet,
+    ],
   );
 }

@@ -7,9 +7,11 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../../application/migration/migration_models.dart';
 import '../../../../../application/providers/migration_providers.dart';
+import '../../../../../application/providers/transaction_filters_provider.dart';
 import '../../../../../core/theme/colors.dart';
 import '../../../../../core/theme/spacing.dart';
 import '../../../../../core/theme/typography.dart';
+import '../../../../../domain/value_objects/date_range.dart';
 import 'migration_ui.dart';
 
 class CashewMigrationRunScreen extends ConsumerWidget {
@@ -98,6 +100,8 @@ class _RunScaffold extends ConsumerWidget {
                 'Counts, relationships, and currency partitions are being '
                 'checked before the import is marked complete.',
           ),
+          MigrationRunPhase.interrupted => _RecoveryStep(run: run),
+          MigrationRunPhase.failed => _FailedStep(run: run),
           MigrationRunPhase.complete => _CompleteStep(run: run),
           MigrationRunPhase.cancelled => _CancelledStep(run: run),
           MigrationRunPhase.rolledBack => _RolledBackStep(run: run),
@@ -362,6 +366,51 @@ class _ReviewGroupCard extends ConsumerWidget {
               color: context.lootrColors.textSecondary,
             ),
           ),
+          if (group.items.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.space3),
+            for (final item in group.items.take(5)) ...[
+              Semantics(
+                label:
+                    '${item.safeReference}. ${item.issueCode}. '
+                    '${item.proposedResolution}',
+                child: Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: AppSpacing.space2),
+                  padding: const EdgeInsets.all(AppSpacing.space3),
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.safeReference,
+                        style: AppTypography.captionMedium,
+                      ),
+                      const SizedBox(height: AppSpacing.space1),
+                      Text(
+                        item.proposedResolution,
+                        style: AppTypography.caption.copyWith(
+                          color: context.lootrColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+            if (group.items.length > 5)
+              Text(
+                '${group.items.length - 5} more records use the same '
+                'resolution.',
+                style: AppTypography.caption.copyWith(
+                  color: context.lootrColors.textSecondary,
+                ),
+              ),
+          ],
           if (!group.resolved) ...[
             const SizedBox(height: AppSpacing.space3),
             MigrationSecondaryAction(
@@ -510,13 +559,13 @@ class _PartitionCard extends StatelessWidget {
   }
 }
 
-class _CompleteStep extends StatelessWidget {
+class _CompleteStep extends ConsumerWidget {
   const _CompleteStep({required this.run});
 
   final MigrationRunProjection run;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return MigrationPageBody(
       children: [
         const MigrationHeading(
@@ -563,7 +612,83 @@ class _CompleteStep extends StatelessWidget {
           key: const ValueKey('open-imported-transactions'),
           label: 'View imported transactions',
           icon: LucideIcons.receiptText,
-          onPressed: () => context.go('/transactions'),
+          onPressed: () {
+            final latest = run.latestImportedMonth;
+            if (latest != null) {
+              final start = DateTime(latest.year, latest.month);
+              final end = latest.month == 12
+                  ? DateTime(latest.year + 1)
+                  : DateTime(latest.year, latest.month + 1);
+              ref
+                  .read(transactionFiltersProvider.notifier)
+                  .setDateRange(DateRange(start, end));
+            }
+            context.go('/transactions');
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _RecoveryStep extends ConsumerWidget {
+  const _RecoveryStep({required this.run});
+
+  final MigrationRunProjection run;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return MigrationPageBody(
+      bottom: MigrationPrimaryAction(
+        key: const ValueKey('recover-import'),
+        label: 'Reconcile saved publication',
+        icon: LucideIcons.refreshCcw,
+        onPressed: () =>
+            unawaited(ref.read(migrationCoordinatorProvider).reconcile(run.id)),
+      ),
+      children: const [
+        MigrationHeading(
+          title: 'Safe recovery is available',
+          body:
+              'Lootr was interrupted during an atomic publication step. '
+              'Reconciliation will verify a complete commit, return to review '
+              'when nothing was published, or restore the checkpoint.',
+        ),
+      ],
+    );
+  }
+}
+
+class _FailedStep extends ConsumerWidget {
+  const _FailedStep({required this.run});
+
+  final MigrationRunProjection run;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return MigrationPageBody(
+      bottom: MigrationPrimaryAction(
+        key: ValueKey(
+          run.canRollback ? 'restore-failed-import' : 'failed-return-data',
+        ),
+        label: run.canRollback
+            ? 'Restore pre-import state'
+            : 'Return to Data & backup',
+        icon: run.canRollback ? LucideIcons.undo2 : LucideIcons.arrowLeft,
+        onPressed: run.canRollback
+            ? () => unawaited(
+                ref.read(migrationCoordinatorProvider).rollback(run.id),
+              )
+            : () => context.go('/more/settings/data'),
+      ),
+      children: [
+        MigrationHeading(
+          title: 'Lootr could not finish this import',
+          body: run.canRollback
+              ? 'The verified recovery checkpoint is ready. Restore it before '
+                    'starting another import.'
+              : 'Nothing was published and private staging cleanup was '
+                    'attempted. Select the source again to start a fresh run.',
         ),
       ],
     );
@@ -703,6 +828,8 @@ String _appBarTitle(MigrationRunPhase phase) => switch (phase) {
   MigrationRunPhase.needsReview => 'Review',
   MigrationRunPhase.reconciling || MigrationRunPhase.ready => 'Reconcile',
   MigrationRunPhase.applying || MigrationRunPhase.verifying => 'Import',
+  MigrationRunPhase.interrupted => 'Recover',
+  MigrationRunPhase.failed => 'Needs attention',
   MigrationRunPhase.complete => 'Complete',
   MigrationRunPhase.cancelled => 'Cancelled',
   MigrationRunPhase.rolledBack => 'Rolled back',

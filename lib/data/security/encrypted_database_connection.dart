@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
+import '../database/database_versions.dart';
 import 'database_key_store.dart';
 import 'secure_file_lifecycle.dart';
 
@@ -28,20 +29,92 @@ class EncryptedDatabaseConnection {
       await directory.create(recursive: true);
       final file = File(p.join(directory.path, filename));
       final key = await _keyStore.loadOrCreate();
+      await _recoverInterruptedReplacement(file, key);
       await _encryptLegacyPlaintextIfNeeded(file, key);
 
       return NativeDatabase(
         file,
         setup: (database) {
           database.execute('PRAGMA key = ${_hexKeyLiteral(key)}');
-          final cipher = database.select('PRAGMA cipher_version');
-          if (cipher.isEmpty) {
-            throw const EncryptedDatabaseFailure('sqlcipher_unavailable');
-          }
-          database.select('SELECT count(*) FROM sqlite_master');
+          _verifyOpenedDatabase(database);
         },
       );
     });
+  }
+
+  Future<void> _recoverInterruptedReplacement(File live, List<int> key) async {
+    final encrypting = File('${live.path}.encrypting');
+    final plaintextCheckpoint = File('${live.path}.plaintext-checkpoint');
+    final restoreCheckpoint = File('${live.path}.pre-restore');
+    final restoring = File('${live.path}.restoring');
+    final restoreMarker = File('${live.path}.restore-pending');
+    final rejectedRestore = File('${live.path}.rejected-restore');
+
+    if (!await live.exists()) {
+      if (await restoreCheckpoint.exists()) {
+        await restoreCheckpoint.rename(live.path);
+        await secureFiles.bestEffortDelete(rejectedRestore);
+        await secureFiles.bestEffortDelete(restoring);
+        await secureFiles.bestEffortDelete(restoreMarker);
+      } else if (await rejectedRestore.exists()) {
+        await rejectedRestore.rename(live.path);
+      } else if (await encrypting.exists()) {
+        try {
+          _verifyEncryptedFile(encrypting, key);
+          await encrypting.rename(live.path);
+          await secureFiles.bestEffortDelete(plaintextCheckpoint);
+        } catch (_) {
+          await secureFiles.bestEffortDelete(encrypting);
+          if (await plaintextCheckpoint.exists()) {
+            await plaintextCheckpoint.rename(live.path);
+          } else {
+            rethrow;
+          }
+        }
+      } else if (await plaintextCheckpoint.exists()) {
+        await plaintextCheckpoint.rename(live.path);
+      }
+    }
+
+    if (await live.exists() && await rejectedRestore.exists()) {
+      try {
+        _verifyEncryptedFile(live, key);
+        await secureFiles.bestEffortDelete(rejectedRestore);
+      } catch (_) {
+        await secureFiles.bestEffortDelete(live);
+        await rejectedRestore.rename(live.path);
+      }
+    }
+
+    if (await live.exists() && await restoreCheckpoint.exists()) {
+      try {
+        _verifyEncryptedFile(live, key);
+        await secureFiles.bestEffortDelete(restoreCheckpoint);
+        await secureFiles.bestEffortDelete(restoring);
+        await secureFiles.bestEffortDelete(restoreMarker);
+      } catch (_) {
+        await secureFiles.bestEffortDelete(live);
+        await restoreCheckpoint.rename(live.path);
+        await secureFiles.bestEffortDelete(restoring);
+        await secureFiles.bestEffortDelete(restoreMarker);
+      }
+    } else if (await live.exists() && await restoreMarker.exists()) {
+      await secureFiles.bestEffortDelete(restoring);
+      await secureFiles.bestEffortDelete(restoreMarker);
+    }
+
+    if (await live.exists() &&
+        !await _hasPlaintextHeader(live) &&
+        await plaintextCheckpoint.exists()) {
+      try {
+        _verifyEncryptedFile(live, key);
+        await secureFiles.bestEffortDelete(plaintextCheckpoint);
+        await secureFiles.bestEffortDelete(encrypting);
+      } catch (_) {
+        await secureFiles.bestEffortDelete(live);
+        await plaintextCheckpoint.rename(live.path);
+      }
+    }
   }
 
   Future<void> _encryptLegacyPlaintextIfNeeded(File live, List<int> key) async {
@@ -92,24 +165,35 @@ class EncryptedDatabaseConnection {
     final database = sqlite.sqlite3.open(file.path);
     try {
       database.execute('PRAGMA key = ${_hexKeyLiteral(key)}');
-      if (database.select('PRAGMA cipher_version').isEmpty) {
-        throw const EncryptedDatabaseFailure('sqlcipher_unavailable');
-      }
-      final integrity = database.select('PRAGMA cipher_integrity_check');
-      if (integrity.isNotEmpty) {
-        final first = integrity.first.columnAt(0);
-        if (first is String && first.toLowerCase() != 'ok') {
-          throw const EncryptedDatabaseFailure('cipher_integrity_failed');
-        }
-      }
-      final quick = database.select('PRAGMA quick_check').first.columnAt(0);
-      if (quick != 'ok') {
-        throw const EncryptedDatabaseFailure('database_integrity_failed');
-      }
+      _verifyOpenedDatabase(database);
     } on sqlite.SqliteException {
       throw const EncryptedDatabaseFailure('encrypted_database_unreadable');
     } finally {
       database.close();
+    }
+  }
+
+  void _verifyOpenedDatabase(sqlite.Database database) {
+    if (database.select('PRAGMA cipher_version').isEmpty) {
+      throw const EncryptedDatabaseFailure('sqlcipher_unavailable');
+    }
+    final integrity = database.select('PRAGMA cipher_integrity_check');
+    if (integrity.isNotEmpty) {
+      final first = integrity.first.columnAt(0);
+      if (first is String && first.toLowerCase() != 'ok') {
+        throw const EncryptedDatabaseFailure('cipher_integrity_failed');
+      }
+    }
+    final quick = database.select('PRAGMA quick_check');
+    if (quick.isEmpty || quick.first.columnAt(0) != 'ok') {
+      throw const EncryptedDatabaseFailure('database_integrity_failed');
+    }
+    if (database.select('PRAGMA foreign_key_check').isNotEmpty) {
+      throw const EncryptedDatabaseFailure('database_foreign_key_failed');
+    }
+    final version = database.select('PRAGMA user_version').first.columnAt(0);
+    if (version is! int || version < 0 || version > lootrSchemaVersion) {
+      throw const EncryptedDatabaseFailure('database_schema_unsupported');
     }
   }
 

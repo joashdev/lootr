@@ -145,13 +145,18 @@ class MigrationRunSummaryScreen extends ConsumerWidget {
   }
 
   void _showPreserved(BuildContext context, MigrationRunProjection run) {
+    final inventory = run.preservedGroups
+        .map((group) => '${group.sourceKind}: ${group.count}')
+        .join('\n');
     _showDetails(
       context,
       title: 'Preserved for later',
       icon: LucideIcons.archive,
       body:
-          '${run.dispositions.preserved} source records remain recoverable '
-          'without being presented as normal Lootr ledger entries.',
+          'The encrypted source archive retains every classified source row. '
+          '${run.dispositions.preserved} are preserved-only rather than '
+          'presented as normal Lootr ledger entries.'
+          '${inventory.isEmpty ? '' : '\n\n$inventory'}',
       key: const ValueKey('preserved-dialog'),
     );
   }

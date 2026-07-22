@@ -61,6 +61,51 @@ void main() {
       throwsA(isA<BackupFailure>()),
     );
   });
+
+  test('future Lootr schema backup is rejected before replacement', () async {
+    final backup = File('${temporary.path}/future.lootr');
+    _createBackupPackage(backup, key, schemaVersion: 4);
+    final service = LootrBackupService(keyStore: InMemoryDatabaseKeyStore(key));
+
+    await expectLater(
+      service.verify(backup),
+      throwsA(
+        isA<BackupFailure>().having(
+          (failure) => failure.code,
+          'code',
+          'backup_schema_unsupported',
+        ),
+      ),
+    );
+  });
+
+  test(
+    'failed reopen can atomically restore the retained checkpoint',
+    () async {
+      final live = File('${temporary.path}/live.sqlite');
+      _createEncryptedDatabase(live, key, marker: 'synthetic-current');
+      final destination = File('${temporary.path}/backup.lootr');
+      final service = LootrBackupService(
+        keyStore: InMemoryDatabaseKeyStore(key),
+      );
+      await service.create(liveDatabase: live, destination: destination);
+
+      _replaceMarker(live, key, 'synthetic-before-restore');
+      final checkpoint = await service.restoreAtomically(
+        backup: destination,
+        liveDatabase: live,
+      );
+      expect(_readMarker(live, key), 'synthetic-current');
+
+      await service.restoreCheckpointAtomically(
+        checkpoint: checkpoint,
+        liveDatabase: live,
+      );
+      expect(_readMarker(live, key), 'synthetic-before-restore');
+      expect(await checkpoint.exists(), isFalse);
+      expect(await File('${live.path}.restore-pending').exists(), isFalse);
+    },
+  );
 }
 
 bool _hasTable(File file, List<int> key, String table) {
@@ -91,6 +136,31 @@ void _createEncryptedDatabase(
       'CREATE TABLE sample (id INTEGER PRIMARY KEY, marker TEXT NOT NULL)',
     );
     database.execute("INSERT INTO sample VALUES (1, '${_escape(marker)}')");
+  } finally {
+    database.close();
+  }
+}
+
+void _createBackupPackage(
+  File file,
+  List<int> key, {
+  required int schemaVersion,
+}) {
+  final database = sqlite3.open(file.path);
+  try {
+    database.execute('PRAGMA key = ${_keyLiteral(key)}');
+    database.execute('PRAGMA user_version = $schemaVersion');
+    database.execute('''
+      CREATE TABLE lootr_backup_manifest (
+        format_version INTEGER NOT NULL,
+        schema_version INTEGER NOT NULL,
+        created_at_utc TEXT NOT NULL
+      )
+    ''');
+    database.execute(
+      "INSERT INTO lootr_backup_manifest VALUES "
+      "(1, $schemaVersion, '2026-01-01T00:00:00.000Z')",
+    );
   } finally {
     database.close();
   }

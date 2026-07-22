@@ -290,6 +290,16 @@ final class CashewSourceAdapter {
           zeroDeltaCurrencyPartitions: 0,
           signDirectionMismatches: 0,
         ),
+        objectiveEvents: const CashewObjectiveEventReconciliationSummary(
+          goalPartitions: 0,
+          debtPartitions: 0,
+          goalEventRows: 0,
+          debtPaymentEventRows: 0,
+          zeroDeltaGoalPartitions: 0,
+          zeroDeltaDebtPartitions: 0,
+          reviewRequiredPartitions: 0,
+          mismatchedPartitions: 0,
+        ),
         transfers: const CashewTransferSummary(
           resolvedPairs: 0,
           sameCurrencyPairs: 0,

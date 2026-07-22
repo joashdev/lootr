@@ -8,7 +8,7 @@ import 'package:lootr/data/repositories/sync_metadata_repo.dart';
 
 class FakeSyncHttpClient implements SyncHttpClient {
   final Map<String, dynamic> Function(String path, Map<String, dynamic> body)?
-      handler;
+  handler;
 
   FakeSyncHttpClient({this.handler});
 
@@ -45,9 +45,7 @@ void main() {
     db = AppDatabase.inMemory();
     syncMetadataRepo = SyncMetadataRepo(db);
 
-    await db.users.insertOne(
-      UsersCompanion.insert(id: 'usr-1'),
-    );
+    await db.users.insertOne(UsersCompanion.insert(id: 'usr-1'));
   });
 
   tearDown(() async {
@@ -59,18 +57,23 @@ void main() {
       final httpClient = FakeSyncHttpClient(
         handler: (path, body) {
           final changes = body['changes'] as Map<String, dynamic>;
-          final accounts =
-              (changes['accounts'] as List).cast<Map<String, dynamic>>();
+          final accounts = (changes['accounts'] as List)
+              .cast<Map<String, dynamic>>();
           final results = <String, dynamic>{
             'accounts': accounts
-                .map((a) => {
-                      'id': a['id'],
-                      'status': 'applied',
-                      'server_updated_at': '2026-06-20T12:00:00Z',
-                    })
+                .map(
+                  (a) => {
+                    'id': a['id'],
+                    'status': 'applied',
+                    'server_updated_at': '2026-06-20T12:00:00Z',
+                  },
+                )
                 .toList(),
           };
-          return {'statusCode': 200, 'body': {'results': results}};
+          return {
+            'statusCode': 200,
+            'body': {'results': results},
+          };
         },
       );
 
@@ -93,11 +96,76 @@ void main() {
       final result = await pushClient.push(accessToken: 'token-1');
       expect(result.success, isTrue);
 
-      final account = await (db.select(db.accounts)
-            ..where((a) => a.id.equals('acc-1'))
-            ..limit(1))
-          .getSingle();
+      final account =
+          await (db.select(db.accounts)
+                ..where((a) => a.id.equals('acc-1'))
+                ..limit(1))
+              .getSingle();
       expect(account.syncStatus, 'synced');
+    });
+
+    test('does not sync provenance-linked imported rows', () async {
+      Map<String, dynamic>? sentChanges;
+      final httpClient = FakeSyncHttpClient(
+        handler: (path, body) {
+          sentChanges = body['changes'] as Map<String, dynamic>;
+          return {
+            'statusCode': 200,
+            'body': {'results': <String, dynamic>{}},
+          };
+        },
+      );
+      pushClient = PushClient(
+        db: db,
+        httpClient: httpClient,
+        syncMetadataRepo: syncMetadataRepo,
+      );
+      await db.accounts.insertOne(
+        AccountsCompanion.insert(
+          id: 'imported-account',
+          ownerUserId: 'usr-1',
+          name: 'Synthetic imported account',
+          accountType: 'cash',
+          syncStatus: const Value('local_only'),
+        ),
+      );
+      await db
+          .into(db.importRuns)
+          .insert(
+            ImportRunsCompanion.insert(
+              id: 'import-run',
+              sourceSystem: 'cashew',
+              sourceFingerprint: 'synthetic-fingerprint',
+              sourceSchemaVersion: 48,
+              state: 'complete',
+            ),
+          );
+      await db
+          .into(db.importProvenance)
+          .insert(
+            ImportProvenanceCompanion.insert(
+              id: 'import-provenance',
+              importRunId: 'import-run',
+              sourceSystem: 'cashew',
+              sourceFingerprint: 'synthetic-fingerprint',
+              sourceEntityType: 'wallets',
+              sourceEntityId: 'synthetic-wallet',
+              sourcePayloadSha256: 'synthetic-source-hash',
+              targetTable: 'accounts',
+              targetId: 'imported-account',
+              mappingRole: 'primary',
+              importedTargetSha256: 'synthetic-target-hash',
+            ),
+          );
+
+      final result = await pushClient.push(accessToken: 'token-1');
+
+      expect(result.success, isTrue);
+      expect(sentChanges?['accounts'], isNull);
+      final account = await (db.select(
+        db.accounts,
+      )..where((row) => row.id.equals('imported-account'))).getSingle();
+      expect(account.syncStatus, 'local_only');
     });
 
     test('marks records as sync_failed on network error', () async {
@@ -126,10 +194,11 @@ void main() {
       final result = await pushClient.push(accessToken: 'token-1');
       expect(result.success, isFalse);
 
-      final account = await (db.select(db.accounts)
-            ..where((a) => a.id.equals('acc-1'))
-            ..limit(1))
-          .getSingle();
+      final account =
+          await (db.select(db.accounts)
+                ..where((a) => a.id.equals('acc-1'))
+                ..limit(1))
+              .getSingle();
       expect(account.syncStatus, 'sync_failed');
     });
 
@@ -162,10 +231,11 @@ void main() {
       final result = await pushClient.push(accessToken: 'token-1');
       expect(result.success, isFalse);
 
-      final account = await (db.select(db.accounts)
-            ..where((a) => a.id.equals('acc-2'))
-            ..limit(1))
-          .getSingle();
+      final account =
+          await (db.select(db.accounts)
+                ..where((a) => a.id.equals('acc-2'))
+                ..limit(1))
+              .getSingle();
       expect(account.syncStatus, 'sync_failed');
     });
 
@@ -222,10 +292,11 @@ void main() {
       final result = await pushClient.push(accessToken: 'token-1');
       expect(result.success, isTrue);
 
-      final account = await (db.select(db.accounts)
-            ..where((a) => a.id.equals('acc-3'))
-            ..limit(1))
-          .getSingle();
+      final account =
+          await (db.select(db.accounts)
+                ..where((a) => a.id.equals('acc-3'))
+                ..limit(1))
+              .getSingle();
       expect(account.name, 'Server Name');
       expect(account.accountType, 'ewallet');
       expect(account.balance, 500.0);
@@ -271,10 +342,11 @@ void main() {
       final result = await pushClient.push(accessToken: 'token-1');
       expect(result.success, isTrue);
 
-      final account = await (db.select(db.accounts)
-            ..where((a) => a.id.equals('acc-4'))
-            ..limit(1))
-          .getSingle();
+      final account =
+          await (db.select(db.accounts)
+                ..where((a) => a.id.equals('acc-4'))
+                ..limit(1))
+              .getSingle();
       expect(account.syncStatus, 'sync_failed');
     });
 
@@ -299,8 +371,8 @@ void main() {
       final httpClient = FakeSyncHttpClient(
         handler: (path, body) {
           final changes = body['changes'] as Map<String, dynamic>;
-          final accounts =
-              (changes['accounts'] as List).cast<Map<String, dynamic>>();
+          final accounts = (changes['accounts'] as List)
+              .cast<Map<String, dynamic>>();
           expect(accounts.length, 1);
           expect(accounts.first['id'], 'acc-del');
 

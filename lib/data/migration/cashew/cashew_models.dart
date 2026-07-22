@@ -44,6 +44,9 @@ abstract final class CashewIssueCodes {
       'recurrence.malformed_prediction_id';
   static const budgetDeletedAccount = 'budget.deleted_account';
   static const objectiveDeletedAccount = 'objective.deleted_account';
+  static const goalContributionTotalMismatch =
+      'goal.contribution_total_mismatch';
+  static const debtPaymentTotalMismatch = 'debt.payment_total_mismatch';
   static const preservedAutomation = 'automation.preserved_for_later';
   static const ambiguousDeleteLog = 'delete_log.ambiguous_type';
   static const attachmentUrlPreserved = 'attachment.url_preserved';
@@ -187,6 +190,47 @@ final class CashewTransferSummary {
   };
 }
 
+final class CashewObjectiveEventReconciliationSummary {
+  const CashewObjectiveEventReconciliationSummary({
+    required this.goalPartitions,
+    required this.debtPartitions,
+    required this.goalEventRows,
+    required this.debtPaymentEventRows,
+    required this.zeroDeltaGoalPartitions,
+    required this.zeroDeltaDebtPartitions,
+    required this.reviewRequiredPartitions,
+    required this.mismatchedPartitions,
+  });
+
+  final int goalPartitions;
+  final int debtPartitions;
+  final int goalEventRows;
+  final int debtPaymentEventRows;
+  final int zeroDeltaGoalPartitions;
+  final int zeroDeltaDebtPartitions;
+  final int reviewRequiredPartitions;
+  final int mismatchedPartitions;
+
+  bool get passed =>
+      mismatchedPartitions == 0 &&
+      zeroDeltaGoalPartitions +
+              zeroDeltaDebtPartitions +
+              reviewRequiredPartitions ==
+          goalPartitions + debtPartitions;
+
+  Map<String, Object> toRedactedJson() => {
+    'goal_partitions': goalPartitions,
+    'debt_partitions': debtPartitions,
+    'goal_event_rows': goalEventRows,
+    'debt_payment_event_rows': debtPaymentEventRows,
+    'zero_delta_goal_partitions': zeroDeltaGoalPartitions,
+    'zero_delta_debt_partitions': zeroDeltaDebtPartitions,
+    'review_required_partitions': reviewRequiredPartitions,
+    'mismatched_partitions': mismatchedPartitions,
+    'passed': passed,
+  };
+}
+
 final class CashewDomainSummary {
   const CashewDomainSummary({
     required this.recurringSeries,
@@ -240,6 +284,7 @@ final class CashewDryRunReport {
     required Map<CashewDisposition, int> relationshipDispositions,
     required Map<String, int> issueCounts,
     required this.reconciliation,
+    required this.objectiveEvents,
     required this.transfers,
     required this.domains,
     required this.sourceUnchanged,
@@ -263,6 +308,7 @@ final class CashewDryRunReport {
   final Map<CashewDisposition, int> relationshipDispositions;
   final Map<String, int> issueCounts;
   final CashewReconciliationSummary reconciliation;
+  final CashewObjectiveEventReconciliationSummary objectiveEvents;
   final CashewTransferSummary transfers;
   final CashewDomainSummary domains;
   final bool sourceUnchanged;
@@ -300,6 +346,7 @@ final class CashewDryRunReport {
     'issue_counts': issueCounts,
     'every_source_row_disposed': everySourceRowDisposed,
     'reconciliation': reconciliation.toRedactedJson(),
+    'objective_events': objectiveEvents.toRedactedJson(),
     'transfers': transfers.toRedactedJson(),
     'domains': domains.toRedactedJson(),
   };

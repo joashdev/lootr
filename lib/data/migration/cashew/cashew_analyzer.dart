@@ -32,6 +32,7 @@ final class CashewAnalyzer {
     state.stageRows();
     state.validateValues();
     state.classifyRelationships();
+    state.reconcileObjectiveEvents();
     state.classifyTransfers();
     state.classifyRecurrence();
     state.classifyAttachments();
@@ -108,6 +109,17 @@ final class _AnalysisState {
   var skippedOccurrences = 0;
   var attachmentOccurrences = 0;
   var explicitBudgetMemberships = 0;
+  var objectiveEventReconciliation =
+      const CashewObjectiveEventReconciliationSummary(
+        goalPartitions: 0,
+        debtPartitions: 0,
+        goalEventRows: 0,
+        debtPaymentEventRows: 0,
+        zeroDeltaGoalPartitions: 0,
+        zeroDeltaDebtPartitions: 0,
+        reviewRequiredPartitions: 0,
+        mismatchedPartitions: 0,
+      );
 
   static const _primaryKeys = {
     'app_settings': ['settings_pk'],
@@ -1036,6 +1048,141 @@ final class _AnalysisState {
     }
   }
 
+  void reconcileObjectiveEvents() {
+    final partitions = <String, _ObjectiveEventPartition>{};
+    var goalEventRows = 0;
+    var debtPaymentEventRows = 0;
+
+    for (final transaction in _recordsFor('transactions')) {
+      if (transaction.row['paid'] != 1) continue;
+      for (final link in const [
+        (field: 'objective_fk', objectiveType: 0, isGoal: true),
+        (field: 'objective_loan_fk', objectiveType: 1, isGoal: false),
+      ]) {
+        final sourceObjectiveKey = transaction.row[link.field];
+        if (sourceObjectiveKey == null) continue;
+        if (link.isGoal) {
+          goalEventRows++;
+        } else {
+          debtPaymentEventRows++;
+        }
+
+        final partitionKey =
+            '${link.isGoal ? 'goal' : 'debt'}\u0000$sourceObjectiveKey';
+        final objective = index['objectives']?[sourceObjectiveKey];
+        final partition = partitions.putIfAbsent(
+          partitionKey,
+          () => _ObjectiveEventPartition(
+            isGoal: link.isGoal,
+            objective: objective,
+            firstTransaction: transaction,
+          ),
+        );
+
+        if (objective == null) {
+          partition.mismatch = true;
+          continue;
+        }
+        if (objective.row['type'] != link.objectiveType) {
+          partition.mismatch = true;
+          continue;
+        }
+
+        final objectiveWallet = index['wallets']?[objective.row['wallet_fk']];
+        if (objectiveWallet == null) {
+          // A source objective whose account was deleted remains reviewable,
+          // but there is no trustworthy source precision for a total check.
+          partition.reviewRequired = true;
+          continue;
+        }
+        final transactionWallet =
+            index['wallets']?[transaction.row['wallet_fk']];
+        final amount = transaction.row['canonical_amount_decimal'];
+        final objectivePrecision = objectiveWallet.row['decimals'];
+        final transactionPrecision = transactionWallet?.row['decimals'];
+        final objectiveCurrency = objectiveWallet.row['currency'];
+        final transactionCurrency = transactionWallet?.row['currency'];
+        if (amount is! CashewDecimal ||
+            objectivePrecision is! int ||
+            transactionPrecision is! int ||
+            objectiveCurrency is! String ||
+            transactionCurrency is! String ||
+            objectiveCurrency != transactionCurrency ||
+            objectivePrecision != transactionPrecision) {
+          partition.mismatch = true;
+          continue;
+        }
+
+        final eventAmount = amount.absolute.quantized(transactionPrecision);
+        partition.sourceTotal += eventAmount;
+        partition.projectedAtoms += eventAmount.coefficient.abs();
+        partition.objectivePrecision = objectivePrecision;
+      }
+    }
+
+    var goalPartitions = 0;
+    var debtPartitions = 0;
+    var zeroDeltaGoalPartitions = 0;
+    var zeroDeltaDebtPartitions = 0;
+    var reviewRequiredPartitions = 0;
+    var mismatchedPartitions = 0;
+    for (final partition in partitions.values) {
+      if (partition.isGoal) {
+        goalPartitions++;
+      } else {
+        debtPartitions++;
+      }
+      if (!partition.mismatch && !partition.reviewRequired) {
+        final precision = partition.objectivePrecision;
+        if (precision == null) {
+          partition.mismatch = true;
+        } else {
+          final projectedTotal = CashewDecimal.parse(
+            '${partition.projectedAtoms}e-$precision',
+          );
+          partition.mismatch = partition.sourceTotal != projectedTotal;
+        }
+      }
+
+      if (partition.mismatch) {
+        mismatchedPartitions++;
+        final code = partition.isGoal
+            ? CashewIssueCodes.goalContributionTotalMismatch
+            : CashewIssueCodes.debtPaymentTotalMismatch;
+        final record = partition.objective ?? partition.firstTransaction;
+        record.flag(
+          code,
+          partition.objective == null
+              ? CashewDisposition.invalidBlocking
+              : CashewDisposition.reviewRequired,
+          issues,
+          severity: partition.objective == null
+              ? CashewIssueSeverity.blocking
+              : CashewIssueSeverity.review,
+          message:
+              'An objective event partition does not reconcile at source precision.',
+        );
+      } else if (partition.reviewRequired) {
+        reviewRequiredPartitions++;
+      } else if (partition.isGoal) {
+        zeroDeltaGoalPartitions++;
+      } else {
+        zeroDeltaDebtPartitions++;
+      }
+    }
+
+    objectiveEventReconciliation = CashewObjectiveEventReconciliationSummary(
+      goalPartitions: goalPartitions,
+      debtPartitions: debtPartitions,
+      goalEventRows: goalEventRows,
+      debtPaymentEventRows: debtPaymentEventRows,
+      zeroDeltaGoalPartitions: zeroDeltaGoalPartitions,
+      zeroDeltaDebtPartitions: zeroDeltaDebtPartitions,
+      reviewRequiredPartitions: reviewRequiredPartitions,
+      mismatchedPartitions: mismatchedPartitions,
+    );
+  }
+
   bool _amountsEqualAtWalletPrecision(
     _MutableRecord left,
     _MutableRecord right,
@@ -1186,6 +1333,7 @@ final class _AnalysisState {
       relationshipDispositions: relationshipDispositions,
       issueCounts: issueCounts,
       reconciliation: _reconcile(),
+      objectiveEvents: objectiveEventReconciliation,
       transfers: CashewTransferSummary(
         resolvedPairs: resolvedPairs,
         sameCurrencyPairs: sameCurrencyPairs,
@@ -1292,4 +1440,21 @@ final class _AnalysisState {
 
   String _orderedPair(String left, String right) =>
       left.compareTo(right) <= 0 ? '$left|$right' : '$right|$left';
+}
+
+final class _ObjectiveEventPartition {
+  _ObjectiveEventPartition({
+    required this.isGoal,
+    required this.objective,
+    required this.firstTransaction,
+  });
+
+  final bool isGoal;
+  final _MutableRecord? objective;
+  final _MutableRecord firstTransaction;
+  var sourceTotal = CashewDecimal.zero;
+  var projectedAtoms = BigInt.zero;
+  int? objectivePrecision;
+  var reviewRequired = false;
+  var mismatch = false;
 }
