@@ -418,7 +418,7 @@ Cross-currency pairs map to a dedicated transfer with distinct source and destin
 
 ### 11.5 Recurring series
 
-Group only when source series identity is exact or user-approved. Import paid non-skipped occurrences as history, preserve skipped occurrences, use the latest valid unpaid occurrence as next due, and create one reminder/template with an RRULE. For schema 48, only structurally complete prediction chains become editable templates; loose recurring history remains queryable with source provenance and a visible preserved disposition.
+Group only when source series identity is exact or user-approved. Import paid non-skipped occurrences as history, preserve skipped occurrences, classify unresolved occurrences as due or unpaid relative to the confirmed clock, use the earliest unresolved non-skipped occurrence as next due, and create one reminder/template with an RRULE. Paid occurrences link to their finalized imported transaction. For schema 48, only structurally complete prediction chains become editable templates; loose recurring history remains queryable with source provenance and a visible preserved disposition.
 
 Keep Lootr confirm-before-finalize. Cashew auto-pay preference may be preserved as metadata but must not enable silent writes.
 
@@ -426,7 +426,7 @@ One-off upcoming rows remain preserved-only unless a planned-entry model is adde
 
 ### 11.6 Goals and debt
 
-Goal `current_amount` is derived from linked paid rows. Debt remaining balance is derived from its source ledger. If explicit goal/debt event relations are not added, import the aggregate record and preserve every linked source row, but label history as not yet first-class.
+Goal `current_amount` is derived from immutable exact contribution events. Debt remaining balance is derived from immutable exact payment/refund events. Imported and post-import events retain currency, scale, occurrence time, and transaction linkage where present; aggregate compatibility fields are projections, not the financial source of truth. Normal contribution and payment flows parse decimal text directly into the goal/debt currency, offer only same-currency accounts, reject values that exceed account precision, and create the event, linked transaction, and account-balance effect in one database transaction. Cross-currency contributions or payments require a future explicit conversion record and are never treated as 1:1.
 
 ### 11.7 Budgets
 
@@ -495,7 +495,7 @@ The archive must be:
 - separately purgeable;
 - upgradeable into new first-class entities in later Lootr releases.
 
-Never preserve OAuth tokens, reusable credentials, purchase identifiers, logging queues, or device sync state.
+Never preserve OAuth tokens, reusable credentials, purchase identifiers, logging queues, or device sync state. For schema 48, the encrypted archive retains only the interpretation-safe `cachedCurrencyExchange`, `customCurrencies`, and `customCurrencyAmounts` members from `settings_j_s_o_n`; all other setting values are removed and replaced by a redacted-key count and reason code.
 
 ---
 
@@ -544,7 +544,7 @@ complete → rolled_back
 
 Staging checkpoints by source table and PK. A changed file hash starts a new run.
 
-Cancellation remains available until atomic publication begins. During `applying` and `verifying`, back/cancel is disabled with a calm explanation because the database transaction must finish or roll back as one unit. Each run persists cleanup status and attempt count. Startup recovery scans nonterminal runs, verifies the private staging copy and fingerprint, and resumes from the last checkpoint; if staging is missing, the user is asked to reselect the same source without losing the redacted review report. Recovery and orphan cleanup must finish before a new staging directory is created, so a newly selected source can never be mistaken for an abandoned run.
+Cancellation remains available until atomic publication begins. During `applying` and `verifying`, back/cancel is disabled with a calm explanation because the database transaction must finish or roll back as one unit. Apply atomically claims the run and holds an exclusive database maintenance lease: it waits for an admitted sync cycle to drain, prevents new repository-provider access, and carries SQLite's exact connection change counter from the completed checkpoint into the first statement of the publication transaction. It records the counter again at publication commit and checks it before and after post-write reconciliation. A concurrent local write therefore either completes before the checkpoint, causes a safe retry without losing that write, or leaves a fully published run interrupted for explicit recovery; automatic rollback is refused whenever an unrelated post-publication write is detected. A second apply or sync cycle cannot overlap publication. Each run persists cleanup status and attempt count. Startup recovery scans nonterminal and terminal runs with pending cleanup, verifies the private staging copy and fingerprint, and resumes from the last checkpoint; if staging is missing, the user is asked to reselect the same source without losing the redacted review report. Recovery and orphan cleanup must finish before a new staging directory is created, so a newly selected source can never be mistaken for an abandoned run.
 
 Apply target records, provenance, dispositions, and an encrypted canonical source-row archive in one database transaction. Every source row receives an archive entry even when it also becomes an editable Lootr record; unsupported semantics additionally receive a preserved-payload entry with a visible reason. If very large datasets require batching, keep all imported rows unpublished until the final run-complete transaction.
 
@@ -562,7 +562,7 @@ Rollback:
 
 Never identify rollback rows by name, time, or similarity.
 
-Encrypted Lootr backups contain a versioned manifest for validation. Restore verifies that manifest, integrity, foreign keys, and schema before replacing the live database, then removes the backup-only manifest so it cannot become application state.
+Encrypted Lootr backups contain a versioned manifest for validation. Restore verifies that manifest, integrity, foreign keys, schema, and the recorded checkpoint fingerprint before replacing the live database. A file-system rollback marker retains the displaced database until the restored database records `rolled_back`; startup completes either side of that boundary deterministically. The backup-only manifest is then removed so it cannot become application state.
 
 ---
 
@@ -657,7 +657,7 @@ Flow:
 1. **Prepare** — fresh-export instructions, timezone, local-processing notice.
 2. **Choose file** — detect SQLite or degraded CSV; show fingerprint, schema, dates, counts.
 3. **Analyze** — domain progress; no target writes.
-4. **Review accounts** — account types, currencies, custom identifiers.
+4. **Review accounts** — account types, currencies, custom identifiers. Every account has its own unresolved confirmation; displaying a default does not count as confirmation, and reconciliation remains blocked until every selector is explicitly accepted.
 5. **Review mappings** — payees, transfers, recurrence, budgets, upcoming rows, sharing.
 6. **Reconcile** — account-by-account totals, exact/transformed/preserved counts.
 7. **Import** — atomic local apply; safe retry after interruption.
@@ -666,7 +666,7 @@ Flow:
 
 Use neutral language: **Needs review** and **Preserved for later**, not **Failed**, when the source is valid but Lootr lacks an equivalent.
 
-Timezone and title/payee handling are explicit reversible confirmations in the review step, not hidden defaults. The post-import landing view opens the most recent imported month with the imported account and currency filters visible. Composite imported budgets remain visible in Budgets, Dashboard, and currency-grouped reports; unsafe source shapes use a read-only detail and exact transaction drill-down instead of being flattened.
+Timezone and title/payee handling are explicit reversible confirmations in the review step, not hidden defaults. The post-import landing view derives its month from the latest transaction actually published for the run, scopes the list to the imported account IDs, and displays the currencies implied by those account filters. Composite imported budgets remain visible in Budgets, Dashboard, and currency-grouped reports; unsafe source shapes use a read-only detail and exact transaction drill-down instead of being flattened. Amount-range filters require one explicit currency and exact decimal bounds; an unqualified numeric range is never compared across currencies.
 
 ---
 
@@ -755,7 +755,7 @@ The fresh 2026-07-18 export has been audited read-only. The source remains outsi
 | Orphans | 15 FK findings, all explained by three deleted parent identities in Cashew's logs | Preserve survivor plus tombstone evidence; never recreate parent silently |
 | Tags/automation | Tag, tag-link, and scanner-template tables are empty | Support in adapter/preservation; defer first-class UI |
 | Archive state | No live wallets, categories, or rules are archived | Preserve the field, but no archived-user-data UI blocker exists |
-| Settings | Valid JSON; three source currencies and custom-currency settings exist | Import only interpretation-safe settings; keep sensitive values encrypted |
+| Settings | Valid JSON; three source currencies and custom-currency settings exist | Import only interpretation-safe settings; redact credentials, purchase IDs, logging queues, and sync/device state rather than retaining their values |
 
 Core schema-48 transaction, recurrence, budget, objective, and sharing ordinals match schema 46. Cashew reassigned delete-log type ordinals `6–8`; therefore live tables are authoritative and V1 must not replay or semantically decode tombstones.
 

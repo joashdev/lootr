@@ -56,7 +56,7 @@
   <li>attachment links, scanner settings, tags, and source-only metadata;</li>
   <li>budget inclusion and exclusion memberships.</li>
 </ul>
-<p>Confirm the timezone used to interpret source timestamps. Then choose the reversible title/payee policy. Exact learned-title rules take precedence over contains rules; archived or inactive rules do not apply.</p>
+<p>Confirm the timezone used to interpret source timestamps. Then choose the reversible title/payee policy and confirm the Lootr account type for every imported account. Exact learned-title rules take precedence over contains rules; archived or inactive rules do not apply.</p>
 <p>Lootr never infers a currency conversion rate. Missing-wallet monetary metadata remains exact, uses an explicit unknown-currency review state, and is preserved for correction.</p>
 <h2>4. Publish and Reconcile</h2>
 <p>Choose <strong>Import</strong> only after the review groups and policies are acceptable. Lootr creates a pre-import checkpoint, applies the approved canonical data in one database transaction, verifies foreign keys and exact per-account/per-currency balances, and then publishes the completed run.</p>
@@ -66,7 +66,7 @@
 <ul>
   <li><strong>Before publication:</strong> cancel removes private staging and leaves Lootr financial data unchanged.</li>
   <li><strong>Interrupted analysis:</strong> reopen the run and analyze again.</li>
-  <li><strong>Interrupted publication or verification:</strong> select <strong>Reconcile</strong>. Lootr verifies a complete atomic publication; if no publication occurred, it returns the run to review; a partial or invalid result restores the checkpoint.</li>
+  <li><strong>Interrupted publication or verification:</strong> select <strong>Reconcile</strong>. Lootr verifies a complete atomic publication; if no publication occurred, it returns the run to review; a partial or invalid result restores the checkpoint. If Lootr detects an unrelated local write after publication, it preserves both that write and the checkpoint and leaves the run interrupted for explicit recovery instead of restoring automatically. Startup also completes any interrupted rollback before repositories regain access.</li>
   <li><strong>Completed import:</strong> use <strong>Roll back import</strong> to restore the exact pre-import database state.</li>
 </ul>
 <p>Do not delete app data while a recovery or rollback is running.</p>
@@ -80,7 +80,7 @@
   <li><strong>Restore backup</strong> validates the package version, key, integrity, foreign keys, and schema before replacing the live database.</li>
   <li><strong>Export transaction CSV</strong> creates a readable, currency-aware transaction export. Treat it as plaintext and store or share it accordingly.</li>
 </ul>
-<p>A backup includes imported relationships, provenance, review records, and preserved payloads. Restoring a backup reopens the database before repositories resume access. The backup-only manifest is not retained as live application data.</p>
+<p>A backup includes imported relationships, provenance, review records, and preserved payloads. Restoring a backup reopens the database before repositories resume access. The backup-only manifest is not retained as live application data. If secure key storage is unavailable or an encrypted database loses its key, Lootr fails closed instead of creating a replacement database.</p>
 <h2>8. Verification Checklist</h2>
 <table>
 <thead><tr><th>Check</th><th>Expected result</th><th>Action if different</th></tr></thead>

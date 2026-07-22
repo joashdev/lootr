@@ -35,7 +35,7 @@ Resolve every **Needs review** group or explicitly accept its conservative dispo
 - attachment links, scanner settings, tags, and source-only metadata;
 - budget inclusion and exclusion memberships.
 
-Confirm the timezone used to interpret source timestamps. Then choose the reversible title/payee policy. Exact learned-title rules take precedence over contains rules; archived or inactive rules do not apply.
+Confirm the timezone used to interpret source timestamps. Then choose the reversible title/payee policy and confirm the Lootr account type for every imported account. Exact learned-title rules take precedence over contains rules; archived or inactive rules do not apply.
 
 Lootr never infers a currency conversion rate. Missing-wallet monetary metadata remains exact, uses an explicit unknown-currency review state, and is preserved for correction.
 
@@ -51,7 +51,7 @@ After completion, Lootr opens the latest imported month. The import summary prov
 
 - **Before publication:** cancel removes private staging and leaves Lootr financial data unchanged.
 - **Interrupted analysis:** reopen the run and analyze again.
-- **Interrupted publication or verification:** select **Reconcile**. Lootr verifies a complete atomic publication; if no publication occurred, it returns the run to review; a partial or invalid result restores the checkpoint.
+- **Interrupted publication or verification:** select **Reconcile**. Lootr verifies a complete atomic publication; if no publication occurred, it returns the run to review; a partial or invalid result restores the checkpoint. If Lootr detects an unrelated local write after publication, it preserves both that write and the checkpoint and leaves the run interrupted for explicit recovery instead of restoring automatically. Startup also completes any interrupted rollback before repositories regain access.
 - **Completed import:** use **Roll back import** to restore the exact pre-import database state.
 
 Do not delete app data while a recovery or rollback is running.
@@ -70,7 +70,7 @@ From **Data & Backup**:
 - **Restore backup** validates the package version, key, integrity, foreign keys, and schema before replacing the live database.
 - **Export transaction CSV** creates a readable, currency-aware transaction export. Treat it as plaintext and store or share it accordingly.
 
-A backup includes imported relationships, provenance, review records, and preserved payloads. Restoring a backup reopens the database before repositories resume access. The backup-only manifest is not retained as live application data.
+A backup includes imported relationships, provenance, review records, and preserved payloads. Restoring a backup reopens the database before repositories resume access. The backup-only manifest is not retained as live application data. If secure key storage is unavailable or an encrypted database loses its key, Lootr fails closed instead of creating a replacement database.
 
 ## 8. Verification Checklist
 
@@ -93,4 +93,3 @@ A backup includes imported relationships, provenance, review records, and preser
 - Ambiguous or missing-reference budgets/objectives remain visible in a useful read-only review state.
 - Only structurally exact Cashew prediction chains become editable recurring templates; other valid history remains queryable and preserved.
 - CSV is an export format, not a lossless Cashew import substitute.
-
