@@ -6,6 +6,11 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../../data/database/app_database.dart';
+import '../database_access_gate.dart';
+
+final databaseAccessGateProvider = Provider<DatabaseAccessGate>((ref) {
+  return DatabaseAccessGate();
+});
 
 final class DatabaseSession {
   const DatabaseSession({
@@ -42,6 +47,23 @@ class DatabaseSessionNotifier extends Notifier<DatabaseSession> {
   final Future<File> Function() _liveFile;
   AppDatabase? _activeDatabase;
 
+  AppDatabase get database => state.database;
+  Future<File> get liveFile => state.liveFile;
+  bool get isUnderMaintenance => state.isUnderMaintenance;
+
+  void beginMaintenance() {
+    if (state.isUnderMaintenance) {
+      throw StateError('Database maintenance is already in progress.');
+    }
+    state = state.copyWith(isUnderMaintenance: true);
+  }
+
+  void endMaintenance() {
+    if (state.isUnderMaintenance) {
+      state = state.copyWith(isUnderMaintenance: false);
+    }
+  }
+
   @override
   DatabaseSession build() {
     final database = _databaseFactory();
@@ -57,13 +79,17 @@ class DatabaseSessionNotifier extends Notifier<DatabaseSession> {
   Future<T> whileDatabaseClosed<T>(
     Future<T> Function(File liveFile) operation, {
     Future<void> Function(T result, File liveFile)? restoreOnReopenFailure,
+    bool reuseMaintenance = false,
   }) async {
-    if (state.isUnderMaintenance) {
+    final alreadyUnderMaintenance = state.isUnderMaintenance;
+    if (alreadyUnderMaintenance && !reuseMaintenance) {
       throw StateError('Database maintenance is already in progress.');
     }
 
     final current = state;
-    state = current.copyWith(isUnderMaintenance: true);
+    if (!alreadyUnderMaintenance) {
+      state = current.copyWith(isUnderMaintenance: true);
+    }
     final liveFile = await current.liveFile;
     await current.database.close();
 
@@ -72,13 +98,21 @@ class DatabaseSessionNotifier extends Notifier<DatabaseSession> {
       result = await operation(liveFile);
     } catch (_) {
       final reopened = await _openValidated();
-      _publish(reopened, current.liveFile);
+      _publish(
+        reopened,
+        current.liveFile,
+        isUnderMaintenance: alreadyUnderMaintenance,
+      );
       rethrow;
     }
 
     try {
       final reopened = await _openValidated();
-      _publish(reopened, current.liveFile);
+      _publish(
+        reopened,
+        current.liveFile,
+        isUnderMaintenance: alreadyUnderMaintenance,
+      );
       return result;
     } catch (error, stackTrace) {
       if (restoreOnReopenFailure != null) {
@@ -87,7 +121,11 @@ class DatabaseSessionNotifier extends Notifier<DatabaseSession> {
         } catch (recoveryError, recoveryStackTrace) {
           try {
             final fallback = await _openValidated();
-            _publish(fallback, current.liveFile);
+            _publish(
+              fallback,
+              current.liveFile,
+              isUnderMaintenance: alreadyUnderMaintenance,
+            );
           } catch (_) {
             // The recovery error below is the actionable failure.
           }
@@ -95,14 +133,26 @@ class DatabaseSessionNotifier extends Notifier<DatabaseSession> {
         }
       }
       final recovered = await _openValidated();
-      _publish(recovered, current.liveFile);
+      _publish(
+        recovered,
+        current.liveFile,
+        isUnderMaintenance: alreadyUnderMaintenance,
+      );
       Error.throwWithStackTrace(error, stackTrace);
     }
   }
 
-  void _publish(AppDatabase database, Future<File> liveFile) {
+  void _publish(
+    AppDatabase database,
+    Future<File> liveFile, {
+    bool isUnderMaintenance = false,
+  }) {
     _activeDatabase = database;
-    state = DatabaseSession(database: database, liveFile: liveFile);
+    state = DatabaseSession(
+      database: database,
+      liveFile: liveFile,
+      isUnderMaintenance: isUnderMaintenance,
+    );
   }
 
   Future<AppDatabase> _openValidated() async {
@@ -140,5 +190,16 @@ final databaseSessionProvider =
 /// Existing application providers remain synchronous after startup. The app
 /// only reads this provider once [databaseSessionProvider] has completed.
 final databaseProvider = Provider<AppDatabase>((ref) {
-  return ref.watch(databaseSessionProvider).database;
+  final session = ref.watch(databaseSessionProvider);
+  if (session.isUnderMaintenance) {
+    throw const DatabaseMaintenanceFailure();
+  }
+  return session.database;
 });
+
+final class DatabaseMaintenanceFailure implements Exception {
+  const DatabaseMaintenanceFailure();
+
+  @override
+  String toString() => 'Database maintenance is in progress.';
+}

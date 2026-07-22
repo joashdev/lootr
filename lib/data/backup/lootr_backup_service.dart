@@ -96,6 +96,7 @@ class LootrBackupService {
   Future<File> restoreAtomically({
     required File backup,
     required File liveDatabase,
+    String markerPayload = 'pending',
   }) async {
     final key = await keyStore.loadOrCreate();
     await _recoverInterruptedRestore(liveDatabase, key);
@@ -110,7 +111,7 @@ class LootrBackupService {
     _removeBackupManifest(staged, key);
 
     try {
-      await marker.writeAsString('pending', flush: true);
+      await marker.writeAsString(markerPayload, flush: true);
       if (await liveDatabase.exists()) {
         await liveDatabase.rename(checkpoint.path);
       }

@@ -183,6 +183,34 @@ void main() {
     },
   );
 
+  test('migration rollback marker retains the displaced database', () async {
+    final live = File('${temporary.path}/lootr.sqlite');
+    final restored = AppDatabase(
+      EncryptedDatabaseConnection(
+        keyStore: keys,
+        documentsDirectory: () async => temporary,
+      ).lazy(),
+    );
+    await restored.customSelect('SELECT 1').getSingle();
+    await restored.close();
+    final checkpoint = File('${live.path}.pre-restore');
+    await live.copy(checkpoint.path);
+    final marker = File('${live.path}.restore-pending');
+    await marker.writeAsString('rollback:synthetic-run');
+
+    final reopened = AppDatabase(
+      EncryptedDatabaseConnection(
+        keyStore: keys,
+        documentsDirectory: () async => temporary,
+      ).lazy(),
+    );
+    await reopened.customSelect('SELECT 1').getSingle();
+    await reopened.close();
+
+    expect(await checkpoint.exists(), isTrue);
+    expect(await marker.exists(), isTrue);
+  });
+
   test('every encrypted open rejects foreign-key corruption', () async {
     final live = File('${temporary.path}/lootr.sqlite');
     final original = AppDatabase(

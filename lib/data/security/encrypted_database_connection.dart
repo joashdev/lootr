@@ -89,9 +89,17 @@ class EncryptedDatabaseConnection {
     if (await live.exists() && await restoreCheckpoint.exists()) {
       try {
         _verifyEncryptedFile(live, key);
-        await secureFiles.bestEffortDelete(restoreCheckpoint);
-        await secureFiles.bestEffortDelete(restoring);
-        await secureFiles.bestEffortDelete(restoreMarker);
+        final markerPayload = await restoreMarker.exists()
+            ? await restoreMarker.readAsString()
+            : 'pending';
+        // Migration rollback retains the displaced imported database until
+        // the restored database records the terminal run state. Generic
+        // restores can finalize immediately after validation.
+        if (!markerPayload.startsWith('rollback:')) {
+          await secureFiles.bestEffortDelete(restoreCheckpoint);
+          await secureFiles.bestEffortDelete(restoring);
+          await secureFiles.bestEffortDelete(restoreMarker);
+        }
       } catch (_) {
         await secureFiles.bestEffortDelete(live);
         await restoreCheckpoint.rename(live.path);

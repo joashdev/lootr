@@ -95,6 +95,7 @@ class PushClient {
             SELECT 1 FROM import_provenance provenance
             WHERE provenance.target_table = '${table.name}'
               AND provenance.target_id = ${table.name}.id
+              AND ${table.name}.sync_status = 'local_only'
           )
       ''';
       final rows = await _db.customSelect(query).get();
@@ -126,6 +127,7 @@ class PushClient {
             SELECT 1 FROM import_provenance provenance
             WHERE provenance.target_table = '${table.name}'
               AND provenance.target_id = ${table.name}.id
+              AND ${table.name}.sync_status = 'local_only'
           )
       ''';
       final rows = await _db.customSelect(query).get();

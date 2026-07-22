@@ -166,6 +166,19 @@ void main() {
         db.accounts,
       )..where((row) => row.id.equals('imported-account'))).getSingle();
       expect(account.syncStatus, 'local_only');
+
+      await (db.update(
+        db.accounts,
+      )..where((row) => row.id.equals('imported-account'))).write(
+        const AccountsCompanion(
+          name: Value('Synthetic edited account'),
+          syncStatus: Value('pending_sync'),
+        ),
+      );
+      sentChanges = null;
+      final adopted = await pushClient.push(accessToken: 'token-1');
+      expect(adopted.success, isTrue);
+      expect(sentChanges?['accounts'], hasLength(1));
     });
 
     test('marks records as sync_failed on network error', () async {

@@ -8,6 +8,7 @@ import '../../data/backup/lootr_backup_service.dart';
 import '../../data/migration/cashew_source_registry.dart';
 import '../../data/migration/cashew_staging_service.dart';
 import '../../data/security/database_key_store.dart';
+import '../database_access_gate.dart';
 import '../migration/migration_coordinator.dart';
 import '../migration/migration_models.dart';
 import '../migration/persistent_migration_coordinator.dart';
@@ -44,19 +45,27 @@ final dataPortabilityCoordinatorProvider = Provider<DataPortabilityCoordinator>(
     return PlatformDataPortabilityCoordinator(
       database: () => ref.read(databaseProvider),
       liveDatabaseFile: () => ref.read(databaseSessionProvider).liveFile,
-      restoreVerifiedBackup: (file) =>
-          _restoreDatabase(ref: ref, backups: backup, backup: file),
+      restoreVerifiedBackup: (file) async {
+        await _restoreDatabase(
+          ref: ref,
+          backups: backup,
+          backup: file,
+          accessGate: ref.read(databaseAccessGateProvider),
+        );
+      },
       backups: backup,
     );
   },
 );
 
 final migrationCoordinatorProvider = Provider<MigrationCoordinator>((ref) {
-  ref.watch(databaseProvider);
   final backups = ref.watch(_secureBackupProvider);
+  final session = ref.read(databaseSessionProvider.notifier);
+  final accessGate = ref.watch(databaseAccessGateProvider);
+  DatabaseAccessLease? maintenanceLease;
   final coordinator = PersistentMigrationCoordinator(
-    database: () => ref.read(databaseProvider),
-    liveDatabaseFile: () => ref.read(databaseSessionProvider).liveFile,
+    database: () => session.database,
+    liveDatabaseFile: () => session.liveFile,
     rollbackDirectory: () async {
       final support = await getApplicationSupportDirectory();
       return Directory(p.join(support.path, 'migration-checkpoints'));
@@ -64,8 +73,28 @@ final migrationCoordinatorProvider = Provider<MigrationCoordinator>((ref) {
     registry: ref.watch(_cashewSourceRegistryProvider),
     staging: ref.watch(_cashewStagingProvider),
     backups: backups,
-    restoreCheckpoint: (file) =>
-        _restoreDatabase(ref: ref, backups: backups, backup: file),
+    restoreCheckpoint: (file, runId) => _restoreDatabase(
+      ref: ref,
+      backups: backups,
+      backup: file,
+      accessGate: accessGate,
+      rollbackRunId: runId,
+    ),
+    beginMaintenance: () async {
+      final lease = await accessGate.acquireExclusive();
+      try {
+        session.beginMaintenance();
+        maintenanceLease = lease;
+      } catch (_) {
+        lease.release();
+        rethrow;
+      }
+    },
+    endMaintenance: () async {
+      session.endMaintenance();
+      maintenanceLease?.release();
+      maintenanceLease = null;
+    },
   );
   ref.onDispose(coordinator.dispose);
   return coordinator;
@@ -82,23 +111,50 @@ final migrationRunProvider =
       return ref.watch(migrationCoordinatorProvider).watchRun(runId);
     });
 
-Future<void> _restoreDatabase({
+Future<File> _restoreDatabase({
   required Ref ref,
   required LootrBackupService backups,
   required File backup,
+  required DatabaseAccessGate accessGate,
+  String? rollbackRunId,
 }) async {
-  final checkpoint = await ref
-      .read(databaseSessionProvider.notifier)
-      .whileDatabaseClosed(
-        (liveFile) =>
-            backups.restoreAtomically(backup: backup, liveDatabase: liveFile),
-        restoreOnReopenFailure: (checkpoint, liveFile) =>
-            backups.restoreCheckpointAtomically(
-              checkpoint: checkpoint,
-              liveDatabase: liveFile,
-            ),
-      );
-  await backups.discardCheckpoint(checkpoint);
+  final session = ref.read(databaseSessionProvider.notifier);
+  DatabaseAccessLease? restoreLease;
+  if (rollbackRunId == null) {
+    restoreLease = await accessGate.acquireExclusive();
+    try {
+      session.beginMaintenance();
+    } catch (_) {
+      restoreLease.release();
+      rethrow;
+    }
+  }
+  try {
+    final checkpoint = await session.whileDatabaseClosed(
+      (liveFile) => backups.restoreAtomically(
+        backup: backup,
+        liveDatabase: liveFile,
+        markerPayload: rollbackRunId == null
+            ? 'pending'
+            : 'rollback:$rollbackRunId',
+      ),
+      restoreOnReopenFailure: (checkpoint, liveFile) =>
+          backups.restoreCheckpointAtomically(
+            checkpoint: checkpoint,
+            liveDatabase: liveFile,
+          ),
+      reuseMaintenance: true,
+    );
+    if (rollbackRunId == null) {
+      await backups.discardCheckpoint(checkpoint);
+    }
+    return checkpoint;
+  } finally {
+    if (rollbackRunId == null) {
+      session.endMaintenance();
+      restoreLease?.release();
+    }
+  }
 }
 
 final migrationTimezoneOptionsProvider =
