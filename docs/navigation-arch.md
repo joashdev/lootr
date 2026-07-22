@@ -919,3 +919,22 @@ Patterns adopted from market leaders:
 - Touch targets minimum 48×48dp
 - Supports system font scaling
 - Dark mode respects system preference by default
+
+---
+
+## 18. Data Migration and Backup Routes
+
+Settings gains a visible **Data & backup** entry.
+
+```text
+/more/settings/data
+├── /more/settings/data/import-cashew
+├── /more/settings/data/import-cashew/:runId
+└── /more/settings/data/imports/:runId
+```
+
+The hub exposes Import from Cashew, encrypted Lootr backup creation/restore, readable transaction CSV export, previous import summaries, preserved records, and a resume banner for nonterminal runs.
+
+The import wizard is a full pushed page with Prepare, Choose, Analyze, Review, Reconcile, Apply, and Complete stages. It collects timezone and reversible title/payee policy in-app. Cancellation is available before publication; Apply/Verify uses `PopScope` to explain why the atomic step cannot be interrupted. Completion links to the latest imported month while restoring visible transaction filters.
+
+Accessibility requirements: 48dp targets, semantic stage headings and “Step n of n,” phase-only live-region announcements, icon plus text statuses, accessible currency-partition lists, 200% text scaling, reduced motion, and focus on the first blocking review group. Screenshots and golden artifacts use synthetic/redacted data only.

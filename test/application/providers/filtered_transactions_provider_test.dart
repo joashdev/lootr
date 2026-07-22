@@ -45,6 +45,16 @@ void main() {
         balance: const Value(1000),
       ),
     );
+    await db.accounts.insertOne(
+      AccountsCompanion.insert(
+        id: 'acc-eur',
+        ownerUserId: 'usr-1',
+        name: 'Euro account',
+        accountType: 'bank',
+        currencyCode: const Value('EUR'),
+        currencyPrecision: const Value(4),
+      ),
+    );
     await db.categories.insertOne(
       CategoriesCompanion.insert(
         id: 'cat-food',
@@ -87,6 +97,21 @@ void main() {
         occurredAt: DateTime(2026, 6, 20, 9),
       ),
     );
+    await db.transfers.insertOne(
+      TransfersCompanion.insert(
+        id: 'transfer-cross-currency',
+        sourceAccountId: 'acc-1',
+        destinationAccountId: 'acc-eur',
+        amount: 100,
+        sourceAmountAtoms: const Value('10000'),
+        sourceAmountScale: const Value(2),
+        sourceCurrencyCode: const Value('PHP'),
+        destinationAmountAtoms: const Value('15000'),
+        destinationAmountScale: const Value(4),
+        destinationCurrencyCode: const Value('EUR'),
+        occurredAt: DateTime(2026, 6, 21, 12),
+      ),
+    );
     await db.transactions.insertOne(
       TransactionsCompanion.insert(
         id: 'txn-bonus',
@@ -108,6 +133,7 @@ void main() {
         amount: 900.0,
         transactionDirection: 'expense',
         transactionMode: 'recurring',
+        title: const Value('Preserved landlord'),
         note: const Value('June rent'),
         occurredAt: DateTime(2026, 6, 1, 12),
       ),
@@ -140,6 +166,16 @@ void main() {
       );
 
       expect(amountResults?.map((item) => item.id), ['txn-bonus']);
+
+      container
+          .read(transactionSearchQueryProvider.notifier)
+          .setQuery('preserved landlord');
+      final titleResults = await readStreamValue(
+        filteredTransactionsProvider,
+        container,
+      );
+
+      expect(titleResults?.map((item) => item.id), ['txn-rent']);
     });
 
     test('composes active filters with search using AND logic', () async {
@@ -181,7 +217,13 @@ void main() {
 
       container
           .read(transactionFiltersProvider.notifier)
-          .setAmountRange(50, 150);
+          .setExactAmountRange(
+            currencyCode: 'PHP',
+            minCoefficient: '5000',
+            minScale: 2,
+            maxCoefficient: '15000',
+            maxScale: 2,
+          );
       container
           .read(transactionFiltersProvider.notifier)
           .setDateRange(
@@ -198,5 +240,45 @@ void main() {
 
       expect(results?.map((item) => item.id), ['txn-coffee']);
     });
+
+    test(
+      'filters a cross-currency transfer by its selected account leg',
+      () async {
+        final container = ProviderContainer(
+          overrides: [databaseProvider.overrideWith((ref) => db)],
+        );
+        addTearDown(container.dispose);
+
+        container
+            .read(transactionFiltersProvider.notifier)
+            .setAccountId('acc-eur');
+        container
+            .read(transactionFiltersProvider.notifier)
+            .setExactAmountRange(
+              currencyCode: 'EUR',
+              minCoefficient: '14000',
+              minScale: 4,
+              maxCoefficient: '16000',
+              maxScale: 4,
+            );
+
+        final destinationResults = await readStreamValue(
+          filteredTransactionsProvider,
+          container,
+        );
+        expect(destinationResults?.map((item) => item.id), [
+          'transfer-cross-currency',
+        ]);
+
+        container
+            .read(transactionFiltersProvider.notifier)
+            .setAccountId('acc-1');
+        final sourceResults = await readStreamValue(
+          filteredTransactionsProvider,
+          container,
+        );
+        expect(sourceResults, isEmpty);
+      },
+    );
   });
 }

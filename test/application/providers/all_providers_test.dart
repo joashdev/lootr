@@ -199,6 +199,7 @@ void main() {
               id: 'txn-income',
               accountId: 'acc-1',
               amount: 50000.0,
+              title: const Value('Imported income'),
               transactionDirection: 'income',
               transactionMode: 'one_time',
               occurredAt: now.subtract(const Duration(days: 2)),
@@ -252,6 +253,12 @@ void main() {
       expect(dashboard, isNotNull);
       expect(dashboard!.accounts.length, 1);
       expect(dashboard.recentTransactions.length, 2);
+      expect(
+        dashboard.recentTransactions
+            .singleWhere((item) => item.id == 'txn-income')
+            .payeeName,
+        'Imported income',
+      );
       expect(dashboard.budgets.single.name, 'Food');
       expect(dashboard.spendingByCategory.single.name, 'Food');
       expect(dashboard.upcomingRecurring.single.payeeName, 'Food');
@@ -542,7 +549,15 @@ void main() {
       expect(sections[2].header, 'Manage');
       expect(sections[2].items.length, 3);
       expect(sections[3].header, 'Settings');
-      expect(sections[3].items.length, 7);
+      expect(sections[3].items.length, 8);
+      expect(
+        sections[3].items.any(
+          (item) =>
+              item.label == 'Data & Backup' &&
+              item.route == '/more/settings/data',
+        ),
+        isTrue,
+      );
     });
 
     test('Insights section includes Insights when AI enabled', () {

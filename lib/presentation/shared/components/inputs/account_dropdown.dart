@@ -57,10 +57,7 @@ class AccountDropdown extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        MoneyFormat.exact(
-                          account.balance,
-                          account.currencyCode,
-                        ),
+                        MoneyFormat.exactMoney(account.exactBalance),
                         style: AppTypography.caption.copyWith(
                           color: lootrColors.textSecondary,
                         ),

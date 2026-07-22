@@ -500,5 +500,18 @@ Confirmation: "This will permanently delete all your data everywhere."
 </table>
 
 </div>
+<hr>
+<h2 id="s14">14. Migration and Backup Security Amendment</h2>
+<p>This section is a V1 launch gate and replaces any implication that encryption is complete merely because it is specified.</p>
+<ul>
+<li>The production database opens through the SQLCipher asset selected by the <code>sqlite3</code> build hook, not system SQLite.</li>
+<li>A random 256-bit database key is stored only in platform secure storage with device-only/unlocked protection where supported.</li>
+<li>Every open sets the key before schema access and verifies <code>cipher_version</code>, <code>cipher_integrity_check</code>, integrity, and foreign keys.</li>
+<li>Existing plaintext databases export into a new encrypted app-private file, verify, atomically replace the live file, and receive best-effort plaintext cleanup. A plaintext SQLite header after migration is blocking.</li>
+<li>The selected Cashew file is copied privately while hashing, opened query-only, never logged, and cleaned after success, failure, cancellation, and rollback. Secure deletion on flash storage is disclosed as best-effort.</li>
+<li>Preserved payloads and checkpoints exist only in the encrypted database. UI errors expose safe codes, never raw SQL, paths, filenames, IDs, private text, URLs, settings, or amounts.</li>
+<li>Lootr backups are independently encrypted and versioned. Restore verifies manifest, hash, cipher integrity, schema, and foreign keys before atomic replacement.</li>
+<li>Transaction CSV is an explicit plaintext export with a warning and no retained app-private temporary copy.</li>
+</ul>
 </body>
 </html>

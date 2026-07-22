@@ -257,7 +257,7 @@ class _AccountRow extends ConsumerWidget {
               )
             : null,
         trailing: Text(
-          MoneyFormat.exact(account.balance, account.currencyCode),
+          MoneyFormat.exactMoney(account.exactBalance),
           style: AppTypography.mono.copyWith(
             color: balanceColor ?? colorScheme.onSurface,
           ),

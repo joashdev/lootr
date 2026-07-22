@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rxdart/rxdart.dart';
 
+import '../../data/repositories/composite_budget_repo.dart';
 import '../../data/repositories/transaction_repo.dart';
 import '../../domain/entities/account.dart';
 import '../../domain/entities/budget.dart';
@@ -11,7 +12,9 @@ import '../../domain/entities/payee.dart';
 import '../../domain/entities/recurring_template.dart';
 import '../../domain/entities/transaction.dart';
 import '../../domain/entities/user.dart';
+import '../../domain/services/currency_aggregation.dart';
 import '../../domain/use_cases/calculate_safe_to_spend.dart';
+import '../../domain/value_objects/exact_money.dart';
 import 'repo_providers.dart';
 
 class DashboardBudgetSummary {
@@ -22,6 +25,7 @@ class DashboardBudgetSummary {
     required this.color,
     required this.budgeted,
     required this.spent,
+    this.isImported = false,
   });
 
   final String id;
@@ -30,6 +34,7 @@ class DashboardBudgetSummary {
   final Color color;
   final double budgeted;
   final double spent;
+  final bool isImported;
 
   double get progress => budgeted <= 0 ? 0 : spent / budgeted;
 }
@@ -59,6 +64,7 @@ class DashboardTransactionItem {
     required this.categoryIcon,
     required this.categoryColor,
     required this.amount,
+    this.currencyCode = 'PHP',
     required this.direction,
     required this.occurredAt,
   });
@@ -70,6 +76,7 @@ class DashboardTransactionItem {
   final String? categoryIcon;
   final String? categoryColor;
   final double amount;
+  final String currencyCode;
   final String direction;
   final DateTime occurredAt;
 }
@@ -162,6 +169,7 @@ final dashboardProvider = StreamProvider<DashboardData>((ref) {
   final userRepo = ref.watch(userRepoProvider);
   final accountRepo = ref.watch(accountRepoProvider);
   final budgetRepo = ref.watch(budgetRepoProvider);
+  final compositeBudgetRepo = ref.watch(compositeBudgetRepoProvider);
   final transactionRepo = ref.watch(transactionRepoProvider);
   final recurringRepo = ref.watch(recurringRepoProvider);
   final categoryRepo = ref.watch(categoryRepoProvider);
@@ -204,11 +212,16 @@ final dashboardProvider = StreamProvider<DashboardData>((ref) {
         final budgets = <Budget>[];
         for (final row in rows) {
           final budget = BudgetDataMapper(row).toEntity();
-          final spent = await budgetRepo.watchSpentForBudget(budget.id).first;
-          budgets.add(budget.copyWith(spent: spent));
+          final spent = await budgetRepo
+              .watchExactSpentForBudget(budget.id)
+              .first;
+          budgets.add(
+            budget.copyWith(spent: spent.toDouble(), exactSpent: () => spent),
+          );
         }
         return budgets;
       });
+  final compositeBudgetsStream = compositeBudgetRepo.watchForPeriod(monthStart);
   final recentTransactionsStream = transactionRepo
       .watchFiltered(TransactionRepoFilters(from: sparklineStart, to: now))
       .map(
@@ -250,6 +263,7 @@ final dashboardProvider = StreamProvider<DashboardData>((ref) {
     categoriesStream,
     payeesStream,
     budgetsStream,
+    compositeBudgetsStream,
     recentTransactionsStream,
     monthTransactionsStream,
     recurringStream,
@@ -259,28 +273,47 @@ final dashboardProvider = StreamProvider<DashboardData>((ref) {
     final categories = values[2] as List<Category>;
     final payees = values[3] as List<Payee>;
     final budgets = values[4] as List<Budget>;
-    final recentTransactions = values[5] as List<Transaction>;
-    final monthTransactions = values[6] as List<Transaction>;
-    final recurringTemplates = values[7] as List<RecurringTemplate>;
+    final compositeBudgets = values[5] as List<CompositeBudgetSnapshot>;
+    final recentTransactions = values[6] as List<Transaction>;
+    final monthTransactions = values[7] as List<Transaction>;
+    final recurringTemplates = values[8] as List<RecurringTemplate>;
 
     final greeting = _greetingFor(now.hour);
     final currencyCode = user?.currencyCode ?? 'PHP';
+    final currencyAccounts = accounts
+        .where((account) => account.currencyCode == currencyCode)
+        .toList();
+    final currencyBudgets = budgets
+        .where((budget) => budget.exactAmount.currencyCode == currencyCode)
+        .toList();
+    final currencyMonthTransactions = monthTransactions
+        .where(
+          (transaction) => transaction.exactAmount.currencyCode == currencyCode,
+        )
+        .toList();
+    final currencyRecentTransactions = recentTransactions
+        .where(
+          (transaction) => transaction.exactAmount.currencyCode == currencyCode,
+        )
+        .toList();
     final accountById = {for (final account in accounts) account.id: account};
     final categoryById = {
       for (final category in categories) category.id: category,
     };
     final payeeById = {for (final payee in payees) payee.id: payee};
 
-    double totalAssets = 0;
-    double totalLiabilities = 0;
-    for (final account in accounts) {
-      if (_isLiability(account.accountType)) {
-        totalLiabilities += account.balance.abs();
-      } else {
-        totalAssets += account.balance;
-      }
-    }
-    final netWorth = totalAssets - totalLiabilities;
+    final balanceTotals = CurrencyAggregation.balances(
+      currencyAccounts,
+      isLiability: _isLiability,
+    )[currencyCode];
+    final exactNetWorth =
+        balanceTotals?.netWorth ??
+        ExactMoney(
+          coefficient: BigInt.zero,
+          scale: 2,
+          currencyCode: currencyCode,
+        );
+    final netWorth = exactNetWorth.toDouble();
 
     final upcomingRecurring = recurringTemplates
         .where((item) => !item.nextOccurrenceAt!.isBefore(now))
@@ -295,63 +328,82 @@ final dashboardProvider = StreamProvider<DashboardData>((ref) {
         )
         .toList();
 
-    final monthlyIncome = monthTransactions
-        .where((txn) => txn.direction == 'income')
-        .fold<double>(0, (sum, txn) => sum + txn.amount);
-    final monthlyExpense = monthTransactions
-        .where((txn) => txn.direction == 'expense')
-        .fold<double>(0, (sum, txn) => sum + txn.amount);
+    final monthlyFlow = CurrencyAggregation.flows(
+      currencyMonthTransactions,
+    )[currencyCode];
+    final monthlyIncome = monthlyFlow?.income.toDouble() ?? 0;
+    final monthlyExpense = monthlyFlow?.expense.toDouble() ?? 0;
 
     final safeToSpend = const CalculateSafeToSpend()(
-      accounts: accounts,
-      budgets: budgets,
+      accounts: currencyAccounts,
+      budgets: currencyBudgets,
       recurringTemplates: recurringTemplates,
       monthlyIncome: monthlyIncome,
       monthlyExpense: monthlyExpense,
       now: now,
+      currencyCode: currencyCode,
+      exactMonthlyIncome: monthlyFlow?.income,
+      exactMonthlyExpense: monthlyFlow?.expense,
     );
 
-    final budgetSummaries =
-        budgets
-            .map(
-              (budget) => DashboardBudgetSummary(
-                id: budget.id,
-                name: categoryById[budget.categoryId]?.name ?? 'Budget',
-                icon:
-                    budget.icon ??
-                    _categoryBadge(categoryById[budget.categoryId]),
-                color: _categoryColor(
-                  budget.color ?? categoryById[budget.categoryId]?.color,
-                ),
-                budgeted: budget.amount,
-                spent: budget.spent,
-              ),
-            )
-            .toList()
-          ..sort((a, b) => b.progress.compareTo(a.progress));
+    final budgetSummaries = [
+      ...currencyBudgets.map(
+        (budget) => DashboardBudgetSummary(
+          id: budget.id,
+          name: categoryById[budget.categoryId]?.name ?? 'Budget',
+          icon: budget.icon ?? _categoryBadge(categoryById[budget.categoryId]),
+          color: _categoryColor(
+            budget.color ?? categoryById[budget.categoryId]?.color,
+          ),
+          budgeted: budget.amount,
+          spent: budget.spent,
+        ),
+      ),
+      ...compositeBudgets
+          .where(
+            (snapshot) =>
+                snapshot.evaluation.limit.currencyCode == currencyCode,
+          )
+          .map((snapshot) {
+            final evaluation = snapshot.evaluation;
+            final name = evaluation.budget.name?.trim();
+            return DashboardBudgetSummary(
+              id: evaluation.budget.id,
+              name: name?.isNotEmpty == true ? name! : 'Imported budget',
+              icon: null,
+              color: _categoryColor(null),
+              budgeted: evaluation.limit.toDouble(),
+              spent: evaluation.trackedTotal.toDouble(),
+              isImported: true,
+            );
+          }),
+    ]..sort((a, b) => b.progress.compareTo(a.progress));
 
-    final totalCategorySpend = monthTransactions
-        .where((txn) => txn.direction == 'expense' && txn.categoryId != null)
-        .fold<double>(0, (sum, txn) => sum + txn.amount);
-    final spendingTotals = <String, double>{};
-    for (final txn in monthTransactions) {
+    final spendingTotals = <String, ExactMoney>{};
+    for (final txn in currencyMonthTransactions) {
       if (txn.direction == 'expense' && txn.categoryId != null) {
-        spendingTotals[txn.categoryId!] =
-            (spendingTotals[txn.categoryId!] ?? 0) + txn.amount;
+        spendingTotals.update(
+          txn.categoryId!,
+          (current) => current + txn.exactAmount,
+          ifAbsent: () => txn.exactAmount,
+        );
       }
     }
     final spendingByCategory = spendingTotals.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
+    final totalCategorySpend = spendingTotals.values.isEmpty
+        ? null
+        : spendingTotals.values.reduce((left, right) => left + right);
     final topSpending = spendingByCategory.take(5).map((entry) {
       final category = categoryById[entry.key];
-      final percentage = totalCategorySpend == 0
+      final percentage = totalCategorySpend == null || totalCategorySpend.isZero
           ? 0
-          : entry.value / totalCategorySpend;
+          : entry.value.toDouble() / totalCategorySpend.toDouble();
       return DashboardSpendingSlice(
         categoryId: entry.key,
         name: category?.name ?? 'Uncategorized',
         color: _categoryColor(category?.color),
-        amount: entry.value,
+        amount: entry.value.toDouble(),
         percentage: percentage.toDouble(),
       );
     }).toList();
@@ -364,21 +416,28 @@ final dashboardProvider = StreamProvider<DashboardData>((ref) {
       final account = accountById[txn.accountId];
       return DashboardTransactionItem(
         id: txn.id,
-        payeeName: payee?.displayName ?? payee?.normalizedName ?? 'Transaction',
+        payeeName:
+            payee?.displayName ??
+            payee?.normalizedName ??
+            _nonBlank(txn.title) ??
+            _nonBlank(txn.note) ??
+            'Transaction',
         accountName: account?.name ?? 'Account',
         categoryName: category?.name ?? _fallbackCategoryName(txn.direction),
         categoryIcon: category?.icon,
         categoryColor: category?.color,
         amount: txn.amount,
+        currencyCode: txn.exactAmount.currencyCode,
         direction: txn.direction,
         occurredAt: txn.occurredAt,
       );
     }).toList();
 
     final netWorthSeries = _buildNetWorthSeries(
-      currentNetWorth: netWorth,
+      currentNetWorth: exactNetWorth,
       startDate: sparklineStart,
-      transactions: recentTransactions,
+      transactions: currencyRecentTransactions,
+      currencyCode: currencyCode,
     );
     final firstNetWorth = netWorthSeries.first;
     final netWorthChangePercent = firstNetWorth == 0
@@ -468,11 +527,12 @@ Color _categoryColor(String? rawColor) {
 }
 
 List<double> _buildNetWorthSeries({
-  required double currentNetWorth,
+  required ExactMoney currentNetWorth,
   required DateTime startDate,
   required List<Transaction> transactions,
+  required String currencyCode,
 }) {
-  final impactByDay = <int, double>{};
+  final impactByDay = <int, ExactMoney>{};
   for (final txn in transactions) {
     final occurredDay = DateTime(
       txn.occurredAt.year,
@@ -483,32 +543,49 @@ List<double> _buildNetWorthSeries({
     if (index < 0 || index > 29) {
       continue;
     }
-    impactByDay[index] = (impactByDay[index] ?? 0) + _netWorthImpact(txn);
+    final impact = _netWorthImpact(txn);
+    if (impact == null) continue;
+    impactByDay.update(
+      index,
+      (current) => current + impact,
+      ifAbsent: () => impact,
+    );
   }
 
-  final totalImpact = impactByDay.values.fold<double>(
-    0,
+  final scale = impactByDay.values.isEmpty ? 2 : impactByDay.values.first.scale;
+  final zero = ExactMoney(
+    coefficient: BigInt.zero,
+    scale: scale,
+    currencyCode: currencyCode,
+  );
+  final totalImpact = impactByDay.values.fold<ExactMoney>(
+    zero,
     (sum, value) => sum + value,
   );
-  var runningNetWorth = currentNetWorth - totalImpact;
+  var runningNetWorth = currentNetWorth + zero - totalImpact;
   final series = <double>[];
 
   for (var i = 0; i < 30; i++) {
-    runningNetWorth += impactByDay[i] ?? 0;
-    series.add(runningNetWorth);
+    runningNetWorth += impactByDay[i] ?? zero;
+    series.add(runningNetWorth.toDouble());
   }
 
   return series;
 }
 
-double _netWorthImpact(Transaction txn) {
+String? _nonBlank(String? value) {
+  final trimmed = value?.trim();
+  return trimmed == null || trimmed.isEmpty ? null : trimmed;
+}
+
+ExactMoney? _netWorthImpact(Transaction txn) {
   switch (txn.direction) {
     case 'income':
-      return txn.amount;
+      return txn.exactAmount;
     case 'expense':
-      return -txn.amount;
+      return -txn.exactAmount;
     default:
-      return 0;
+      return null;
   }
 }
 

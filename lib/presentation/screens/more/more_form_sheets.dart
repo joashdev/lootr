@@ -16,6 +16,7 @@ import '../../../domain/entities/goal.dart';
 import '../../../domain/entities/household.dart';
 import '../../../domain/entities/recurring_template.dart';
 import '../../../domain/value_objects/field_types.dart';
+import '../../../domain/value_objects/exact_money.dart';
 import '../../shared/category_visuals.dart';
 import '../../shared/components/app_snackbar.dart';
 
@@ -280,7 +281,7 @@ Future<void> showAccountSheet(
           _LabeledField(
             label: 'Account Type',
             child: DropdownButtonFormField<String>(
-              value: accountType,
+              initialValue: accountType,
               decoration: const InputDecoration(border: OutlineInputBorder()),
               items: const [
                 DropdownMenuItem(value: AccountType.cash, child: Text('Cash')),
@@ -364,7 +365,8 @@ Future<void> showAccountSheet(
                   );
                 }
 
-                if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+                if (!sheetContext.mounted || !context.mounted) return;
+                Navigator.of(sheetContext).pop();
                 _showMessage(
                   context,
                   initial == null ? 'Account created.' : 'Account updated.',
@@ -556,7 +558,8 @@ Future<void> showDebtSheet(
                 }
                 await _rebuildNotifications(ref);
 
-                if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+                if (!sheetContext.mounted || !context.mounted) return;
+                Navigator.of(sheetContext).pop();
                 _showMessage(
                   context,
                   initial == null ? 'Debt created.' : 'Debt updated.',
@@ -613,7 +616,7 @@ Future<void> showGoalSheet(
           _LabeledField(
             label: 'Goal Type',
             child: DropdownButtonFormField<String>(
-              value: goalType,
+              initialValue: goalType,
               decoration: const InputDecoration(border: OutlineInputBorder()),
               items: const [
                 DropdownMenuItem(
@@ -702,7 +705,8 @@ Future<void> showGoalSheet(
                   );
                 }
 
-                if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+                if (!sheetContext.mounted || !context.mounted) return;
+                Navigator.of(sheetContext).pop();
                 _showMessage(
                   context,
                   initial == null ? 'Goal created.' : 'Goal updated.',
@@ -725,7 +729,13 @@ Future<void> showGoalContributionSheet(
   required List<Account> accounts,
 }) async {
   final amountController = TextEditingController();
-  var selectedAccountId = accounts.isEmpty ? null : accounts.first.id;
+  final goalCurrency = goal.exactTargetAmount.currencyCode;
+  final eligibleAccounts = accounts
+      .where((account) => account.currencyCode == goalCurrency)
+      .toList(growable: false);
+  var selectedAccountId = eligibleAccounts.isEmpty
+      ? null
+      : eligibleAccounts.first.id;
 
   await _showSheet(
     context: context,
@@ -746,12 +756,12 @@ Future<void> showGoalContributionSheet(
             decoration: _fieldDecoration('Contribution Amount'),
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
           ),
-          if (accounts.isNotEmpty) ...[
+          if (eligibleAccounts.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.space3),
             DropdownButtonFormField<String>(
-              value: selectedAccountId,
+              initialValue: selectedAccountId,
               decoration: _fieldDecoration('Source Account'),
-              items: accounts
+              items: eligibleAccounts
                   .map(
                     (account) => DropdownMenuItem(
                       value: account.id,
@@ -769,8 +779,21 @@ Future<void> showGoalContributionSheet(
             width: double.infinity,
             child: FilledButton(
               onPressed: () async {
-                final amount = _parseAmount(amountController.text);
-                if (amount == null || amount <= 0) {
+                ExactMoney amount;
+                try {
+                  amount = ExactMoney.parse(
+                    amountController.text.trim().replaceAll(',', ''),
+                    goalCurrency,
+                  ).rescale(goal.exactTargetAmount.scale);
+                } on Object {
+                  _showMessage(
+                    context,
+                    'Enter a contribution at the goal currency precision.',
+                    variant: AppSnackBarVariant.error,
+                  );
+                  return;
+                }
+                if (amount.coefficient <= BigInt.zero) {
                   _showMessage(
                     context,
                     'Enter a valid contribution amount.',
@@ -779,29 +802,51 @@ Future<void> showGoalContributionSheet(
                   return;
                 }
 
+                TransactionsCompanion? transaction;
+                if (selectedAccountId != null) {
+                  final account = eligibleAccounts.firstWhere(
+                    (candidate) => candidate.id == selectedAccountId,
+                  );
+                  ExactMoney accountAmount;
+                  try {
+                    accountAmount = amount.rescale(
+                      account.currencyPrecision ?? 2,
+                    );
+                  } on StateError {
+                    _showMessage(
+                      context,
+                      'The amount exceeds this account’s configured precision.',
+                      variant: AppSnackBarVariant.error,
+                    );
+                    return;
+                  }
+                  transaction = TransactionsCompanion.insert(
+                    id: _makeId('txn'),
+                    accountId: selectedAccountId!,
+                    amount: accountAmount.toDouble(),
+                    amountAtoms: Value(accountAmount.coefficient.toString()),
+                    amountScale: Value(accountAmount.scale),
+                    currencyCode: Value(accountAmount.currencyCode),
+                    transactionDirection: TransactionDirection.expense,
+                    transactionMode: TransactionMode.oneTime,
+                    note: Value('Goal contribution • ${goal.name}'),
+                    metadata: Value({'goalId': goal.id}),
+                    occurredAt: DateTime.now(),
+                  );
+                }
                 await ref
                     .read(goalRepoProvider)
-                    .addContribution(goal.id, amount);
-
-                if (selectedAccountId != null) {
-                  await ref
-                      .read(transactionRepoProvider)
-                      .create(
-                        TransactionsCompanion.insert(
-                          id: _makeId('txn'),
-                          accountId: selectedAccountId!,
-                          amount: amount,
-                          transactionDirection: TransactionDirection.expense,
-                          transactionMode: TransactionMode.oneTime,
-                          note: Value('Goal contribution • ${goal.name}'),
-                          metadata: Value({'goalId': goal.id}),
-                          occurredAt: DateTime.now(),
-                        ),
-                      );
+                    .addContributionExact(
+                      goal.id,
+                      amount,
+                      transaction: transaction,
+                    );
+                if (transaction != null) {
                   await _rebuildNotifications(ref);
                 }
 
-                if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+                if (!sheetContext.mounted || !context.mounted) return;
+                Navigator.of(sheetContext).pop();
                 _showMessage(
                   context,
                   'Contribution added.',
@@ -825,9 +870,15 @@ Future<void> showDebtPaymentSheet(
   required bool settle,
 }) async {
   final amountController = TextEditingController(
-    text: settle ? debt.remainingBalance.toStringAsFixed(2) : '',
+    text: settle ? debt.exactRemainingBalance.toDecimalString() : '',
   );
-  var selectedAccountId = accounts.isEmpty ? null : accounts.first.id;
+  final debtCurrency = debt.exactAmount.currencyCode;
+  final eligibleAccounts = accounts
+      .where((account) => account.currencyCode == debtCurrency)
+      .toList(growable: false);
+  var selectedAccountId = eligibleAccounts.isEmpty
+      ? null
+      : eligibleAccounts.first.id;
 
   await _showSheet(
     context: context,
@@ -848,12 +899,12 @@ Future<void> showDebtPaymentSheet(
             decoration: _fieldDecoration('Payment Amount'),
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
           ),
-          if (accounts.isNotEmpty) ...[
+          if (eligibleAccounts.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.space3),
             DropdownButtonFormField<String>(
-              value: selectedAccountId,
+              initialValue: selectedAccountId,
               decoration: _fieldDecoration('Account'),
-              items: accounts
+              items: eligibleAccounts
                   .map(
                     (account) => DropdownMenuItem(
                       value: account.id,
@@ -871,8 +922,21 @@ Future<void> showDebtPaymentSheet(
             width: double.infinity,
             child: FilledButton(
               onPressed: () async {
-                final amount = _parseAmount(amountController.text);
-                if (amount == null || amount <= 0) {
+                ExactMoney requested;
+                try {
+                  requested = ExactMoney.parse(
+                    amountController.text.trim().replaceAll(',', ''),
+                    debtCurrency,
+                  ).rescale(debt.exactAmount.scale);
+                } on Object {
+                  _showMessage(
+                    context,
+                    'Enter a payment at the debt currency precision.',
+                    variant: AppSnackBarVariant.error,
+                  );
+                  return;
+                }
+                if (requested.coefficient <= BigInt.zero) {
                   _showMessage(
                     context,
                     'Enter a valid payment amount.',
@@ -881,69 +945,74 @@ Future<void> showDebtPaymentSheet(
                   return;
                 }
 
-                final boundedAmount = amount > debt.remainingBalance
-                    ? debt.remainingBalance
-                    : amount;
-                final remaining = (debt.remainingBalance - boundedAmount).clamp(
-                  0,
-                  debt.amount,
-                );
-                final status = remaining <= 0
-                    ? DebtStatus.settled
-                    : DebtStatus.partiallyPaid;
+                final boundedAmount =
+                    requested.compareTo(debt.exactRemainingBalance) > 0
+                    ? debt.exactRemainingBalance
+                    : requested;
+                final willSettle =
+                    boundedAmount.compareTo(debt.exactRemainingBalance) == 0;
 
+                TransactionsCompanion? transaction;
                 if (selectedAccountId != null) {
+                  final account = eligibleAccounts.firstWhere(
+                    (candidate) => candidate.id == selectedAccountId,
+                  );
+                  ExactMoney accountAmount;
+                  try {
+                    accountAmount = boundedAmount.rescale(
+                      account.currencyPrecision ?? 2,
+                    );
+                  } on StateError {
+                    _showMessage(
+                      context,
+                      'The amount exceeds this account’s configured precision.',
+                      variant: AppSnackBarVariant.error,
+                    );
+                    return;
+                  }
                   final payee = await ref
                       .read(payeeRepoProvider)
                       .createOrGetByName(debt.counterpartyName);
-                  await ref
-                      .read(transactionRepoProvider)
-                      .create(
-                        TransactionsCompanion.insert(
-                          id: _makeId('txn'),
-                          accountId: selectedAccountId!,
-                          payeeId: Value(payee.id),
-                          amount: boundedAmount,
-                          transactionDirection:
-                              debt.debtDirection == DebtDirection.lent
-                              ? TransactionDirection.income
-                              : TransactionDirection.expense,
-                          transactionMode: TransactionMode.debt,
-                          transactionSubtype: const Value(
-                            TransactionSubtype.debtPayment,
-                          ),
-                          note: Value(
-                            settle
-                                ? 'Debt settled • ${debt.counterpartyName}'
-                                : 'Debt payment • ${debt.counterpartyName}',
-                          ),
-                          metadata: Value({'debtId': debt.id}),
-                          occurredAt: DateTime.now(),
-                        ),
-                      );
+                  transaction = TransactionsCompanion.insert(
+                    id: _makeId('txn'),
+                    accountId: selectedAccountId!,
+                    payeeId: Value(payee.id),
+                    amount: accountAmount.toDouble(),
+                    amountAtoms: Value(accountAmount.coefficient.toString()),
+                    amountScale: Value(accountAmount.scale),
+                    currencyCode: Value(accountAmount.currencyCode),
+                    transactionDirection:
+                        debt.debtDirection == DebtDirection.lent
+                        ? TransactionDirection.income
+                        : TransactionDirection.expense,
+                    transactionMode: TransactionMode.debt,
+                    transactionSubtype: const Value(
+                      TransactionSubtype.debtPayment,
+                    ),
+                    note: Value(
+                      settle
+                          ? 'Debt settled • ${debt.counterpartyName}'
+                          : 'Debt payment • ${debt.counterpartyName}',
+                    ),
+                    metadata: Value({'debtId': debt.id}),
+                    occurredAt: DateTime.now(),
+                  );
                 }
 
-                if (status == DebtStatus.settled) {
-                  await ref.read(debtRepoProvider).settle(debt.id);
-                } else {
-                  await ref
-                      .read(debtRepoProvider)
-                      .update(
-                        DebtRecordsCompanion(
-                          id: Value(debt.id),
-                          remainingBalance: Value(remaining.toDouble()),
-                          status: const Value(DebtStatus.partiallyPaid),
-                        ),
-                      );
-                }
+                await ref
+                    .read(debtRepoProvider)
+                    .recordPaymentExact(
+                      debt.id,
+                      boundedAmount,
+                      transaction: transaction,
+                    );
                 await _rebuildNotifications(ref);
 
-                if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+                if (!sheetContext.mounted || !context.mounted) return;
+                Navigator.of(sheetContext).pop();
                 _showMessage(
                   context,
-                  status == DebtStatus.settled
-                      ? 'Debt settled.'
-                      : 'Payment recorded.',
+                  willSettle ? 'Debt settled.' : 'Payment recorded.',
                   variant: AppSnackBarVariant.success,
                 );
               },
@@ -1014,7 +1083,7 @@ Future<void> showRecurringSheet(
           _LabeledField(
             label: 'Account',
             child: DropdownButtonFormField<String>(
-              value: selectedAccountId,
+              initialValue: selectedAccountId,
               decoration: const InputDecoration(border: OutlineInputBorder()),
               items: accounts
                   .map(
@@ -1033,7 +1102,7 @@ Future<void> showRecurringSheet(
           _LabeledField(
             label: 'Frequency',
             child: DropdownButtonFormField<String>(
-              value: recurrenceRule,
+              initialValue: recurrenceRule,
               decoration: const InputDecoration(border: OutlineInputBorder()),
               items: const [
                 DropdownMenuItem(value: 'daily', child: Text('Daily')),
@@ -1105,7 +1174,8 @@ Future<void> showRecurringSheet(
                 }
                 await _rebuildNotifications(ref);
 
-                if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+                if (!sheetContext.mounted || !context.mounted) return;
+                Navigator.of(sheetContext).pop();
                 _showMessage(
                   context,
                   initial == null
@@ -1169,7 +1239,7 @@ Future<void> showCategorySheet(
           ),
           const SizedBox(height: AppSpacing.space3),
           DropdownButtonFormField<String>(
-            value: group,
+            initialValue: group,
             decoration: _fieldDecoration('Group'),
             items: const [
               DropdownMenuItem(
@@ -1304,7 +1374,8 @@ Future<void> showCategorySheet(
                   );
                 }
 
-                if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+                if (!sheetContext.mounted || !context.mounted) return;
+                Navigator.of(sheetContext).pop();
                 _showMessage(
                   context,
                   initial == null ? 'Category created.' : 'Category updated.',
@@ -1394,7 +1465,8 @@ Future<void> showHouseholdSheet(
                   );
                 }
 
-                if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+                if (!sheetContext.mounted || !context.mounted) return;
+                Navigator.of(sheetContext).pop();
                 _showMessage(
                   context,
                   initial == null ? 'Household created.' : 'Household updated.',
@@ -1439,7 +1511,7 @@ Future<void> showHouseholdMemberSheet(
           ),
           const SizedBox(height: AppSpacing.space3),
           DropdownButtonFormField<String>(
-            value: role,
+            initialValue: role,
             decoration: _fieldDecoration('Role'),
             items: const [
               DropdownMenuItem(
@@ -1492,7 +1564,8 @@ Future<void> showHouseholdMemberSheet(
                       ),
                     );
 
-                if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+                if (!sheetContext.mounted || !context.mounted) return;
+                Navigator.of(sheetContext).pop();
                 _showMessage(
                   context,
                   'Member added.',

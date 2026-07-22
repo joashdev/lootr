@@ -2,6 +2,13 @@
 
 ---
 
+## 2026-07-18 — Cashew Migration V1 Complete
+
+**Feature:** Cashew-to-Lootr Migration ✅
+**Summary:** Implemented the complete local migration surface for structurally validated Cashew schema 46, 47, and 48 data files: private read-only staging, redacted dry run and discrepancy review, exact multi-currency canonicalization, atomic publication, provenance and preserved payloads, composite budgets, recurring occurrence lifecycle, immutable goal/debt events, durable title rules, rollback, idempotent re-import, encrypted Lootr backup/restore, and readable currency-aware CSV export. Added SQLCipher database opening with platform-secure key storage and plaintext-upgrade handling. The disposable real-export acceptance path passes the audited structural oracle without emitting private content, restores the exact pre-import state, re-imports without duplicates, and reproduces the imported state through backup/restore.
+
+---
+
 ## 2026-07-07 — Task 19 Complete
 
 **Task:** 19 — Local Notifications ✅

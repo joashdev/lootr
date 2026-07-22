@@ -25,6 +25,19 @@ void main() {
       createdAt: now,
       updatedAt: now,
     ),
+    Account(
+      id: 'acc-2',
+      ownerUserId: 'usr-1',
+      name: 'Digital',
+      accountType: 'bank',
+      balance: 0,
+      currencyCode: 'BTC',
+      currencyPrecision: 12,
+      isArchived: false,
+      isHidden: false,
+      createdAt: now,
+      updatedAt: now,
+    ),
   ];
   final categories = [
     Category(
@@ -78,6 +91,7 @@ void main() {
     expect(find.text('Mode'), findsOneWidget);
     expect(find.text('Account'), findsOneWidget);
     expect(find.text('Category'), findsOneWidget);
+    expect(find.text('Currency'), findsOneWidget);
     expect(find.text('Amount Range'), findsOneWidget);
     expect(find.text('Date Range'), findsOneWidget);
     expect(find.text('Clear all filters'), findsOneWidget);
@@ -237,19 +251,56 @@ void main() {
       await tester.enterText(amountField('Max'), '900');
       await tester.pump();
 
-      // Typed amounts are committed without any inner apply press.
-      expect(container.read(transactionFiltersProvider).minAmount, 100);
-      expect(container.read(transactionFiltersProvider).maxAmount, 900);
+      // An amount range is never applied across unrelated currencies.
+      expect(container.read(transactionFiltersProvider).minAmount, isNull);
+      expect(container.read(transactionFiltersProvider).maxAmount, isNull);
       expect(
-        find.widgetWithText(FilledButton, 'Apply 1 filter'),
+        find.text('Choose a currency before filtering by amount.'),
         findsOneWidget,
       );
 
-      // Global Apply keeps the values and closes the sheet.
-      await tester.tap(find.widgetWithText(FilledButton, 'Apply 1 filter'));
-      await tester.pumpAndSettle();
-      expect(container.read(transactionFiltersProvider).minAmount, 100);
-      expect(container.read(transactionFiltersProvider).maxAmount, 900);
+      await tester.tap(find.text('PHP'));
+      await tester.pump();
+      final filters = container.read(transactionFiltersProvider);
+      expect(filters.currencyCode, 'PHP');
+      expect(filters.minAmountCoefficient, '100');
+      expect(filters.minAmountScale, 0);
+      expect(filters.maxAmountCoefficient, '900');
+      expect(filters.maxAmountScale, 0);
     },
   );
+
+  testWidgets('currency selection stores exact decimal coefficient and scale', (
+    tester,
+  ) async {
+    final container = ProviderContainer(
+      overrides: [
+        accountsProvider.overrideWith((ref) => Stream.value(accounts)),
+        categoriesProvider.overrideWith((ref) => Stream.value(categories)),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    tester.view.physicalSize = const Size(1200, 2400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(buildSheet(container));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('BTC'));
+    await tester.pump();
+
+    final minimum = find.byWidgetPredicate(
+      (widget) => widget is TextField && widget.decoration?.hintText == 'Min',
+    );
+    await tester.enterText(minimum, '0.000000000001');
+    await tester.pump();
+
+    final filters = container.read(transactionFiltersProvider);
+    expect(filters.currencyCode, 'BTC');
+    expect(filters.minAmountCoefficient, '1');
+    expect(filters.minAmountScale, 12);
+    expect(filters.minAmount, isNull);
+  });
 }

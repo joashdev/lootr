@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../application/providers/budget_projection.dart';
 import '../../../../application/providers/budgets_tab_provider.dart';
 import '../../../../core/format/money_format.dart';
 import '../../../../core/theme/colors.dart';
@@ -13,22 +14,9 @@ class BudgetSummaryHeader extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final summary = ref.watch(budgetSummaryProvider);
+    final summaries = ref.watch(budgetSummaryProvider);
     final colorScheme = Theme.of(context).colorScheme;
     final lootrColors = context.lootrColors;
-
-    final progress = summary.budgeted > 0
-        ? (summary.spent / summary.budgeted).clamp(0.0, 1.5)
-        : 0.0;
-    final percent = summary.budgeted > 0
-        ? (summary.spent / summary.budgeted * 100).round()
-        : 0;
-
-    Color progressColor() {
-      if (progress >= 1.0) return lootrColors.danger;
-      if (progress >= 0.8) return lootrColors.warning;
-      return lootrColors.success;
-    }
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.cardPaddingStandard),
@@ -44,41 +32,67 @@ class BudgetSummaryHeader extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Monthly Summary',
+            'Monthly Summary by currency',
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w500,
               color: lootrColors.textSecondary,
             ),
           ),
-          const SizedBox(height: AppSpacing.space3),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '${MoneyFormat.display(summary.spent, 'PHP')} of ${MoneyFormat.display(summary.budgeted, 'PHP')}',
-                style: AppTypography.mono.copyWith(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Text(
-                '$percent%',
-                style: AppTypography.mono.copyWith(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: progressColor(),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.space2),
-          BudgetProgressBar(
-            progress: progress.clamp(0.0, 1.0),
-            color: progressColor(),
-          ),
+          for (final summary in summaries) ...[
+            const SizedBox(height: AppSpacing.space3),
+            _CurrencySummary(summary: summary),
+          ],
         ],
       ),
+    );
+  }
+}
+
+class _CurrencySummary extends StatelessWidget {
+  const _CurrencySummary({required this.summary});
+
+  final BudgetSummaryPartition summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = summary.progress.clamp(0.0, 1.5);
+    final lootrColors = context.lootrColors;
+    final color = progress >= 1
+        ? lootrColors.danger
+        : progress >= 0.8
+        ? lootrColors.warning
+        : lootrColors.success;
+    final symbol = MoneyFormat.symbolFor(summary.currencyCode);
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                '$symbol${summary.spent.toDecimalString()} of '
+                '$symbol${summary.budgeted.toDecimalString()} '
+                '${summary.currencyCode}',
+                style: AppTypography.mono.copyWith(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            Text(
+              '${(progress * 100).round()}%',
+              style: AppTypography.mono.copyWith(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.space2),
+        BudgetProgressBar(progress: progress.clamp(0.0, 1.0), color: color),
+      ],
     );
   }
 }

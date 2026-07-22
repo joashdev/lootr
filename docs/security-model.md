@@ -526,3 +526,19 @@ These features are infrastructure-complete — flipping the switch requires only
 | Audit trail | `ai_processing_logs` (AI), `sync_metadata` (sync health), `deleted_at` (soft delete) |
 | Data deletion | Account delete wipes local DB + server data; household contributed data preserved for other members |
 | V1 stance | Auth disabled, sync inert, biometric greyed out — all infrastructure exists, gated behind toggles |
+
+---
+
+## 14. Migration and Backup Security Amendment
+
+This section is a V1 launch gate and replaces any implication that encryption is complete merely because it is specified.
+
+- The production database must open through the SQLCipher asset selected by the `sqlite3` build hook, not system SQLite.
+- A random 256-bit database key is generated with a cryptographically secure RNG and stored only in `flutter_secure_storage` using device-only/unlocked platform protection where supported.
+- Every open sets the key before schema access and verifies `cipher_version`, `cipher_integrity_check`, and ordinary integrity/foreign-key checks.
+- Existing plaintext databases migrate by exporting into a new encrypted app-private file, verifying it, atomically replacing the live file, and deleting the plaintext original on a best-effort basis. A plaintext SQLite header after migration is blocking.
+- The selected Cashew file is copied into an app-private staging directory while hashing. The external original is never opened write-capable or modified. Staging is query-only, content is never logged, and cleanup runs after success, failure, cancellation, and rollback.
+- Secure deletion on flash storage is best-effort: overwrite where supported, fsync, close, unlink, and clearly disclose that wear leveling may retain blocks.
+- Preserved payloads and import checkpoints exist only inside the encrypted Lootr database. Migration error objects expose safe codes and calm user messages, never raw SQL, paths, filenames, IDs, text, URLs, settings, or amounts.
+- Lootr backups are independently encrypted and versioned. Restore verifies the manifest, ciphertext hash, cipher integrity, schema compatibility, and foreign keys in a temporary location before atomic replacement.
+- Transaction CSV is a deliberate readable export. The UI warns that it is plaintext, requires an explicit destination, and never leaves an app-private temporary copy after sharing/saving.

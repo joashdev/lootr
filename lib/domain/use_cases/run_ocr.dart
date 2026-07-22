@@ -6,11 +6,11 @@ class RunOCR {
   final OCRPipeline _pipeline;
   final bool _aiEnabled;
 
-  RunOCR({
-    OCRPipeline? pipeline,
-    bool aiEnabled = true,
-  })  : _pipeline = pipeline ?? const OCRPipeline(),
-        _aiEnabled = aiEnabled;
+  RunOCR({OCRPipeline? pipeline, bool aiEnabled = true})
+    : _pipeline = pipeline ?? const OCRPipeline(),
+      // Keep the public named argument stable while storing it privately.
+      // ignore: prefer_initializing_formals
+      _aiEnabled = aiEnabled;
 
   Future<Result<OcrPayload>> call(String imagePath) async {
     if (!_aiEnabled) {

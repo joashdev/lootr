@@ -133,7 +133,12 @@ class BudgetsScreen extends ConsumerWidget {
                     return BudgetCard(
                       budget: budget,
                       category: category,
-                      onTap: () => context.push('/budgets/${budget.id}'),
+                      onTap: () => context.push(
+                        budget.isImported
+                            ? '/budgets/imported/${budget.id}'
+                                  '?year=$year&month=$month'
+                            : '/budgets/${budget.id}',
+                      ),
                     );
                   },
                 );

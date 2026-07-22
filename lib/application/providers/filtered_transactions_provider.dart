@@ -5,6 +5,7 @@ import '../../data/repositories/transaction_repo.dart';
 import '../../domain/entities/mappers.dart';
 import '../../domain/entities/payee.dart';
 import '../../domain/entities/transaction.dart';
+import '../../domain/value_objects/exact_money.dart';
 import 'payees_provider.dart';
 import 'repo_providers.dart';
 import 'transaction_entry_support.dart';
@@ -20,6 +21,11 @@ final filteredTransactionsProvider = StreamProvider<List<Transaction>>((ref) {
   final normalizedQuery = normalizeSearchText(searchQuery);
 
   final repoFilters = TransactionRepoFilters(
+    currencyCode: filters.currencyCode,
+    minAmountCoefficient: filters.minAmountCoefficient,
+    minAmountScale: filters.minAmountScale,
+    maxAmountCoefficient: filters.maxAmountCoefficient,
+    maxAmountScale: filters.maxAmountScale,
     from: filters.dateRange?.start,
     to: filters.dateRange?.end,
   );
@@ -35,14 +41,9 @@ final filteredTransactionsProvider = StreamProvider<List<Transaction>>((ref) {
     var txns = rows.map((r) => r.toEntity()).toList();
     final transfers = transferRows.map((row) => row.toEntity()).toList();
 
-    if (filters.minAmount != null) {
-      txns = txns.where((t) => t.amount >= filters.minAmount!).toList();
-    }
-    if (filters.maxAmount != null) {
-      txns = txns.where((t) => t.amount <= filters.maxAmount!).toList();
-    }
-
-    txns = filters.apply(txns);
+    // Exact money constraints were evaluated at the repository boundary,
+    // where legacy rows can be promoted with their account precision.
+    txns = filters.apply(txns, includeMoney: false);
 
     final filteredTransfers = transfers
         .where((transfer) {
@@ -61,15 +62,38 @@ final filteredTransactionsProvider = StreamProvider<List<Transaction>>((ref) {
               !filters.dateRange!.contains(transfer.occurredAt)) {
             return false;
           }
-          if (filters.minAmount != null &&
-              transfer.amount < filters.minAmount!) {
-            return false;
-          }
-          if (filters.maxAmount != null &&
-              transfer.amount > filters.maxAmount!) {
-            return false;
-          }
-          return true;
+          final candidateAmounts = <ExactMoney>[
+            if (filters.accountIds.isEmpty ||
+                filters.accountIds.contains(transfer.sourceAccountId))
+              transfer.exactSourceAmount,
+            if (filters.accountIds.isEmpty ||
+                filters.accountIds.contains(transfer.destinationAccountId))
+              transfer.exactDestinationAmount,
+          ];
+          return candidateAmounts.any((amount) {
+            if (filters.currencyCode != null &&
+                amount.currencyCode != filters.currencyCode) {
+              return false;
+            }
+            if (!filters.hasExactAmountRange) return true;
+            if (filters.minAmountCoefficient != null) {
+              final minimum = ExactMoney(
+                coefficient: BigInt.parse(filters.minAmountCoefficient!),
+                scale: filters.minAmountScale!,
+                currencyCode: filters.currencyCode!,
+              );
+              if (amount.compareTo(minimum) < 0) return false;
+            }
+            if (filters.maxAmountCoefficient != null) {
+              final maximum = ExactMoney(
+                coefficient: BigInt.parse(filters.maxAmountCoefficient!),
+                scale: filters.maxAmountScale!,
+                currencyCode: filters.currencyCode!,
+              );
+              if (amount.compareTo(maximum) > 0) return false;
+            }
+            return true;
+          });
         })
         .map(mapTransferToTransaction);
 
@@ -94,6 +118,7 @@ bool _matchesSearch(
   String normalizedQuery,
 ) {
   final values = <String?>[
+    transaction.title,
     transaction.note,
     transaction.amount.toString(),
     transaction.amount.toStringAsFixed(2),

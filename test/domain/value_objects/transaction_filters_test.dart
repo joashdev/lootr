@@ -13,6 +13,9 @@ void main() {
     String accountId = 'acc-1',
     String? categoryId,
     double amount = 100,
+    String? amountAtoms,
+    int? amountScale,
+    String? currencyCode,
     String direction = 'expense',
     String mode = 'one_time',
     DateTime? occurredAt,
@@ -22,6 +25,9 @@ void main() {
       accountId: accountId,
       categoryId: categoryId,
       amount: amount,
+      amountAtoms: amountAtoms,
+      amountScale: amountScale,
+      currencyCode: currencyCode,
       direction: direction,
       mode: mode,
       occurredAt: occurredAt ?? now,
@@ -58,7 +64,16 @@ void main() {
       });
 
       test('should return false when amount range is set', () {
-        const filters = TransactionFilters(minAmount: 50);
+        const filters = TransactionFilters(
+          currencyCode: 'PHP',
+          minAmountCoefficient: '5000',
+          minAmountScale: 2,
+        );
+        expect(filters.isEmpty, isFalse);
+      });
+
+      test('should return false when currency is set', () {
+        const filters = TransactionFilters(currencyCode: 'BTC');
         expect(filters.isEmpty, isFalse);
       });
 
@@ -125,28 +140,95 @@ void main() {
         expect(result.first.categoryId, 'cat-1');
       });
 
-      test('should filter by minAmount', () {
+      test('should filter by currency-qualified minimum amount', () {
         final txs = [
           makeTx(id: '1', amount: 50),
           makeTx(id: '2', amount: 100),
           makeTx(id: '3', amount: 150),
         ];
-        const filters = TransactionFilters(minAmount: 100);
+        const filters = TransactionFilters(
+          currencyCode: 'PHP',
+          minAmountCoefficient: '10000',
+          minAmountScale: 2,
+        );
         final result = filters.apply(txs);
         expect(result.length, 2);
         expect(result.every((t) => t.amount >= 100), isTrue);
       });
 
-      test('should filter by maxAmount', () {
+      test('should filter by currency-qualified maximum amount', () {
         final txs = [
           makeTx(id: '1', amount: 50),
           makeTx(id: '2', amount: 100),
           makeTx(id: '3', amount: 150),
         ];
-        const filters = TransactionFilters(maxAmount: 100);
+        const filters = TransactionFilters(
+          currencyCode: 'PHP',
+          maxAmountCoefficient: '10000',
+          maxAmountScale: 2,
+        );
         final result = filters.apply(txs);
         expect(result.length, 2);
         expect(result.every((t) => t.amount <= 100), isTrue);
+      });
+
+      test('filters exact values without a double conversion', () {
+        final txs = [
+          makeTx(
+            id: 'below',
+            amount: 1,
+            amountAtoms: '999999999999',
+            amountScale: 12,
+            currencyCode: 'XTS',
+          ),
+          makeTx(
+            id: 'boundary',
+            amount: 1,
+            amountAtoms: '1000000000000',
+            amountScale: 12,
+            currencyCode: 'XTS',
+          ),
+          makeTx(
+            id: 'other-currency',
+            amount: 1,
+            amountAtoms: '1000000000000',
+            amountScale: 12,
+            currencyCode: 'BTC',
+          ),
+        ];
+        const filters = TransactionFilters(
+          currencyCode: 'XTS',
+          minAmountCoefficient: '1000000000000',
+          minAmountScale: 12,
+        );
+
+        expect(filters.apply(txs).map((t) => t.id), ['boundary']);
+      });
+
+      test('compares exact bounds across different scales', () {
+        final txs = [
+          makeTx(
+            id: 'same-value',
+            amount: 1,
+            amountAtoms: '10000',
+            amountScale: 4,
+            currencyCode: 'CLF',
+          ),
+          makeTx(
+            id: 'above',
+            amount: 1.0001,
+            amountAtoms: '10001',
+            amountScale: 4,
+            currencyCode: 'CLF',
+          ),
+        ];
+        const filters = TransactionFilters(
+          currencyCode: 'CLF',
+          maxAmountCoefficient: '100',
+          maxAmountScale: 2,
+        );
+
+        expect(filters.apply(txs).map((t) => t.id), ['same-value']);
       });
 
       test('should filter by dateRange', () {
@@ -171,8 +253,11 @@ void main() {
         const filters = TransactionFilters(
           directions: ['expense'],
           modes: ['one_time'],
-          minAmount: 50,
-          maxAmount: 150,
+          currencyCode: 'PHP',
+          minAmountCoefficient: '5000',
+          minAmountScale: 2,
+          maxAmountCoefficient: '15000',
+          maxAmountScale: 2,
         );
         final result = filters.apply(txs);
         expect(result.length, 2);

@@ -763,3 +763,19 @@ Your strongest direction is:
 
 That combination is extremely strong.
 
+---
+
+## Cashew Migration V1 Domain Amendment
+
+This amendment is authoritative where earlier sections use binary floating-point amounts, scalar-only goal/debt history, one-amount transfers, or one-category monthly budgets. References: `cashew-data-migration.md §8–15`, `database-schema.md §8`.
+
+- `Money` is an opaque currency identifier, explicit scale, and `BigInt` coefficient. Arithmetic requires the same currency and exact scale alignment.
+- `Transfer` always owns source and destination money legs. Cross-currency transfers use distinct amounts and never become expense plus income.
+- `BudgetDefinition` owns a period policy, direction policy, account/category include/exclude memberships, and explicit transaction memberships. Its evaluator returns exact per-currency totals plus an inclusion reason for each record. Overlapping budgets calculate independently.
+- `RecurringOccurrence` records due, paid, unpaid, skipped, dismissed, and resolution lifecycle with original due time and source-series provenance.
+- `GoalEvent` and `DebtEvent` are immutable financial events. Goal/debt scalar totals are caches that must reconcile to their event ledgers.
+- `CategorizationRule` is an active or archived exact/contains title/payee suggestion. Exact rules run before contains rules and never mutate saved history automatically.
+- `ImportRun` is a durable, resumable state machine. Every source row and relationship has one disposition, and publication is a single atomic database transaction.
+- `SourceMapping`, `Discrepancy`, `PreservedPayload`, and `RollbackCheckpoint` make imports explainable, idempotent, recoverable, and reversible.
+
+The migration UI may display the owner’s private source context on device, but diagnostics, fixtures, screenshots, reports, and commits remain redacted.

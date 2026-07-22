@@ -43,6 +43,8 @@ class Categorizer {
     this.modelEnabled = false,
     AiProcessingLogRepo? logRepo,
     this.aiEnabled = true,
+    // Keep the public named argument stable while storing it privately.
+    // ignore: prefer_initializing_formals
   }) : _logRepo = logRepo;
 
   Categorizer copyWith({
@@ -52,8 +54,7 @@ class Categorizer {
     bool? aiEnabled,
   }) {
     return Categorizer(
-      payeeCategoryHistory:
-          payeeCategoryHistory ?? this.payeeCategoryHistory,
+      payeeCategoryHistory: payeeCategoryHistory ?? this.payeeCategoryHistory,
       modelEnabled: modelEnabled ?? this.modelEnabled,
       logRepo: logRepo ?? _logRepo,
       aiEnabled: aiEnabled ?? this.aiEnabled,
@@ -76,7 +77,8 @@ class Categorizer {
 
     final normalizedPayee = payee?.toLowerCase().trim();
 
-    if (normalizedPayee != null && payeeCategoryHistory.containsKey(normalizedPayee)) {
+    if (normalizedPayee != null &&
+        payeeCategoryHistory.containsKey(normalizedPayee)) {
       final result = CategorySuggestion(
         categoryId: payeeCategoryHistory[normalizedPayee]!,
         confidence: 0.9,

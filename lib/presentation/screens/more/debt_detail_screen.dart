@@ -97,13 +97,13 @@ class DebtDetailScreen extends ConsumerWidget {
                 const SizedBox(height: AppSpacing.space6),
                 _DetailRow(
                   label: 'Total Amount',
-                  value: MoneyFormat.exact(debt.amount, 'PHP'),
+                  value: MoneyFormat.exactMoney(debt.exactAmount),
                   mono: true,
                 ),
                 const SizedBox(height: AppSpacing.space2),
                 _DetailRow(
                   label: 'Remaining',
-                  value: MoneyFormat.exact(debt.remainingBalance, 'PHP'),
+                  value: MoneyFormat.exactMoney(debt.exactRemainingBalance),
                   valueColor: debt.remainingBalance > 0
                       ? lootrColors.warning
                       : lootrColors.success,
@@ -270,7 +270,7 @@ class _PaymentRow extends StatelessWidget {
       title: Text(DebtDetailScreen._formatDate(transaction.occurredAt)),
       subtitle: Text(transaction.note ?? 'Debt payment'),
       trailing: Text(
-        MoneyFormat.exact(transaction.amount, 'PHP'),
+        MoneyFormat.exactMoney(transaction.exactAmount),
         style: AppTypography.mono.copyWith(color: amountColor),
       ),
     );

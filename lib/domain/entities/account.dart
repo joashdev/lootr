@@ -1,6 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
 
+import '../value_objects/exact_money.dart';
+
 part 'account.g.dart';
 
 @JsonSerializable()
@@ -12,6 +14,8 @@ class Account extends Equatable {
   final String accountType;
   final double balance;
   final String currencyCode;
+  final String? balanceAtoms;
+  final int? currencyPrecision;
   final bool isArchived;
   final bool isHidden;
   final DateTime createdAt;
@@ -26,6 +30,8 @@ class Account extends Equatable {
     required this.accountType,
     required this.balance,
     required this.currencyCode,
+    this.balanceAtoms,
+    this.currencyPrecision,
     required this.isArchived,
     required this.isHidden,
     required this.createdAt,
@@ -38,6 +44,17 @@ class Account extends Equatable {
 
   Map<String, dynamic> toJson() => _$AccountToJson(this);
 
+  ExactMoney get exactBalance => balanceAtoms == null
+      ? ExactMoney.parse(
+          balance.toStringAsFixed(currencyPrecision ?? 2),
+          currencyCode,
+        )
+      : ExactMoney(
+          coefficient: BigInt.parse(balanceAtoms!),
+          scale: currencyPrecision ?? 2,
+          currencyCode: currencyCode,
+        );
+
   Account copyWith({
     String? id,
     String? Function()? householdId,
@@ -46,6 +63,8 @@ class Account extends Equatable {
     String? accountType,
     double? balance,
     String? currencyCode,
+    String? Function()? balanceAtoms,
+    int? Function()? currencyPrecision,
     bool? isArchived,
     bool? isHidden,
     DateTime? createdAt,
@@ -54,13 +73,16 @@ class Account extends Equatable {
   }) {
     return Account(
       id: id ?? this.id,
-      householdId:
-          householdId != null ? householdId() : this.householdId,
+      householdId: householdId != null ? householdId() : this.householdId,
       ownerUserId: ownerUserId ?? this.ownerUserId,
       name: name ?? this.name,
       accountType: accountType ?? this.accountType,
       balance: balance ?? this.balance,
       currencyCode: currencyCode ?? this.currencyCode,
+      balanceAtoms: balanceAtoms != null ? balanceAtoms() : this.balanceAtoms,
+      currencyPrecision: currencyPrecision != null
+          ? currencyPrecision()
+          : this.currencyPrecision,
       isArchived: isArchived ?? this.isArchived,
       isHidden: isHidden ?? this.isHidden,
       createdAt: createdAt ?? this.createdAt,
@@ -71,17 +93,19 @@ class Account extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        householdId,
-        ownerUserId,
-        name,
-        accountType,
-        balance,
-        currencyCode,
-        isArchived,
-        isHidden,
-        createdAt,
-        updatedAt,
-        deletedAt,
-      ];
+    id,
+    householdId,
+    ownerUserId,
+    name,
+    accountType,
+    balance,
+    currencyCode,
+    balanceAtoms,
+    currencyPrecision,
+    isArchived,
+    isHidden,
+    createdAt,
+    updatedAt,
+    deletedAt,
+  ];
 }

@@ -15,8 +15,13 @@ class TransactionFiltersNotifier extends Notifier<TransactionFilters> {
       modes: state.modes,
       accountIds: state.accountIds,
       categoryIds: state.categoryIds,
+      currencyCode: state.currencyCode,
       minAmount: state.minAmount,
       maxAmount: state.maxAmount,
+      minAmountCoefficient: state.minAmountCoefficient,
+      minAmountScale: state.minAmountScale,
+      maxAmountCoefficient: state.maxAmountCoefficient,
+      maxAmountScale: state.maxAmountScale,
       dateRange: state.dateRange,
     );
   }
@@ -29,8 +34,13 @@ class TransactionFiltersNotifier extends Notifier<TransactionFilters> {
       modes: state.modes,
       accountIds: state.accountIds,
       categoryIds: state.categoryIds,
+      currencyCode: state.currencyCode,
       minAmount: state.minAmount,
       maxAmount: state.maxAmount,
+      minAmountCoefficient: state.minAmountCoefficient,
+      minAmountScale: state.minAmountScale,
+      maxAmountCoefficient: state.maxAmountCoefficient,
+      maxAmountScale: state.maxAmountScale,
       dateRange: state.dateRange,
     );
   }
@@ -41,8 +51,13 @@ class TransactionFiltersNotifier extends Notifier<TransactionFilters> {
       modes: mode == null ? const [] : [mode],
       accountIds: state.accountIds,
       categoryIds: state.categoryIds,
+      currencyCode: state.currencyCode,
       minAmount: state.minAmount,
       maxAmount: state.maxAmount,
+      minAmountCoefficient: state.minAmountCoefficient,
+      minAmountScale: state.minAmountScale,
+      maxAmountCoefficient: state.maxAmountCoefficient,
+      maxAmountScale: state.maxAmountScale,
       dateRange: state.dateRange,
     );
   }
@@ -55,8 +70,13 @@ class TransactionFiltersNotifier extends Notifier<TransactionFilters> {
       modes: next,
       accountIds: state.accountIds,
       categoryIds: state.categoryIds,
+      currencyCode: state.currencyCode,
       minAmount: state.minAmount,
       maxAmount: state.maxAmount,
+      minAmountCoefficient: state.minAmountCoefficient,
+      minAmountScale: state.minAmountScale,
+      maxAmountCoefficient: state.maxAmountCoefficient,
+      maxAmountScale: state.maxAmountScale,
       dateRange: state.dateRange,
     );
   }
@@ -67,8 +87,13 @@ class TransactionFiltersNotifier extends Notifier<TransactionFilters> {
       modes: state.modes,
       accountIds: accountId == null ? const [] : [accountId],
       categoryIds: state.categoryIds,
+      currencyCode: state.currencyCode,
       minAmount: state.minAmount,
       maxAmount: state.maxAmount,
+      minAmountCoefficient: state.minAmountCoefficient,
+      minAmountScale: state.minAmountScale,
+      maxAmountCoefficient: state.maxAmountCoefficient,
+      maxAmountScale: state.maxAmountScale,
       dateRange: state.dateRange,
     );
   }
@@ -81,8 +106,13 @@ class TransactionFiltersNotifier extends Notifier<TransactionFilters> {
       modes: state.modes,
       accountIds: next,
       categoryIds: state.categoryIds,
+      currencyCode: state.currencyCode,
       minAmount: state.minAmount,
       maxAmount: state.maxAmount,
+      minAmountCoefficient: state.minAmountCoefficient,
+      minAmountScale: state.minAmountScale,
+      maxAmountCoefficient: state.maxAmountCoefficient,
+      maxAmountScale: state.maxAmountScale,
       dateRange: state.dateRange,
     );
   }
@@ -93,8 +123,13 @@ class TransactionFiltersNotifier extends Notifier<TransactionFilters> {
       modes: state.modes,
       accountIds: state.accountIds,
       categoryIds: categoryId == null ? const [] : [categoryId],
+      currencyCode: state.currencyCode,
       minAmount: state.minAmount,
       maxAmount: state.maxAmount,
+      minAmountCoefficient: state.minAmountCoefficient,
+      minAmountScale: state.minAmountScale,
+      maxAmountCoefficient: state.maxAmountCoefficient,
+      maxAmountScale: state.maxAmountScale,
       dateRange: state.dateRange,
     );
   }
@@ -107,8 +142,13 @@ class TransactionFiltersNotifier extends Notifier<TransactionFilters> {
       modes: state.modes,
       accountIds: state.accountIds,
       categoryIds: next,
+      currencyCode: state.currencyCode,
       minAmount: state.minAmount,
       maxAmount: state.maxAmount,
+      minAmountCoefficient: state.minAmountCoefficient,
+      minAmountScale: state.minAmountScale,
+      maxAmountCoefficient: state.maxAmountCoefficient,
+      maxAmountScale: state.maxAmountScale,
       dateRange: state.dateRange,
     );
   }
@@ -119,6 +159,7 @@ class TransactionFiltersNotifier extends Notifier<TransactionFilters> {
       modes: state.modes,
       accountIds: state.accountIds,
       categoryIds: state.categoryIds,
+      currencyCode: state.currencyCode,
       minAmount: minAmount,
       maxAmount: maxAmount,
       dateRange: state.dateRange,
@@ -131,8 +172,52 @@ class TransactionFiltersNotifier extends Notifier<TransactionFilters> {
       modes: state.modes,
       accountIds: state.accountIds,
       categoryIds: state.categoryIds,
+      currencyCode: state.currencyCode,
       minAmount: state.minAmount,
       maxAmount: state.maxAmount,
+      minAmountCoefficient: state.minAmountCoefficient,
+      minAmountScale: state.minAmountScale,
+      maxAmountCoefficient: state.maxAmountCoefficient,
+      maxAmountScale: state.maxAmountScale,
+      dateRange: dateRange,
+    );
+  }
+
+  void setExactAmountRange({
+    required String? currencyCode,
+    String? minCoefficient,
+    int? minScale,
+    String? maxCoefficient,
+    int? maxScale,
+  }) {
+    state = TransactionFilters(
+      directions: state.directions,
+      modes: state.modes,
+      accountIds: state.accountIds,
+      categoryIds: state.categoryIds,
+      currencyCode: currencyCode,
+      minAmountCoefficient: minCoefficient,
+      minAmountScale: minScale,
+      maxAmountCoefficient: maxCoefficient,
+      maxAmountScale: maxScale,
+      dateRange: state.dateRange,
+    );
+  }
+
+  void setImportedScope({
+    required List<String> accountIds,
+    required DateRange? dateRange,
+  }) {
+    state = TransactionFilters(
+      directions: state.directions,
+      modes: state.modes,
+      accountIds: accountIds,
+      categoryIds: state.categoryIds,
+      currencyCode: state.currencyCode,
+      minAmountCoefficient: state.minAmountCoefficient,
+      minAmountScale: state.minAmountScale,
+      maxAmountCoefficient: state.maxAmountCoefficient,
+      maxAmountScale: state.maxAmountScale,
       dateRange: dateRange,
     );
   }

@@ -98,8 +98,6 @@ class _QuickActionsSheetBodyState extends State<_QuickActionsSheetBody> {
 
     setState(() => _isListening = true);
     await _speech.listen(
-      listenMode: ListenMode.dictation,
-      partialResults: true,
       onResult: (result) {
         if (!mounted) return;
         setState(() {
@@ -109,6 +107,10 @@ class _QuickActionsSheetBodyState extends State<_QuickActionsSheetBody> {
           );
         });
       },
+      listenOptions: SpeechListenOptions(
+        listenMode: ListenMode.dictation,
+        partialResults: true,
+      ),
     );
   }
 
@@ -198,7 +200,9 @@ class _QuickActionsSheetBodyState extends State<_QuickActionsSheetBody> {
                     ),
                   ),
                   IconButton(
-                    tooltip: _isListening ? 'Stop listening' : 'Start voice input',
+                    tooltip: _isListening
+                        ? 'Stop listening'
+                        : 'Start voice input',
                     onPressed: _toggleSpeechInput,
                     icon: Icon(
                       _isListening ? LucideIcons.audioLines : LucideIcons.mic,

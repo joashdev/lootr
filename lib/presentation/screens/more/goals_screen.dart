@@ -174,9 +174,8 @@ class _GoalList extends ConsumerWidget {
                           TextSpan(
                             children: [
                               TextSpan(
-                                text: MoneyFormat.exact(
-                                  goal.currentAmount,
-                                  'PHP',
+                                text: MoneyFormat.exactMoney(
+                                  goal.exactCurrentAmount,
                                 ),
                                 style: AppTypography.mono.copyWith(
                                   fontSize: 13,
@@ -194,7 +193,7 @@ class _GoalList extends ConsumerWidget {
                           ),
                         ),
                         Text(
-                          'of ${MoneyFormat.exact(goal.targetAmount, 'PHP')}',
+                          'of ${MoneyFormat.exactMoney(goal.exactTargetAmount)}',
                           style: AppTypography.mono.copyWith(
                             fontSize: 13,
                             fontWeight: FontWeight.w400,

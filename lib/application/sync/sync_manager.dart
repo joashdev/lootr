@@ -2,6 +2,7 @@ import 'dart:async';
 
 import '../../data/database/app_database.dart';
 import '../../data/repositories/sync_metadata_repo.dart';
+import '../database_access_gate.dart';
 import 'conflict_applier.dart';
 import 'connectivity_monitor.dart';
 import 'pull_client.dart';
@@ -26,6 +27,7 @@ class SyncManager {
   final String? Function()? _onTokenExpiredSync;
   final Future<String?> Function()? _onTokenExpired;
   final Future<void> Function()? _postSyncHook;
+  final DatabaseAccessLease? Function()? _tryAcquireDatabaseAccess;
 
   Timer? _retryTimer;
   int _retryDelay = 30;
@@ -41,13 +43,20 @@ class SyncManager {
     Future<String?> Function()? onTokenExpiredAsync,
     ConflictApplier? conflictApplier,
     Future<void> Function()? postSyncHook,
-  }) : _db = db,
+    DatabaseAccessLease? Function()? tryAcquireDatabaseAccess,
+  }) : // Keep public named arguments stable while storing them privately.
+       // ignore: prefer_initializing_formals
+       _db = db,
        _syncMetadataRepo = syncMetadataRepo,
+       // ignore: prefer_initializing_formals
        _connectivityMonitor = connectivityMonitor,
        _storedAccessToken = accessToken,
        _onTokenExpiredSync = onTokenExpired,
        _onTokenExpired = onTokenExpiredAsync,
+       // ignore: prefer_initializing_formals
        _postSyncHook = postSyncHook,
+       // ignore: prefer_initializing_formals
+       _tryAcquireDatabaseAccess = tryAcquireDatabaseAccess,
        _pushClient = PushClient(
          db: db,
          httpClient: httpClient,
@@ -68,8 +77,13 @@ class SyncManager {
     Future<String?> Function()? onTokenExpiredAsync,
   }) async {
     if (_disposed) return;
+    final databaseLease = _tryAcquireDatabaseAccess?.call();
+    if (_tryAcquireDatabaseAccess != null && databaseLease == null) return;
     final token = accessToken ?? _storedAccessToken;
-    if (!_acquireLock()) return;
+    if (!_acquireLock()) {
+      databaseLease?.release();
+      return;
+    }
 
     try {
       final now = DateTime.now().toUtc();
@@ -165,6 +179,7 @@ class SyncManager {
       await _scheduleRetry();
     } finally {
       _releaseLock();
+      databaseLease?.release();
       _syncCompleteController.add(null);
     }
   }

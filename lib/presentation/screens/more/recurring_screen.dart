@@ -239,8 +239,6 @@ class _RecurringList extends ConsumerWidget {
       ),
       itemBuilder: (context, index) {
         final t = templates[index];
-        final amount = t.amount;
-
         return SwipeActionRow(
           rowKey: Key(t.id),
           onEdit: () => showRecurringSheet(
@@ -280,7 +278,7 @@ class _RecurringList extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  MoneyFormat.exact(amount, 'PHP'),
+                  MoneyFormat.exactMoney(t.exactAmount),
                   style: AppTypography.mono.copyWith(
                     color: colorScheme.onSurface,
                   ),

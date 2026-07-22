@@ -11,12 +11,12 @@ class ParseNL {
     List<String> knownPayees = const [],
     List<String> knownAccounts = const [],
     bool aiEnabled = true,
-  })  : _parser = parser ??
-            NLParser(
-              knownPayees: knownPayees,
-              knownAccounts: knownAccounts,
-            ),
-        _aiEnabled = aiEnabled;
+  }) : _parser =
+           parser ??
+           NLParser(knownPayees: knownPayees, knownAccounts: knownAccounts),
+       // Keep the public named argument stable while storing it privately.
+       // ignore: prefer_initializing_formals
+       _aiEnabled = aiEnabled;
 
   Result<ParsedTransaction> call(String rawText) {
     if (!_aiEnabled) {
@@ -29,17 +29,16 @@ class ParseNL {
     final result = _parser.parse(rawText.trim());
 
     if (result == null) {
-      return Failure('Could not extract amount from input',
-          code: 'parse_failed');
+      return Failure(
+        'Could not extract amount from input',
+        code: 'parse_failed',
+      );
     }
 
     return Success(result.parsed);
   }
 
-  void updateLists({
-    List<String>? knownPayees,
-    List<String>? knownAccounts,
-  }) {
+  void updateLists({List<String>? knownPayees, List<String>? knownAccounts}) {
     _parser = _parser.copyWith(
       knownPayees: knownPayees ?? _parser.knownPayees,
       knownAccounts: knownAccounts ?? _parser.knownAccounts,

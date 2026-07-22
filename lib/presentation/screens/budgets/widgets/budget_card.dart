@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../../../../application/providers/budget_projection.dart';
 import '../../../../core/format/money_format.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/typography.dart';
-import '../../../../domain/entities/budget.dart';
 import '../../../../domain/entities/category.dart';
+import '../../../../domain/value_objects/exact_money.dart';
 import '../../../shared/category_visuals.dart';
 import '../../../shared/components/progress/budget_progress_bar.dart';
 
@@ -16,37 +18,42 @@ class BudgetCard extends StatelessWidget {
     this.onTap,
   });
 
-  final Budget budget;
+  final BudgetOverview budget;
   final Category? category;
   final VoidCallback? onTap;
 
   Color _progressColor(BuildContext context) {
-    if (budget.amount <= 0) return context.lootrColors.success;
-    final ratio = budget.spent / budget.amount;
+    if (budget.budgeted.isZero) return context.lootrColors.success;
+    final ratio = budget.progress;
     if (ratio >= 1.0) return context.lootrColors.danger;
     if (ratio >= 0.8) return context.lootrColors.warning;
     return context.lootrColors.success;
   }
 
   String _statusLabel() {
-    if (budget.amount <= 0) return 'No budget set';
-    final remaining = budget.amount - budget.spent;
-    if (remaining >= 0) {
-      return '${MoneyFormat.display(remaining, 'PHP')} left';
+    if (budget.budgeted.isZero) return 'No budget set';
+    final remaining = budget.remaining;
+    if (!remaining.isNegative) {
+      return '${_exact(remaining)} left';
     }
-    return '${MoneyFormat.display(-remaining, 'PHP')} over';
+    return '${_exact(remaining.abs())} over';
   }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final lootrColors = context.lootrColors;
-    final progress = budget.amount > 0
-        ? (budget.spent / budget.amount).clamp(0.0, 1.5)
+    final progress = !budget.budgeted.isZero
+        ? budget.progress.clamp(0.0, 1.5)
         : 0.0;
 
-    final iconValue = resolveBudgetIconValue(budget, category);
-    final budgetColor = resolveBudgetColor(budget, category);
+    final legacy = budget.legacyBudget;
+    final iconValue = legacy == null
+        ? null
+        : resolveBudgetIconValue(legacy, category);
+    final budgetColor = legacy == null
+        ? colorScheme.primary
+        : resolveBudgetColor(legacy, category);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.space2),
@@ -88,29 +95,54 @@ class BudgetCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Center(
-                          child: buildCategoryVisual(
-                            iconValue,
-                            color: budgetColor,
-                            size: 18,
-                          ),
+                          child: iconValue == null
+                              ? Icon(
+                                  LucideIcons.layers3,
+                                  color: budgetColor,
+                                  size: 18,
+                                )
+                              : buildCategoryVisual(
+                                  iconValue,
+                                  color: budgetColor,
+                                  size: 18,
+                                ),
                         ),
                       ),
                       const SizedBox(width: AppSpacing.space3),
                       Expanded(
-                        child: Text(
-                          category?.name ?? 'Uncategorized',
-                          style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w600,
-                            height: 1.4,
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              budget.isImported
+                                  ? budget.name
+                                  : category?.name ?? 'Uncategorized',
+                              style: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w600,
+                                height: 1.4,
+                              ),
+                            ),
+                            if (budget.isImported)
+                              Text(
+                                budget.needsReview
+                                    ? 'Imported · Needs review'
+                                    : 'Imported · Read-only',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: budget.needsReview
+                                      ? lootrColors.warning
+                                      : lootrColors.textTertiary,
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            MoneyFormat.display(budget.spent, 'PHP'),
+                            _exact(budget.spent),
                             style: AppTypography.mono.copyWith(
                               fontSize: 17,
                               fontWeight: FontWeight.w600,
@@ -118,7 +150,7 @@ class BudgetCard extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            'of ${MoneyFormat.display(budget.amount, 'PHP')}',
+                            'of ${_exact(budget.budgeted)}',
                             style: AppTypography.mono.copyWith(
                               fontSize: 13,
                               fontWeight: FontWeight.w400,
@@ -151,4 +183,6 @@ class BudgetCard extends StatelessWidget {
       ),
     );
   }
+
+  static String _exact(ExactMoney money) => MoneyFormat.exactMoney(money);
 }

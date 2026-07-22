@@ -142,115 +142,125 @@ class _CategorySpendingReportBody extends ConsumerWidget {
     return report.when(
       loading: _reportLoading,
       error: (error, _) => _reportError(context, error),
-      data: (data) {
-        if (data.isEmpty) {
+      data: (reports) {
+        final visibleReports = reports.where((data) => !data.isEmpty).toList();
+        if (visibleReports.isEmpty) {
           return EmptyState(
             headline: 'No spending yet',
             subtext:
-                'Expenses you add in ${data.periodLabel} will be broken down by category here.',
+                'Expenses you add will be broken down by category and currency here.',
             ctaLabel: 'Add Transaction',
             onCtaPressed: () => context.push('/transactions/new'),
             illustration: const Icon(LucideIcons.pieChart, size: 64),
           );
         }
 
-        final lootrColors = context.lootrColors;
         return ListView(
           padding: _reportPadding(context),
           children: [
-            Text(
-              data.periodLabel,
-              style: AppTypography.captionMedium.copyWith(
-                color: lootrColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.space3),
-            StandardCard(
-              child: Column(
-                children: [
-                  SizedBox(
-                    width: 180,
-                    height: 180,
-                    child: CustomPaint(
-                      painter: _DonutPainter(slices: data.slices),
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'Total spent',
-                              style: AppTypography.captionMedium.copyWith(
-                                color: lootrColors.textSecondary,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              MoneyFormat.display(
-                                data.total,
-                                data.currencyCode,
-                              ),
-                              style: AppTypography.h2Mono,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.space4),
-                  for (final slice in data.slices)
-                    Padding(
-                      padding: const EdgeInsets.only(
-                        bottom: AppSpacing.space2,
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 12,
-                            height: 12,
-                            decoration: BoxDecoration(
-                              color: slice.color,
-                              borderRadius: BorderRadius.circular(
-                                AppRadius.full,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.space2),
-                          Expanded(
-                            child: Text(
-                              slice.name,
-                              style: AppTypography.bodyMedium,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          Text(
-                            MoneyFormat.display(
-                              slice.amount,
-                              data.currencyCode,
-                            ),
-                            style: AppTypography.mono,
-                          ),
-                          const SizedBox(width: AppSpacing.space2),
-                          SizedBox(
-                            width: 40,
-                            child: Text(
-                              '${(slice.percentage * 100).round()}%',
-                              textAlign: TextAlign.right,
-                              style: AppTypography.mono.copyWith(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w400,
-                                color: lootrColors.textSecondary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
-            ),
+            for (final data in visibleReports) ...[
+              _CategoryCurrencySection(data: data),
+              const SizedBox(height: AppSpacing.space4),
+            ],
           ],
         );
       },
+    );
+  }
+}
+
+class _CategoryCurrencySection extends StatelessWidget {
+  const _CategoryCurrencySection({required this.data});
+
+  final CategorySpendingReport data;
+
+  @override
+  Widget build(BuildContext context) {
+    final lootrColors = context.lootrColors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '${data.periodLabel} · ${data.currencyCode}',
+          style: AppTypography.captionMedium.copyWith(
+            color: lootrColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.space3),
+        StandardCard(
+          child: Column(
+            children: [
+              SizedBox(
+                width: 180,
+                height: 180,
+                child: CustomPaint(
+                  painter: _DonutPainter(slices: data.slices),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Total spent',
+                          style: AppTypography.captionMedium.copyWith(
+                            color: lootrColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          MoneyFormat.display(data.total, data.currencyCode),
+                          style: AppTypography.h2Mono,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.space4),
+              for (final slice in data.slices)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.space2),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: slice.color,
+                          borderRadius: BorderRadius.circular(AppRadius.full),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.space2),
+                      Expanded(
+                        child: Text(
+                          slice.name,
+                          style: AppTypography.bodyMedium,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        MoneyFormat.display(slice.amount, data.currencyCode),
+                        style: AppTypography.mono,
+                      ),
+                      const SizedBox(width: AppSpacing.space2),
+                      SizedBox(
+                        width: 40,
+                        child: Text(
+                          '${(slice.percentage * 100).round()}%',
+                          textAlign: TextAlign.right,
+                          style: AppTypography.mono.copyWith(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w400,
+                            color: lootrColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -307,8 +317,9 @@ class _MonthlyFlowReportBody extends ConsumerWidget {
     return report.when(
       loading: _reportLoading,
       error: (error, _) => _reportError(context, error),
-      data: (data) {
-        if (data.isEmpty) {
+      data: (reports) {
+        final visibleReports = reports.where((data) => !data.isEmpty).toList();
+        if (visibleReports.isEmpty) {
           return EmptyState(
             headline: mode == _FlowMode.cashFlow
                 ? 'No cash flow yet'
@@ -326,87 +337,99 @@ class _MonthlyFlowReportBody extends ConsumerWidget {
           );
         }
 
-        final lootrColors = context.lootrColors;
         return ListView(
           padding: _reportPadding(context),
           children: [
-            Text(
-              'Last 6 months',
-              style: AppTypography.captionMedium.copyWith(
-                color: lootrColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.space3),
-            StandardCard(
-              child: Row(
-                children: [
-                  _ReportSummaryStat(
-                    label: 'Income',
-                    value: MoneyFormat.display(
-                      data.totalIncome,
-                      data.currencyCode,
-                    ),
-                    valueColor: lootrColors.income,
-                  ),
-                  _ReportSummaryStat(
-                    label: 'Expenses',
-                    value: MoneyFormat.display(
-                      data.totalExpense,
-                      data.currencyCode,
-                    ),
-                    valueColor: lootrColors.expense,
-                  ),
-                  _ReportSummaryStat(
-                    label: 'Net',
-                    value: MoneyFormat.display(
-                      data.totalNet,
-                      data.currencyCode,
-                    ),
-                    valueColor: data.totalNet >= 0
-                        ? lootrColors.success
-                        : lootrColors.danger,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.space3),
-            StandardCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (final month in data.months)
-                    Padding(
-                      padding: const EdgeInsets.only(
-                        bottom: AppSpacing.space3,
-                      ),
-                      child: mode == _FlowMode.incomeVsExpenses
-                          ? _IncomeExpenseMonthRow(
-                              point: month,
-                              maxValue: _maxFlowValue(data),
-                              currencyCode: data.currencyCode,
-                            )
-                          : _CashFlowMonthRow(
-                              point: month,
-                              maxAbsNet: _maxAbsNet(data),
-                              currencyCode: data.currencyCode,
-                            ),
-                    ),
-                ],
-              ),
-            ),
+            for (final data in visibleReports) ...[
+              _MonthlyFlowCurrencySection(data: data, mode: mode),
+              const SizedBox(height: AppSpacing.space4),
+            ],
           ],
         );
       },
     );
   }
+}
 
-  double _maxFlowValue(MonthlyFlowReport data) => data.months.fold<double>(
+class _MonthlyFlowCurrencySection extends StatelessWidget {
+  const _MonthlyFlowCurrencySection({required this.data, required this.mode});
+
+  final MonthlyFlowReport data;
+  final _FlowMode mode;
+
+  double get _maxFlowValue => data.months.fold<double>(
     0,
     (max, m) => math.max(max, math.max(m.income, m.expense)),
   );
 
-  double _maxAbsNet(MonthlyFlowReport data) =>
+  double get _maxAbsNet =>
       data.months.fold<double>(0, (max, m) => math.max(max, m.net.abs()));
+
+  @override
+  Widget build(BuildContext context) {
+    final lootrColors = context.lootrColors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Last 6 months · ${data.currencyCode}',
+          style: AppTypography.captionMedium.copyWith(
+            color: lootrColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.space3),
+        StandardCard(
+          child: Row(
+            children: [
+              _ReportSummaryStat(
+                label: 'Income',
+                value: MoneyFormat.display(data.totalIncome, data.currencyCode),
+                valueColor: lootrColors.income,
+              ),
+              _ReportSummaryStat(
+                label: 'Expenses',
+                value: MoneyFormat.display(
+                  data.totalExpense,
+                  data.currencyCode,
+                ),
+                valueColor: lootrColors.expense,
+              ),
+              _ReportSummaryStat(
+                label: 'Net',
+                value: MoneyFormat.display(data.totalNet, data.currencyCode),
+                valueColor: data.totalNet >= 0
+                    ? lootrColors.success
+                    : lootrColors.danger,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.space3),
+        StandardCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final month in data.months)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.space3),
+                  child: mode == _FlowMode.incomeVsExpenses
+                      ? _IncomeExpenseMonthRow(
+                          point: month,
+                          maxValue: _maxFlowValue,
+                          currencyCode: data.currencyCode,
+                        )
+                      : _CashFlowMonthRow(
+                          point: month,
+                          maxAbsNet: _maxAbsNet,
+                          currencyCode: data.currencyCode,
+                        ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class _IncomeExpenseMonthRow extends StatelessWidget {
@@ -573,8 +596,9 @@ class _NetWorthReportBody extends ConsumerWidget {
     return report.when(
       loading: _reportLoading,
       error: (error, _) => _reportError(context, error),
-      data: (data) {
-        if (data.isEmpty) {
+      data: (reports) {
+        final visibleReports = reports.where((data) => !data.isEmpty).toList();
+        if (visibleReports.isEmpty) {
           return EmptyState(
             headline: 'No accounts yet',
             subtext:
@@ -585,65 +609,84 @@ class _NetWorthReportBody extends ConsumerWidget {
           );
         }
 
-        final lootrColors = context.lootrColors;
-        final colorScheme = Theme.of(context).colorScheme;
-        final positiveChange = data.changePercent >= 0;
-        final rangeLabel =
-            '${DateFormat.MMMd().format(data.startDate)} – ${DateFormat.MMMd().format(data.endDate)}';
-
         return ListView(
           padding: _reportPadding(context),
           children: [
-            Text(
-              'Last 90 days · $rangeLabel',
-              style: AppTypography.captionMedium.copyWith(
-                color: lootrColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.space3),
-            StandardCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Current net worth',
-                    style: AppTypography.caption.copyWith(
-                      color: lootrColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.space1),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          MoneyFormat.display(data.current, data.currencyCode),
-                          style: AppTypography.h1Mono,
-                        ),
-                      ),
-                      Text(
-                        '${positiveChange ? '+' : ''}${data.changePercent.toStringAsFixed(1)}%',
-                        style: AppTypography.mono.copyWith(
-                          color: positiveChange
-                              ? lootrColors.success
-                              : lootrColors.danger,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.space4),
-                  Sparkline(
-                    data: data.series,
-                    height: 160,
-                    color: colorScheme.primary,
-                    semanticLabel: 'Net worth over the last 90 days',
-                  ),
-                ],
-              ),
-            ),
+            for (final data in visibleReports) ...[
+              _NetWorthCurrencySection(data: data),
+              const SizedBox(height: AppSpacing.space4),
+            ],
           ],
         );
       },
+    );
+  }
+}
+
+class _NetWorthCurrencySection extends StatelessWidget {
+  const _NetWorthCurrencySection({required this.data});
+
+  final NetWorthReport data;
+
+  @override
+  Widget build(BuildContext context) {
+    final lootrColors = context.lootrColors;
+    final positiveChange = data.changePercent >= 0;
+    final rangeLabel =
+        '${DateFormat.MMMd().format(data.startDate)} – ${DateFormat.MMMd().format(data.endDate)}';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Last 90 days · $rangeLabel · ${data.currencyCode}',
+          style: AppTypography.captionMedium.copyWith(
+            color: lootrColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.space3),
+        StandardCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Current net worth',
+                style: AppTypography.caption.copyWith(
+                  color: lootrColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.space1),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: Text(
+                      MoneyFormat.display(data.current, data.currencyCode),
+                      style: AppTypography.h1Mono,
+                    ),
+                  ),
+                  Text(
+                    '${positiveChange ? '+' : ''}${data.changePercent.toStringAsFixed(1)}%',
+                    style: AppTypography.mono.copyWith(
+                      color: positiveChange
+                          ? lootrColors.success
+                          : lootrColors.danger,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.space4),
+              Sparkline(
+                data: data.series,
+                height: 160,
+                color: Theme.of(context).colorScheme.primary,
+                semanticLabel:
+                    '${data.currencyCode} net worth over the last 90 days',
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -662,8 +705,9 @@ class _BudgetPerformanceReportBody extends ConsumerWidget {
     return report.when(
       loading: _reportLoading,
       error: (error, _) => _reportError(context, error),
-      data: (data) {
-        if (data.isEmpty) {
+      data: (reports) {
+        final visibleReports = reports.where((data) => !data.isEmpty).toList();
+        if (visibleReports.isEmpty) {
           return EmptyState(
             headline: 'No budgets yet',
             subtext:
@@ -674,56 +718,84 @@ class _BudgetPerformanceReportBody extends ConsumerWidget {
           );
         }
 
-        final lootrColors = context.lootrColors;
         return ListView(
           padding: _reportPadding(context),
           children: [
-            Text(
-              data.periodLabel,
-              style: AppTypography.captionMedium.copyWith(
-                color: lootrColors.textSecondary,
+            for (final data in visibleReports) ...[
+              _BudgetPerformanceCurrencySection(data: data),
+              const SizedBox(height: AppSpacing.space4),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _BudgetPerformanceCurrencySection extends StatelessWidget {
+  const _BudgetPerformanceCurrencySection({required this.data});
+
+  final BudgetPerformanceReport data;
+
+  @override
+  Widget build(BuildContext context) {
+    final lootrColors = context.lootrColors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '${data.periodLabel} · ${data.currencyCode}',
+          style: AppTypography.captionMedium.copyWith(
+            color: lootrColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.space3),
+        StandardCard(
+          child: Row(
+            children: [
+              _ReportSummaryStat(
+                label: 'Budgeted',
+                value: MoneyFormat.display(
+                  data.totalBudgeted,
+                  data.currencyCode,
+                ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.space3),
-            StandardCard(
-              child: Row(
-                children: [
-                  _ReportSummaryStat(
-                    label: 'Budgeted',
-                    value: MoneyFormat.display(
-                      data.totalBudgeted,
-                      data.currencyCode,
-                    ),
-                  ),
-                  _ReportSummaryStat(
-                    label: 'Spent',
-                    value: MoneyFormat.display(
-                      data.totalSpent,
-                      data.currencyCode,
-                    ),
-                    valueColor: lootrColors.expense,
-                  ),
-                  _ReportSummaryStat(
-                    label: 'Used',
-                    value: '${(data.progress * 100).round()}%',
-                    valueColor: data.progress >= 1
-                        ? lootrColors.danger
-                        : data.progress >= 0.85
-                        ? lootrColors.warning
-                        : lootrColors.success,
-                  ),
-                ],
+              _ReportSummaryStat(
+                label: 'Spent',
+                value: MoneyFormat.display(data.totalSpent, data.currencyCode),
+                valueColor: lootrColors.expense,
               ),
-            ),
-            const SizedBox(height: AppSpacing.space3),
-            StandardCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (final row in data.rows)
-                    Padding(
-                      padding: const EdgeInsets.only(
-                        bottom: AppSpacing.space3,
+              _ReportSummaryStat(
+                label: 'Used',
+                value: '${(data.progress * 100).round()}%',
+                valueColor: data.progress >= 1
+                    ? lootrColors.danger
+                    : data.progress >= 0.85
+                    ? lootrColors.warning
+                    : lootrColors.success,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.space3),
+        StandardCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final row in data.rows)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.space3),
+                  child: InkWell(
+                    onTap: () => context.push(
+                      row.isImported
+                          ? '/budgets/imported/${row.budgetId}'
+                                '?year=${row.periodStart.year}'
+                                '&month=${row.periodStart.month}'
+                          : '/budgets/${row.budgetId}',
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AppSpacing.space1,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -742,10 +814,24 @@ class _BudgetPerformanceReportBody extends ConsumerWidget {
                               ),
                               const SizedBox(width: AppSpacing.space2),
                               Expanded(
-                                child: Text(
-                                  row.name,
-                                  style: AppTypography.bodyMedium,
-                                  overflow: TextOverflow.ellipsis,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      row.name,
+                                      style: AppTypography.bodyMedium,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    if (row.isImported)
+                                      Text(
+                                        row.isReadOnly
+                                            ? 'Imported · Read-only'
+                                            : 'Imported',
+                                        style: AppTypography.caption.copyWith(
+                                          color: lootrColors.textSecondary,
+                                        ),
+                                      ),
+                                  ],
                                 ),
                               ),
                               Text.rich(
@@ -777,17 +863,18 @@ class _BudgetPerformanceReportBody extends ConsumerWidget {
                           const SizedBox(height: AppSpacing.space2),
                           BudgetProgressBar(
                             progress: row.progress,
-                            semanticLabel: '${row.name} budget usage',
+                            semanticLabel:
+                                '${row.name} ${data.currencyCode} budget usage',
                           ),
                         ],
                       ),
                     ),
-                ],
-              ),
-            ),
-          ],
-        );
-      },
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

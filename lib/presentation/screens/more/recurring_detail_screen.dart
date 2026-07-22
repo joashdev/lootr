@@ -77,7 +77,7 @@ class RecurringDetailScreen extends ConsumerWidget {
                       const SizedBox(height: AppSpacing.space2),
                       _DetailRow(
                         label: 'Amount',
-                        value: MoneyFormat.exact(template.amount, 'PHP'),
+                        value: MoneyFormat.exactMoney(template.exactAmount),
                         mono: true,
                       ),
                       const SizedBox(height: AppSpacing.space2),
@@ -173,7 +173,7 @@ class RecurringDetailScreen extends ConsumerWidget {
                         ),
                       ),
                       trailing: Text(
-                        MoneyFormat.exact(tx.amount, 'PHP'),
+                        MoneyFormat.exactMoney(tx.exactAmount),
                         style: AppTypography.mono.copyWith(
                           color: colorScheme.onSurface,
                         ),

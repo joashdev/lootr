@@ -47,9 +47,14 @@ class NotificationScheduler {
     required LocalNotificationsClient client,
     required bool Function(String notificationType) isEnabled,
     required void Function(String path) onDeepLink,
-  }) : _db = db,
+  }) : // Keep public named arguments stable while storing them privately.
+       // ignore: prefer_initializing_formals
+       _db = db,
+       // ignore: prefer_initializing_formals
        _client = client,
+       // ignore: prefer_initializing_formals
        _isEnabled = isEnabled,
+       // ignore: prefer_initializing_formals
        _onDeepLink = onDeepLink;
 
   static const maxPendingNotifications = 64;

@@ -18,11 +18,15 @@ class EditTransfer {
       );
     }
 
-    if (updated.amount <= 0) {
-      return Failure('Amount must be greater than zero', code: 'invalid_amount');
+    if (updated.exactSourceAmount.coefficient <= BigInt.zero ||
+        updated.exactDestinationAmount.coefficient <= BigInt.zero) {
+      return Failure(
+        'Amount must be greater than zero',
+        code: 'invalid_amount',
+      );
     }
 
-    if (updated.feeAmount < 0) {
+    if (updated.exactFeeAmount.isNegative) {
       return Failure('Fee amount cannot be negative', code: 'invalid_fee');
     }
 
@@ -38,7 +42,9 @@ class EditTransfer {
         );
       }
 
-      final source = await _accountRepo.watchById(updated.sourceAccountId).first;
+      final source = await _accountRepo
+          .watchById(updated.sourceAccountId)
+          .first;
       if (source == null) {
         return Failure(
           'Source account not found: ${updated.sourceAccountId}',
@@ -58,8 +64,9 @@ class EditTransfer {
         );
       }
 
-      final destination =
-          await _accountRepo.watchById(updated.destinationAccountId).first;
+      final destination = await _accountRepo
+          .watchById(updated.destinationAccountId)
+          .first;
       if (destination == null) {
         return Failure(
           'Destination account not found: ${updated.destinationAccountId}',
@@ -79,7 +86,10 @@ class EditTransfer {
         );
       }
     } catch (e) {
-      return Failure('Failed to validate transfer: $e', code: 'validation_error');
+      return Failure(
+        'Failed to validate transfer: $e',
+        code: 'validation_error',
+      );
     }
 
     try {

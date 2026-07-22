@@ -32,6 +32,7 @@ final connectivityMonitorProvider = Provider<ConnectivityMonitor>((ref) {
 
 final syncManagerProvider = Provider<SyncManager>((ref) {
   final db = ref.watch(databaseProvider);
+  final accessGate = ref.watch(databaseAccessGateProvider);
   final syncMetadataRepo = ref.watch(syncMetadataRepoProvider);
   final httpClient = ref.watch(syncHttpClientProvider);
   final conflictApplier = ref.watch(conflictApplierProvider);
@@ -45,6 +46,7 @@ final syncManagerProvider = Provider<SyncManager>((ref) {
     connectivityMonitor: connectivityMonitor,
     conflictApplier: conflictApplier,
     postSyncHook: notificationScheduler.rebuildSchedule,
+    tryAcquireDatabaseAccess: accessGate.tryAcquireShared,
   );
 
   ref.onDispose(manager.dispose);

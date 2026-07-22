@@ -11,6 +11,7 @@ import '../../core/theme/typography.dart';
 import '../../domain/entities/account.dart';
 import '../../domain/entities/category.dart';
 import '../../domain/value_objects/date_range.dart';
+import '../../domain/value_objects/exact_money.dart';
 import '../../domain/value_objects/transaction_filters.dart';
 import '../shared/components/sheet_handle.dart';
 
@@ -24,19 +25,33 @@ class FilterSheet extends ConsumerStatefulWidget {
 class _FilterSheetState extends ConsumerState<FilterSheet> {
   late final TextEditingController _minAmountController;
   late final TextEditingController _maxAmountController;
+  String? _currencyCode;
   DateTime? _startDate;
   DateTime? _endDate;
+  bool _amountNeedsCurrency = false;
+  bool _amountInvalid = false;
 
   @override
   void initState() {
     super.initState();
     final filters = ref.read(transactionFiltersProvider);
     _minAmountController = TextEditingController(
-      text: filters.minAmount?.toStringAsFixed(0) ?? '',
+      text: _initialAmountText(
+        coefficient: filters.minAmountCoefficient,
+        scale: filters.minAmountScale,
+        currencyCode: filters.currencyCode,
+        legacyAmount: filters.minAmount,
+      ),
     );
     _maxAmountController = TextEditingController(
-      text: filters.maxAmount?.toStringAsFixed(0) ?? '',
+      text: _initialAmountText(
+        coefficient: filters.maxAmountCoefficient,
+        scale: filters.maxAmountScale,
+        currencyCode: filters.currencyCode,
+        legacyAmount: filters.maxAmount,
+      ),
     );
+    _currencyCode = filters.currencyCode;
     _startDate = filters.dateRange?.start;
     _endDate = filters.dateRange?.end;
   }
@@ -48,10 +63,47 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
     super.dispose();
   }
 
-  void _applyAmountRange() {
-    final min = double.tryParse(_minAmountController.text.trim());
-    final max = double.tryParse(_maxAmountController.text.trim());
-    ref.read(transactionFiltersProvider.notifier).setAmountRange(min, max);
+  bool _applyAmountRange() {
+    final notifier = ref.read(transactionFiltersProvider.notifier);
+    final hasMinimum = _minAmountController.text.trim().isNotEmpty;
+    final hasMaximum = _maxAmountController.text.trim().isNotEmpty;
+    if (_currencyCode == null) {
+      notifier.setExactAmountRange(currencyCode: null);
+      final needsCurrency = hasMinimum || hasMaximum;
+      if (mounted) {
+        setState(() {
+          _amountNeedsCurrency = needsCurrency;
+          _amountInvalid = false;
+        });
+      }
+      return !needsCurrency;
+    }
+
+    final minimum = _parseExactAmount(
+      _minAmountController.text,
+      _currencyCode!,
+    );
+    final maximum = _parseExactAmount(
+      _maxAmountController.text,
+      _currencyCode!,
+    );
+    final invalid =
+        (hasMinimum && minimum == null) || (hasMaximum && maximum == null);
+    if (mounted) {
+      setState(() {
+        _amountNeedsCurrency = false;
+        _amountInvalid = invalid;
+      });
+    }
+    if (invalid) return false;
+    notifier.setExactAmountRange(
+      currencyCode: _currencyCode,
+      minCoefficient: minimum?.coefficient.toString(),
+      minScale: minimum?.scale,
+      maxCoefficient: maximum?.coefficient.toString(),
+      maxScale: maximum?.scale,
+    );
+    return true;
   }
 
   void _applyDateRange() {
@@ -128,8 +180,11 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
     _minAmountController.clear();
     _maxAmountController.clear();
     setState(() {
+      _currencyCode = null;
       _startDate = null;
       _endDate = null;
+      _amountNeedsCurrency = false;
+      _amountInvalid = false;
     });
     ref.read(transactionFiltersProvider.notifier).reset();
   }
@@ -198,6 +253,21 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                       const SizedBox(height: AppSpacing.space2),
                       _CategoryList(categories: categories, filters: filters),
                       const SizedBox(height: AppSpacing.space4),
+                      const _SectionLabel(label: 'Currency'),
+                      const SizedBox(height: AppSpacing.space2),
+                      _CurrencyList(
+                        accounts: accounts,
+                        selectedCurrencyCode: _currencyCode,
+                        onSelected: (currencyCode) {
+                          if (currencyCode == null && _currencyCode != null) {
+                            _minAmountController.clear();
+                            _maxAmountController.clear();
+                          }
+                          setState(() => _currencyCode = currencyCode);
+                          _applyAmountRange();
+                        },
+                      ),
+                      const SizedBox(height: AppSpacing.space4),
                       const _SectionLabel(label: 'Amount Range'),
                       const SizedBox(height: AppSpacing.space2),
                       _AmountRangeSection(
@@ -205,6 +275,17 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                         maxController: _maxAmountController,
                         onChanged: _applyAmountRange,
                       ),
+                      if (_amountNeedsCurrency || _amountInvalid) ...[
+                        const SizedBox(height: AppSpacing.space1),
+                        Text(
+                          _amountNeedsCurrency
+                              ? 'Choose a currency before filtering by amount.'
+                              : 'Enter a valid decimal amount.',
+                          style: AppTypography.caption.copyWith(
+                            color: colorScheme.error,
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: AppSpacing.space4),
                       const _SectionLabel(label: 'Date Range'),
                       const SizedBox(height: AppSpacing.space2),
@@ -238,7 +319,7 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                     onPressed: () {
                       // Amounts are committed as they are typed, but re-apply
                       // here so nothing typed is lost on Apply.
-                      _applyAmountRange();
+                      if (!_applyAmountRange()) return;
                       Navigator.of(context).pop();
                     },
                     style: FilledButton.styleFrom(
@@ -274,6 +355,32 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
         ),
       ),
     );
+  }
+}
+
+String _initialAmountText({
+  required String? coefficient,
+  required int? scale,
+  required String? currencyCode,
+  required double? legacyAmount,
+}) {
+  if (coefficient != null && scale != null && currencyCode != null) {
+    return ExactMoney(
+      coefficient: BigInt.parse(coefficient),
+      scale: scale,
+      currencyCode: currencyCode,
+    ).toDecimalString();
+  }
+  return legacyAmount?.toString() ?? '';
+}
+
+ExactMoney? _parseExactAmount(String raw, String currencyCode) {
+  final value = raw.trim();
+  if (value.isEmpty) return null;
+  try {
+    return ExactMoney.parse(value, currencyCode);
+  } on FormatException {
+    return null;
   }
 }
 
@@ -393,6 +500,49 @@ class _AccountList extends ConsumerWidget {
   }
 }
 
+class _CurrencyList extends StatelessWidget {
+  const _CurrencyList({
+    required this.accounts,
+    required this.selectedCurrencyCode,
+    required this.onSelected,
+  });
+
+  final AsyncValue<List<Account>> accounts;
+  final String? selectedCurrencyCode;
+  final ValueChanged<String?> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return accounts.when(
+      data: (items) {
+        final currencyCodes =
+            items.map((account) => account.currencyCode).toSet().toList()
+              ..sort();
+        return _PillScroller(
+          children: [
+            _PillChip(
+              label: 'All',
+              isSelected: selectedCurrencyCode == null,
+              onTap: () => onSelected(null),
+            ),
+            for (final currencyCode in currencyCodes)
+              _PillChip(
+                label: currencyCode,
+                isSelected: selectedCurrencyCode == currencyCode,
+                onTap: () => onSelected(currencyCode),
+              ),
+          ],
+        );
+      },
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: AppSpacing.space4),
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      ),
+      error: (_, _) => const Text('Unable to load currencies'),
+    );
+  }
+}
+
 class _CategoryList extends ConsumerWidget {
   const _CategoryList({required this.categories, required this.filters});
 
@@ -466,12 +616,8 @@ class _AmountRangeSection extends StatelessWidget {
         Expanded(
           child: TextField(
             controller: minController,
-            keyboardType: const TextInputType.numberWithOptions(
-              decimal: true,
-            ),
-            style: AppTypography.body.copyWith(
-              color: colorScheme.onSurface,
-            ),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            style: AppTypography.body.copyWith(color: colorScheme.onSurface),
             decoration: _rangeInputDecoration(
               context: context,
               hintText: 'Min',
@@ -490,12 +636,8 @@ class _AmountRangeSection extends StatelessWidget {
         Expanded(
           child: TextField(
             controller: maxController,
-            keyboardType: const TextInputType.numberWithOptions(
-              decimal: true,
-            ),
-            style: AppTypography.body.copyWith(
-              color: colorScheme.onSurface,
-            ),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            style: AppTypography.body.copyWith(color: colorScheme.onSurface),
             decoration: _rangeInputDecoration(
               context: context,
               hintText: 'Max',

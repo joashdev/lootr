@@ -7,29 +7,31 @@ import '../../data/repositories/transaction_repo.dart';
 import 'repo_providers.dart';
 
 final recurringDetailProvider =
-    StreamProvider.family<({RecurringTemplate template, List<Transaction> transactions})?, String>(
-  (ref, templateId) {
-    final recurringRepo = ref.watch(recurringRepoProvider);
-    final txnRepo = ref.watch(transactionRepoProvider);
+    StreamProvider.family<
+      ({RecurringTemplate template, List<Transaction> transactions})?,
+      String
+    >((ref, templateId) {
+      final recurringRepo = ref.watch(recurringRepoProvider);
+      final txnRepo = ref.watch(transactionRepoProvider);
 
-    final templateStream = recurringRepo.watchById(templateId).map(
-          (row) => row?.toEntity(),
-        );
+      final templateStream = recurringRepo
+          .watchById(templateId)
+          .map((row) => row?.toEntity());
 
-    final txnStream = txnRepo
-        .watchFiltered(const TransactionRepoFilters())
-        .map((rows) => rows
-            .where((r) => r.recurringTemplateId == templateId)
-            .map((r) => r.toEntity())
-            .toList());
+      final txnStream = txnRepo
+          .watchFiltered(const TransactionRepoFilters())
+          .map(
+            (rows) => rows
+                .where((r) => r.recurringTemplateId == templateId)
+                .map((r) => r.toEntity())
+                .toList(),
+          );
 
-    return Rx.combineLatest2(
-      templateStream,
-      txnStream,
-      (RecurringTemplate? template, List<Transaction> transactions) {
+      return Rx.combineLatest2(templateStream, txnStream, (
+        RecurringTemplate? template,
+        List<Transaction> transactions,
+      ) {
         if (template == null) return null;
         return (template: template, transactions: transactions);
-      },
-    );
-  },
-);
+      });
+    });

@@ -94,6 +94,9 @@ void main() {
     required DateTime occurredAt,
     String accountId = 'acc-cash',
     String? categoryId,
+    String? amountAtoms,
+    int? amountScale,
+    String? currencyCode,
     DateTime? deletedAt,
   }) {
     return db.transactions.insertOne(
@@ -101,6 +104,9 @@ void main() {
         id: id,
         accountId: accountId,
         amount: amount,
+        amountAtoms: Value(amountAtoms),
+        amountScale: Value(amountScale),
+        currencyCode: Value(currencyCode),
         transactionDirection: direction,
         transactionMode: 'one_time',
         occurredAt: occurredAt,
@@ -165,10 +171,11 @@ void main() {
       );
 
       final container = makeContainer();
-      final report = await readAsyncValue<CategorySpendingReport>(
+      final reports = await readAsyncValue<List<CategorySpendingReport>>(
         container,
         categorySpendingReportProvider,
       );
+      final report = reports.single;
 
       expect(report.currencyCode, 'PHP');
       expect(report.total, 600);
@@ -199,14 +206,61 @@ void main() {
       );
 
       final container = makeContainer();
-      final report = await readAsyncValue<CategorySpendingReport>(
+      final reports = await readAsyncValue<List<CategorySpendingReport>>(
         container,
         categorySpendingReportProvider,
       );
 
-      expect(report.isEmpty, isTrue);
-      expect(report.total, 0);
+      expect(reports, isEmpty);
     });
+
+    test(
+      'returns separate exact totals for every transaction currency',
+      () async {
+        await db.accounts.insertOne(
+          AccountsCompanion.insert(
+            id: 'acc-btc',
+            ownerUserId: 'usr-1',
+            name: 'Digital',
+            accountType: 'bank',
+            currencyCode: const Value('BTC'),
+            currencyPrecision: const Value(12),
+            balanceAtoms: const Value('0'),
+          ),
+        );
+        await insertTxn(
+          id: 'txn-php',
+          amount: 1,
+          amountAtoms: '100',
+          amountScale: 2,
+          currencyCode: 'PHP',
+          direction: 'expense',
+          occurredAt: DateTime(2026, 6, 4),
+          categoryId: 'cat-food',
+        );
+        await insertTxn(
+          id: 'txn-btc',
+          accountId: 'acc-btc',
+          amount: 0.000000000001,
+          amountAtoms: '1',
+          amountScale: 12,
+          currencyCode: 'BTC',
+          direction: 'expense',
+          occurredAt: DateTime(2026, 6, 5),
+          categoryId: 'cat-food',
+        );
+
+        final container = makeContainer();
+        final reports = await readAsyncValue<List<CategorySpendingReport>>(
+          container,
+          categorySpendingReportProvider,
+        );
+
+        expect(reports.map((report) => report.currencyCode), ['BTC', 'PHP']);
+        expect(reports.first.total, 0.000000000001);
+        expect(reports.last.total, 1);
+      },
+    );
   });
 
   group('monthlyFlowReportProvider', () {
@@ -242,10 +296,11 @@ void main() {
         categoryId: 'cat-food',
       );
       final container = makeContainer();
-      final report = await readAsyncValue<MonthlyFlowReport>(
+      final reports = await readAsyncValue<List<MonthlyFlowReport>>(
         container,
         monthlyFlowReportProvider,
       );
+      final report = reports.single;
 
       expect(report.months, hasLength(6));
       expect(report.months.map((m) => '${m.year}-${m.month}'), [
@@ -275,13 +330,54 @@ void main() {
 
     test('is empty with no income or expense activity', () async {
       final container = makeContainer();
-      final report = await readAsyncValue<MonthlyFlowReport>(
+      final reports = await readAsyncValue<List<MonthlyFlowReport>>(
         container,
         monthlyFlowReportProvider,
       );
 
-      expect(report.isEmpty, isTrue);
-      expect(report.months, hasLength(6));
+      expect(reports, isEmpty);
+    });
+
+    test('partitions monthly flow by currency', () async {
+      await db.accounts.insertOne(
+        AccountsCompanion.insert(
+          id: 'acc-btc-flow',
+          ownerUserId: 'usr-1',
+          name: 'Digital',
+          accountType: 'bank',
+          currencyCode: const Value('BTC'),
+          currencyPrecision: const Value(12),
+          balanceAtoms: const Value('0'),
+        ),
+      );
+      await insertTxn(
+        id: 'txn-php-flow',
+        amount: 1,
+        amountAtoms: '100',
+        amountScale: 2,
+        currencyCode: 'PHP',
+        direction: 'income',
+        occurredAt: DateTime(2026, 6, 2),
+      );
+      await insertTxn(
+        id: 'txn-btc-flow',
+        accountId: 'acc-btc-flow',
+        amount: 0.000000000001,
+        amountAtoms: '1',
+        amountScale: 12,
+        currencyCode: 'BTC',
+        direction: 'expense',
+        occurredAt: DateTime(2026, 6, 3),
+      );
+
+      final reports = await readAsyncValue<List<MonthlyFlowReport>>(
+        makeContainer(),
+        monthlyFlowReportProvider,
+      );
+
+      expect(reports.map((report) => report.currencyCode), ['BTC', 'PHP']);
+      expect(reports.first.totalExpense, 0.000000000001);
+      expect(reports.last.totalIncome, 1);
     });
   });
 
@@ -315,10 +411,11 @@ void main() {
       );
 
       final container = makeContainer();
-      final report = await readAsyncValue<NetWorthReport>(
+      final reports = await readAsyncValue<List<NetWorthReport>>(
         container,
         netWorthReportProvider,
       );
+      final report = reports.single;
 
       // 1000 cash - |−200| liability.
       expect(report.current, 800);
@@ -337,14 +434,36 @@ void main() {
       )).write(const AccountsCompanion(isArchived: Value(true)));
 
       final container = makeContainer();
-      final report = await readAsyncValue<NetWorthReport>(
+      final reports = await readAsyncValue<List<NetWorthReport>>(
         container,
         netWorthReportProvider,
       );
 
-      expect(report.hasAccounts, isFalse);
-      expect(report.isEmpty, isTrue);
-      expect(report.current, 0);
+      expect(reports, isEmpty);
+    });
+
+    test('returns one net-worth series per account currency', () async {
+      await db.accounts.insertOne(
+        AccountsCompanion.insert(
+          id: 'acc-btc-net-worth',
+          ownerUserId: 'usr-1',
+          name: 'Digital',
+          accountType: 'bank',
+          balance: const Value(0.000000000001),
+          balanceAtoms: const Value('1'),
+          currencyCode: const Value('BTC'),
+          currencyPrecision: const Value(12),
+        ),
+      );
+
+      final reports = await readAsyncValue<List<NetWorthReport>>(
+        makeContainer(),
+        netWorthReportProvider,
+      );
+
+      expect(reports.map((report) => report.currencyCode), ['BTC', 'PHP']);
+      expect(reports.first.current, 0.000000000001);
+      expect(reports.last.current, 1000);
     });
   });
 
@@ -399,10 +518,11 @@ void main() {
       );
 
       final container = makeContainer();
-      final report = await readAsyncValue<BudgetPerformanceReport>(
+      final reports = await readAsyncValue<List<BudgetPerformanceReport>>(
         container,
         budgetPerformanceReportProvider,
       );
+      final report = reports.single;
 
       expect(report.rows, hasLength(2));
       // Transport at 90% consumed sorts ahead of Food at 20%.
@@ -419,14 +539,113 @@ void main() {
 
     test('is empty when the month has no budgets', () async {
       final container = makeContainer();
-      final report = await readAsyncValue<BudgetPerformanceReport>(
+      final reports = await readAsyncValue<List<BudgetPerformanceReport>>(
         container,
         budgetPerformanceReportProvider,
       );
 
-      expect(report.isEmpty, isTrue);
-      expect(report.totalBudgeted, 0);
+      expect(reports, isEmpty);
     });
+
+    test('partitions budget performance by budget currency', () async {
+      await db.budgets.insertAll([
+        BudgetsCompanion.insert(
+          id: 'bud-btc',
+          ownerUserId: 'usr-1',
+          categoryId: 'cat-food',
+          amount: 0.000000000002,
+          amountAtoms: const Value('2'),
+          amountScale: const Value(12),
+          currencyCode: const Value('BTC'),
+          month: 6,
+          year: 2026,
+        ),
+        BudgetsCompanion.insert(
+          id: 'bud-php',
+          ownerUserId: 'usr-1',
+          categoryId: 'cat-transport',
+          amount: 2,
+          amountAtoms: const Value('200'),
+          amountScale: const Value(2),
+          currencyCode: const Value('PHP'),
+          month: 6,
+          year: 2026,
+        ),
+      ]);
+
+      final reports = await readAsyncValue<List<BudgetPerformanceReport>>(
+        makeContainer(),
+        budgetPerformanceReportProvider,
+      );
+
+      expect(reports.map((report) => report.currencyCode), ['BTC', 'PHP']);
+      expect(reports.first.totalBudgeted, 0.000000000002);
+      expect(reports.last.totalBudgeted, 2);
+    });
+
+    test(
+      'includes imported composite budgets as read-only report rows',
+      () async {
+        await db.accounts.insertOne(
+          AccountsCompanion.insert(
+            id: 'acc-usd-report',
+            ownerUserId: 'usr-1',
+            name: 'Imported account',
+            accountType: 'bank',
+            currencyCode: const Value('USD'),
+            currencyPrecision: const Value(4),
+            balanceAtoms: const Value('0'),
+          ),
+        );
+        await db.budgetDefinitions.insertOne(
+          BudgetDefinitionsCompanion.insert(
+            id: 'imported-report-budget',
+            ownerUserId: 'usr-1',
+            name: const Value('Imported composite'),
+            amountAtoms: '100000',
+            amountScale: 4,
+            currencyCode: 'USD',
+            membershipMode: const Value('explicit_only'),
+            isReadOnly: const Value(true),
+          ),
+        );
+        await db.transactions.insertOne(
+          TransactionsCompanion.insert(
+            id: 'imported-report-transaction',
+            accountId: 'acc-usd-report',
+            amount: 0,
+            amountAtoms: const Value('12345'),
+            amountScale: const Value(4),
+            currencyCode: const Value('USD'),
+            transactionDirection: 'expense',
+            transactionMode: 'one_time',
+            occurredAt: DateTime(2026, 6, 12),
+          ),
+        );
+        await db.budgetTransactionMemberships.insertOne(
+          BudgetTransactionMembershipsCompanion.insert(
+            id: 'imported-report-membership',
+            budgetId: 'imported-report-budget',
+            transactionId: const Value('imported-report-transaction'),
+          ),
+        );
+
+        final reports = await readAsyncValue<List<BudgetPerformanceReport>>(
+          makeContainer(),
+          budgetPerformanceReportProvider,
+        );
+        final report = reports.singleWhere(
+          (candidate) => candidate.currencyCode == 'USD',
+        );
+        final row = report.rows.single;
+
+        expect(row.name, 'Imported composite');
+        expect(row.isImported, isTrue);
+        expect(row.isReadOnly, isTrue);
+        expect(row.spent, 1.2345);
+        expect(report.totalBudgeted, 10);
+      },
+    );
 
     test(
       'updates when transaction spending changes without a budget edit',
@@ -445,11 +664,13 @@ void main() {
         final container = makeContainer();
         final initialCompleter = Completer<BudgetPerformanceReport>();
         final updatedCompleter = Completer<BudgetPerformanceReport>();
-        final sub = container.listen<AsyncValue<BudgetPerformanceReport>>(
+        final sub = container.listen<AsyncValue<List<BudgetPerformanceReport>>>(
           budgetPerformanceReportProvider,
           (previous, next) {
             if (!next.hasValue) return;
-            final report = next.requireValue;
+            final reports = next.requireValue;
+            if (reports.isEmpty) return;
+            final report = reports.single;
             if (!initialCompleter.isCompleted) {
               initialCompleter.complete(report);
             }

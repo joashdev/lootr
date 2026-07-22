@@ -1,6 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
 
+import '../value_objects/exact_money.dart';
+
 part 'transaction.g.dart';
 
 /// Core financial event entity.
@@ -20,6 +22,10 @@ class Transaction extends Equatable {
   final String? parentTransactionId;
   final String? recurringTemplateId;
   final double amount;
+  final String? amountAtoms;
+  final int? amountScale;
+  final String? currencyCode;
+  final String? title;
   @JsonKey(name: 'transaction_direction')
   final String direction;
   @JsonKey(name: 'transaction_mode')
@@ -41,6 +47,10 @@ class Transaction extends Equatable {
     this.parentTransactionId,
     this.recurringTemplateId,
     required this.amount,
+    this.amountAtoms,
+    this.amountScale,
+    this.currencyCode,
+    this.title,
     required this.direction,
     required this.mode,
     this.subtype,
@@ -50,12 +60,26 @@ class Transaction extends Equatable {
     required this.createdAt,
     required this.updatedAt,
     this.deletedAt,
-  }) : metadata = metadata == null ? null : Map<String, dynamic>.unmodifiable(metadata);
+  }) : metadata = metadata == null
+           ? null
+           : Map<String, dynamic>.unmodifiable(metadata);
 
   factory Transaction.fromJson(Map<String, dynamic> json) =>
       _$TransactionFromJson(json);
 
   Map<String, dynamic> toJson() => _$TransactionToJson(this);
+
+  ExactMoney get exactAmount =>
+      amountAtoms == null || amountScale == null || currencyCode == null
+      ? ExactMoney.parse(
+          amount.toStringAsFixed(amountScale ?? 2),
+          currencyCode ?? 'PHP',
+        )
+      : ExactMoney(
+          coefficient: BigInt.parse(amountAtoms!),
+          scale: amountScale!,
+          currencyCode: currencyCode!,
+        );
 
   Transaction copyWith({
     String? id,
@@ -65,6 +89,10 @@ class Transaction extends Equatable {
     String? Function()? parentTransactionId,
     String? Function()? recurringTemplateId,
     double? amount,
+    String? Function()? amountAtoms,
+    int? Function()? amountScale,
+    String? Function()? currencyCode,
+    String? Function()? title,
     String? direction,
     String? mode,
     String? Function()? subtype,
@@ -87,6 +115,10 @@ class Transaction extends Equatable {
           ? recurringTemplateId()
           : this.recurringTemplateId,
       amount: amount ?? this.amount,
+      amountAtoms: amountAtoms != null ? amountAtoms() : this.amountAtoms,
+      amountScale: amountScale != null ? amountScale() : this.amountScale,
+      currencyCode: currencyCode != null ? currencyCode() : this.currencyCode,
+      title: title != null ? title() : this.title,
       direction: direction ?? this.direction,
       mode: mode ?? this.mode,
       subtype: subtype != null ? subtype() : this.subtype,
@@ -101,21 +133,25 @@ class Transaction extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        accountId,
-        categoryId,
-        payeeId,
-        parentTransactionId,
-        recurringTemplateId,
-        amount,
-        direction,
-        mode,
-        subtype,
-        note,
-        metadata,
-        occurredAt,
-        createdAt,
-        updatedAt,
-        deletedAt,
-      ];
+    id,
+    accountId,
+    categoryId,
+    payeeId,
+    parentTransactionId,
+    recurringTemplateId,
+    amount,
+    amountAtoms,
+    amountScale,
+    currencyCode,
+    title,
+    direction,
+    mode,
+    subtype,
+    note,
+    metadata,
+    occurredAt,
+    createdAt,
+    updatedAt,
+    deletedAt,
+  ];
 }

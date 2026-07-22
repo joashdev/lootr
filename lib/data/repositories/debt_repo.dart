@@ -1,6 +1,9 @@
 import 'package:drift/drift.dart' hide isNull;
 
+import '../../domain/value_objects/exact_money.dart';
 import '../database/app_database.dart';
+import 'exact_money_codec.dart';
+import 'transaction_repo.dart';
 
 class DebtRepo {
   final AppDatabase _db;
@@ -44,14 +47,112 @@ class DebtRepo {
   }
 
   Future<void> settle(String id) async {
-    await (_db.update(_db.debtRecords)..where((d) => d.id.equals(id))).write(
-      DebtRecordsCompanion(
-        status: const Value('settled'),
-        remainingBalance: const Value(0.0),
-        syncStatus: const Value('pending_sync'),
-        updatedAt: Value(DateTime.now()),
-      ),
+    final debt =
+        await (_db.select(_db.debtRecords)
+              ..where((row) => row.id.equals(id))
+              ..limit(1))
+            .getSingleOrNull();
+    if (debt == null) throw StateError('Debt not found: $id');
+    final remaining = debt.remainingBalanceAtoms == null
+        ? ExactMoney.parse(
+            debt.remainingBalance.toString(),
+            debt.currencyCode ?? 'PHP',
+          ).rescale(debt.amountScale ?? 2, rounding: MoneyRoundingMode.halfEven)
+        : ExactMoney(
+            coefficient: BigInt.parse(debt.remainingBalanceAtoms!),
+            scale: debt.amountScale ?? 2,
+            currencyCode: debt.currencyCode ?? 'PHP',
+          );
+    await recordPaymentExact(id, remaining);
+  }
+
+  Future<void> recordPayment(
+    String id,
+    double amount, {
+    String? transactionId,
+  }) async {
+    final debt =
+        await (_db.select(_db.debtRecords)
+              ..where((row) => row.id.equals(id))
+              ..limit(1))
+            .getSingleOrNull();
+    if (debt == null) throw StateError('Debt not found: $id');
+    final scale = debt.amountScale ?? 2;
+    final currency = debt.currencyCode ?? 'PHP';
+    await recordPaymentExact(
+      id,
+      ExactMoney.parse(
+        amount.toString(),
+        currency,
+      ).rescale(scale, rounding: MoneyRoundingMode.halfEven),
+      transactionId: transactionId,
     );
+  }
+
+  Future<void> recordPaymentExact(
+    String id,
+    ExactMoney amount, {
+    String? transactionId,
+    TransactionsCompanion? transaction,
+  }) async {
+    await _db.transaction(() async {
+      final debt =
+          await (_db.select(_db.debtRecords)
+                ..where((row) => row.id.equals(id))
+                ..limit(1))
+              .getSingleOrNull();
+      if (debt == null) throw StateError('Debt not found: $id');
+      final scale = debt.amountScale ?? 2;
+      final currency = debt.currencyCode ?? 'PHP';
+      if (amount.currencyCode != currency) {
+        throw ArgumentError('Payment currency does not match the debt');
+      }
+      final requested = amount.rescale(scale).abs();
+      final remaining = debt.remainingBalanceAtoms == null
+          ? ExactMoney.parse(
+              debt.remainingBalance.toString(),
+              currency,
+            ).rescale(scale, rounding: MoneyRoundingMode.halfEven)
+          : ExactMoney(
+              coefficient: BigInt.parse(debt.remainingBalanceAtoms!),
+              scale: scale,
+              currencyCode: currency,
+            );
+      final payment = requested.compareTo(remaining) > 0
+          ? remaining
+          : requested;
+      final updated = remaining - payment;
+      final now = DateTime.now();
+      final linkedTransactionId = transaction == null
+          ? transactionId
+          : await TransactionRepo(_db).create(transaction);
+      await _db
+          .into(_db.debtPaymentEvents)
+          .insert(
+            DebtPaymentEventsCompanion.insert(
+              id: 'debt-event-${now.microsecondsSinceEpoch}',
+              debtRecordId: id,
+              transactionId: Value(linkedTransactionId),
+              amountAtoms: payment.coefficient.toString(),
+              amountScale: payment.scale,
+              currencyCode: payment.currencyCode,
+              occurredAt: now,
+            ),
+          );
+      await (_db.update(
+        _db.debtRecords,
+      )..where((row) => row.id.equals(id))).write(
+        DebtRecordsCompanion(
+          remainingBalance: Value(ExactMoneyCodec.legacyProjection(updated)),
+          remainingBalanceAtoms: Value(updated.coefficient.toString()),
+          amountScale: Value(scale),
+          currencyCode: Value(currency),
+          status: Value(updated.isZero ? 'settled' : 'partially_paid'),
+          syncStatus: const Value('pending_sync'),
+          updatedAt: Value(now),
+        ),
+      );
+    });
   }
 
   Future<void> softDelete(String id) async {

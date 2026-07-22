@@ -51,6 +51,9 @@ void main() {
           payeeId: const Value('pay-1'),
           categoryId: const Value('cat-1'),
           amount: 499,
+          amountAtoms: const Value('4990000'),
+          amountScale: const Value(4),
+          currencyCode: const Value('USD'),
           recurrenceRule: 'monthly',
           nextOccurrenceAt: Value(DateTime(2026, 8, 1, 9)),
         ),
@@ -68,6 +71,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Acme Music'), findsOneWidget);
+      expect(find.text(r'$499.0000'), findsOneWidget);
       expect(find.text('No subscriptions found'), findsNothing);
       await flushStreamCloseTimers(tester);
     },

@@ -75,11 +75,15 @@ class TransactionRowWidget extends StatelessWidget {
     if (categoryName != null) parts.add(categoryName!);
     parts.add(accountName);
     final categoryLabel = parts.join(' \u00b7 ');
+    final preservedTitle = transaction.title?.trim();
     final title = transaction.direction == 'transfer'
         ? payeeName == null
               ? 'Transfer'
               : 'Transfer to $payeeName'
-        : payeeName ?? transaction.note ?? accountName;
+        : payeeName ??
+              (preservedTitle?.isNotEmpty == true ? preservedTitle : null) ??
+              transaction.note ??
+              accountName;
 
     final row = Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -135,7 +139,7 @@ class TransactionRowWidget extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '${_amountPrefix()}${MoneyFormat.exact(transaction.amount, 'PHP')}',
+                '${_amountPrefix()}${MoneyFormat.exactMoney(transaction.exactAmount)}',
                 style: AppTypography.h3Mono.copyWith(color: directionColor),
               ),
               const SizedBox(height: 2),

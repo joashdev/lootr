@@ -10,6 +10,7 @@ import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
 import '../../../domain/entities/transaction.dart';
+import '../../../domain/value_objects/exact_money.dart';
 import '../../shared/components/empty_state.dart';
 import '../../shared/components/buttons/primary_button.dart';
 import 'more_form_sheets.dart';
@@ -53,7 +54,14 @@ class GoalDetailScreen extends ConsumerWidget {
               : progress >= 0.5
               ? colorScheme.primary
               : lootrColors.warning;
-          final remaining = goal.targetAmount - goal.currentAmount;
+          final remaining = goal.exactTargetAmount - goal.exactCurrentAmount;
+          final displayedRemaining = remaining.isNegative
+              ? ExactMoney(
+                  coefficient: BigInt.zero,
+                  scale: remaining.scale,
+                  currencyCode: remaining.currencyCode,
+                )
+              : remaining;
 
           return SingleChildScrollView(
             padding: EdgeInsets.fromLTRB(
@@ -115,23 +123,20 @@ class GoalDetailScreen extends ConsumerWidget {
                 const SizedBox(height: AppSpacing.space6),
                 _DetailCard(
                   label: 'Target',
-                  value: MoneyFormat.exact(goal.targetAmount, 'PHP'),
+                  value: MoneyFormat.exactMoney(goal.exactTargetAmount),
                   mono: true,
                 ),
                 const SizedBox(height: AppSpacing.space2),
                 _DetailCard(
                   label: 'Saved',
-                  value: MoneyFormat.exact(goal.currentAmount, 'PHP'),
+                  value: MoneyFormat.exactMoney(goal.exactCurrentAmount),
                   mono: true,
                 ),
                 const SizedBox(height: AppSpacing.space2),
                 _DetailCard(
                   label: 'Remaining',
-                  value: MoneyFormat.exact(
-                    remaining > 0 ? remaining : 0,
-                    'PHP',
-                  ),
-                  valueColor: remaining > 0
+                  value: MoneyFormat.exactMoney(displayedRemaining),
+                  valueColor: !remaining.isZero && !remaining.isNegative
                       ? lootrColors.warning
                       : lootrColors.success,
                   mono: true,
@@ -247,7 +252,7 @@ class _ContributionRow extends StatelessWidget {
       title: Text(transaction.note ?? 'Contribution'),
       subtitle: Text(GoalDetailScreen._formatDate(transaction.occurredAt)),
       trailing: Text(
-        MoneyFormat.exact(transaction.amount, 'PHP'),
+        MoneyFormat.exactMoney(transaction.exactAmount),
         style: AppTypography.mono.copyWith(color: lootrColors.expense),
       ),
     );

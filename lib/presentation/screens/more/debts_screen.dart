@@ -229,7 +229,7 @@ class _DebtRow extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(
-              MoneyFormat.exact(debt.remainingBalance, 'PHP'),
+              MoneyFormat.exactMoney(debt.exactRemainingBalance),
               style: AppTypography.mono.copyWith(
                 color: isSettled
                     ? lootrColors.textTertiary
@@ -237,7 +237,7 @@ class _DebtRow extends ConsumerWidget {
               ),
             ),
             Text(
-              'of ${MoneyFormat.exact(debt.amount, 'PHP')}',
+              'of ${MoneyFormat.exactMoney(debt.exactAmount)}',
               style: AppTypography.mono.copyWith(
                 fontSize: 13,
                 fontWeight: FontWeight.w400,

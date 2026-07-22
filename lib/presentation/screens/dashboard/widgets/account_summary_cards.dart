@@ -79,7 +79,10 @@ class AccountSummaryCards extends StatelessWidget {
                       ),
                       const SizedBox(height: AppSpacing.space3),
                       Text(
-                        MoneyFormat.display(account.balance, currencyCode),
+                        MoneyFormat.display(
+                          account.balance,
+                          account.currencyCode,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTypography.mono.copyWith(

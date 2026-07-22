@@ -4,6 +4,7 @@ import '../../data/repositories/account_repo.dart';
 import '../../data/repositories/ai_processing_log_repo.dart';
 import '../../data/repositories/budget_repo.dart';
 import '../../data/repositories/category_repo.dart';
+import '../../data/repositories/composite_budget_repo.dart';
 import '../../data/repositories/debt_repo.dart';
 import '../../data/repositories/goal_repo.dart';
 import '../../data/repositories/household_repo.dart';
@@ -25,6 +26,10 @@ final accountRepoProvider = Provider<AccountRepo>((ref) {
 
 final budgetRepoProvider = Provider<BudgetRepo>((ref) {
   return BudgetRepo(ref.watch(databaseProvider));
+});
+
+final compositeBudgetRepoProvider = Provider<CompositeBudgetRepo>((ref) {
+  return CompositeBudgetRepo(ref.watch(databaseProvider));
 });
 
 final categoryRepoProvider = Provider<CategoryRepo>((ref) {

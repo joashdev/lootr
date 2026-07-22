@@ -1,6 +1,9 @@
 import 'package:drift/drift.dart' hide isNull;
+import 'package:rxdart/rxdart.dart';
 
 import '../database/app_database.dart';
+import '../../domain/value_objects/exact_money.dart';
+import 'exact_money_codec.dart';
 
 class TransactionRepoFilters {
   final String? accountId;
@@ -9,6 +12,11 @@ class TransactionRepoFilters {
   final String? direction;
   final String? mode;
   final String? payeeIdFilter;
+  final String? currencyCode;
+  final String? minAmountCoefficient;
+  final int? minAmountScale;
+  final String? maxAmountCoefficient;
+  final int? maxAmountScale;
   final DateTime? from;
   final DateTime? to;
 
@@ -19,9 +27,26 @@ class TransactionRepoFilters {
     this.direction,
     this.mode,
     this.payeeIdFilter,
+    this.currencyCode,
+    this.minAmountCoefficient,
+    this.minAmountScale,
+    this.maxAmountCoefficient,
+    this.maxAmountScale,
     this.from,
     this.to,
-  });
+  }) : assert(
+         (minAmountCoefficient == null) == (minAmountScale == null),
+         'minAmountCoefficient and minAmountScale must be set together',
+       ),
+       assert(
+         (maxAmountCoefficient == null) == (maxAmountScale == null),
+         'maxAmountCoefficient and maxAmountScale must be set together',
+       ),
+       assert(
+         currencyCode != null ||
+             (minAmountCoefficient == null && maxAmountCoefficient == null),
+         'Exact amount bounds require an explicit currencyCode',
+       );
 }
 
 class TransactionRepo {
@@ -57,7 +82,50 @@ class TransactionRepo {
       q.where((t) => t.occurredAt.isSmallerOrEqualValue(filters.to!));
     }
 
-    return q.watch();
+    final rows = q.watch();
+    if (filters.currencyCode == null &&
+        filters.minAmountCoefficient == null &&
+        filters.maxAmountCoefficient == null) {
+      return rows;
+    }
+
+    final accounts = _db.select(_db.accounts).watch();
+    return Rx.combineLatest2<
+      List<TransactionData>,
+      List<AccountData>,
+      List<TransactionData>
+    >(rows, accounts, (transactions, accountRows) {
+      final accountsById = {
+        for (final account in accountRows) account.id: account,
+      };
+      final minimum = filters.minAmountCoefficient == null
+          ? null
+          : ExactMoney(
+              coefficient: BigInt.parse(filters.minAmountCoefficient!),
+              scale: filters.minAmountScale!,
+              currencyCode: filters.currencyCode!,
+            );
+      final maximum = filters.maxAmountCoefficient == null
+          ? null
+          : ExactMoney(
+              coefficient: BigInt.parse(filters.maxAmountCoefficient!),
+              scale: filters.maxAmountScale!,
+              currencyCode: filters.currencyCode!,
+            );
+
+      return transactions.where((transaction) {
+        final account = accountsById[transaction.accountId];
+        if (account == null) return false;
+        final amount = ExactMoneyCodec.transactionAmount(transaction, account);
+        if (filters.currencyCode != null &&
+            amount.currencyCode != filters.currencyCode) {
+          return false;
+        }
+        if (minimum != null && amount.compareTo(minimum) < 0) return false;
+        if (maximum != null && amount.compareTo(maximum) > 0) return false;
+        return true;
+      }).toList();
+    });
   }
 
   Stream<TransactionData?> watchById(String id) {
@@ -87,24 +155,17 @@ class TransactionRepo {
                 ..limit(1))
               .getSingle();
 
-      final balanceChange = row.transactionDirection == 'income'
-          ? row.amount
-          : -row.amount;
-
       final account =
           await (_db.select(_db.accounts)
                 ..where((a) => a.id.equals(row.accountId))
                 ..limit(1))
               .getSingle();
-
-      await (_db.update(
-        _db.accounts,
-      )..where((a) => a.id.equals(row.accountId))).write(
-        AccountsCompanion(
-          balance: Value(account.balance + balanceChange),
-          syncStatus: const Value('pending_sync'),
-          updatedAt: Value(DateTime.now()),
-        ),
+      final amount = ExactMoneyCodec.transactionAmount(row, account);
+      ExactMoneyCodec.requirePositive(amount, 'amount');
+      await _normalizeExactColumns(row.id, amount);
+      await _applyAccountImpact(
+        account,
+        _signedImpact(amount, row.transactionDirection),
       );
 
       if (row.recurringTemplateId != null) {
@@ -126,24 +187,15 @@ class TransactionRepo {
                 ..limit(1))
               .getSingle();
 
-      final oldImpact = old.transactionDirection == 'income'
-          ? old.amount
-          : -old.amount;
-
       final oldAccount =
           await (_db.select(_db.accounts)
                 ..where((a) => a.id.equals(old.accountId))
                 ..limit(1))
               .getSingle();
-
-      await (_db.update(
-        _db.accounts,
-      )..where((a) => a.id.equals(old.accountId))).write(
-        AccountsCompanion(
-          balance: Value(oldAccount.balance - oldImpact),
-          syncStatus: const Value('pending_sync'),
-          updatedAt: Value(DateTime.now()),
-        ),
+      final oldAmount = ExactMoneyCodec.transactionAmount(old, oldAccount);
+      await _applyAccountImpact(
+        oldAccount,
+        -_signedImpact(oldAmount, old.transactionDirection),
       );
 
       await (_db.update(
@@ -163,24 +215,26 @@ class TransactionRepo {
                 ..limit(1))
               .getSingle();
 
-      final newImpact = updated.transactionDirection == 'income'
-          ? updated.amount
-          : -updated.amount;
-
       final newAccount =
           await (_db.select(_db.accounts)
                 ..where((a) => a.id.equals(updated.accountId))
                 ..limit(1))
               .getSingle();
-
-      await (_db.update(
-        _db.accounts,
-      )..where((a) => a.id.equals(updated.accountId))).write(
-        AccountsCompanion(
-          balance: Value(newAccount.balance + newImpact),
-          syncStatus: const Value('pending_sync'),
-          updatedAt: Value(DateTime.now()),
-        ),
+      final preferLegacyProjection =
+          tx.amount.present &&
+          !tx.amountAtoms.present &&
+          !tx.amountScale.present &&
+          !tx.currencyCode.present;
+      final newAmount = ExactMoneyCodec.transactionAmount(
+        updated,
+        newAccount,
+        preferLegacyProjection: preferLegacyProjection,
+      );
+      ExactMoneyCodec.requirePositive(newAmount, 'amount');
+      await _normalizeExactColumns(updated.id, newAmount);
+      await _applyAccountImpact(
+        newAccount,
+        _signedImpact(newAmount, updated.transactionDirection),
       );
     });
   }
@@ -195,24 +249,15 @@ class TransactionRepo {
       if (rows.isEmpty) return;
       final txn = rows.first;
 
-      final impact = txn.transactionDirection == 'income'
-          ? txn.amount
-          : -txn.amount;
-
       final account =
           await (_db.select(_db.accounts)
                 ..where((a) => a.id.equals(txn.accountId))
                 ..limit(1))
               .getSingle();
-
-      await (_db.update(
-        _db.accounts,
-      )..where((a) => a.id.equals(txn.accountId))).write(
-        AccountsCompanion(
-          balance: Value(account.balance - impact),
-          syncStatus: const Value('pending_sync'),
-          updatedAt: Value(DateTime.now()),
-        ),
+      final amount = ExactMoneyCodec.transactionAmount(txn, account);
+      await _applyAccountImpact(
+        account,
+        -_signedImpact(amount, txn.transactionDirection),
       );
 
       final now = DateTime.now();
@@ -239,24 +284,15 @@ class TransactionRepo {
       if (rows.isEmpty) return;
       final txn = rows.first;
 
-      final impact = txn.transactionDirection == 'income'
-          ? txn.amount
-          : -txn.amount;
-
       final account =
           await (_db.select(_db.accounts)
                 ..where((a) => a.id.equals(txn.accountId))
                 ..limit(1))
               .getSingle();
-
-      await (_db.update(
-        _db.accounts,
-      )..where((a) => a.id.equals(txn.accountId))).write(
-        AccountsCompanion(
-          balance: Value(account.balance + impact),
-          syncStatus: const Value('pending_sync'),
-          updatedAt: Value(DateTime.now()),
-        ),
+      final amount = ExactMoneyCodec.transactionAmount(txn, account);
+      await _applyAccountImpact(
+        account,
+        _signedImpact(amount, txn.transactionDirection),
       );
 
       await (_db.update(_db.transactions)..where((t) => t.id.equals(id))).write(
@@ -317,5 +353,46 @@ class TransactionRepo {
       default:
         return null;
     }
+  }
+
+  ExactMoney _signedImpact(ExactMoney amount, String direction) {
+    return switch (direction) {
+      'income' => amount,
+      'expense' => -amount,
+      _ => throw ArgumentError.value(direction, 'direction', 'is invalid'),
+    };
+  }
+
+  Future<void> _normalizeExactColumns(String transactionId, ExactMoney amount) {
+    return (_db.update(
+      _db.transactions,
+    )..where((row) => row.id.equals(transactionId))).write(
+      TransactionsCompanion(
+        amount: Value(ExactMoneyCodec.legacyProjection(amount)),
+        amountAtoms: Value(amount.coefficient.toString()),
+        amountScale: Value(amount.scale),
+        currencyCode: Value(amount.currencyCode),
+      ),
+    );
+  }
+
+  Future<void> _applyAccountImpact(
+    AccountData account,
+    ExactMoney impact,
+  ) async {
+    final current = ExactMoneyCodec.accountBalance(account);
+    final normalizedImpact = ExactMoneyCodec.atAccountScale(impact, account);
+    final updated = current + normalizedImpact;
+    await (_db.update(
+      _db.accounts,
+    )..where((row) => row.id.equals(account.id))).write(
+      AccountsCompanion(
+        balance: Value(ExactMoneyCodec.legacyProjection(updated)),
+        balanceAtoms: Value(updated.coefficient.toString()),
+        currencyPrecision: Value(updated.scale),
+        syncStatus: const Value('pending_sync'),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
   }
 }

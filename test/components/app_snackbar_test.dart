@@ -5,18 +5,6 @@ import 'package:lootr/core/theme/theme.dart';
 import 'package:lootr/presentation/shared/components/app_snackbar.dart';
 
 void main() {
-  Widget wrapWithTheme(Widget child) {
-    return MaterialApp(
-      theme: AppTheme.light,
-      home: Scaffold(body: Builder(builder: (context) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          child;
-        });
-        return const Center(child: Text('test'));
-      })),
-    );
-  }
-
   group('AppSnackBar._SnackBarContent', () {
     testWidgets('neutral variant renders without overflow', (tester) async {
       await tester.pumpWidget(

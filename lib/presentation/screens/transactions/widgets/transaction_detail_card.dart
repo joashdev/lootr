@@ -46,6 +46,8 @@ class TransactionDetailCard extends StatelessWidget {
                 _DetailRow(label: 'Category', value: categoryName!),
               if (payeeName != null)
                 _DetailRow(label: 'Payee', value: payeeName!),
+              if (transaction.title != null && transaction.title!.isNotEmpty)
+                _DetailRow(label: 'Title', value: transaction.title!),
               _DetailRow(
                 label: 'Date',
                 value: dateFormat.format(transaction.occurredAt),

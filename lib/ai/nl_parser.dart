@@ -45,9 +45,19 @@ class NLParser {
   };
 
   static const _accountTokens = [
-    'unionbank', 'seabank', 'gotyme',
-    'gcash', 'maya', 'cash', 'bank', 'bpi', 'bdo',
-    'credit', 'card', 'wallet', 'savings',
+    'unionbank',
+    'seabank',
+    'gotyme',
+    'gcash',
+    'maya',
+    'cash',
+    'bank',
+    'bpi',
+    'bdo',
+    'credit',
+    'card',
+    'wallet',
+    'savings',
   ];
 
   static const _categoryKeywords = {
@@ -78,22 +88,46 @@ class NLParser {
   };
 
   static const _categoryTokens = [
-    'food', 'groceries', 'transport', 'fare', 'gas', 'fuel',
-    'rent', 'utilities', 'electric', 'water', 'internet',
-    'shopping', 'clothes', 'health', 'medical', 'pharmacy',
-    'entertainment', 'movie', 'dining', 'restaurant', 'coffee',
+    'food',
+    'groceries',
+    'transport',
+    'fare',
+    'gas',
+    'fuel',
+    'rent',
+    'utilities',
+    'electric',
+    'water',
+    'internet',
+    'shopping',
+    'clothes',
+    'health',
+    'medical',
+    'pharmacy',
+    'entertainment',
+    'movie',
+    'dining',
+    'restaurant',
+    'coffee',
   ];
 
-  static const _incomeTokens = [
-    'received', 'income', 'earned',
-  ];
+  static const _incomeTokens = ['received', 'income', 'earned'];
 
   static const _incomeKeywords = [
-    'received', 'income', 'got', 'earned', 'salary', 'refund',
+    'received',
+    'income',
+    'got',
+    'earned',
+    'salary',
+    'refund',
   ];
 
   static const _transferKeywords = [
-    'transfer', 'send', 'sent', 'move', 'moved',
+    'transfer',
+    'send',
+    'sent',
+    'move',
+    'moved',
   ];
 
   final List<String> knownPayees;
@@ -108,6 +142,8 @@ class NLParser {
     this.payeeCategoryHistory = const {},
     AiProcessingLogRepo? logRepo,
     this.aiEnabled = true,
+    // Keep the public named argument stable while storing it privately.
+    // ignore: prefer_initializing_formals
   }) : _logRepo = logRepo;
 
   NLParser copyWith({
@@ -120,8 +156,7 @@ class NLParser {
     return NLParser(
       knownPayees: knownPayees ?? this.knownPayees,
       knownAccounts: knownAccounts ?? this.knownAccounts,
-      payeeCategoryHistory:
-          payeeCategoryHistory ?? this.payeeCategoryHistory,
+      payeeCategoryHistory: payeeCategoryHistory ?? this.payeeCategoryHistory,
       logRepo: logRepo ?? _logRepo,
       aiEnabled: aiEnabled ?? this.aiEnabled,
     );
@@ -219,8 +254,14 @@ class NLParser {
   (String?, String?) _extractTransferAccounts(String text) {
     final lower = text.toLowerCase();
 
-    final fromPattern = RegExp(r'(?:from|send|sent|transfer)\s+([a-zA-Z]\w*)', caseSensitive: false);
-    final toPattern = RegExp(r'(?:to|into)\s+([a-zA-Z]\w*)', caseSensitive: false);
+    final fromPattern = RegExp(
+      r'(?:from|send|sent|transfer)\s+([a-zA-Z]\w*)',
+      caseSensitive: false,
+    );
+    final toPattern = RegExp(
+      r'(?:to|into)\s+([a-zA-Z]\w*)',
+      caseSensitive: false,
+    );
 
     String? source;
     String? dest;
@@ -247,12 +288,16 @@ class NLParser {
       source = accountWords[0];
       dest = accountWords[1];
     } else if (source == null && dest != null) {
-      final otherWord = accountWords
-          .firstWhere((a) => a != dest, orElse: () => '');
+      final otherWord = accountWords.firstWhere(
+        (a) => a != dest,
+        orElse: () => '',
+      );
       if (otherWord.isNotEmpty) source = otherWord;
     } else if (source != null && dest == null) {
-      final otherWord = accountWords
-          .firstWhere((a) => a != source, orElse: () => '');
+      final otherWord = accountWords.firstWhere(
+        (a) => a != source,
+        orElse: () => '',
+      );
       if (otherWord.isNotEmpty) dest = otherWord;
     }
 
@@ -282,7 +327,8 @@ class NLParser {
 
   _AmountMatch? _extractAmount(String text) {
     final currencyPattern = RegExp(
-        r'(?:[₱\$€£¥]\s*)?(-?(?:\d+(?:,\d{3})*(?:\.\d+)?|\.\d+))\s*(k|K|m|M)?\b');
+      r'(?:[₱\$€£¥]\s*)?(-?(?:\d+(?:,\d{3})*(?:\.\d+)?|\.\d+))\s*(k|K|m|M)?\b',
+    );
     final match = currencyPattern.firstMatch(text);
     if (match == null) return null;
 
@@ -338,11 +384,13 @@ class NLParser {
     final words = clean.split(' ');
 
     final nonMetaWords = words
-        .where((w) =>
-            !_accountTokens.contains(w.toLowerCase()) &&
-            !_categoryTokens.contains(w.toLowerCase()) &&
-            !_transferKeywords.contains(w.toLowerCase()) &&
-            !_incomeTokens.contains(w.toLowerCase()))
+        .where(
+          (w) =>
+              !_accountTokens.contains(w.toLowerCase()) &&
+              !_categoryTokens.contains(w.toLowerCase()) &&
+              !_transferKeywords.contains(w.toLowerCase()) &&
+              !_incomeTokens.contains(w.toLowerCase()),
+        )
         .toList();
 
     // Drop leading connector words left behind after meta words are removed,
