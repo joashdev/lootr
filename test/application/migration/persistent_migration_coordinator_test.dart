@@ -901,6 +901,5 @@ class _PostRollbackMutationFailureEngine extends CashewPublicationEngine {
           .insert(UsersCompanion.insert(id: 'synthetic-concurrent-user'));
       rethrow;
     }
-    throw StateError('unreachable');
   }
 }

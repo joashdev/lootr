@@ -382,14 +382,12 @@ class PersistentMigrationCoordinator implements MigrationCoordinator {
           );
         }
         await _setState(runId, 'failed');
-        if (expectedVerificationChanges != null) {
-          expectedVerificationChanges++;
-          if (await _targetChanged(expectedVerificationChanges)) {
-            await _setState(runId, 'interrupted');
-            throw const PersistentMigrationFailure(
-              'target_changed_during_verification',
-            );
-          }
+        expectedVerificationChanges++;
+        if (await _targetChanged(expectedVerificationChanges)) {
+          await _setState(runId, 'interrupted');
+          throw const PersistentMigrationFailure(
+            'target_changed_during_verification',
+          );
         }
         if (!await checkpoint.backup.file.exists()) {
           await _cleanup(await _requireRun(runId));
@@ -403,7 +401,7 @@ class PersistentMigrationCoordinator implements MigrationCoordinator {
         } on PersistentMigrationFailure catch (rollbackError) {
           if (rollbackError.code == 'target_changed_during_verification') {
             await _setState(runId, 'interrupted');
-            throw rollbackError;
+            rethrow;
           }
           // Preserve the publication failure; startup recovery retains both
           // the run and checkpoint if automatic rollback cannot complete.
@@ -429,14 +427,12 @@ class PersistentMigrationCoordinator implements MigrationCoordinator {
           );
         }
         await _setState(runId, 'failed');
-        if (expectedVerificationChanges != null) {
-          expectedVerificationChanges++;
-          if (await _targetChanged(expectedVerificationChanges)) {
-            await _setState(runId, 'interrupted');
-            throw const PersistentMigrationFailure(
-              'target_changed_during_verification',
-            );
-          }
+        expectedVerificationChanges++;
+        if (await _targetChanged(expectedVerificationChanges)) {
+          await _setState(runId, 'interrupted');
+          throw const PersistentMigrationFailure(
+            'target_changed_during_verification',
+          );
         }
         if (!await checkpoint.backup.file.exists()) {
           await _cleanup(await _requireRun(runId));
@@ -450,7 +446,7 @@ class PersistentMigrationCoordinator implements MigrationCoordinator {
         } on PersistentMigrationFailure catch (rollbackError) {
           if (rollbackError.code == 'target_changed_during_verification') {
             await _setState(runId, 'interrupted');
-            throw rollbackError;
+            rethrow;
           }
           // Preserve the original failure for diagnosis and retry recovery.
         } catch (_) {
