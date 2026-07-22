@@ -247,6 +247,16 @@ class _ReviewStep extends ConsumerWidget {
         const SizedBox(height: AppSpacing.space5),
         Semantics(
           header: true,
+          child: Text('Account types', style: AppTypography.h2),
+        ),
+        const SizedBox(height: AppSpacing.space3),
+        for (final partition in run.partitions) ...[
+          _AccountTypeSelector(runId: run.id, partition: partition),
+          const SizedBox(height: AppSpacing.space2),
+        ],
+        const SizedBox(height: AppSpacing.space3),
+        Semantics(
+          header: true,
           child: Text('Review groups', style: AppTypography.h2),
         ),
         const SizedBox(height: AppSpacing.space3),
@@ -255,6 +265,69 @@ class _ReviewStep extends ConsumerWidget {
           const SizedBox(height: AppSpacing.space3),
         ],
       ],
+    );
+  }
+}
+
+class _AccountTypeSelector extends ConsumerWidget {
+  const _AccountTypeSelector({required this.runId, required this.partition});
+
+  final String runId;
+  final MigrationCurrencyPartition partition;
+
+  static const types = {
+    'cash': 'Cash',
+    'bank': 'Bank',
+    'ewallet': 'E-wallet',
+    'savings': 'Savings',
+    'investment': 'Investment',
+    'crypto': 'Crypto',
+    'credit_card': 'Credit card',
+    'loan': 'Loan',
+    'bnpl': 'Buy now, pay later',
+  };
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return MigrationSectionCard(
+      child: DropdownButtonFormField<String>(
+        key: ValueKey('account-type-${partition.id}'),
+        initialValue: partition.accountType,
+        decoration: InputDecoration(
+          labelText: '${partition.accountLabel} · ${partition.currencyLabel}',
+          helperText: partition.accountTypeConfirmed
+              ? 'Confirmed for import.'
+              : 'Choose a type to confirm this account.',
+        ),
+        items: [
+          for (final entry in types.entries)
+            DropdownMenuItem(value: entry.key, child: Text(entry.value)),
+        ],
+        selectedItemBuilder: (context) => [
+          for (final entry in types.entries)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                entry.value,
+                style: AppTypography.body.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+            ),
+        ],
+        icon: const Text('v', semanticsLabel: 'Choose account type'),
+        onChanged: (value) {
+          if (value == null) return;
+          unawaited(
+            ref
+                .read(migrationCoordinatorProvider)
+                .resolveReviewGroup(
+                  runId,
+                  'policy.account_type:${partition.id}:$value',
+                ),
+          );
+        },
+      ),
     );
   }
 }
@@ -614,15 +687,21 @@ class _CompleteStep extends ConsumerWidget {
           icon: LucideIcons.receiptText,
           onPressed: () {
             final latest = run.latestImportedMonth;
+            final filters = ref.read(transactionFiltersProvider);
+            DateRange? dateRange = filters.dateRange;
             if (latest != null) {
               final start = DateTime(latest.year, latest.month);
               final end = latest.month == 12
                   ? DateTime(latest.year + 1)
                   : DateTime(latest.year, latest.month + 1);
-              ref
-                  .read(transactionFiltersProvider.notifier)
-                  .setDateRange(DateRange(start, end));
+              dateRange = DateRange(start, end);
             }
+            ref
+                .read(transactionFiltersProvider.notifier)
+                .setImportedScope(
+                  accountIds: run.importedAccountIds,
+                  dateRange: dateRange,
+                );
             context.go('/transactions');
           },
         ),

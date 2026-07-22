@@ -24,6 +24,8 @@ class PersistentMigrationCoordinator implements MigrationCoordinator {
     required this.staging,
     required this.backups,
     required this.restoreCheckpoint,
+    this.beginMaintenance,
+    this.endMaintenance,
     this.adapter = const CashewSourceAdapter(),
     this.publication = const CashewPublicationEngine(),
     DateTime Function()? now,
@@ -37,7 +39,9 @@ class PersistentMigrationCoordinator implements MigrationCoordinator {
   final CashewSourceRegistry registry;
   final CashewStagingService staging;
   final LootrBackupService backups;
-  final Future<void> Function(File backup) restoreCheckpoint;
+  final Future<File> Function(File backup, String runId) restoreCheckpoint;
+  final Future<void> Function()? beginMaintenance;
+  final Future<void> Function()? endMaintenance;
   final CashewSourceAdapter adapter;
   final CashewPublicationEngine publication;
   final DateTime Function() _now;
@@ -157,6 +161,45 @@ class PersistentMigrationCoordinator implements MigrationCoordinator {
     await _startupRecovery;
     final run = await _requireRun(runId);
     if (run.state != 'needs_review') return;
+    if (groupId.startsWith('policy.account_type:')) {
+      final parts = groupId.split(':');
+      const allowed = {
+        'cash',
+        'bank',
+        'ewallet',
+        'savings',
+        'investment',
+        'crypto',
+        'credit_card',
+        'loan',
+        'bnpl',
+      };
+      if (parts.length != 3 || !allowed.contains(parts[2])) return;
+      final json = Map<String, dynamic>.from(
+        run.policyJson == null
+            ? const <String, dynamic>{}
+            : jsonDecode(run.policyJson!) as Map<String, dynamic>,
+      );
+      final accountTypes = Map<String, dynamic>.from(
+        json['account_types'] as Map<String, dynamic>? ?? const {},
+      );
+      accountTypes[parts[1]] = parts[2];
+      json['account_types'] = accountTypes;
+      await (database().update(database().importRuns)
+            ..where((row) => row.id.equals(runId)))
+          .write(ImportRunsCompanion(policyJson: Value(jsonEncode(json))));
+      await (database().update(database().importDiscrepancies)..where(
+            (row) =>
+                row.importRunId.equals(runId) &
+                row.issueCode.equals(
+                  'policy.account_type_confirmation:${parts[1]}',
+                ),
+          ))
+          .write(const ImportDiscrepanciesCompanion(isResolved: Value(true)));
+      _emit();
+      return;
+    }
+    if (groupId.startsWith('policy.account_type_confirmation:')) return;
     final discrepancies = database().importDiscrepancies;
     final blocking =
         await (database().select(discrepancies)..where(
@@ -201,6 +244,7 @@ class PersistentMigrationCoordinator implements MigrationCoordinator {
             reusedRecords: mappings,
             accountPartitions: analysis.report.tableCounts['wallets'] ?? 0,
             reviewAccountPartitions: 0,
+            totalChangesAfterPublication: await _totalChanges(),
           ),
         );
         await (database().update(
@@ -240,59 +284,182 @@ class PersistentMigrationCoordinator implements MigrationCoordinator {
   @override
   Future<void> apply(String runId) async {
     await _startupRecovery;
-    var run = await _requireRun(runId);
-    if (run.state != 'ready') return;
-    final analysis = await _loadAnalysis(run);
-    if (analysis.report.hasBlockingIssues ||
-        !analysis.report.reconciliation.passed) {
-      throw const PersistentMigrationFailure('publication_not_safe');
-    }
-
-    final checkpoint = await _createRollbackCheckpoint(run);
-    await _setState(runId, 'applying');
     try {
-      final policy = _policy(run);
-      final result = await publication.publish(
-        database: database(),
-        importRunId: runId,
-        analysis: analysis,
-        titlePolicy: policy.titlePolicy.name,
-        timezoneId: policy.timezoneId,
+      await beginMaintenance?.call();
+    } on StateError {
+      // Another publication, restore, or rollback owns the database session.
+      return;
+    }
+    try {
+      final claimed = await database().customUpdate(
+        "UPDATE import_runs SET state = 'applying' "
+        "WHERE id = ? AND state = 'ready'",
+        variables: [Variable.withString(runId)],
       );
-      await _setState(runId, 'verifying');
-      await _verifyPublication(runId, analysis, result);
-      await (database().update(
-        database().importRuns,
-      )..where((table) => table.id.equals(runId))).write(
-        ImportRunsCompanion(
-          state: const Value('complete'),
-          completedAt: Value(_now().toUtc()),
-          countsJson: Value(
-            jsonEncode({
-              ..._safeAnalysisJson(analysis),
-              'publication': {
-                'inserted_financial_records': result.insertedFinancialRecords,
-                'preserved_records': result.preservedRecords,
-                'reused_records': result.reusedRecords,
-                'account_partitions': result.accountPartitions,
-                'review_account_partitions': result.reviewAccountPartitions,
-              },
-            }),
-          ),
-        ),
-      );
-      run = await _requireRun(runId);
-      await _cleanup(run);
-      _analysis.remove(runId);
-      _emit();
-    } catch (_) {
-      await _setState(runId, 'failed');
-      if (!await checkpoint.file.exists()) {
-        await _cleanup(await _requireRun(runId));
-        throw const PersistentMigrationFailure('checkpoint_lost');
+      if (claimed != 1) return;
+      var run = await _requireRun(runId);
+      final analysis = await _loadAnalysis(run);
+      if (analysis.report.hasBlockingIssues ||
+          !analysis.report.reconciliation.passed) {
+        await _setState(runId, 'ready');
+        throw const PersistentMigrationFailure('publication_not_safe');
       }
-      await rollback(runId);
-      rethrow;
+
+      late _PreparedRollbackCheckpoint checkpoint;
+      try {
+        checkpoint = await _createRollbackCheckpoint(run);
+      } catch (_) {
+        await _setState(runId, 'ready');
+        rethrow;
+      }
+      int? expectedVerificationChanges;
+      var publicationVerified = false;
+      try {
+        final policy = _policy(run);
+        final result = await publication.publish(
+          database: database(),
+          importRunId: runId,
+          analysis: analysis,
+          titlePolicy: policy.titlePolicy.name,
+          timezoneId: policy.timezoneId,
+          accountTypes: policy.accountTypes,
+          expectedTotalChanges: checkpoint.expectedTotalChanges,
+        );
+        expectedVerificationChanges = result.totalChangesAfterPublication;
+        await _setState(runId, 'verifying');
+        expectedVerificationChanges++;
+        await _assertTargetUnchanged(expectedVerificationChanges);
+        await _verifyPublication(runId, analysis, result);
+        await _assertTargetUnchanged(expectedVerificationChanges);
+        publicationVerified = true;
+
+        // Verification succeeded. Errors after this point must never trigger
+        // an automatic restore of the pre-import checkpoint.
+        await (database().update(
+          database().importRuns,
+        )..where((table) => table.id.equals(runId))).write(
+          ImportRunsCompanion(
+            state: const Value('complete'),
+            completedAt: Value(_now().toUtc()),
+            countsJson: Value(
+              jsonEncode({
+                ..._safeAnalysisJson(analysis),
+                'publication': {
+                  'inserted_financial_records': result.insertedFinancialRecords,
+                  'preserved_records': result.preservedRecords,
+                  'reused_records': result.reusedRecords,
+                  'account_partitions': result.accountPartitions,
+                  'review_account_partitions': result.reviewAccountPartitions,
+                },
+              }),
+            ),
+          ),
+        );
+        run = await _requireRun(runId);
+        await _cleanup(run);
+        _analysis.remove(runId);
+        _emit();
+      } on CashewPublicationFailure catch (error, stackTrace) {
+        if (publicationVerified) {
+          Error.throwWithStackTrace(error, stackTrace);
+        }
+        if (error.code == 'target_changed_during_checkpoint') {
+          await _discardPreparedCheckpoint(runId, checkpoint);
+          await _setState(runId, 'ready');
+          rethrow;
+        }
+        if (expectedVerificationChanges == null) {
+          // The publication transaction did not commit, so restoring an older
+          // file could only discard an unrelated write made after checkpoint.
+          await _discardPreparedCheckpoint(runId, checkpoint);
+          await _setState(runId, 'ready');
+          Error.throwWithStackTrace(error, stackTrace);
+        }
+        if (await _targetChanged(expectedVerificationChanges)) {
+          await _setState(runId, 'interrupted');
+          throw const PersistentMigrationFailure(
+            'target_changed_during_verification',
+          );
+        }
+        await _setState(runId, 'failed');
+        if (expectedVerificationChanges != null) {
+          expectedVerificationChanges++;
+          if (await _targetChanged(expectedVerificationChanges)) {
+            await _setState(runId, 'interrupted');
+            throw const PersistentMigrationFailure(
+              'target_changed_during_verification',
+            );
+          }
+        }
+        if (!await checkpoint.backup.file.exists()) {
+          await _cleanup(await _requireRun(runId));
+          throw const PersistentMigrationFailure('checkpoint_lost');
+        }
+        try {
+          await _rollbackInternal(
+            runId,
+            expectedTotalChangesBeforeRestore: expectedVerificationChanges,
+          );
+        } on PersistentMigrationFailure catch (rollbackError) {
+          if (rollbackError.code == 'target_changed_during_verification') {
+            await _setState(runId, 'interrupted');
+            throw rollbackError;
+          }
+          // Preserve the publication failure; startup recovery retains both
+          // the run and checkpoint if automatic rollback cannot complete.
+        } catch (_) {
+          // Preserve the publication failure for other recovery errors.
+        }
+        Error.throwWithStackTrace(error, stackTrace);
+      } catch (error, stackTrace) {
+        if (publicationVerified) {
+          Error.throwWithStackTrace(error, stackTrace);
+        }
+        if (expectedVerificationChanges == null) {
+          // A thrown publication future is atomic and has already rolled back
+          // its transaction. Keep the live database instead of replacing it.
+          await _discardPreparedCheckpoint(runId, checkpoint);
+          await _setState(runId, 'ready');
+          Error.throwWithStackTrace(error, stackTrace);
+        }
+        if (await _targetChanged(expectedVerificationChanges)) {
+          await _setState(runId, 'interrupted');
+          throw const PersistentMigrationFailure(
+            'target_changed_during_verification',
+          );
+        }
+        await _setState(runId, 'failed');
+        if (expectedVerificationChanges != null) {
+          expectedVerificationChanges++;
+          if (await _targetChanged(expectedVerificationChanges)) {
+            await _setState(runId, 'interrupted');
+            throw const PersistentMigrationFailure(
+              'target_changed_during_verification',
+            );
+          }
+        }
+        if (!await checkpoint.backup.file.exists()) {
+          await _cleanup(await _requireRun(runId));
+          throw const PersistentMigrationFailure('checkpoint_lost');
+        }
+        try {
+          await _rollbackInternal(
+            runId,
+            expectedTotalChangesBeforeRestore: expectedVerificationChanges,
+          );
+        } on PersistentMigrationFailure catch (rollbackError) {
+          if (rollbackError.code == 'target_changed_during_verification') {
+            await _setState(runId, 'interrupted');
+            throw rollbackError;
+          }
+          // Preserve the original failure for diagnosis and retry recovery.
+        } catch (_) {
+          // Preserve the original failure for other recovery errors.
+        }
+        Error.throwWithStackTrace(error, stackTrace);
+      }
+    } finally {
+      await endMaintenance?.call();
     }
   }
 
@@ -320,6 +487,23 @@ class PersistentMigrationCoordinator implements MigrationCoordinator {
   @override
   Future<void> rollback(String runId) async {
     await _startupRecovery;
+    try {
+      await beginMaintenance?.call();
+    } on StateError {
+      // A concurrent maintenance operation will leave the run resumable.
+      return;
+    }
+    try {
+      await _rollbackInternal(runId);
+    } finally {
+      await endMaintenance?.call();
+    }
+  }
+
+  Future<void> _rollbackInternal(
+    String runId, {
+    int? expectedTotalChangesBeforeRestore,
+  }) async {
     final run = await _requireRun(runId);
     if (run.state != 'complete' &&
         run.state != 'failed' &&
@@ -333,11 +517,18 @@ class PersistentMigrationCoordinator implements MigrationCoordinator {
       throw const PersistentMigrationFailure('rollback_checkpoint_missing');
     }
     final file = File(checkpoint.backupPath);
+    final actualFingerprint = await sha256.bind(file.openRead()).first;
+    if (actualFingerprint.toString() != checkpoint.backupSha256) {
+      throw const PersistentMigrationFailure('rollback_checkpoint_changed');
+    }
     final manifest = await backups.verify(file);
     if (manifest.formatVersion != checkpoint.backupFormatVersion) {
       throw const PersistentMigrationFailure('rollback_checkpoint_invalid');
     }
-    await restoreCheckpoint(file);
+    if (expectedTotalChangesBeforeRestore != null) {
+      await _assertTargetUnchanged(expectedTotalChangesBeforeRestore);
+    }
+    final restoreSafetyCheckpoint = await restoreCheckpoint(file, runId);
     await _cleanup(await _requireRun(runId));
     await (database().update(
       database().importRuns,
@@ -347,6 +538,7 @@ class PersistentMigrationCoordinator implements MigrationCoordinator {
         completedAt: Value(_now().toUtc()),
       ),
     );
+    await backups.discardCheckpoint(restoreSafetyCheckpoint);
     await backups.discardCheckpoint(file);
     _emit();
   }
@@ -358,15 +550,24 @@ class PersistentMigrationCoordinator implements MigrationCoordinator {
     await _changes.close();
   }
 
-  Future<BackupResult> _createRollbackCheckpoint(ImportRunData run) async {
+  Future<_PreparedRollbackCheckpoint> _createRollbackCheckpoint(
+    ImportRunData run,
+  ) async {
     final root = await rollbackDirectory();
     await root.create(recursive: true);
     final destination = File(p.join(root.path, '${run.id}.lootr'));
-    await database().customSelect('SELECT 1').getSingle();
+    final before = await _totalChanges();
     final result = await backups.create(
       liveDatabase: await liveDatabaseFile(),
       destination: destination,
     );
+    final afterBackup = await _totalChanges();
+    if (afterBackup != before) {
+      await backups.discardCheckpoint(result.file);
+      throw const PersistentMigrationFailure(
+        'database_changed_during_checkpoint',
+      );
+    }
     await database()
         .into(database().rollbackCheckpoints)
         .insert(
@@ -378,9 +579,41 @@ class PersistentMigrationCoordinator implements MigrationCoordinator {
             backupFormatVersion: result.manifest.formatVersion,
             keyAlias: 'platform-secure-database-key',
           ),
-          mode: InsertMode.insertOrReplace,
+          mode: InsertMode.insert,
         );
-    return result;
+    return _PreparedRollbackCheckpoint(
+      backup: result,
+      expectedTotalChanges: afterBackup + 1,
+    );
+  }
+
+  Future<void> _assertTargetUnchanged(int expectedTotalChanges) async {
+    if (await _totalChanges() != expectedTotalChanges) {
+      throw const PersistentMigrationFailure(
+        'target_changed_during_verification',
+      );
+    }
+  }
+
+  Future<bool> _targetChanged(int? expectedTotalChanges) async =>
+      expectedTotalChanges != null &&
+      await _totalChanges() != expectedTotalChanges;
+
+  Future<void> _discardPreparedCheckpoint(
+    String runId,
+    _PreparedRollbackCheckpoint checkpoint,
+  ) async {
+    await (database().delete(
+      database().rollbackCheckpoints,
+    )..where((row) => row.importRunId.equals(runId))).go();
+    await backups.discardCheckpoint(checkpoint.backup.file);
+  }
+
+  Future<int> _totalChanges() async {
+    final row = await database()
+        .customSelect('SELECT total_changes() AS value')
+        .getSingle();
+    return row.read<int>('value');
   }
 
   Future<void> _verifyPublication(
@@ -419,7 +652,10 @@ class PersistentMigrationCoordinator implements MigrationCoordinator {
     );
     if (relationCount != analysis.relationships.length ||
         preservedCount != analysis.records.length ||
-        discrepancyCount != analysis.issues.length + 2) {
+        discrepancyCount !=
+            analysis.issues.length +
+                2 +
+                (analysis.report.tableCounts['wallets'] ?? 0)) {
       throw const PersistentMigrationFailure('publication_inventory_mismatch');
     }
     await _verifyDomainCounts(runId, analysis);
@@ -1053,6 +1289,25 @@ class PersistentMigrationCoordinator implements MigrationCoordinator {
               ),
             );
       }
+      final accountCount = analysis.records
+          .where((record) => record.sourceTable == 'wallets')
+          .length;
+      for (var ordinal = 1; ordinal <= accountCount; ordinal++) {
+        final partitionId = 'account-partition-$ordinal';
+        final code = 'policy.account_type_confirmation:$partitionId';
+        await database()
+            .into(database().importDiscrepancies)
+            .insert(
+              ImportDiscrepanciesCompanion.insert(
+                id: 'confirmation-$runId-account-$ordinal',
+                importRunId: runId,
+                severity: 'review',
+                issueCode: code,
+                messageCode: code,
+                redactedDetailsJson: const Value('{"redacted":true}'),
+              ),
+            );
+      }
     });
   }
 
@@ -1114,6 +1369,7 @@ class PersistentMigrationCoordinator implements MigrationCoordinator {
 
   Future<void> _recoverInterruptedRuns() async {
     try {
+      await _recoverInterruptedRollback();
       final allRuns = await database().select(database().importRuns).get();
       final activeTokens = allRuns
           .map((run) => run.stagingToken)
@@ -1123,10 +1379,16 @@ class PersistentMigrationCoordinator implements MigrationCoordinator {
       for (final run in allRuns.where(
         (candidate) =>
             candidate.stagingToken != null &&
-            const {
-              'in_progress',
-              'best_effort_incomplete',
-            }.contains(candidate.cleanupStatus),
+            (const {
+                  'in_progress',
+                  'best_effort_incomplete',
+                }.contains(candidate.cleanupStatus) ||
+                const {
+                  'complete',
+                  'failed',
+                  'cancelled',
+                  'rolled_back',
+                }.contains(candidate.state)),
       )) {
         await _cleanup(run);
       }
@@ -1161,6 +1423,33 @@ class PersistentMigrationCoordinator implements MigrationCoordinator {
       // Opening the encrypted database may still be in progress. The first
       // explicit user action will perform the same state checks.
     }
+  }
+
+  Future<void> _recoverInterruptedRollback() async {
+    final live = await liveDatabaseFile();
+    final marker = File('${live.path}.restore-pending');
+    if (!await marker.exists()) return;
+    final payload = await marker.readAsString();
+    if (!payload.startsWith('rollback:')) return;
+    final runId = payload.substring('rollback:'.length);
+    if (runId.isEmpty) return;
+    final run = await (database().select(
+      database().importRuns,
+    )..where((row) => row.id.equals(runId))).getSingleOrNull();
+    if (run == null) return;
+    await _cleanup(run);
+    await (database().update(
+      database().importRuns,
+    )..where((row) => row.id.equals(runId))).write(
+      ImportRunsCompanion(
+        state: const Value('rolled_back'),
+        completedAt: Value(_now().toUtc()),
+      ),
+    );
+    await backups.discardCheckpoint(File('${live.path}.pre-restore'));
+    final root = await rollbackDirectory();
+    await backups.discardCheckpoint(File(p.join(root.path, '$runId.lootr')));
+    _emit();
   }
 
   Future<List<MigrationRunProjection>> _loadRuns() async {
@@ -1233,6 +1522,10 @@ class PersistentMigrationCoordinator implements MigrationCoordinator {
           explanation: entry['needs_review'] == true
               ? 'This partition contains source relationships awaiting review.'
               : 'Ledger reconciles at source precision.',
+          accountType: policy.accountTypes[entry['id']! as String] ?? 'bank',
+          accountTypeConfirmed: policy.accountTypes.containsKey(
+            entry['id']! as String,
+          ),
         ),
     ];
     final dates = report['date_bounds'] as Map<String, dynamic>? ?? const {};
@@ -1241,9 +1534,44 @@ class PersistentMigrationCoordinator implements MigrationCoordinator {
     final rollback = await (database().select(
       database().rollbackCheckpoints,
     )..where((row) => row.importRunId.equals(run.id))).getSingleOrNull();
-    final latestImportedMonth = run.state == 'complete'
-        ? DateTime.tryParse(transactionDates?['maximum_utc'] as String? ?? '')
-        : null;
+    DateTime? latestImportedMonth;
+    var importedAccountIds = const <String>[];
+    if (run.state == 'complete') {
+      final importedRows = await database()
+          .customSelect(
+            '''
+            SELECT p.target_table, p.target_id
+            FROM import_provenance p
+            WHERE p.import_run_id = ?
+              AND p.target_table IN ('accounts', 'transactions')
+        ''',
+            variables: [Variable.withString(run.id)],
+            readsFrom: {database().importProvenance},
+          )
+          .get();
+      importedAccountIds = importedRows
+          .where((row) => row.read<String>('target_table') == 'accounts')
+          .map((row) => row.read<String>('target_id'))
+          .toSet()
+          .toList(growable: false);
+      final importedTransactionIds = importedRows
+          .where((row) => row.read<String>('target_table') == 'transactions')
+          .map((row) => row.read<String>('target_id'))
+          .toSet();
+      if (importedTransactionIds.isNotEmpty) {
+        final latestTransaction =
+            await (database().select(database().transactions)
+                  ..where(
+                    (row) =>
+                        row.id.isIn(importedTransactionIds) &
+                        row.deletedAt.isNull(),
+                  )
+                  ..orderBy([(row) => OrderingTerm.desc(row.occurredAt)])
+                  ..limit(1))
+                .getSingleOrNull();
+        latestImportedMonth = latestTransaction?.occurredAt;
+      }
+    }
     final preservedRows = await database()
         .customSelect(
           '''
@@ -1294,6 +1622,7 @@ class PersistentMigrationCoordinator implements MigrationCoordinator {
       cancelRequested: run.state == 'cancel_requested',
       canRollback: rollback?.state == 'ready',
       latestImportedMonth: latestImportedMonth,
+      importedAccountIds: importedAccountIds,
       preservedGroups: [
         for (final row in preservedRows)
           MigrationPreservedGroup(
@@ -1354,6 +1683,8 @@ class PersistentMigrationCoordinator implements MigrationCoordinator {
         (value) => value.name == titleName,
         orElse: () => MigrationTitlePolicy.preserveAndSuggest,
       ),
+      accountTypes: (json['account_types'] as Map<String, dynamic>? ?? const {})
+          .map((key, value) => MapEntry(key, value.toString())),
     );
   }
 
@@ -1421,6 +1752,9 @@ class PersistentMigrationCoordinator implements MigrationCoordinator {
     if (code == 'policy.title_confirmation') {
       return 'Confirm title and payee policy';
     }
+    if (code.startsWith('policy.account_type_confirmation')) {
+      return 'Confirm imported account types';
+    }
     if (code.startsWith('transfer.')) return 'Transfer exceptions';
     if (code.startsWith('budget.')) return 'Budget references';
     if (code.startsWith('objective.')) return 'Goal and debt references';
@@ -1437,6 +1771,9 @@ class PersistentMigrationCoordinator implements MigrationCoordinator {
     }
     if (code == 'policy.title_confirmation') {
       return 'Confirm how exact source titles are preserved and whether payees are suggested or created.';
+    }
+    if (code.startsWith('policy.account_type_confirmation')) {
+      return 'Review each imported account type before any financial rows are published.';
     }
     if (code.startsWith('transfer.')) {
       return 'These transfer relationships remain reviewable and are not counted as spending.';
@@ -1456,6 +1793,9 @@ class PersistentMigrationCoordinator implements MigrationCoordinator {
     }
     if (code == 'policy.title_confirmation') {
       return 'Apply the selected reversible title/payee behavior.';
+    }
+    if (code.startsWith('policy.account_type_confirmation')) {
+      return 'Publish each account with the confirmed Lootr account type.';
     }
     if (code.startsWith('transfer.')) {
       return 'Preserve the relationship and exclude it from spending.';
@@ -1563,11 +1903,23 @@ class _RunPolicy {
     required this.timezoneId,
     required this.timezoneLabel,
     required this.titlePolicy,
+    required this.accountTypes,
   });
 
   final String timezoneId;
   final String timezoneLabel;
   final MigrationTitlePolicy titlePolicy;
+  final Map<String, String> accountTypes;
+}
+
+class _PreparedRollbackCheckpoint {
+  const _PreparedRollbackCheckpoint({
+    required this.backup,
+    required this.expectedTotalChanges,
+  });
+
+  final BackupResult backup;
+  final int expectedTotalChanges;
 }
 
 class PersistentMigrationFailure implements Exception {

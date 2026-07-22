@@ -143,6 +143,8 @@ class MigrationCurrencyPartition {
     required this.precision,
     required this.status,
     required this.explanation,
+    this.accountType = 'bank',
+    this.accountTypeConfirmed = false,
   });
 
   final String id;
@@ -151,6 +153,8 @@ class MigrationCurrencyPartition {
   final int precision;
   final MigrationPartitionStatus status;
   final String explanation;
+  final String accountType;
+  final bool accountTypeConfirmed;
 }
 
 class MigrationRunProjection {
@@ -175,6 +179,7 @@ class MigrationRunProjection {
     this.cancelRequested = false,
     this.canRollback = false,
     this.latestImportedMonth,
+    this.importedAccountIds = const [],
     this.preservedGroups = const [],
   });
 
@@ -198,6 +203,7 @@ class MigrationRunProjection {
   final bool cancelRequested;
   final bool canRollback;
   final DateTime? latestImportedMonth;
+  final List<String> importedAccountIds;
   final List<MigrationPreservedGroup> preservedGroups;
 
   bool get isTerminal => switch (phase) {
@@ -246,6 +252,7 @@ class MigrationRunProjection {
     bool? cancelRequested,
     bool? canRollback,
     DateTime? Function()? latestImportedMonth,
+    List<String>? importedAccountIds,
     List<MigrationPreservedGroup>? preservedGroups,
   }) {
     return MigrationRunProjection(
@@ -271,6 +278,7 @@ class MigrationRunProjection {
       latestImportedMonth: latestImportedMonth != null
           ? latestImportedMonth()
           : this.latestImportedMonth,
+      importedAccountIds: importedAccountIds ?? this.importedAccountIds,
       preservedGroups: preservedGroups ?? this.preservedGroups,
     );
   }

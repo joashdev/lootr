@@ -15,6 +15,9 @@ class CashewPublicationEngine {
     required CashewAnalysis analysis,
     required String titlePolicy,
     required String timezoneId,
+    Map<String, String> accountTypes = const {},
+    DateTime? publicationTime,
+    int? expectedTotalChanges,
   }) async {
     if (analysis.report.hasBlockingIssues ||
         !analysis.report.sourceUnchanged ||
@@ -28,8 +31,21 @@ class CashewPublicationEngine {
       analysis: analysis,
       titlePolicy: titlePolicy,
       timezoneId: timezoneId,
+      accountTypes: accountTypes,
+      publicationTime: (publicationTime ?? DateTime.now()).toUtc(),
     );
+    late int totalChangesAfterPublication;
     await database.transaction(() async {
+      if (expectedTotalChanges != null) {
+        final current = await database
+            .customSelect('SELECT total_changes() AS value')
+            .getSingle();
+        if (current.read<int>('value') != expectedTotalChanges) {
+          throw const CashewPublicationFailure(
+            'target_changed_during_checkpoint',
+          );
+        }
+      }
       await context.publish();
       final foreignKeys = await database
           .customSelect('PRAGMA foreign_key_check')
@@ -37,8 +53,12 @@ class CashewPublicationEngine {
       if (foreignKeys.isNotEmpty) {
         throw const CashewPublicationFailure('target_foreign_key_failed');
       }
+      final changes = await database
+          .customSelect('SELECT total_changes() AS value')
+          .getSingle();
+      totalChangesAfterPublication = changes.read<int>('value');
     });
-    return context.result();
+    return context.result(totalChangesAfterPublication);
   }
 }
 
@@ -49,6 +69,8 @@ class _PublicationContext {
     required this.analysis,
     required this.titlePolicy,
     required this.timezoneId,
+    required this.accountTypes,
+    required this.publicationTime,
   }) : byToken = {
          for (final record in analysis.records) record.sourceToken: record,
        };
@@ -58,6 +80,8 @@ class _PublicationContext {
   final CashewAnalysis analysis;
   final String titlePolicy;
   final String timezoneId;
+  final Map<String, String> accountTypes;
+  final DateTime publicationTime;
   final Map<String, CanonicalCashewRecord> byToken;
 
   final Map<Object, String> accountIds = {};
@@ -87,6 +111,7 @@ class _PublicationContext {
     await _classifyTransferLegs();
     await _publishRecurringTemplates();
     await _publishTransactions();
+    await _linkPaidRecurringOccurrences();
     await _publishTransfers();
     await _publishObjectiveEvents();
     await _publishBudgets(ownerId);
@@ -95,13 +120,15 @@ class _PublicationContext {
     await _writeBalances();
   }
 
-  CashewPublicationResult result() => CashewPublicationResult(
-    insertedFinancialRecords: insertedFinancialRecords,
-    preservedRecords: insertedPreservedRecords,
-    reusedRecords: reusedRecords,
-    accountPartitions: accountIds.length,
-    reviewAccountPartitions: _reviewAccountKeys().length,
-  );
+  CashewPublicationResult result(int totalChangesAfterPublication) =>
+      CashewPublicationResult(
+        insertedFinancialRecords: insertedFinancialRecords,
+        preservedRecords: insertedPreservedRecords,
+        reusedRecords: reusedRecords,
+        accountPartitions: accountIds.length,
+        reviewAccountPartitions: _reviewAccountKeys().length,
+        totalChangesAfterPublication: totalChangesAfterPublication,
+      );
 
   Future<void> _assertReimportSafe() async {
     for (final record in analysis.records) {
@@ -223,7 +250,9 @@ class _PublicationContext {
   }
 
   Future<void> _publishAccounts(String ownerId) async {
+    var ordinal = 0;
     for (final record in _records('wallets')) {
+      ordinal++;
       final row = record.privatePayload;
       final sourceId = row['wallet_pk']!;
       final targetId = _targetId('account', sourceId);
@@ -246,12 +275,13 @@ class _PublicationContext {
             id, owner_user_id, name, account_type, balance, currency_code,
             balance_atoms, currency_precision, icon, color, emoji_icon,
             sort_order, is_archived, sync_status
-          ) VALUES (?, ?, ?, 'bank', 0, ?, '0', ?, ?, ?, ?, ?, ?, 'local_only')
+          ) VALUES (?, ?, ?, ?, 0, ?, '0', ?, ?, ?, ?, ?, ?, 'local_only')
         ''',
         values: [
           targetId,
           ownerId,
           row['name'],
+          accountTypes['account-partition-$ordinal'] ?? 'bank',
           currencyCode,
           precision,
           row['icon_name'],
@@ -466,20 +496,17 @@ class _PublicationContext {
       if (accountId == null) continue;
       final amount = _amount(row['amount']!, wallet);
       final templateId = _targetId('recurring', entry.key);
-      final unpaid = entry.value.where(
-        (record) => record.privatePayload['paid'] == 0,
+      final unresolved = entry.value.where(
+        (record) =>
+            record.privatePayload['paid'] == 0 &&
+            record.privatePayload['skip_paid'] != 1,
       );
-      final next = unpaid
-          .map(
-            (record) =>
-                record.privatePayload['canonical_original_due_utc']
-                    as DateTime?,
-          )
-          .whereType<DateTime>()
+      final next = unresolved
+          .map((record) => _occurrenceDue(record.privatePayload))
           .fold<DateTime?>(
             null,
-            (latest, value) =>
-                latest == null || value.isAfter(latest) ? value : latest,
+            (earliest, value) =>
+                earliest == null || value.isBefore(earliest) ? value : earliest,
           );
       final inserted = await _insertTarget(
         table: 'recurring_templates',
@@ -514,15 +541,16 @@ class _PublicationContext {
           occurrenceRow['amount']!,
           occurrenceRow['wallet_fk'],
         );
-        final originalDue =
-            occurrenceRow['canonical_original_due_utc'] as DateTime? ??
-            _date(occurrenceRow['date_created'])!;
+        final originalDue = _occurrenceDue(occurrenceRow);
         final occurrenceId = _targetId(
           'occurrence',
           occurrenceRow['transaction_pk']!,
         );
         final paid = occurrenceRow['paid'] == 1;
         final skipped = !paid && occurrenceRow['skip_paid'] == 1;
+        final unresolvedStatus = originalDue.isAfter(publicationTime)
+            ? 'due'
+            : 'unpaid';
         await _statement(
           '''
           INSERT OR IGNORE INTO recurring_occurrences (
@@ -534,7 +562,7 @@ class _PublicationContext {
           [
             occurrenceId,
             templateId,
-            skipped ? 'skipped' : (paid ? 'paid' : 'unpaid'),
+            skipped ? 'skipped' : (paid ? 'paid' : unresolvedStatus),
             originalDue,
             originalDue,
             paid ? occurrenceRow['canonical_resolved_utc'] as DateTime? : null,
@@ -566,7 +594,6 @@ class _PublicationContext {
       if (accountId == null) continue;
       final amount = _amount(row['amount']!, wallet);
       final targetId = _targetId('transaction', sourceId);
-      transactionIds[sourceId] = targetId;
       final suggestedPayeeId = titlePolicy != 'preserveOnly'
           ? await _payeeId(row['name']! as String, record)
           : null;
@@ -603,20 +630,53 @@ class _PublicationContext {
           row['name'],
           row['income'] == 1 ? 'income' : 'expense',
           recurringTemplateId == null ? 'one_time' : 'recurring',
-          row['category_fk'] == '0' ? 'opening_balance' : null,
+          row['category_fk'] == '0'
+              ? (_isOpeningBalance(record) ? 'opening_balance' : null)
+              : null,
           row['note'],
           jsonEncode({
             'source': 'cashew',
             'source_type': row['type'],
             'timezone_policy': timezoneId,
+            if (row['category_fk'] == '0')
+              'balance_role': _isOpeningBalance(record)
+                  ? 'opening_balance'
+                  : 'balance_adjustment',
           }),
           _date(row['date_created'])!,
         ],
       );
       if (inserted) insertedFinancialRecords++;
+      if (inserted || await _targetExists('transactions', targetId)) {
+        transactionIds[sourceId] = targetId;
+      }
       final signed = row['income'] == 1 ? amount.atoms : -amount.atoms;
       accountBalances[wallet] = accountBalances[wallet]! + signed;
       await _publishAttachmentLinks(record, targetId);
+    }
+  }
+
+  Future<void> _linkPaidRecurringOccurrences() async {
+    for (final record in _records('transactions')) {
+      final row = record.privatePayload;
+      if (row['paid'] != 1 ||
+          row['period_length'] == null ||
+          row['reoccurrence'] == null) {
+        continue;
+      }
+      final sourceId = row['transaction_pk']!;
+      final seriesKey = (sourceId as String).split('::predict::').first;
+      if (!recurringSeriesKeys.contains(seriesKey)) continue;
+      final transactionId = transactionIds[sourceId];
+      if (transactionId == null) continue;
+      await _statement(
+        '''
+        UPDATE recurring_occurrences
+        SET transaction_id = ?
+        WHERE id = ? AND transaction_id IS NULL
+        ''',
+        [transactionId, _targetId('occurrence', sourceId)],
+      );
     }
   }
 
@@ -898,6 +958,34 @@ class _PublicationContext {
         ],
       );
     }
+    for (final record in _records('transactions')) {
+      final row = record.privatePayload;
+      for (final excludedBudget in _jsonList(row['budget_fks_exclude'])) {
+        final targetBudget = budgetIds[excludedBudget];
+        if (targetBudget == null) continue;
+        final transactionId = transactionIds[row['transaction_pk']];
+        await _statement(
+          '''
+          INSERT OR IGNORE INTO budget_transaction_memberships (
+            id, budget_id, transaction_id, source_reference, membership,
+            reason_code, review_state
+          ) VALUES (?, ?, ?, ?, 'exclude', 'source_exclusion', ?)
+          ''',
+          [
+            _targetId(
+              'budget-transaction-exclusion',
+              '$excludedBudget\u0000${row['transaction_pk']}',
+            ),
+            targetBudget,
+            transactionId,
+            transactionId == null
+                ? _locatorHash(row['transaction_pk'].toString())
+                : null,
+            transactionId == null ? 'needs_review' : 'ready',
+          ],
+        );
+      }
+    }
   }
 
   Future<void> _publishBudgetMemberships(
@@ -1005,7 +1093,7 @@ class _PublicationContext {
 
   Future<void> _publishPreservedRows() async {
     for (final record in analysis.records) {
-      final json = _canonicalJson(record.privatePayload);
+      final json = _canonicalJson(_preservablePayload(record));
       final preservedId = _targetId(
         'preserved',
         '${analysis.report.sourceSha256}\u0000${record.sourceToken}',
@@ -1037,6 +1125,66 @@ class _PublicationContext {
       );
       if (alreadyPreserved.isEmpty) insertedPreservedRecords++;
     }
+  }
+
+  Map<String, Object?> _preservablePayload(CanonicalCashewRecord record) {
+    if (record.sourceTable != 'app_settings') return record.privatePayload;
+    final rawSettings = record.privatePayload['settings_j_s_o_n'];
+    final decoded = rawSettings is String
+        ? jsonDecode(rawSettings)
+        : rawSettings;
+    final settings = decoded is Map
+        ? Map<String, Object?>.from(decoded)
+        : const <String, Object?>{};
+    const interpretationSafeKeys = {
+      'cachedCurrencyExchange',
+      'customCurrencies',
+      'customCurrencyAmounts',
+    };
+    return {
+      for (final entry in record.privatePayload.entries)
+        if (entry.key != 'settings_j_s_o_n') entry.key: entry.value,
+      'settings_j_s_o_n': {
+        for (final key in interpretationSafeKeys)
+          if (settings.containsKey(key)) key: settings[key],
+        'redacted': true,
+        'redacted_key_count': settings.keys
+            .where((key) => !interpretationSafeKeys.contains(key))
+            .length,
+        'reason_code': 'sensitive_settings_values_not_retained',
+      },
+    };
+  }
+
+  bool _isOpeningBalance(CanonicalCashewRecord candidate) {
+    final row = candidate.privatePayload;
+    final walletId = row['wallet_fk'];
+    final occurredAt = _date(row['date_created']);
+    if (walletId == null || occurredAt == null) return false;
+    final wallet = _records(
+      'wallets',
+    ).where((record) => record.privatePayload['wallet_pk'] == walletId);
+    if (wallet.isEmpty) return false;
+    final createdAt = _date(wallet.first.privatePayload['date_created']);
+    if (createdAt == null ||
+        occurredAt.difference(createdAt).abs() > const Duration(days: 7)) {
+      return false;
+    }
+    final paid =
+        _records('transactions')
+            .where(
+              (record) =>
+                  record.privatePayload['wallet_fk'] == walletId &&
+                  record.privatePayload['paid'] == 1,
+            )
+            .toList()
+          ..sort((left, right) {
+            final leftDate = _date(left.privatePayload['date_created']);
+            final rightDate = _date(right.privatePayload['date_created']);
+            return (leftDate ?? DateTime.fromMillisecondsSinceEpoch(0))
+                .compareTo(rightDate ?? DateTime.fromMillisecondsSinceEpoch(0));
+          });
+    return paid.isNotEmpty && paid.first.sourceToken == candidate.sourceToken;
   }
 
   Future<void> _writeBalances() async {
@@ -1181,7 +1329,7 @@ class _PublicationContext {
   Future<void> _statement(String sql, [List<Object?> parameters = const []]) {
     return database.customStatement(sql, [
       for (final value in parameters)
-        if (value is DateTime) value.millisecondsSinceEpoch ~/ 1000 else value,
+        if (value is DateTime) value.toUtc().toIso8601String() else value,
     ]);
   }
 
@@ -1330,6 +1478,11 @@ class _PublicationContext {
     return DateTime.fromMillisecondsSinceEpoch(seconds * 1000, isUtc: true);
   }
 
+  DateTime _occurrenceDue(Map<String, Object?> row) {
+    return row['canonical_original_due_utc'] as DateTime? ??
+        _date(row['date_created'])!;
+  }
+
   String _recurrenceRule(Map<String, Object?> row) {
     final interval = row['period_length'] is int
         ? row['period_length'] as int
@@ -1369,6 +1522,7 @@ class CashewPublicationResult {
     required this.reusedRecords,
     required this.accountPartitions,
     required this.reviewAccountPartitions,
+    required this.totalChangesAfterPublication,
   });
 
   final int insertedFinancialRecords;
@@ -1376,6 +1530,7 @@ class CashewPublicationResult {
   final int reusedRecords;
   final int accountPartitions;
   final int reviewAccountPartitions;
+  final int totalChangesAfterPublication;
 }
 
 class CashewPublicationFailure implements Exception {

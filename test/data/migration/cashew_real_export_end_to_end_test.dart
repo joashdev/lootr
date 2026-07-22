@@ -167,7 +167,7 @@ void main() {
         registry: registry,
         staging: staging,
         backups: backups,
-        restoreCheckpoint: (_) async {
+        restoreCheckpoint: (_, _) async {
           throw StateError('Restore is not exercised in this path.');
         },
       );
@@ -188,6 +188,13 @@ void main() {
         expect(projection?.dispositions.blocking, 0);
         expect(projection?.partitions, hasLength(19));
 
+        for (final partition in projection!.partitions) {
+          await coordinator.resolveReviewGroup(
+            created.id,
+            'policy.account_type:${partition.id}:bank',
+          );
+        }
+        projection = await coordinator.watchRun(created.id).first;
         for (final group in projection!.reviewGroups.where(
           (group) => !group.resolved,
         )) {
