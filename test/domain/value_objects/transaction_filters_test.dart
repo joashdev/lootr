@@ -13,6 +13,9 @@ void main() {
     String accountId = 'acc-1',
     String? categoryId,
     double amount = 100,
+    String? amountAtoms,
+    int? amountScale,
+    String? currencyCode,
     String direction = 'expense',
     String mode = 'one_time',
     DateTime? occurredAt,
@@ -22,6 +25,9 @@ void main() {
       accountId: accountId,
       categoryId: categoryId,
       amount: amount,
+      amountAtoms: amountAtoms,
+      amountScale: amountScale,
+      currencyCode: currencyCode,
       direction: direction,
       mode: mode,
       occurredAt: occurredAt ?? now,
@@ -59,6 +65,11 @@ void main() {
 
       test('should return false when amount range is set', () {
         const filters = TransactionFilters(minAmount: 50);
+        expect(filters.isEmpty, isFalse);
+      });
+
+      test('should return false when currency is set', () {
+        const filters = TransactionFilters(currencyCode: 'BTC');
         expect(filters.isEmpty, isFalse);
       });
 
@@ -147,6 +158,65 @@ void main() {
         final result = filters.apply(txs);
         expect(result.length, 2);
         expect(result.every((t) => t.amount <= 100), isTrue);
+      });
+
+      test('filters exact values without a double conversion', () {
+        final txs = [
+          makeTx(
+            id: 'below',
+            amount: 1,
+            amountAtoms: '999999999999',
+            amountScale: 12,
+            currencyCode: 'XTS',
+          ),
+          makeTx(
+            id: 'boundary',
+            amount: 1,
+            amountAtoms: '1000000000000',
+            amountScale: 12,
+            currencyCode: 'XTS',
+          ),
+          makeTx(
+            id: 'other-currency',
+            amount: 1,
+            amountAtoms: '1000000000000',
+            amountScale: 12,
+            currencyCode: 'BTC',
+          ),
+        ];
+        const filters = TransactionFilters(
+          currencyCode: 'XTS',
+          minAmountCoefficient: '1000000000000',
+          minAmountScale: 12,
+        );
+
+        expect(filters.apply(txs).map((t) => t.id), ['boundary']);
+      });
+
+      test('compares exact bounds across different scales', () {
+        final txs = [
+          makeTx(
+            id: 'same-value',
+            amount: 1,
+            amountAtoms: '10000',
+            amountScale: 4,
+            currencyCode: 'CLF',
+          ),
+          makeTx(
+            id: 'above',
+            amount: 1.0001,
+            amountAtoms: '10001',
+            amountScale: 4,
+            currencyCode: 'CLF',
+          ),
+        ];
+        const filters = TransactionFilters(
+          currencyCode: 'CLF',
+          maxAmountCoefficient: '100',
+          maxAmountScale: 2,
+        );
+
+        expect(filters.apply(txs).map((t) => t.id), ['same-value']);
       });
 
       test('should filter by dateRange', () {

@@ -41,7 +41,11 @@ class BudgetProgressRings extends StatelessWidget {
               return SizedBox(
                 width: 164,
                 child: CompactRowCard(
-                  onTap: () => context.push('/budgets/${budget.id}'),
+                  onTap: () => context.push(
+                    budget.isImported
+                        ? '/budgets/imported/${budget.id}'
+                        : '/budgets/${budget.id}',
+                  ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [

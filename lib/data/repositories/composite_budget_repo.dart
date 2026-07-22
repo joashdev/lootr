@@ -67,7 +67,40 @@ class CompositeBudgetEvaluation {
   final List<BudgetTransactionMatch> matches;
 
   ExactMoney get includedTotal => expenseTotal + incomeTotal;
+  ExactMoney get trackedTotal => switch (budget.directionFilter) {
+    'expense' => expenseTotal,
+    'income' => incomeTotal,
+    _ => includedTotal,
+  };
   ExactMoney get remaining => limit - includedTotal;
+}
+
+class CompositeBudgetReviewSummary {
+  const CompositeBudgetReviewSummary({
+    required this.accountReferences,
+    required this.categoryReferences,
+    required this.transactionReferences,
+    required this.reviewRequiredCount,
+  });
+
+  final int accountReferences;
+  final int categoryReferences;
+  final int transactionReferences;
+  final int reviewRequiredCount;
+
+  int get missingReferenceCount =>
+      accountReferences + categoryReferences + transactionReferences;
+  bool get needsReview => missingReferenceCount > 0 || reviewRequiredCount > 0;
+}
+
+class CompositeBudgetSnapshot {
+  const CompositeBudgetSnapshot({
+    required this.evaluation,
+    required this.review,
+  });
+
+  final CompositeBudgetEvaluation evaluation;
+  final CompositeBudgetReviewSummary review;
 }
 
 /// Query service for V1 composite budgets.
@@ -84,6 +117,105 @@ class CompositeBudgetRepo {
           ..where((row) => row.id.equals(id) & row.deletedAt.isNull())
           ..limit(1))
         .getSingleOrNull();
+  }
+
+  /// Watches all definitions whose resolved period contains [anchor].
+  ///
+  /// The trigger includes every table that can change evaluation or review
+  /// state. Imported budgets therefore become visible immediately after the
+  /// migration publication transaction commits, never while it is partial.
+  Stream<List<CompositeBudgetSnapshot>> watchForPeriod(DateTime anchor) {
+    return _changeTrigger().asyncMap((_) async {
+      final definitions =
+          await (_db.select(_db.budgetDefinitions)
+                ..where((row) => row.deletedAt.isNull())
+                ..orderBy([(row) => OrderingTerm.asc(row.createdAt)]))
+              .get();
+      final snapshots = <CompositeBudgetSnapshot>[];
+      for (final definition in definitions) {
+        BudgetPeriodWindow period;
+        try {
+          period = await resolvePeriod(definition.id, anchor);
+        } on StateError {
+          // An unmaterialized custom cycle has no safe period to display.
+          // Its preserved definition remains queryable for migration review.
+          continue;
+        }
+        if (!period.contains(anchor)) continue;
+        snapshots.add(
+          CompositeBudgetSnapshot(
+            evaluation: await evaluate(definition.id, period: period),
+            review: await reviewSummary(definition.id),
+          ),
+        );
+      }
+      return snapshots;
+    });
+  }
+
+  Stream<CompositeBudgetSnapshot?> watchByIdAt(
+    String budgetId,
+    DateTime anchor,
+  ) {
+    return watchForPeriod(anchor).map((snapshots) {
+      for (final snapshot in snapshots) {
+        if (snapshot.evaluation.budget.id == budgetId) return snapshot;
+      }
+      return null;
+    });
+  }
+
+  Future<CompositeBudgetReviewSummary> reviewSummary(String budgetId) async {
+    final results = await Future.wait([
+      (_db.select(
+        _db.budgetAccountMemberships,
+      )..where((row) => row.budgetId.equals(budgetId))).get(),
+      (_db.select(
+        _db.budgetCategoryMemberships,
+      )..where((row) => row.budgetId.equals(budgetId))).get(),
+      (_db.select(
+        _db.budgetTransactionMemberships,
+      )..where((row) => row.budgetId.equals(budgetId))).get(),
+    ]);
+    final accounts = results[0] as List<BudgetAccountMembershipData>;
+    final categories = results[1] as List<BudgetCategoryMembershipData>;
+    final transactions = results[2] as List<BudgetTransactionMembershipData>;
+    return CompositeBudgetReviewSummary(
+      accountReferences: accounts
+          .where((row) => row.sourceReference != null && row.accountId == null)
+          .length,
+      categoryReferences: categories
+          .where((row) => row.sourceReference != null && row.categoryId == null)
+          .length,
+      transactionReferences: transactions
+          .where(
+            (row) => row.sourceReference != null && row.transactionId == null,
+          )
+          .length,
+      reviewRequiredCount: [
+        ...accounts.map((row) => row.reviewState),
+        ...categories.map((row) => row.reviewState),
+        ...transactions.map((row) => row.reviewState),
+      ].where((state) => state != 'ready').length,
+    );
+  }
+
+  Stream<int> _changeTrigger() {
+    return _db
+        .customSelect(
+          'SELECT 1',
+          readsFrom: {
+            _db.budgetDefinitions,
+            _db.budgetPeriods,
+            _db.budgetAccountMemberships,
+            _db.budgetCategoryMemberships,
+            _db.budgetTransactionMemberships,
+            _db.transactions,
+            _db.accounts,
+          },
+        )
+        .watch()
+        .map((_) => 1);
   }
 
   Future<List<BudgetPeriodWindow>> listHistoricalPeriods(

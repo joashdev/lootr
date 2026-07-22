@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart' hide isNull;
+import 'package:rxdart/rxdart.dart';
 
 import '../database/app_database.dart';
 import '../../domain/value_objects/exact_money.dart';
@@ -11,6 +12,11 @@ class TransactionRepoFilters {
   final String? direction;
   final String? mode;
   final String? payeeIdFilter;
+  final String? currencyCode;
+  final String? minAmountCoefficient;
+  final int? minAmountScale;
+  final String? maxAmountCoefficient;
+  final int? maxAmountScale;
   final DateTime? from;
   final DateTime? to;
 
@@ -21,9 +27,26 @@ class TransactionRepoFilters {
     this.direction,
     this.mode,
     this.payeeIdFilter,
+    this.currencyCode,
+    this.minAmountCoefficient,
+    this.minAmountScale,
+    this.maxAmountCoefficient,
+    this.maxAmountScale,
     this.from,
     this.to,
-  });
+  }) : assert(
+         (minAmountCoefficient == null) == (minAmountScale == null),
+         'minAmountCoefficient and minAmountScale must be set together',
+       ),
+       assert(
+         (maxAmountCoefficient == null) == (maxAmountScale == null),
+         'maxAmountCoefficient and maxAmountScale must be set together',
+       ),
+       assert(
+         currencyCode != null ||
+             (minAmountCoefficient == null && maxAmountCoefficient == null),
+         'Exact amount bounds require an explicit currencyCode',
+       );
 }
 
 class TransactionRepo {
@@ -59,7 +82,50 @@ class TransactionRepo {
       q.where((t) => t.occurredAt.isSmallerOrEqualValue(filters.to!));
     }
 
-    return q.watch();
+    final rows = q.watch();
+    if (filters.currencyCode == null &&
+        filters.minAmountCoefficient == null &&
+        filters.maxAmountCoefficient == null) {
+      return rows;
+    }
+
+    final accounts = _db.select(_db.accounts).watch();
+    return Rx.combineLatest2<
+      List<TransactionData>,
+      List<AccountData>,
+      List<TransactionData>
+    >(rows, accounts, (transactions, accountRows) {
+      final accountsById = {
+        for (final account in accountRows) account.id: account,
+      };
+      final minimum = filters.minAmountCoefficient == null
+          ? null
+          : ExactMoney(
+              coefficient: BigInt.parse(filters.minAmountCoefficient!),
+              scale: filters.minAmountScale!,
+              currencyCode: filters.currencyCode!,
+            );
+      final maximum = filters.maxAmountCoefficient == null
+          ? null
+          : ExactMoney(
+              coefficient: BigInt.parse(filters.maxAmountCoefficient!),
+              scale: filters.maxAmountScale!,
+              currencyCode: filters.currencyCode!,
+            );
+
+      return transactions.where((transaction) {
+        final account = accountsById[transaction.accountId];
+        if (account == null) return false;
+        final amount = ExactMoneyCodec.transactionAmount(transaction, account);
+        if (filters.currencyCode != null &&
+            amount.currencyCode != filters.currencyCode) {
+          return false;
+        }
+        if (minimum != null && amount.compareTo(minimum) < 0) return false;
+        if (maximum != null && amount.compareTo(maximum) > 0) return false;
+        return true;
+      }).toList();
+    });
   }
 
   Stream<TransactionData?> watchById(String id) {

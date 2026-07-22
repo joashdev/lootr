@@ -2,11 +2,33 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:lootr/application/providers/budget_projection.dart';
 import 'package:lootr/core/theme/theme.dart';
 import 'package:lootr/domain/entities/budget.dart';
 import 'package:lootr/domain/entities/category.dart';
+import 'package:lootr/domain/value_objects/exact_money.dart';
 import 'package:lootr/presentation/screens/budgets/widgets/budget_card.dart';
 import 'package:lootr/presentation/screens/budgets/widgets/month_navigator.dart';
+
+BudgetOverview overview(Budget budget) => BudgetOverview(
+  id: budget.id,
+  name: 'Budget',
+  budgeted: budget.exactAmount,
+  spent:
+      budget.exactSpent ??
+      ExactMoney.parse(
+        budget.spent.toStringAsFixed(budget.exactAmount.scale),
+        budget.exactAmount.currencyCode,
+      ),
+  startsAt: DateTime(budget.year, budget.month),
+  endsAt: DateTime(budget.year, budget.month + 1),
+  isImported: false,
+  isReadOnly: false,
+  needsReview: false,
+  missingReferenceCount: 0,
+  categoryId: budget.categoryId,
+  legacyBudget: budget,
+);
 
 void main() {
   final now = DateTime(2026, 6, 21);
@@ -41,7 +63,7 @@ void main() {
             home: Scaffold(
               body: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
-                child: BudgetCard(budget: budget, category: category),
+                child: BudgetCard(budget: overview(budget), category: category),
               ),
             ),
           ),
@@ -50,9 +72,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Dining Out'), findsOneWidget);
-      expect(find.text('₱2,500'), findsOneWidget);
-      expect(find.text('of ₱10,000'), findsOneWidget);
-      expect(find.text('₱7,500 left'), findsOneWidget);
+      expect(find.text('₱2500.00'), findsOneWidget);
+      expect(find.text('of ₱10000.00'), findsOneWidget);
+      expect(find.text('₱7500.00 left'), findsOneWidget);
     });
 
     testWidgets('handles over-budget state', (tester) async {
@@ -75,7 +97,7 @@ void main() {
             home: Scaffold(
               body: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
-                child: BudgetCard(budget: budget, category: null),
+                child: BudgetCard(budget: overview(budget), category: null),
               ),
             ),
           ),
@@ -84,7 +106,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Uncategorized'), findsOneWidget);
-      expect(find.text('₱1,000 over'), findsOneWidget);
+      expect(find.text('₱1000.00 over'), findsOneWidget);
     });
   });
 
@@ -94,9 +116,7 @@ void main() {
         ProviderScope(
           child: MaterialApp(
             theme: AppTheme.light,
-            home: Scaffold(
-              body: Center(child: MonthNavigator(compact: true)),
-            ),
+            home: Scaffold(body: Center(child: MonthNavigator(compact: true))),
           ),
         ),
       );
@@ -111,9 +131,7 @@ void main() {
         ProviderScope(
           child: MaterialApp(
             theme: AppTheme.light,
-            home: Scaffold(
-              body: Center(child: MonthNavigator()),
-            ),
+            home: Scaffold(body: Center(child: MonthNavigator())),
           ),
         ),
       );
@@ -128,9 +146,7 @@ void main() {
         ProviderScope(
           child: MaterialApp(
             theme: AppTheme.light,
-            home: Scaffold(
-              body: Center(child: MonthNavigator()),
-            ),
+            home: Scaffold(body: Center(child: MonthNavigator())),
           ),
         ),
       );
@@ -150,9 +166,7 @@ void main() {
         ProviderScope(
           child: MaterialApp(
             theme: AppTheme.light,
-            home: Scaffold(
-              body: Center(child: MonthNavigator()),
-            ),
+            home: Scaffold(body: Center(child: MonthNavigator())),
           ),
         ),
       );

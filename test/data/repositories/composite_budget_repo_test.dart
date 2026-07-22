@@ -225,6 +225,26 @@ void main() {
       expect(history.single.id, 'cycle-period');
     },
   );
+
+  test(
+    'watchForPeriod reacts and reports preserved missing references',
+    () async {
+      await _budget(db, id: 'watched');
+      await db.budgetAccountMemberships.insertOne(
+        BudgetAccountMembershipsCompanion.insert(
+          id: 'missing-account',
+          budgetId: 'watched',
+          sourceReference: const Value('redacted-reference'),
+          reviewState: const Value('missing_reference'),
+        ),
+      );
+
+      final snapshots = await repo.watchForPeriod(DateTime(2026, 7, 2)).first;
+      expect(snapshots.single.evaluation.budget.id, 'watched');
+      expect(snapshots.single.review.accountReferences, 1);
+      expect(snapshots.single.review.missingReferenceCount, 1);
+    },
+  );
 }
 
 Future<void> _account(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rxdart/rxdart.dart';
 
+import '../../data/repositories/composite_budget_repo.dart';
 import '../../data/repositories/transaction_repo.dart';
 import '../../domain/entities/account.dart';
 import '../../domain/entities/budget.dart';
@@ -24,6 +25,7 @@ class DashboardBudgetSummary {
     required this.color,
     required this.budgeted,
     required this.spent,
+    this.isImported = false,
   });
 
   final String id;
@@ -32,6 +34,7 @@ class DashboardBudgetSummary {
   final Color color;
   final double budgeted;
   final double spent;
+  final bool isImported;
 
   double get progress => budgeted <= 0 ? 0 : spent / budgeted;
 }
@@ -166,6 +169,7 @@ final dashboardProvider = StreamProvider<DashboardData>((ref) {
   final userRepo = ref.watch(userRepoProvider);
   final accountRepo = ref.watch(accountRepoProvider);
   final budgetRepo = ref.watch(budgetRepoProvider);
+  final compositeBudgetRepo = ref.watch(compositeBudgetRepoProvider);
   final transactionRepo = ref.watch(transactionRepoProvider);
   final recurringRepo = ref.watch(recurringRepoProvider);
   final categoryRepo = ref.watch(categoryRepoProvider);
@@ -217,6 +221,7 @@ final dashboardProvider = StreamProvider<DashboardData>((ref) {
         }
         return budgets;
       });
+  final compositeBudgetsStream = compositeBudgetRepo.watchForPeriod(monthStart);
   final recentTransactionsStream = transactionRepo
       .watchFiltered(TransactionRepoFilters(from: sparklineStart, to: now))
       .map(
@@ -258,6 +263,7 @@ final dashboardProvider = StreamProvider<DashboardData>((ref) {
     categoriesStream,
     payeesStream,
     budgetsStream,
+    compositeBudgetsStream,
     recentTransactionsStream,
     monthTransactionsStream,
     recurringStream,
@@ -267,9 +273,10 @@ final dashboardProvider = StreamProvider<DashboardData>((ref) {
     final categories = values[2] as List<Category>;
     final payees = values[3] as List<Payee>;
     final budgets = values[4] as List<Budget>;
-    final recentTransactions = values[5] as List<Transaction>;
-    final monthTransactions = values[6] as List<Transaction>;
-    final recurringTemplates = values[7] as List<RecurringTemplate>;
+    final compositeBudgets = values[5] as List<CompositeBudgetSnapshot>;
+    final recentTransactions = values[6] as List<Transaction>;
+    final monthTransactions = values[7] as List<Transaction>;
+    final recurringTemplates = values[8] as List<RecurringTemplate>;
 
     final greeting = _greetingFor(now.hour);
     final currencyCode = user?.currencyCode ?? 'PHP';
@@ -339,24 +346,38 @@ final dashboardProvider = StreamProvider<DashboardData>((ref) {
       exactMonthlyExpense: monthlyFlow?.expense,
     );
 
-    final budgetSummaries =
-        currencyBudgets
-            .map(
-              (budget) => DashboardBudgetSummary(
-                id: budget.id,
-                name: categoryById[budget.categoryId]?.name ?? 'Budget',
-                icon:
-                    budget.icon ??
-                    _categoryBadge(categoryById[budget.categoryId]),
-                color: _categoryColor(
-                  budget.color ?? categoryById[budget.categoryId]?.color,
-                ),
-                budgeted: budget.amount,
-                spent: budget.spent,
-              ),
-            )
-            .toList()
-          ..sort((a, b) => b.progress.compareTo(a.progress));
+    final budgetSummaries = [
+      ...currencyBudgets.map(
+        (budget) => DashboardBudgetSummary(
+          id: budget.id,
+          name: categoryById[budget.categoryId]?.name ?? 'Budget',
+          icon: budget.icon ?? _categoryBadge(categoryById[budget.categoryId]),
+          color: _categoryColor(
+            budget.color ?? categoryById[budget.categoryId]?.color,
+          ),
+          budgeted: budget.amount,
+          spent: budget.spent,
+        ),
+      ),
+      ...compositeBudgets
+          .where(
+            (snapshot) =>
+                snapshot.evaluation.limit.currencyCode == currencyCode,
+          )
+          .map((snapshot) {
+            final evaluation = snapshot.evaluation;
+            final name = evaluation.budget.name?.trim();
+            return DashboardBudgetSummary(
+              id: evaluation.budget.id,
+              name: name?.isNotEmpty == true ? name! : 'Imported budget',
+              icon: null,
+              color: _categoryColor(null),
+              budgeted: evaluation.limit.toDouble(),
+              spent: evaluation.trackedTotal.toDouble(),
+              isImported: true,
+            );
+          }),
+    ]..sort((a, b) => b.progress.compareTo(a.progress));
 
     final spendingTotals = <String, ExactMoney>{};
     for (final txn in currencyMonthTransactions) {

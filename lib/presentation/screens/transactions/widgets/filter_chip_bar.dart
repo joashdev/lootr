@@ -9,6 +9,7 @@ import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/typography.dart';
 import '../../../../domain/entities/account.dart';
 import '../../../../domain/entities/category.dart';
+import '../../../../domain/value_objects/exact_money.dart';
 import '../../../../domain/value_objects/transaction_filters.dart';
 
 class FilterChipBar extends ConsumerWidget {
@@ -120,12 +121,42 @@ class FilterChipBar extends ConsumerWidget {
       }
     }
 
-    if (filters.minAmount != null || filters.maxAmount != null) {
+    if (filters.currencyCode != null) {
+      chips.add(
+        _FilterChip(
+          label: 'Currency: ${filters.currencyCode}',
+          onRemove: () => ref
+              .read(transactionFiltersProvider.notifier)
+              .setExactAmountRange(currencyCode: null),
+        ),
+      );
+    }
+
+    if (filters.hasExactAmountRange) {
+      final min = _exactBoundLabel(
+        filters.minAmountCoefficient,
+        filters.minAmountScale,
+        filters.currencyCode!,
+      );
+      final max = _exactBoundLabel(
+        filters.maxAmountCoefficient,
+        filters.maxAmountScale,
+        filters.currencyCode!,
+      );
+      chips.add(
+        _FilterChip(
+          label: 'Amount: $min—$max ${filters.currencyCode}',
+          onRemove: () => ref
+              .read(transactionFiltersProvider.notifier)
+              .setExactAmountRange(currencyCode: filters.currencyCode),
+        ),
+      );
+    } else if (filters.minAmount != null || filters.maxAmount != null) {
       final min = filters.minAmount?.toStringAsFixed(0) ?? '';
       final max = filters.maxAmount?.toStringAsFixed(0) ?? '';
       chips.add(
         _FilterChip(
-          label: 'Amount: \u20B1$min\u2014\u20B1$max',
+          label: 'Amount: $min\u2014$max',
           onRemove: () => ref
               .read(transactionFiltersProvider.notifier)
               .setAmountRange(null, null),
@@ -178,6 +209,19 @@ class FilterChipBar extends ConsumerWidget {
 
   String _formatDate(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, "0")}-${d.day.toString().padLeft(2, "0")}';
+
+  String _exactBoundLabel(
+    String? coefficient,
+    int? scale,
+    String currencyCode,
+  ) {
+    if (coefficient == null || scale == null) return '';
+    return ExactMoney(
+      coefficient: BigInt.parse(coefficient),
+      scale: scale,
+      currencyCode: currencyCode,
+    ).toDecimalString();
+  }
 }
 
 class _FilterChip extends StatelessWidget {
