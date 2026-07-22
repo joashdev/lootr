@@ -28,6 +28,8 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
   String? _currencyCode;
   DateTime? _startDate;
   DateTime? _endDate;
+  bool _amountNeedsCurrency = false;
+  bool _amountInvalid = false;
 
   @override
   void initState() {
@@ -61,13 +63,20 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
     super.dispose();
   }
 
-  void _applyAmountRange() {
+  bool _applyAmountRange() {
     final notifier = ref.read(transactionFiltersProvider.notifier);
+    final hasMinimum = _minAmountController.text.trim().isNotEmpty;
+    final hasMaximum = _maxAmountController.text.trim().isNotEmpty;
     if (_currencyCode == null) {
-      final min = double.tryParse(_minAmountController.text.trim());
-      final max = double.tryParse(_maxAmountController.text.trim());
-      notifier.setAmountRange(min, max);
-      return;
+      notifier.setExactAmountRange(currencyCode: null);
+      final needsCurrency = hasMinimum || hasMaximum;
+      if (mounted) {
+        setState(() {
+          _amountNeedsCurrency = needsCurrency;
+          _amountInvalid = false;
+        });
+      }
+      return !needsCurrency;
     }
 
     final minimum = _parseExactAmount(
@@ -78,6 +87,15 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
       _maxAmountController.text,
       _currencyCode!,
     );
+    final invalid =
+        (hasMinimum && minimum == null) || (hasMaximum && maximum == null);
+    if (mounted) {
+      setState(() {
+        _amountNeedsCurrency = false;
+        _amountInvalid = invalid;
+      });
+    }
+    if (invalid) return false;
     notifier.setExactAmountRange(
       currencyCode: _currencyCode,
       minCoefficient: minimum?.coefficient.toString(),
@@ -85,6 +103,7 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
       maxCoefficient: maximum?.coefficient.toString(),
       maxScale: maximum?.scale,
     );
+    return true;
   }
 
   void _applyDateRange() {
@@ -164,6 +183,8 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
       _currencyCode = null;
       _startDate = null;
       _endDate = null;
+      _amountNeedsCurrency = false;
+      _amountInvalid = false;
     });
     ref.read(transactionFiltersProvider.notifier).reset();
   }
@@ -254,6 +275,17 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                         maxController: _maxAmountController,
                         onChanged: _applyAmountRange,
                       ),
+                      if (_amountNeedsCurrency || _amountInvalid) ...[
+                        const SizedBox(height: AppSpacing.space1),
+                        Text(
+                          _amountNeedsCurrency
+                              ? 'Choose a currency before filtering by amount.'
+                              : 'Enter a valid decimal amount.',
+                          style: AppTypography.caption.copyWith(
+                            color: colorScheme.error,
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: AppSpacing.space4),
                       const _SectionLabel(label: 'Date Range'),
                       const SizedBox(height: AppSpacing.space2),
@@ -287,7 +319,7 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                     onPressed: () {
                       // Amounts are committed as they are typed, but re-apply
                       // here so nothing typed is lost on Apply.
-                      _applyAmountRange();
+                      if (!_applyAmountRange()) return;
                       Navigator.of(context).pop();
                     },
                     style: FilledButton.styleFrom(

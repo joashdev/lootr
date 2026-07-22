@@ -135,7 +135,7 @@ class TransactionRowWidget extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '${_amountPrefix()}${MoneyFormat.exact(transaction.amount, 'PHP')}',
+                '${_amountPrefix()}${MoneyFormat.exactMoney(transaction.exactAmount)}',
                 style: AppTypography.h3Mono.copyWith(color: directionColor),
               ),
               const SizedBox(height: 2),

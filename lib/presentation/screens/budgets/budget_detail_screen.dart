@@ -82,8 +82,9 @@ class BudgetDetailScreen extends ConsumerWidget {
               ? (budget.spent / budget.amount).clamp(0.0, 1.5)
               : 0.0;
 
-          final remaining = budget.amount - budget.spent;
-          final isOver = remaining < 0;
+          final exactSpent = budget.exactSpentAmount;
+          final exactRemaining = budget.exactAmount - exactSpent;
+          final isOver = exactRemaining.isNegative;
 
           final colorScheme = Theme.of(context).colorScheme;
           final lootrColors = context.lootrColors;
@@ -147,9 +148,8 @@ class BudgetDetailScreen extends ConsumerWidget {
                                       ),
                                     ),
                                     TextSpan(
-                                      text: MoneyFormat.display(
-                                        budget.amount,
-                                        'PHP',
+                                      text: MoneyFormat.exactMoney(
+                                        budget.exactAmount,
                                       ),
                                       style: AppTypography.mono.copyWith(
                                         color: lootrColors.textSecondary,
@@ -201,19 +201,16 @@ class BudgetDetailScreen extends ConsumerWidget {
                       children: [
                         _StatItem(
                           label: 'Spent',
-                          value: MoneyFormat.display(budget.spent, 'PHP'),
+                          value: MoneyFormat.exactMoney(exactSpent),
                           color: isOver ? lootrColors.danger : null,
                         ),
                         _StatItem(
                           label: 'Budgeted',
-                          value: MoneyFormat.display(budget.amount, 'PHP'),
+                          value: MoneyFormat.exactMoney(budget.exactAmount),
                         ),
                         _StatItem(
                           label: isOver ? 'Over' : 'Left',
-                          value: MoneyFormat.display(
-                            isOver ? -remaining : remaining,
-                            'PHP',
-                          ),
+                          value: MoneyFormat.exactMoney(exactRemaining.abs()),
                           color: isOver
                               ? lootrColors.danger
                               : lootrColors.success,

@@ -69,6 +69,13 @@ class Budget extends Equatable {
           currencyCode: currencyCode!,
         );
 
+  ExactMoney get exactSpentAmount =>
+      exactSpent ??
+      ExactMoney.parse(
+        spent.toStringAsFixed(amountScale ?? 2),
+        currencyCode ?? 'PHP',
+      );
+
   Budget copyWith({
     String? id,
     String? Function()? householdId,

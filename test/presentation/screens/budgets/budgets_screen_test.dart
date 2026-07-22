@@ -72,9 +72,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Dining Out'), findsOneWidget);
-      expect(find.text('₱2500.00'), findsOneWidget);
-      expect(find.text('of ₱10000.00'), findsOneWidget);
-      expect(find.text('₱7500.00 left'), findsOneWidget);
+      expect(find.text('₱2,500.00'), findsOneWidget);
+      expect(find.text('of ₱10,000.00'), findsOneWidget);
+      expect(find.text('₱7,500.00 left'), findsOneWidget);
     });
 
     testWidgets('handles over-budget state', (tester) async {
@@ -106,7 +106,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Uncategorized'), findsOneWidget);
-      expect(find.text('₱1000.00 over'), findsOneWidget);
+      expect(find.text('₱1,000.00 over'), findsOneWidget);
     });
   });
 

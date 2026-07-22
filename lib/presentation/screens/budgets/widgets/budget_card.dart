@@ -184,6 +184,5 @@ class BudgetCard extends StatelessWidget {
     );
   }
 
-  static String _exact(ExactMoney money) =>
-      '${MoneyFormat.symbolFor(money.currencyCode)}${money.toDecimalString()}';
+  static String _exact(ExactMoney money) => MoneyFormat.exactMoney(money);
 }

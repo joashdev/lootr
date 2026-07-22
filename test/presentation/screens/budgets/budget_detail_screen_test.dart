@@ -70,10 +70,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 20));
   }
 
-  Future<void> pumpScreen(
-    WidgetTester tester, {
-    bool listAlive = false,
-  }) async {
+  Future<void> pumpScreen(WidgetTester tester, {bool listAlive = false}) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [databaseProvider.overrideWith((ref) => db)],
@@ -138,7 +135,7 @@ void main() {
     ) async {
       await pumpScreen(tester);
       await expectLoadsWithoutHanging(tester);
-      expect(find.text('₱120'), findsWidgets);
+      expect(find.text('₱120.00'), findsWidgets);
 
       // A table change after the first load must flow through; the old
       // provider deadlocked here waiting on an already-listened stream.
@@ -156,11 +153,11 @@ void main() {
 
       for (var i = 0; i < 20; i++) {
         await tester.pump(const Duration(milliseconds: 50));
-        if (tester.any(find.text('₱200'))) break;
+        if (tester.any(find.text('₱200.00'))) break;
       }
 
       expect(
-        find.text('₱200'),
+        find.text('₱200.00'),
         findsWidgets,
         reason: 'Spent total must update when a matching transaction lands',
       );

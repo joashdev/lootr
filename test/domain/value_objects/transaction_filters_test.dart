@@ -64,7 +64,11 @@ void main() {
       });
 
       test('should return false when amount range is set', () {
-        const filters = TransactionFilters(minAmount: 50);
+        const filters = TransactionFilters(
+          currencyCode: 'PHP',
+          minAmountCoefficient: '5000',
+          minAmountScale: 2,
+        );
         expect(filters.isEmpty, isFalse);
       });
 
@@ -136,25 +140,33 @@ void main() {
         expect(result.first.categoryId, 'cat-1');
       });
 
-      test('should filter by minAmount', () {
+      test('should filter by currency-qualified minimum amount', () {
         final txs = [
           makeTx(id: '1', amount: 50),
           makeTx(id: '2', amount: 100),
           makeTx(id: '3', amount: 150),
         ];
-        const filters = TransactionFilters(minAmount: 100);
+        const filters = TransactionFilters(
+          currencyCode: 'PHP',
+          minAmountCoefficient: '10000',
+          minAmountScale: 2,
+        );
         final result = filters.apply(txs);
         expect(result.length, 2);
         expect(result.every((t) => t.amount >= 100), isTrue);
       });
 
-      test('should filter by maxAmount', () {
+      test('should filter by currency-qualified maximum amount', () {
         final txs = [
           makeTx(id: '1', amount: 50),
           makeTx(id: '2', amount: 100),
           makeTx(id: '3', amount: 150),
         ];
-        const filters = TransactionFilters(maxAmount: 100);
+        const filters = TransactionFilters(
+          currencyCode: 'PHP',
+          maxAmountCoefficient: '10000',
+          maxAmountScale: 2,
+        );
         final result = filters.apply(txs);
         expect(result.length, 2);
         expect(result.every((t) => t.amount <= 100), isTrue);
@@ -241,8 +253,11 @@ void main() {
         const filters = TransactionFilters(
           directions: ['expense'],
           modes: ['one_time'],
-          minAmount: 50,
-          maxAmount: 150,
+          currencyCode: 'PHP',
+          minAmountCoefficient: '5000',
+          minAmountScale: 2,
+          maxAmountCoefficient: '15000',
+          maxAmountScale: 2,
         );
         final result = filters.apply(txs);
         expect(result.length, 2);

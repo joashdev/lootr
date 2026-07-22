@@ -251,19 +251,22 @@ void main() {
       await tester.enterText(amountField('Max'), '900');
       await tester.pump();
 
-      // Typed amounts are committed without any inner apply press.
-      expect(container.read(transactionFiltersProvider).minAmount, 100);
-      expect(container.read(transactionFiltersProvider).maxAmount, 900);
+      // An amount range is never applied across unrelated currencies.
+      expect(container.read(transactionFiltersProvider).minAmount, isNull);
+      expect(container.read(transactionFiltersProvider).maxAmount, isNull);
       expect(
-        find.widgetWithText(FilledButton, 'Apply 1 filter'),
+        find.text('Choose a currency before filtering by amount.'),
         findsOneWidget,
       );
 
-      // Global Apply keeps the values and closes the sheet.
-      await tester.tap(find.widgetWithText(FilledButton, 'Apply 1 filter'));
-      await tester.pumpAndSettle();
-      expect(container.read(transactionFiltersProvider).minAmount, 100);
-      expect(container.read(transactionFiltersProvider).maxAmount, 900);
+      await tester.tap(find.text('PHP'));
+      await tester.pump();
+      final filters = container.read(transactionFiltersProvider);
+      expect(filters.currencyCode, 'PHP');
+      expect(filters.minAmountCoefficient, '100');
+      expect(filters.minAmountScale, 0);
+      expect(filters.maxAmountCoefficient, '900');
+      expect(filters.maxAmountScale, 0);
     },
   );
 

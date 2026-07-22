@@ -203,6 +203,24 @@ class TransactionFiltersNotifier extends Notifier<TransactionFilters> {
       dateRange: state.dateRange,
     );
   }
+
+  void setImportedScope({
+    required List<String> accountIds,
+    required DateRange? dateRange,
+  }) {
+    state = TransactionFilters(
+      directions: state.directions,
+      modes: state.modes,
+      accountIds: accountIds,
+      categoryIds: state.categoryIds,
+      currencyCode: state.currencyCode,
+      minAmountCoefficient: state.minAmountCoefficient,
+      minAmountScale: state.minAmountScale,
+      maxAmountCoefficient: state.maxAmountCoefficient,
+      maxAmountScale: state.maxAmountScale,
+      dateRange: dateRange,
+    );
+  }
 }
 
 /// Not autoDispose: filter state must persist across tab switches (Task 16.5).

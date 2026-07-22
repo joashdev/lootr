@@ -34,9 +34,7 @@ class AccountDetailScreen extends ConsumerWidget {
         ref.watch(categoriesProvider).asData?.value ?? const <Category>[];
     final payees = ref.watch(payeesProvider).asData?.value ?? const <Payee>[];
     final categoryMap = {for (final c in categories) c.id: c};
-    final payeeNames = {
-      for (final p in payees) p.id: p.resolvedName,
-    };
+    final payeeNames = {for (final p in payees) p.id: p.resolvedName};
     final lootrColors = context.lootrColors;
     final colorScheme = Theme.of(context).colorScheme;
     final loadedAccount = detailAsync.asData?.value?.account;
@@ -106,10 +104,7 @@ class AccountDetailScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: AppSpacing.space4),
                       Text(
-                        MoneyFormat.exact(
-                          account.balance,
-                          account.currencyCode,
-                        ),
+                        MoneyFormat.exactMoney(account.exactBalance),
                         style: AppTypography.displayMono.copyWith(
                           color: balanceColor ?? colorScheme.onSurface,
                         ),
@@ -190,7 +185,8 @@ class AccountDetailScreen extends ConsumerWidget {
               // Keep the last row clear of the floating bottom nav.
               SliverToBoxAdapter(
                 child: SizedBox(
-                  height: AppSpacing.bottomNavClearance +
+                  height:
+                      AppSpacing.bottomNavClearance +
                       MediaQuery.paddingOf(context).bottom,
                 ),
               ),

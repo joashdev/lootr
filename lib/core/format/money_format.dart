@@ -1,18 +1,21 @@
 import 'package:intl/intl.dart';
 
+import '../../domain/value_objects/exact_money.dart';
+
 /// Centralized currency formatting for Lootr.
 ///
-/// Two registers, chosen by how much space the figure has to live in:
+/// Formatting registers chosen by how much space and precision a figure needs:
 ///
-///  * [exact] — full, grouped, two-decimal form (e.g. `₱24,000.23`). Use on
-///    transaction rows, detail screens, and inputs — anywhere the precise
-///    figure matters and there is room for it.
+///  * [exactMoney] — full, grouped, configured-scale form. Use for persisted
+///    financial values on rows and detail screens.
+///  * [exact] — compatibility formatter for numeric projections.
 ///  * [display] — space-aware summary form for dashboard headlines and cards.
 ///    Drops centavos, and switches to compact `K`/`M`/`B` notation once a
 ///    number would otherwise run long. The precise value is always one tap
 ///    away on the underlying detail screen.
 ///
-/// Both honour the account's [currencyCode] rather than hard-coding `₱`.
+/// Every formatter honours its currency identifier rather than hard-coding
+/// `₱`.
 abstract class MoneyFormat {
   MoneyFormat._();
 
@@ -45,6 +48,29 @@ abstract class MoneyFormat {
       symbol: symbolFor(currencyCode),
       name: currencyCode,
     ).format(amount);
+  }
+
+  /// Precise, grouped formatting that preserves the value's configured scale.
+  ///
+  /// This path never projects through [double], so imported 4- and 12-decimal
+  /// values remain byte-for-byte legible at their source precision.
+  static String exactMoney(ExactMoney amount) {
+    final digits = amount.coefficient.abs().toString().padLeft(
+      amount.scale + 1,
+      '0',
+    );
+    final wholeLength = digits.length - amount.scale;
+    final whole = digits.substring(0, wholeLength);
+    final groupedWhole = whole.replaceAllMapped(
+      RegExp(r'\B(?=(\d{3})+(?!\d))'),
+      (_) => ',',
+    );
+    final fraction = amount.scale == 0
+        ? ''
+        : '.${digits.substring(wholeLength)}';
+    final sign = amount.isNegative ? '-' : '';
+
+    return '$sign${symbolFor(amount.currencyCode)}$groupedWhole$fraction';
   }
 
   /// Summary form tuned to fit headline/card space.

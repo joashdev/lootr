@@ -6,19 +6,19 @@ import 'repo_providers.dart';
 
 final accountsProvider = StreamProvider<List<Account>>((ref) {
   final repo = ref.watch(accountRepoProvider);
-  return repo.watchAll().map(
-        (rows) => rows.map((r) => r.toEntity()).toList(),
-      );
+  return repo.watchAll().map((rows) => rows.map((r) => r.toEntity()).toList());
 });
 
-final accountTypesProvider = Provider<List<String>>((ref) => const [
-      AccountType.cash,
-      AccountType.bank,
-      AccountType.ewallet,
-      AccountType.savings,
-      AccountType.investment,
-      AccountType.crypto,
-      AccountType.creditCard,
-      AccountType.loan,
-      AccountType.bnpl,
-    ]);
+final accountTypesProvider = Provider<List<String>>(
+  (ref) => const [
+    AccountType.cash,
+    AccountType.bank,
+    AccountType.ewallet,
+    AccountType.savings,
+    AccountType.investment,
+    AccountType.crypto,
+    AccountType.creditCard,
+    AccountType.loan,
+    AccountType.bnpl,
+  ],
+);

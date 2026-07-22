@@ -82,6 +82,13 @@ class FilterChipBar extends ConsumerWidget {
     if (filters.accountIds.isNotEmpty && accounts is AsyncData) {
       final value = accounts.value;
       if (value != null) {
+        final selectedCurrencies =
+            value
+                .where((account) => filters.accountIds.contains(account.id))
+                .map((account) => account.currencyCode)
+                .toSet()
+                .toList()
+              ..sort();
         for (final accountId in filters.accountIds) {
           final name = value
               .where((a) => a.id == accountId)
@@ -94,6 +101,16 @@ class FilterChipBar extends ConsumerWidget {
               onRemove: () => ref
                   .read(transactionFiltersProvider.notifier)
                   .toggleAccountId(accountId),
+            ),
+          );
+        }
+        if (selectedCurrencies.isNotEmpty) {
+          chips.add(
+            _FilterChip(
+              label: 'Currencies: ${selectedCurrencies.join(', ')}',
+              onRemove: () => ref
+                  .read(transactionFiltersProvider.notifier)
+                  .setAccountId(null),
             ),
           );
         }

@@ -121,9 +121,8 @@ class TransactionFilters {
             return false;
           }
         } else {
-          // Compatibility path for the existing double-based filter sheet.
-          if (minAmount != null && t.amount < minAmount!) return false;
-          if (maxAmount != null && t.amount > maxAmount!) return false;
+          // Legacy unqualified bounds are intentionally ignored: comparing
+          // raw numbers across currencies would imply a silent 1:1 rate.
         }
       }
       if (dateRange != null && !dateRange!.contains(t.occurredAt)) return false;

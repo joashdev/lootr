@@ -181,7 +181,13 @@ void main() {
 
       container
           .read(transactionFiltersProvider.notifier)
-          .setAmountRange(50, 150);
+          .setExactAmountRange(
+            currencyCode: 'PHP',
+            minCoefficient: '5000',
+            minScale: 2,
+            maxCoefficient: '15000',
+            maxScale: 2,
+          );
       container
           .read(transactionFiltersProvider.notifier)
           .setDateRange(

@@ -41,13 +41,6 @@ final filteredTransactionsProvider = StreamProvider<List<Transaction>>((ref) {
     var txns = rows.map((r) => r.toEntity()).toList();
     final transfers = transferRows.map((row) => row.toEntity()).toList();
 
-    if (filters.minAmount != null) {
-      txns = txns.where((t) => t.amount >= filters.minAmount!).toList();
-    }
-    if (filters.maxAmount != null) {
-      txns = txns.where((t) => t.amount <= filters.maxAmount!).toList();
-    }
-
     // Exact money constraints were evaluated at the repository boundary,
     // where legacy rows can be promoted with their account precision.
     txns = filters.apply(txns, includeMoney: false);
@@ -90,15 +83,6 @@ final filteredTransactionsProvider = StreamProvider<List<Transaction>>((ref) {
                 currencyCode: filters.currencyCode!,
               );
               if (amount.compareTo(maximum) > 0) return false;
-            }
-          } else {
-            if (filters.minAmount != null &&
-                transfer.amount < filters.minAmount!) {
-              return false;
-            }
-            if (filters.maxAmount != null &&
-                transfer.amount > filters.maxAmount!) {
-              return false;
             }
           }
           return true;

@@ -191,8 +191,7 @@ class ImportedBudgetDetailScreen extends ConsumerWidget {
     );
   }
 
-  static String _exact(ExactMoney value) =>
-      '${MoneyFormat.symbolFor(value.currencyCode)}${value.toDecimalString()}';
+  static String _exact(ExactMoney value) => MoneyFormat.exactMoney(value);
 }
 
 class _Panel extends StatelessWidget {
