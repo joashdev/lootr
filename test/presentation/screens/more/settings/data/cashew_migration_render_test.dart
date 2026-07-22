@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -46,7 +48,11 @@ void main() {
 
     await expectLater(
       find.byType(CashewMigrationRunScreen),
-      matchesGoldenFile('goldens/cashew_migration_review.png'),
+      matchesGoldenFile(
+        Platform.isLinux
+            ? 'goldens/cashew_migration_review_linux.png'
+            : 'goldens/cashew_migration_review.png',
+      ),
     );
   });
 }
