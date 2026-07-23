@@ -6,28 +6,43 @@ import '../../domain/entities/mappers.dart';
 import '../../domain/entities/payee.dart';
 import '../../domain/entities/transaction.dart';
 import '../../domain/value_objects/exact_money.dart';
+import '../../domain/value_objects/transaction_list_intent.dart';
 import 'payees_provider.dart';
+import 'period_context_provider.dart';
 import 'repo_providers.dart';
 import 'transaction_entry_support.dart';
 import 'transaction_filters_provider.dart';
+import 'transaction_list_intent_provider.dart';
 
 final filteredTransactionsProvider = StreamProvider<List<Transaction>>((ref) {
   final transactionRepo = ref.watch(transactionRepoProvider);
   final transferRepo = ref.watch(transferRepoProvider);
   final filters = ref.watch(transactionFiltersProvider);
+  final ledgerQuery = ref.watch(activeLedgerQueryProvider);
+  final ledgerFilters = ledgerQuery?.filters;
+  final period = ref.watch(periodContextProvider);
   final searchQuery = ref.watch(transactionSearchQueryProvider);
+  final listIntent = ref.watch(transactionListIntentProvider);
   final payees = ref.watch(payeesProvider).asData?.value ?? const <Payee>[];
   final payeesById = {for (final payee in payees) payee.id: payee};
   final normalizedQuery = normalizeSearchText(searchQuery);
 
+  final effectiveFrom = _later(
+    _later(filters.dateRange?.start, ledgerFilters?.dateRange?.start),
+    period.startsAt,
+  );
+  final effectiveTo = _earlier(
+    _earlier(filters.dateRange?.end, ledgerFilters?.dateRange?.end),
+    period.inclusiveEnd,
+  );
   final repoFilters = TransactionRepoFilters(
-    currencyCode: filters.currencyCode,
+    currencyCode: filters.currencyCode ?? ledgerFilters?.currencyCode,
     minAmountCoefficient: filters.minAmountCoefficient,
     minAmountScale: filters.minAmountScale,
     maxAmountCoefficient: filters.maxAmountCoefficient,
     maxAmountScale: filters.maxAmountScale,
-    from: filters.dateRange?.start,
-    to: filters.dateRange?.end,
+    from: effectiveFrom,
+    to: effectiveTo,
   );
 
   return Rx.combineLatest2<
@@ -58,8 +73,11 @@ final filteredTransactionsProvider = StreamProvider<List<Transaction>>((ref) {
               !filters.accountIds.contains(transfer.destinationAccountId)) {
             return false;
           }
-          if (filters.dateRange != null &&
-              !filters.dateRange!.contains(transfer.occurredAt)) {
+          if (effectiveFrom != null &&
+              transfer.occurredAt.isBefore(effectiveFrom)) {
+            return false;
+          }
+          if (effectiveTo != null && transfer.occurredAt.isAfter(effectiveTo)) {
             return false;
           }
           final candidateAmounts = <ExactMoney>[
@@ -98,6 +116,14 @@ final filteredTransactionsProvider = StreamProvider<List<Transaction>>((ref) {
         .map(mapTransferToTransaction);
 
     txns = [...txns, ...filteredTransfers];
+    if (ledgerFilters != null) {
+      txns = ledgerFilters.apply(txns);
+      if (ledgerQuery!.uncategorizedOnly) {
+        txns = txns
+            .where((transaction) => transaction.categoryId == null)
+            .toList();
+      }
+    }
 
     // Search composes with active filters via AND logic (Task 16.4).
     if (normalizedQuery.isNotEmpty) {
@@ -107,10 +133,26 @@ final filteredTransactionsProvider = StreamProvider<List<Transaction>>((ref) {
       }).toList();
     }
 
-    txns.sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+    txns.sort(
+      listIntent.sort == TransactionSort.newestFirst
+          ? (a, b) => b.occurredAt.compareTo(a.occurredAt)
+          : (a, b) => a.occurredAt.compareTo(b.occurredAt),
+    );
     return txns;
   });
 });
+
+DateTime? _later(DateTime? left, DateTime? right) {
+  if (left == null) return right;
+  if (right == null) return left;
+  return left.isAfter(right) ? left : right;
+}
+
+DateTime? _earlier(DateTime? left, DateTime? right) {
+  if (left == null) return right;
+  if (right == null) return left;
+  return left.isBefore(right) ? left : right;
+}
 
 bool _matchesSearch(
   Transaction transaction,

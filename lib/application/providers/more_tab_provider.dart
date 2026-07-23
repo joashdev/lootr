@@ -54,6 +54,11 @@ final moreTabProvider = Provider<List<MoreSectionGroup>>((ref) {
       header: 'Manage',
       items: [
         MoreItem(label: 'Categories', icon: 'tag', route: '/more/categories'),
+        MoreItem(
+          label: 'Category Rules',
+          icon: 'list-filter',
+          route: '/more/categories/rules',
+        ),
         MoreItem(label: 'Payees', icon: 'address-book', route: '/more/payees'),
         MoreItem(label: 'Households', icon: 'users', route: '/more/households'),
       ],

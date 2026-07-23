@@ -40,7 +40,9 @@ class NotificationDeepLinkPayload {
 String notificationDeepLinkFor({
   required String notificationType,
   String? relatedEntityId,
+  String? occurrencePath,
 }) {
+  if (occurrencePath != null) return occurrencePath;
   switch (notificationType) {
     case 'bill_due':
     case 'installment_due':

@@ -6,6 +6,7 @@ import '../../domain/entities/category.dart';
 import '../../domain/entities/mappers.dart';
 import '../../domain/entities/payee.dart';
 import '../../domain/entities/recurring_template.dart';
+import '../../data/database/app_database.dart';
 import 'categories_provider.dart';
 import 'database_provider.dart';
 import 'payees_provider.dart';
@@ -24,6 +25,11 @@ final recurringProvider = StreamProvider<List<RecurringTemplate>>((ref) {
     return entities;
   });
 });
+
+final recurringOccurrencesProvider =
+    StreamProvider<List<RecurringOccurrenceData>>((ref) {
+      return ref.watch(recurringOccurrenceRepoProvider).watchAll();
+    });
 
 final subscriptionRecurringTemplateIdsProvider = StreamProvider<Set<String>>((
   ref,

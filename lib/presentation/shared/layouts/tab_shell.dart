@@ -24,8 +24,7 @@ class TabShell extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surface = Theme.of(context).colorScheme.surface;
 
-    final navOverlayHeight =
-        _navBottomGap + _pillHeight + bottomPadding + 48;
+    final navOverlayHeight = _navBottomGap + _pillHeight + bottomPadding + 48;
 
     return Scaffold(
       body: Stack(
@@ -147,26 +146,33 @@ class TabShell extends StatelessWidget {
   }
 
   Widget _buildAddIsland(BuildContext context, bool isDark) {
-    return GestureDetector(
-      onTap: () => _showQuickActions(context),
-      child: Container(
-        width: _addButtonSize,
-        height: _addButtonSize,
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.darkPrimary600 : AppColors.primary600,
+    return Semantics(
+      button: true,
+      label: 'Add transaction, transfer, or scan receipt',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _showQuickActions(context),
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: (isDark
-                      ? AppColors.darkPrimary500
-                      : AppColors.primary600)
-                  .withValues(alpha: isDark ? 0.35 : 0.26),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
+          child: Container(
+            width: _addButtonSize,
+            height: _addButtonSize,
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkPrimary600 : AppColors.primary600,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color:
+                      (isDark ? AppColors.darkPrimary500 : AppColors.primary600)
+                          .withValues(alpha: isDark ? 0.35 : 0.26),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-          ],
+            child: const Icon(LucideIcons.plus, color: Colors.white, size: 28),
+          ),
         ),
-        child: const Icon(LucideIcons.plus, color: Colors.white, size: 28),
       ),
     );
   }
@@ -212,41 +218,49 @@ class _NavTab extends StatelessWidget {
     final fontWeight = isActive ? FontWeight.w500 : FontWeight.w400;
 
     return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          height: double.infinity,
-          decoration: BoxDecoration(
-            color: isActive
-                ? (isDark
-                    ? AppColors.darkPrimary500.withValues(alpha: 0.15)
-                    : AppColors.primary600.withValues(alpha: 0.10))
-                : null,
+      child: Semantics(
+        button: true,
+        selected: isActive,
+        label: '$label tab',
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
             borderRadius: BorderRadius.circular(14),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 3),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: color, size: 20),
-              const SizedBox(height: 2),
-              // Scale down long labels (e.g. "Transactions") instead of
-              // clipping them; short labels render at full size.
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  style: AppTypography.micro.copyWith(
-                    fontWeight: fontWeight,
-                    color: color,
-                    height: 1.1,
-                  ),
-                ),
+            child: Container(
+              height: double.infinity,
+              decoration: BoxDecoration(
+                color: isActive
+                    ? (isDark
+                          ? AppColors.darkPrimary500.withValues(alpha: 0.15)
+                          : AppColors.primary600.withValues(alpha: 0.10))
+                    : null,
+                borderRadius: BorderRadius.circular(14),
               ),
-            ],
+              padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 3),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, color: color, size: 20),
+                  const SizedBox(height: 2),
+                  // Scale down long labels (e.g. "Transactions") instead of
+                  // clipping them; short labels render at full size.
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      style: AppTypography.micro.copyWith(
+                        fontWeight: fontWeight,
+                        color: color,
+                        height: 1.1,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),

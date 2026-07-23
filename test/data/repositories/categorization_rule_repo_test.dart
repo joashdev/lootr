@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' hide isNull;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lootr/data/database/app_database.dart';
 import 'package:lootr/data/repositories/categorization_rule_repo.dart';
@@ -100,5 +100,47 @@ void main() {
       (await repo.match(title: 'other', payee: 'payee'))!.id,
       'payee-rule',
     );
+  });
+
+  test('updates every editable field and re-normalizes the pattern', () async {
+    await repo.create(
+      id: 'editable',
+      matchTarget: 'title',
+      matchKind: 'contains',
+      pattern: 'old',
+      categoryId: 'contains',
+    );
+
+    await repo.update(
+      id: 'editable',
+      matchTarget: 'payee',
+      matchKind: 'exact',
+      pattern: '  Corner   Market ',
+      categoryId: 'payee',
+      priority: 42,
+    );
+
+    final row = await repo.getById('editable');
+    expect(row?.matchTarget, 'payee');
+    expect(row?.matchKind, 'exact');
+    expect(row?.pattern, 'Corner   Market');
+    expect(row?.normalizedPattern, 'corner market');
+    expect(row?.categoryId, 'payee');
+    expect(row?.priority, 42);
+  });
+
+  test('deletes a rule without changing transaction history', () async {
+    await repo.create(
+      id: 'delete-me',
+      matchTarget: 'title',
+      matchKind: 'exact',
+      pattern: 'merchant',
+      categoryId: 'exact',
+    );
+
+    await repo.delete('delete-me');
+
+    expect(await repo.getById('delete-me'), isNull);
+    expect(await repo.match(title: 'merchant'), isNull);
   });
 }

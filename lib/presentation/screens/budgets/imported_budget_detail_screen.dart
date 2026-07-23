@@ -7,6 +7,7 @@ import '../../../application/providers/accounts_provider.dart';
 import '../../../application/providers/categories_provider.dart';
 import '../../../application/providers/imported_budget_detail_provider.dart';
 import '../../../application/providers/payees_provider.dart';
+import '../../../application/providers/repo_providers.dart';
 import '../../../core/extensions/async_value_x.dart';
 import '../../../core/format/money_format.dart';
 import '../../../core/theme/colors.dart';
@@ -16,6 +17,7 @@ import '../../../domain/entities/account.dart';
 import '../../../domain/value_objects/exact_money.dart';
 import '../../shared/components/progress/budget_progress_bar.dart';
 import '../transactions/widgets/transaction_row.dart';
+import '../../sheets/composite_budget_sheet.dart';
 
 class ImportedBudgetDetailScreen extends ConsumerWidget {
   const ImportedBudgetDetailScreen({
@@ -55,7 +57,7 @@ class ImportedBudgetDetailScreen extends ConsumerWidget {
     };
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Imported budget')),
+      appBar: AppBar(title: const Text('Composite budget')),
       body: detail.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => const Center(child: Text('Could not load budget')),
@@ -78,9 +80,28 @@ class ImportedBudgetDetailScreen extends ConsumerWidget {
               Text(budget.name, style: AppTypography.h2),
               const SizedBox(height: AppSpacing.space1),
               Text(
-                '${budget.currencyCode} · Read-only imported definition',
+                budget.isReadOnly
+                    ? '${budget.currencyCode} · Read-only imported definition'
+                    : '${budget.currencyCode} · Editable composite definition',
                 style: TextStyle(color: lootrColors.textSecondary),
               ),
+              if (!budget.isReadOnly) ...[
+                const SizedBox(height: AppSpacing.space2),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed: () => showModalBottomSheet<void>(
+                      context: context,
+                      useRootNavigator: true,
+                      isScrollControlled: true,
+                      backgroundColor: Theme.of(context).colorScheme.surface,
+                      builder: (_) => CompositeBudgetSheet(budgetId: id),
+                    ),
+                    icon: const Icon(LucideIcons.pencil, size: 18),
+                    label: const Text('Edit scope and period'),
+                  ),
+                ),
+              ],
               const SizedBox(height: AppSpacing.space3),
               _Panel(
                 child: Column(
@@ -140,6 +161,42 @@ class ImportedBudgetDetailScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
+              ),
+              const SizedBox(height: AppSpacing.space4),
+              Text('Period history', style: AppTypography.h3),
+              const SizedBox(height: AppSpacing.space2),
+              FutureBuilder(
+                future: ref
+                    .read(compositeBudgetRepoProvider)
+                    .listHistoricalPeriods(id),
+                builder: (context, snapshot) {
+                  final periods = snapshot.data ?? const [];
+                  if (periods.isEmpty) {
+                    return const _Panel(
+                      child: Text('No materialized historical cycles yet'),
+                    );
+                  }
+                  return _Panel(
+                    child: Column(
+                      children: [
+                        for (final period in periods)
+                          ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: const Icon(LucideIcons.calendarRange),
+                            title: Text(
+                              '${period.startsAt.year}-'
+                              '${period.startsAt.month.toString().padLeft(2, '0')}-'
+                              '${period.startsAt.day.toString().padLeft(2, '0')}'
+                              ' → '
+                              '${period.endsAt.subtract(const Duration(days: 1)).year}-'
+                              '${period.endsAt.subtract(const Duration(days: 1)).month.toString().padLeft(2, '0')}-'
+                              '${period.endsAt.subtract(const Duration(days: 1)).day.toString().padLeft(2, '0')}',
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: AppSpacing.space4),
               Text('Included transactions', style: AppTypography.h3),

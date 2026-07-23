@@ -522,5 +522,187 @@ void main() {
               .getSingle();
       expect(account.balance, 500.0);
     });
+
+    test(
+      'bulk recategorize applies all rows and rolls back together',
+      () async {
+        await db.categories.insertOne(
+          CategoriesCompanion.insert(
+            id: 'cat-2',
+            name: 'Dining',
+            categoryGroup: 'expense',
+          ),
+        );
+        for (final id in ['txn-bulk-1', 'txn-bulk-2']) {
+          await repo.create(
+            TransactionsCompanion.insert(
+              id: id,
+              accountId: 'acc-1',
+              categoryId: const Value('cat-1'),
+              amount: 10,
+              transactionDirection: 'expense',
+              transactionMode: 'one_time',
+              occurredAt: DateTime(2026, 6, 19),
+            ),
+          );
+        }
+
+        final plan = await repo.preflightBulk(
+          const TransactionBulkRequest(
+            transactionIds: {'txn-bulk-1', 'txn-bulk-2'},
+            operation: TransactionBulkOperation.recategorize,
+            targetId: 'cat-2',
+          ),
+        );
+        expect(plan.canApply, isTrue);
+
+        final undo = await repo.applyBulk(plan);
+        var rows = await (db.select(
+          db.transactions,
+        )..where((row) => row.id.isIn(plan.transactionIds))).get();
+        expect(rows.map((row) => row.categoryId).toSet(), {'cat-2'});
+
+        await undo.rollback();
+        rows = await (db.select(
+          db.transactions,
+        )..where((row) => row.id.isIn(plan.transactionIds))).get();
+        expect(rows.map((row) => row.categoryId).toSet(), {'cat-1'});
+      },
+    );
+
+    test(
+      'bulk move preserves total balances and supports atomic undo',
+      () async {
+        await db.accounts.insertOne(
+          AccountsCompanion.insert(
+            id: 'acc-2',
+            ownerUserId: 'usr-1',
+            name: 'Bank',
+            accountType: 'bank',
+            balance: const Value(100),
+          ),
+        );
+        for (final entry in const {
+          'txn-move-1': 25.0,
+          'txn-move-2': 35.0,
+        }.entries) {
+          await repo.create(
+            TransactionsCompanion.insert(
+              id: entry.key,
+              accountId: 'acc-1',
+              amount: entry.value,
+              transactionDirection: 'expense',
+              transactionMode: 'one_time',
+              occurredAt: DateTime(2026, 6, 19),
+            ),
+          );
+        }
+        final plan = await repo.preflightBulk(
+          const TransactionBulkRequest(
+            transactionIds: {'txn-move-1', 'txn-move-2'},
+            operation: TransactionBulkOperation.moveAccount,
+            targetId: 'acc-2',
+          ),
+        );
+
+        final undo = await repo.applyBulk(plan);
+        var accounts = await db.select(db.accounts).get();
+        expect(accounts.firstWhere((row) => row.id == 'acc-1').balance, 500);
+        expect(accounts.firstWhere((row) => row.id == 'acc-2').balance, 40);
+
+        await undo.rollback();
+        accounts = await db.select(db.accounts).get();
+        expect(accounts.firstWhere((row) => row.id == 'acc-1').balance, 440);
+        expect(accounts.firstWhere((row) => row.id == 'acc-2').balance, 100);
+      },
+    );
+
+    test(
+      'bulk delete changes every row and restores every row on undo',
+      () async {
+        for (final id in ['txn-delete-1', 'txn-delete-2']) {
+          await repo.create(
+            TransactionsCompanion.insert(
+              id: id,
+              accountId: 'acc-1',
+              amount: 20,
+              transactionDirection: 'expense',
+              transactionMode: 'one_time',
+              occurredAt: DateTime(2026, 6, 19),
+            ),
+          );
+        }
+        final plan = await repo.preflightBulk(
+          const TransactionBulkRequest(
+            transactionIds: {'txn-delete-1', 'txn-delete-2'},
+            operation: TransactionBulkOperation.delete,
+          ),
+        );
+
+        final undo = await repo.applyBulk(plan);
+        var visible = await repo
+            .watchFiltered(const TransactionRepoFilters())
+            .first;
+        expect(
+          visible.where((row) => plan.transactionIds.contains(row.id)),
+          isEmpty,
+        );
+        expect((await db.select(db.accounts).getSingle()).balance, 500);
+
+        await undo.rollback();
+        visible = await repo
+            .watchFiltered(const TransactionRepoFilters())
+            .first;
+        expect(
+          visible.where((row) => plan.transactionIds.contains(row.id)).length,
+          2,
+        );
+        expect((await db.select(db.accounts).getSingle()).balance, 460);
+      },
+    );
+
+    test(
+      'bulk preflight reports every impossible row before applying',
+      () async {
+        await db.accounts.insertOne(
+          AccountsCompanion.insert(
+            id: 'acc-eur',
+            ownerUserId: 'usr-1',
+            name: 'Euro',
+            accountType: 'bank',
+            currencyCode: const Value('EUR'),
+          ),
+        );
+        await repo.create(
+          TransactionsCompanion.insert(
+            id: 'txn-preflight',
+            accountId: 'acc-1',
+            amount: 20,
+            transactionDirection: 'expense',
+            transactionMode: 'one_time',
+            occurredAt: DateTime(2026, 6, 19),
+          ),
+        );
+
+        final plan = await repo.preflightBulk(
+          const TransactionBulkRequest(
+            transactionIds: {'txn-preflight', 'transfer-not-supported'},
+            operation: TransactionBulkOperation.moveAccount,
+            targetId: 'acc-eur',
+          ),
+        );
+
+        expect(plan.canApply, isFalse);
+        expect(
+          plan.issues.map((issue) => issue.transactionId),
+          containsAll(['txn-preflight', 'transfer-not-supported']),
+        );
+        await expectLater(
+          repo.applyBulk(plan),
+          throwsA(isA<TransactionBulkPreflightException>()),
+        );
+        expect((await db.select(db.accounts).get()).first.balance, 480);
+      },
+    );
   });
 }

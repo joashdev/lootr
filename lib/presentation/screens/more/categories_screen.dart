@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../application/providers/categories_provider.dart';
 import '../../../core/theme/colors.dart';
@@ -24,14 +25,18 @@ class CategoriesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final categoriesAsync = ref.watch(categoriesProvider);
-    final hasCategories =
-        categoriesAsync.asData?.value.isNotEmpty ?? false;
+    final hasCategories = categoriesAsync.asData?.value.isNotEmpty ?? false;
 
     return Scaffold(
       appBar: AppBar(
         centerTitle: false,
         title: const Text('Categories'),
         actions: [
+          IconButton(
+            tooltip: 'Manage category rules',
+            onPressed: () => context.push('/more/categories/rules'),
+            icon: const Icon(LucideIcons.listFilter),
+          ),
           if (hasCategories)
             IconButton(
               tooltip: 'Add category',
@@ -98,7 +103,8 @@ class _CategoryList extends ConsumerWidget {
     return ListView(
       // Keep the last row clear of the floating bottom nav.
       padding: EdgeInsets.only(
-        bottom: AppSpacing.bottomNavClearance +
+        bottom:
+            AppSpacing.bottomNavClearance +
             MediaQuery.paddingOf(context).bottom,
       ),
       children: sections,

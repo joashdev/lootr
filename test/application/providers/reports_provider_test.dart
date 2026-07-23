@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:lootr/application/providers/database_provider.dart';
+import 'package:lootr/application/providers/period_context_provider.dart';
 import 'package:lootr/application/providers/reports_provider.dart';
 import 'package:lootr/data/database/app_database.dart';
 
@@ -43,6 +44,7 @@ void main() {
       overrides: [
         databaseProvider.overrideWith((ref) => db),
         reportsClockProvider.overrideWithValue(now),
+        periodContextClockProvider.overrideWithValue(now),
       ],
     );
     addTearDown(container.dispose);

@@ -34,7 +34,7 @@ abstract class AppColors {
   static const Color lightBorderSubtle = Color(0xFFF2F4F7);
   static const Color lightTextPrimary = Color(0xFF1B1B1F);
   static const Color lightTextSecondary = Color(0xFF63666E);
-  static const Color lightTextTertiary = Color(0xFFA1A5AD);
+  static const Color lightTextTertiary = Color(0xFF6B6F78);
 
   // Neutral — Dark
   static const Color darkBg = Color(0xFF0F0F11);
@@ -44,7 +44,7 @@ abstract class AppColors {
   static const Color darkBorderSubtle = Color(0xFF1F1F23);
   static const Color darkTextPrimary = Color(0xFFF0F0F5);
   static const Color darkTextSecondary = Color(0xFF9CA3AF);
-  static const Color darkTextTertiary = Color(0xFF6B7280);
+  static const Color darkTextTertiary = Color(0xFF9CA3AF);
 
   // Primary — Dark
   static const Color darkPrimary500 = Color(0xFF8AA9DF);
@@ -63,8 +63,8 @@ abstract class AppColors {
   static const Color darkDanger600 = Color(0xFFE2695B);
 
   // Transaction direction — Light (expense amber, income green)
-  static const Color expense = Color(0xFFE0972A);
-  static const Color income = Color(0xFF0E8F63);
+  static const Color expense = Color(0xFF8A5700);
+  static const Color income = Color(0xFF08704D);
   static const Color transfer = Color(0xFF3E6CB3);
 
   // Transaction direction — Dark

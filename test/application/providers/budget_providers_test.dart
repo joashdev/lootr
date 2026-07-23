@@ -340,6 +340,7 @@ void main() {
             amountScale: 4,
             currencyCode: 'USD',
             membershipMode: const Value('explicit_only'),
+            isReadOnly: const Value(true),
           ),
         );
         await db.transactions.insertOne(

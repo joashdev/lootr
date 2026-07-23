@@ -77,9 +77,8 @@ abstract class AppTheme {
       style: TextButton.styleFrom(
         foregroundColor: AppColors.primary600,
         textStyle: AppTypography.captionMedium,
-        minimumSize: const Size(0, 32),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        minimumSize: const Size(48, 48),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.sm),
         ),
@@ -88,8 +87,8 @@ abstract class AppTheme {
     iconButtonTheme: IconButtonThemeData(
       style: IconButton.styleFrom(
         foregroundColor: AppColors.lightTextSecondary,
-        minimumSize: const Size(40, 40),
-        padding: const EdgeInsets.all(8),
+        minimumSize: const Size(48, 48),
+        padding: const EdgeInsets.all(12),
         backgroundColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
@@ -148,9 +147,8 @@ abstract class AppTheme {
       style: TextButton.styleFrom(
         foregroundColor: AppColors.darkPrimary500,
         textStyle: AppTypography.captionMedium,
-        minimumSize: const Size(0, 32),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        minimumSize: const Size(48, 48),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.sm),
         ),
@@ -159,8 +157,8 @@ abstract class AppTheme {
     iconButtonTheme: IconButtonThemeData(
       style: IconButton.styleFrom(
         foregroundColor: AppColors.darkTextSecondary,
-        minimumSize: const Size(40, 40),
-        padding: const EdgeInsets.all(8),
+        minimumSize: const Size(48, 48),
+        padding: const EdgeInsets.all(12),
         backgroundColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),

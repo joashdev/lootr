@@ -10,11 +10,11 @@ import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
 import '../../shared/components/buttons/primary_button.dart';
-import '../../sheets/budget_create_sheet.dart';
+import '../../shared/components/period_selector.dart';
+import '../../sheets/composite_budget_sheet.dart';
 import 'widgets/budget_card.dart';
 import 'widgets/budget_shimmer.dart';
 import 'widgets/budget_summary_header.dart';
-import 'widgets/month_navigator.dart';
 
 const _monthNames = [
   'January',
@@ -50,14 +50,11 @@ class BudgetsScreen extends ConsumerWidget {
         elevation: 0,
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
-        toolbarHeight: 72,
+        toolbarHeight: 64,
         titleSpacing: AppSpacing.pagePaddingMobile,
-        title: Row(
-          children: [
-            Text('Budgets', style: Theme.of(context).textTheme.headlineLarge),
-            const Spacer(),
-            const MonthNavigator(compact: true),
-          ],
+        title: Text(
+          'Budgets',
+          style: Theme.of(context).textTheme.headlineLarge,
         ),
         actions: [
           if (hasBudgets)
@@ -70,6 +67,18 @@ class BudgetsScreen extends ConsumerWidget {
             ),
           const SizedBox(width: AppSpacing.space2),
         ],
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(56),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: AppSpacing.pagePaddingMobile,
+              ),
+              child: PeriodSelector(compact: true),
+            ),
+          ),
+        ),
       ),
       body: Column(
         children: [
@@ -134,7 +143,7 @@ class BudgetsScreen extends ConsumerWidget {
                       budget: budget,
                       category: category,
                       onTap: () => context.push(
-                        budget.isImported
+                        budget.isComposite
                             ? '/budgets/imported/${budget.id}'
                                   '?year=$year&month=$month'
                             : '/budgets/${budget.id}',
@@ -159,7 +168,7 @@ class BudgetsScreen extends ConsumerWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
       ),
-      builder: (_) => const BudgetCreateSheet(),
+      builder: (_) => const CompositeBudgetSheet(),
     );
   }
 }

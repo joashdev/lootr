@@ -18,6 +18,8 @@ import '../../core/format/money_format.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/radius.dart';
 import '../../core/theme/typography.dart';
+import '../../data/database/app_database.dart';
+import '../../data/repositories/categorization_rule_repo.dart';
 import '../../domain/entities/account.dart';
 import '../../domain/entities/category.dart';
 import '../../domain/entities/debt_record.dart';
@@ -50,6 +52,9 @@ class AddTransactionSheetArgs {
     this.startInQuickMode = false,
     this.initialParsedTransaction,
     this.initialQuickText,
+    this.entrySource,
+    this.sourceConfidence,
+    this.sourceSummary,
   });
 
   final Transaction? initialTransaction;
@@ -57,6 +62,9 @@ class AddTransactionSheetArgs {
   final bool startInQuickMode;
   final ParsedTransaction? initialParsedTransaction;
   final String? initialQuickText;
+  final String? entrySource;
+  final double? sourceConfidence;
+  final String? sourceSummary;
 }
 
 class AddTransactionSheet extends ConsumerStatefulWidget {
@@ -67,6 +75,9 @@ class AddTransactionSheet extends ConsumerStatefulWidget {
     this.startInQuickMode = false,
     this.initialParsedTransaction,
     this.initialQuickText,
+    this.entrySource,
+    this.sourceConfidence,
+    this.sourceSummary,
   });
 
   final Transaction? initialTransaction;
@@ -74,6 +85,9 @@ class AddTransactionSheet extends ConsumerStatefulWidget {
   final bool startInQuickMode;
   final ParsedTransaction? initialParsedTransaction;
   final String? initialQuickText;
+  final String? entrySource;
+  final double? sourceConfidence;
+  final String? sourceSummary;
 
   @override
   ConsumerState<AddTransactionSheet> createState() =>
@@ -86,6 +100,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   final _feeController = TextEditingController();
   final _noteController = TextEditingController();
   final _quickAddController = TextEditingController();
+  final _quickFocusNode = FocusNode();
   final SpeechToText _speech = SpeechToText();
 
   String? _accountId;
@@ -106,9 +121,17 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   bool _isSaving = false;
   bool _seededInitialParsed = false;
   bool _isListening = false;
+  bool _addAnother = false;
+  bool _categoryWasExplicitlyEdited = false;
+  bool _rememberCategoryCorrection = false;
+  bool _initialRuleSuggestionChecked = false;
+  int _ruleSuggestionRequest = 0;
 
   ParsedTransaction? _parsedPreview;
   String? _parseError;
+  CategorizationRuleData? _matchedCategoryRule;
+  String? _suggestedCategoryId;
+  String? _matchedRuleInput;
 
   bool get _isTransactionEditing => widget.initialTransaction != null;
   bool get _isTransferEditing => widget.initialTransfer != null;
@@ -120,6 +143,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     _feeController.dispose();
     _noteController.dispose();
     _quickAddController.dispose();
+    _quickFocusNode.dispose();
     super.dispose();
   }
 
@@ -345,6 +369,118 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
       _noteController.text = parsed.note!;
     }
     _parsedPreview = parsed;
+    _refreshCategoryRuleSuggestion(
+      payee: parsed.payee,
+      title: widget.initialTransaction?.title,
+    );
+  }
+
+  void _ensureInitialRuleSuggestion(List<Payee> payees) {
+    if (_initialRuleSuggestionChecked || widget.initialTransaction == null) {
+      return;
+    }
+    _initialRuleSuggestionChecked = true;
+    final initial = widget.initialTransaction!;
+    final payee = initial.payeeId == null
+        ? null
+        : payees
+              .cast<Payee?>()
+              .firstWhere(
+                (candidate) => candidate?.id == initial.payeeId,
+                orElse: () => null,
+              )
+              ?.resolvedName;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _refreshCategoryRuleSuggestion(payee: payee, title: initial.title);
+      }
+    });
+  }
+
+  Future<void> _refreshCategoryRuleSuggestion({
+    String? payee,
+    String? title,
+  }) async {
+    final request = ++_ruleSuggestionRequest;
+    final matchPayee = payee?.trim();
+    final matchTitle = title?.trim();
+    if ((matchPayee == null || matchPayee.isEmpty) &&
+        (matchTitle == null || matchTitle.isEmpty)) {
+      if (!mounted) return;
+      setState(() {
+        _matchedCategoryRule = null;
+        _suggestedCategoryId = null;
+        _matchedRuleInput = null;
+        _rememberCategoryCorrection = false;
+      });
+      return;
+    }
+
+    final rule = await ref
+        .read(categorizationRuleRepoProvider)
+        .match(title: matchTitle, payee: matchPayee);
+    if (!mounted || request != _ruleSuggestionRequest) return;
+    setState(() {
+      _matchedCategoryRule = rule;
+      _suggestedCategoryId = rule?.categoryId;
+      _matchedRuleInput = rule == null
+          ? null
+          : rule.matchTarget == 'title'
+          ? matchTitle
+          : matchPayee;
+      _rememberCategoryCorrection = false;
+      if (rule != null &&
+          !_isTransactionEditing &&
+          !_categoryWasExplicitlyEdited) {
+        _categoryId = rule.categoryId;
+        _categoryDraft = null;
+      }
+    });
+  }
+
+  void _selectCategory(String? value) {
+    setState(() {
+      _categoryId = value;
+      _categoryWasExplicitlyEdited = true;
+      _rememberCategoryCorrection = false;
+      if (value != null) _categoryDraft = null;
+    });
+  }
+
+  Future<void> _rememberCorrectionIfRequested(String? categoryId) async {
+    final rule = _matchedCategoryRule;
+    final input = _matchedRuleInput?.trim();
+    if (!_rememberCategoryCorrection ||
+        rule == null ||
+        categoryId == null ||
+        input == null ||
+        input.isEmpty ||
+        categoryId == rule.categoryId) {
+      return;
+    }
+
+    final repo = ref.read(categorizationRuleRepoProvider);
+    final normalizedInput = CategorizationRuleRepo.normalize(input);
+    if (rule.matchKind == 'exact' &&
+        rule.normalizedPattern == normalizedInput) {
+      await repo.update(
+        id: rule.id,
+        matchTarget: rule.matchTarget,
+        matchKind: 'exact',
+        pattern: input,
+        categoryId: categoryId,
+        priority: rule.priority,
+      );
+      return;
+    }
+    await repo.create(
+      id: 'rule-${DateTime.now().microsecondsSinceEpoch}',
+      matchTarget: rule.matchTarget,
+      matchKind: 'exact',
+      pattern: input,
+      categoryId: categoryId,
+      priority: rule.priority + 1,
+    );
   }
 
   void _ensureSeededFromInitialParsed(
@@ -428,8 +564,17 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     if (_mode == fields.TransactionMode.debt && _debtRecordId != null) {
       metadata['debtRecordId'] = _debtRecordId;
     }
-    if (_parsedPreview != null) {
-      metadata['source'] = 'quick_add';
+    final source =
+        widget.entrySource ??
+        (_parsedPreview != null ? 'natural_language' : 'manual');
+    metadata['source'] = source;
+    if (widget.sourceConfidence != null) {
+      metadata['sourceConfidence'] = widget.sourceConfidence;
+    } else if (_parsedPreview != null) {
+      metadata['sourceConfidence'] = _parsedPreview!.confidence;
+    }
+    if ((widget.sourceSummary ?? '').trim().isNotEmpty) {
+      metadata['sourceSummary'] = widget.sourceSummary!.trim();
     }
     return metadata.isEmpty ? null : metadata;
   }
@@ -506,6 +651,12 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
           accountRepo,
         ).call(transaction);
         if (result.isSuccess) {
+          try {
+            await _rememberCorrectionIfRequested(categoryId);
+          } catch (_) {
+            // Remembering is optional and must never turn a successful ledger
+            // edit into a failed edit.
+          }
           await ref.read(notificationSchedulerProvider).rebuildSchedule();
         }
         if (!mounted) return;
@@ -523,6 +674,12 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
           accountRepo,
         ).call(transaction);
         if (result.isSuccess) {
+          try {
+            await _rememberCorrectionIfRequested(categoryId);
+          } catch (_) {
+            // Remembering is optional and must never turn a successful ledger
+            // write into a failed write.
+          }
           await ref.read(notificationSchedulerProvider).rebuildSchedule();
         }
         if (!mounted) return;
@@ -619,7 +776,30 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
         );
 
     _showSnackBar(message, transactionId: transactionId);
-    if (mounted) context.pop();
+    if (!mounted) return;
+    if (!isEdit && _addAnother) {
+      setState(() {
+        _amountController.clear();
+        _noteController.clear();
+        _quickAddController.clear();
+        _payeeId = null;
+        _payeeDraft = '';
+        _matchedCategoryRule = null;
+        _suggestedCategoryId = null;
+        _matchedRuleInput = null;
+        _categoryWasExplicitlyEdited = false;
+        _rememberCategoryCorrection = false;
+        _parsedPreview = null;
+        _parseError = null;
+        _occurredAt = DateTime.now();
+        _isQuickMode = true;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _quickFocusNode.requestFocus();
+      });
+      return;
+    }
+    context.pop();
   }
 
   void _showSnackBar(String message, {String? transactionId}) {
@@ -640,7 +820,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
       onAction: transactionId != null
           ? () => ref.read(undoStackProvider.notifier).undo(transactionId)
           : null,
-      duration: const Duration(seconds: 4),
+      duration: const Duration(seconds: 5),
     );
   }
 
@@ -735,6 +915,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
 
     _ensureSeededFromInitialParsed(accounts, categories, payees);
     _ensureQuickTextParsed(accounts, payees);
+    _ensureInitialRuleSuggestion(payees);
 
     final title = _isTransferEditing
         ? 'Edit Transfer'
@@ -843,6 +1024,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
         AmountInput(
           direction: _amountDirection(),
           controller: _amountController,
+          currency: _currencyForAccount(accounts, _accountId),
           label: 'Amount',
         ),
         const SizedBox(height: 16),
@@ -867,13 +1049,11 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                 ? fields.CategoryGroup.income
                 : fields.CategoryGroup.expense,
             initialText: _categoryDraft,
-            onChanged: (value) => setState(() {
-              _categoryId = value;
-              // A concrete pick supersedes any free-typed draft label.
-              if (value != null) _categoryDraft = null;
-            }),
+            onChanged: _selectCategory,
             onTextChanged: (value) => _categoryDraft = value,
           ),
+          if (_matchedCategoryRule != null)
+            _buildCategorySuggestion(categories),
           const SizedBox(height: 16),
           _buildLabel('Payee'),
           const SizedBox(height: 8),
@@ -881,29 +1061,58 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
             payees: payees,
             selectedPayeeId: _payeeId,
             initialText: _payeeDraft.isEmpty ? null : _payeeDraft,
-            onChanged: (value) => setState(() => _payeeId = value),
-            onTextChanged: (value) => _payeeDraft = value,
+            onChanged: (value) {
+              setState(() => _payeeId = value);
+              final selected = payees.cast<Payee?>().firstWhere(
+                (payee) => payee?.id == value,
+                orElse: () => null,
+              );
+              _refreshCategoryRuleSuggestion(
+                payee: selected?.resolvedName ?? _payeeDraft,
+                title: widget.initialTransaction?.title,
+              );
+            },
+            onTextChanged: (value) {
+              _payeeDraft = value;
+              _refreshCategoryRuleSuggestion(
+                payee: value,
+                title: widget.initialTransaction?.title,
+              );
+            },
           ),
-          const SizedBox(height: 16),
-          _noteField(),
-          const SizedBox(height: 16),
-          _dateTimeSection(),
-          const SizedBox(height: 16),
-          _buildLabel('Transaction Mode'),
           const SizedBox(height: 8),
-          _buildTransactionModeToggle(),
-          if (_mode == fields.TransactionMode.recurring) ...[
-            const SizedBox(height: 16),
-            _buildRecurrencePicker(),
-          ],
-          if (_mode == fields.TransactionMode.installment) ...[
-            const SizedBox(height: 16),
-            _buildParentTransactionPicker(parentTransactions),
-          ],
-          if (_mode == fields.TransactionMode.debt) ...[
-            const SizedBox(height: 16),
-            _buildDebtPicker(debts),
-          ],
+          ExpansionTile(
+            initiallyExpanded: _isTransactionEditing,
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: EdgeInsets.zero,
+            title: const Text('Transaction Mode'),
+            subtitle: const Text('More details: note, date, recurrence, links'),
+            children: [
+              _noteField(),
+              const SizedBox(height: 16),
+              _dateTimeSection(),
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: _buildLabel('Transaction Mode'),
+              ),
+              const SizedBox(height: 8),
+              _buildTransactionModeToggle(),
+              if (_mode == fields.TransactionMode.recurring) ...[
+                const SizedBox(height: 16),
+                _buildRecurrencePicker(),
+              ],
+              if (_mode == fields.TransactionMode.installment) ...[
+                const SizedBox(height: 16),
+                _buildParentTransactionPicker(parentTransactions),
+              ],
+              if (_mode == fields.TransactionMode.debt) ...[
+                const SizedBox(height: 16),
+                _buildDebtPicker(debts),
+              ],
+            ],
+          ),
+          if (!_isTransactionEditing) _buildAddAnotherToggle(),
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
@@ -915,6 +1124,70 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
           ),
         ],
       ],
+    );
+  }
+
+  Widget _buildCategorySuggestion(List<Category> categories) {
+    final rule = _matchedCategoryRule!;
+    final suggestedName = categories
+        .cast<Category?>()
+        .firstWhere(
+          (category) => category?.id == _suggestedCategoryId,
+          orElse: () => null,
+        )
+        ?.name;
+    if (suggestedName == null) return const SizedBox.shrink();
+    final input = _matchedRuleInput ?? rule.pattern;
+    final overridden =
+        _categoryWasExplicitlyEdited &&
+        _categoryId != null &&
+        _categoryId != _suggestedCategoryId;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Suggested $suggestedName because ${rule.matchTarget} '
+            '“$input” matched a remembered rule.',
+            style: AppTypography.caption.copyWith(
+              color: Theme.of(context).colorScheme.onSecondaryContainer,
+            ),
+          ),
+          if (overridden) ...[
+            const SizedBox(height: 4),
+            TextButton(
+              onPressed: () => setState(() {
+                _categoryId = _suggestedCategoryId;
+                _categoryWasExplicitlyEdited = false;
+                _rememberCategoryCorrection = false;
+              }),
+              child: const Text('Use suggestion'),
+            ),
+            Material(
+              color: Colors.transparent,
+              child: CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                title: const Text('Remember this correction'),
+                subtitle: const Text(
+                  'Use your chosen category for future matches only.',
+                ),
+                value: _rememberCategoryCorrection,
+                onChanged: (value) => setState(
+                  () => _rememberCategoryCorrection = value ?? false,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -930,6 +1203,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
       children: [
         TextField(
           controller: _quickAddController,
+          focusNode: _quickFocusNode,
           decoration: InputDecoration(
             hintText: 'Describe your transaction...',
             filled: true,
@@ -986,20 +1260,26 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
         ],
         if (_parsedPreview != null) ...[
           const SizedBox(height: 16),
-          _buildPreviewCard(_parsedPreview!, categories),
+          _buildPreviewCard(_parsedPreview!, accounts, categories, payees),
+          if (_matchedCategoryRule != null)
+            _buildCategorySuggestion(categories),
           const SizedBox(height: 16),
           PrimaryButton(
             label: 'Add Transaction',
             onPressed: _isSaving
                 ? null
-                : () {
+                : () async {
                     _applyPreviewToManual(
                       _parsedPreview!,
                       accounts,
                       categories,
                       payees,
                     );
-                    _saveTransaction();
+                    await _refreshCategoryRuleSuggestion(
+                      payee: _parsedPreview!.payee,
+                      title: widget.initialTransaction?.title,
+                    );
+                    await _saveTransaction();
                   },
             isLoading: _isSaving,
           ),
@@ -1015,6 +1295,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
               child: const Text('Edit manually'),
             ),
           ),
+          _buildAddAnotherToggle(),
         ],
       ],
     );
@@ -1027,6 +1308,13 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     ParsedTransaction parsed,
     List<Category> categories,
   ) {
+    if (_suggestedCategoryId != null) {
+      final suggested = categories.cast<Category?>().firstWhere(
+        (category) => category?.id == _suggestedCategoryId,
+        orElse: () => null,
+      );
+      if (suggested != null) return suggested.name;
+    }
     final matchedId = _matchCategoryId(
       parsed.category!,
       categories,
@@ -1038,7 +1326,9 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
 
   Widget _buildPreviewCard(
     ParsedTransaction parsed,
+    List<Account> accounts,
     List<Category> categories,
+    List<Payee> payees,
   ) {
     final lootrColors = context.lootrColors;
     // The parser produces a single overall confidence, so it is surfaced once
@@ -1046,28 +1336,34 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     final confidence = parsed.confidence;
 
     Widget previewRow(String label, String value) {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 80,
-              child: Text(
-                label,
-                style: AppTypography.caption.copyWith(
-                  color: lootrColors.textSecondary,
+      return InkWell(
+        onTap: () =>
+            _applyPreviewToManual(parsed, accounts, categories, payees),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 80,
+                child: Text(
+                  label,
+                  style: AppTypography.caption.copyWith(
+                    color: lootrColors.textSecondary,
+                  ),
                 ),
               ),
-            ),
-            Expanded(
-              child: Text(
-                value,
-                style: AppTypography.body.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface,
+              Expanded(
+                child: Text(
+                  value,
+                  style: AppTypography.body.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
                 ),
               ),
-            ),
-          ],
+              const Icon(Icons.edit_outlined, size: 16),
+            ],
+          ),
         ),
       );
     }
@@ -1090,19 +1386,35 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
           ),
           const SizedBox(height: 12),
           if (parsed.amount != null)
-            previewRow('Amount', MoneyFormat.exact(parsed.amount!, 'PHP')),
+            previewRow(
+              'Amount',
+              MoneyFormat.exact(
+                parsed.amount!,
+                _currencyForParsedAccount(accounts, parsed.account),
+              ),
+            ),
           if (parsed.payee != null) previewRow('Payee', parsed.payee!),
           if (parsed.account != null) previewRow('Account', parsed.account!),
           if (parsed.category != null)
             previewRow('Category', _previewCategoryLabel(parsed, categories)),
           if (parsed.direction != null)
             previewRow('Direction', _directionLabel(parsed.direction!)),
+          previewRow('Date', DateFormat('MMM d, y').format(_occurredAt)),
+          if (_mode == fields.TransactionMode.recurring)
+            previewRow('Recurrence', _recurrenceRule),
           Row(
             children: [
               _ConfidenceDot(confidence: confidence),
               const SizedBox(width: 8),
               Text(
-                'Confidence ${(confidence * 100).toStringAsFixed(0)}%',
+                widget.entrySource == 'ocr'
+                    ? 'Confidence ${(confidence * 100).toStringAsFixed(0)}% · '
+                          'Read from your receipt; review before saving'
+                    : confidence >= 0.7
+                    ? 'Confidence ${(confidence * 100).toStringAsFixed(0)}% · '
+                          'Matched from your wording'
+                    : 'Confidence ${(confidence * 100).toStringAsFixed(0)}% · '
+                          'Needs review before saving',
                 style: AppTypography.caption.copyWith(
                   color: lootrColors.textSecondary,
                 ),
@@ -1110,6 +1422,41 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  String _currencyForAccount(List<Account> accounts, String? accountId) {
+    return accounts
+            .where((account) => account.id == accountId)
+            .map((account) => account.currencyCode)
+            .firstOrNull ??
+        accounts.firstOrNull?.currencyCode ??
+        'PHP';
+  }
+
+  String _currencyForParsedAccount(
+    List<Account> accounts,
+    String? accountName,
+  ) {
+    final normalized = _normalize(accountName ?? '');
+    return accounts
+            .where((account) => _normalize(account.name) == normalized)
+            .map((account) => account.currencyCode)
+            .firstOrNull ??
+        _currencyForAccount(accounts, _accountId);
+  }
+
+  Widget _buildAddAnotherToggle() {
+    return Semantics(
+      label: 'Keep Add open for another transaction',
+      child: CheckboxListTile(
+        contentPadding: EdgeInsets.zero,
+        value: _addAnother,
+        onChanged: (value) => setState(() => _addAnother = value ?? false),
+        title: const Text('Add another after saving'),
+        subtitle: const Text('Keeps your account and returns focus to Quick'),
+        controlAffinity: ListTileControlAffinity.leading,
       ),
     );
   }

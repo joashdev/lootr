@@ -8,10 +8,12 @@ import '../../../application/providers/categories_provider.dart';
 import '../../../application/providers/filtered_transactions_provider.dart';
 import '../../../application/providers/notification_provider.dart';
 import '../../../application/providers/payees_provider.dart';
+import '../../../application/providers/period_context_provider.dart';
 import '../../../application/providers/repo_providers.dart';
 import '../../../application/providers/sync_providers.dart';
 import '../../../application/providers/transaction_entry_support.dart';
 import '../../../application/providers/transaction_filters_provider.dart';
+import '../../../application/providers/transaction_list_intent_provider.dart';
 import '../../../application/providers/transactions_tab_provider.dart';
 import '../../../application/providers/undo_stack_provider.dart';
 import '../../../core/theme/colors.dart';
@@ -24,7 +26,9 @@ import '../../../domain/entities/transaction.dart';
 import '../../../domain/use_cases/delete_transaction.dart';
 import '../../../domain/use_cases/delete_transfer.dart';
 import '../../../domain/value_objects/transaction_filters.dart';
+import '../../../domain/value_objects/transaction_list_intent.dart';
 import '../../../domain/value_objects/undo_entry.dart';
+import '../../../data/repositories/transaction_repo.dart';
 import '../more/more_form_sheets.dart';
 import '../../sheets/filter_sheet.dart';
 import '../../shared/category_visuals.dart';
@@ -33,6 +37,7 @@ import '../../shared/components/primary_screen_header.dart';
 import '../../shared/components/buttons/ghost_button.dart';
 import '../../shared/components/buttons/primary_button.dart';
 import '../../shared/components/inputs/search_input.dart';
+import '../../shared/components/period_selector.dart';
 import 'widgets/date_group_header.dart';
 import 'widgets/filter_chip_bar.dart';
 import 'widgets/transaction_row.dart';
@@ -55,6 +60,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   @override
   void initState() {
     super.initState();
+    final persistedQuery = ref.read(transactionSearchQueryProvider);
+    _searchController.text = persistedQuery;
+    _isSearching = persistedQuery.isNotEmpty;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _applyRouteModeFilterIfNeeded();
     });
@@ -248,6 +256,196 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     );
   }
 
+  Future<String?> _pickBulkTarget({
+    required String title,
+    required List<({String id, String label})> options,
+  }) {
+    return showDialog<String>(
+      context: context,
+      builder: (dialogContext) => SimpleDialog(
+        title: Text(title),
+        children: [
+          for (final option in options)
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(dialogContext, option.id),
+              child: Text(option.label),
+            ),
+          if (options.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(AppSpacing.space4),
+              child: Text('No available options.'),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<bool> _showBulkIssues(List<TransactionBulkIssue> issues) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Nothing changed'),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Resolve these items before applying the change:'),
+                const SizedBox(height: AppSpacing.space3),
+                for (final message
+                    in issues.map((issue) => issue.message).toSet())
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.space2),
+                    child: Text('• $message'),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+    return false;
+  }
+
+  Future<void> _runBulkOperation(
+    TransactionBulkOperation operation, {
+    String? targetId,
+  }) async {
+    final intent = ref.read(transactionListIntentProvider);
+    final request = TransactionBulkRequest(
+      transactionIds: intent.selectedIds,
+      operation: operation,
+      targetId: targetId,
+    );
+    final repo = ref.read(transactionRepoProvider);
+    final plan = await repo.preflightBulk(request);
+    if (!mounted) return;
+    if (!plan.canApply) {
+      await _showBulkIssues(plan.issues);
+      return;
+    }
+
+    if (operation == TransactionBulkOperation.delete) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(
+            'Delete ${plan.transactionIds.length} '
+            'transaction${plan.transactionIds.length == 1 ? '' : 's'}?',
+          ),
+          content: const Text(
+            'Balances will be updated. You can undo this for five seconds.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Delete'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
+    }
+
+    try {
+      final undo = await repo.applyBulk(plan);
+      await ref.read(notificationSchedulerProvider).rebuildSchedule();
+      if (!mounted) return;
+      final batchId = 'bulk-${DateTime.now().microsecondsSinceEpoch}';
+      final count = undo.transactionIds.length;
+      final action = switch (operation) {
+        TransactionBulkOperation.recategorize => 'recategorized',
+        TransactionBulkOperation.moveAccount => 'moved',
+        TransactionBulkOperation.delete => 'deleted',
+      };
+      ref
+          .read(undoStackProvider.notifier)
+          .push(
+            UndoEntry(
+              transactionId: batchId,
+              message: '$count transaction${count == 1 ? '' : 's'} $action',
+              rollback: () async {
+                await undo.rollback();
+                await ref.read(notificationSchedulerProvider).rebuildSchedule();
+              },
+              createdAt: DateTime.now(),
+            ),
+          );
+      ref.read(transactionListIntentProvider.notifier).clearSelection();
+      AppSnackBar.show(
+        context,
+        '$count transaction${count == 1 ? '' : 's'} $action',
+        variant: AppSnackBarVariant.success,
+        actionLabel: 'UNDO',
+        onAction: () => ref.read(undoStackProvider.notifier).undo(batchId),
+        duration: const Duration(seconds: 5),
+      );
+    } on TransactionBulkPreflightException catch (error) {
+      if (mounted) await _showBulkIssues(error.issues);
+    } catch (error) {
+      if (mounted) {
+        AppSnackBar.show(
+          context,
+          'The batch was not applied. $error',
+          variant: AppSnackBarVariant.error,
+        );
+      }
+    }
+  }
+
+  Future<void> _bulkRecategorize() async {
+    final categories =
+        ref.read(categoriesProvider).asData?.value ?? const <Category>[];
+    final target = await _pickBulkTarget(
+      title: 'Choose category',
+      options: categories
+          .where((category) => category.deletedAt == null)
+          .map((category) => (id: category.id, label: category.name))
+          .toList(),
+    );
+    if (target != null && mounted) {
+      await _runBulkOperation(
+        TransactionBulkOperation.recategorize,
+        targetId: target,
+      );
+    }
+  }
+
+  Future<void> _bulkMoveAccount() async {
+    final accounts =
+        ref.read(accountsProvider).asData?.value ?? const <Account>[];
+    final target = await _pickBulkTarget(
+      title: 'Move to account',
+      options: accounts
+          .where((account) => account.deletedAt == null && !account.isArchived)
+          .map(
+            (account) => (
+              id: account.id,
+              label: '${account.name} · ${account.currencyCode}',
+            ),
+          )
+          .toList(),
+    );
+    if (target != null && mounted) {
+      await _runBulkOperation(
+        TransactionBulkOperation.moveAccount,
+        targetId: target,
+      );
+    }
+  }
+
   Future<void> _onRefresh() async {
     try {
       final syncManager = ref.read(syncManagerProvider);
@@ -277,32 +475,107 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final accounts = ref.watch(accountsProvider);
     final categories = ref.watch(categoriesProvider);
     final payees = ref.watch(payeesProvider);
+    final listIntent = ref.watch(transactionListIntentProvider);
+    final ledgerQuery = ref.watch(activeLedgerQueryProvider);
 
-    return Scaffold(
-      appBar: _isSearching ? _buildSearchAppBar() : _buildNormalAppBar(filters),
-      body: Column(
-        children: [
-          if (!_isSearching) const FilterChipBar(),
-          Expanded(
-            child: _buildBody(
-              state,
-              filters,
-              searchQuery,
-              accounts,
-              categories,
-              payees,
+    return PopScope(
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop && ledgerQuery != null) {
+          ref.read(activeLedgerQueryProvider.notifier).clear();
+        }
+      },
+      child: Scaffold(
+        appBar: listIntent.isSelecting
+            ? _buildSelectionAppBar(listIntent)
+            : _isSearching
+            ? _buildSearchAppBar()
+            : _buildNormalAppBar(filters, listIntent),
+        body: Column(
+          children: [
+            if (!listIntent.isSelecting && !_isSearching)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.pagePaddingMobile,
+                ),
+                child: Row(
+                  children: [
+                    const Expanded(child: PeriodSelector(compact: true)),
+                    if (ledgerQuery != null)
+                      TextButton(
+                        onPressed: () => ref
+                            .read(activeLedgerQueryProvider.notifier)
+                            .clear(),
+                        child: const Text('Clear drill-down'),
+                      ),
+                  ],
+                ),
+              ),
+            if (ledgerQuery != null && !listIntent.isSelecting && !_isSearching)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.pagePaddingMobile,
+                  0,
+                  AppSpacing.pagePaddingMobile,
+                  AppSpacing.space2,
+                ),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    ledgerQuery.explanation,
+                    style: AppTypography.caption.copyWith(
+                      color: context.lootrColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ),
+            if (!listIntent.isSelecting && !_isSearching) const FilterChipBar(),
+            Expanded(
+              child: _buildBody(
+                state,
+                filters,
+                searchQuery,
+                accounts,
+                categories,
+                payees,
+                listIntent,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  PreferredSizeWidget _buildNormalAppBar(TransactionFilters filters) {
+  PreferredSizeWidget _buildNormalAppBar(
+    TransactionFilters filters,
+    TransactionListIntent listIntent,
+  ) {
     final theme = Theme.of(context);
     return PrimaryScreenHeader(
       title: 'Transactions',
       actions: [
+        PopupMenuButton<TransactionSort>(
+          tooltip: 'Sort transactions',
+          initialValue: listIntent.sort,
+          onSelected: ref.read(transactionListIntentProvider.notifier).setSort,
+          itemBuilder: (_) => const [
+            PopupMenuItem(
+              value: TransactionSort.newestFirst,
+              child: Text('Newest first'),
+            ),
+            PopupMenuItem(
+              value: TransactionSort.oldestFirst,
+              child: Text('Oldest first'),
+            ),
+          ],
+          icon: const Icon(LucideIcons.arrowUpDown),
+        ),
+        IconButton(
+          tooltip: 'Select transactions',
+          onPressed: () =>
+              ref.read(transactionListIntentProvider.notifier).startSelection(),
+          icon: const Icon(LucideIcons.listChecks),
+        ),
         IconButton(
           tooltip: 'Filter transactions',
           icon: Icon(
@@ -317,6 +590,42 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           tooltip: 'Search transactions',
           icon: Icon(LucideIcons.search, color: theme.colorScheme.onSurface),
           onPressed: () => setState(() => _isSearching = true),
+        ),
+      ],
+    );
+  }
+
+  PreferredSizeWidget _buildSelectionAppBar(TransactionListIntent intent) {
+    final hasSelection = intent.selectedIds.isNotEmpty;
+    return AppBar(
+      leading: IconButton(
+        tooltip: 'Exit selection mode',
+        onPressed: () =>
+            ref.read(transactionListIntentProvider.notifier).clearSelection(),
+        icon: const Icon(Icons.close),
+      ),
+      title: Text(
+        hasSelection
+            ? '${intent.selectedIds.length} selected'
+            : 'Select transactions',
+      ),
+      actions: [
+        IconButton(
+          tooltip: 'Recategorize selected',
+          onPressed: hasSelection ? _bulkRecategorize : null,
+          icon: const Icon(LucideIcons.tags),
+        ),
+        IconButton(
+          tooltip: 'Move selected to account',
+          onPressed: hasSelection ? _bulkMoveAccount : null,
+          icon: const Icon(LucideIcons.walletCards),
+        ),
+        IconButton(
+          tooltip: 'Delete selected',
+          onPressed: hasSelection
+              ? () => _runBulkOperation(TransactionBulkOperation.delete)
+              : null,
+          icon: const Icon(LucideIcons.trash2),
         ),
       ],
     );
@@ -347,6 +656,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     AsyncValue<List<Account>> accounts,
     AsyncValue<List<Category>> categories,
     AsyncValue<List<Payee>> payees,
+    TransactionListIntent listIntent,
   ) {
     if (state.isLoading) {
       return const TransactionShimmer();
@@ -554,7 +864,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   ),
                   child: Dismissible(
                     key: Key(txn.id),
-                    direction: DismissDirection.horizontal,
+                    direction: listIntent.isSelecting
+                        ? DismissDirection.none
+                        : DismissDirection.horizontal,
                     confirmDismiss: (direction) async {
                       if (direction == DismissDirection.startToEnd) {
                         final transfer = transferFromTransaction(txn);
@@ -609,7 +921,16 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                             ? null
                             : categoryMap[txn.categoryId],
                       ),
-                      onTap: () => context.push('/transactions/${txn.id}'),
+                      showSelectionIndicator: listIntent.isSelecting,
+                      isSelected: listIntent.selectedIds.contains(txn.id),
+                      onLongPress: () => ref
+                          .read(transactionListIntentProvider.notifier)
+                          .startSelection(txn.id),
+                      onTap: listIntent.isSelecting
+                          ? () => ref
+                                .read(transactionListIntentProvider.notifier)
+                                .toggleSelection(txn.id)
+                          : () => context.push('/transactions/${txn.id}'),
                     ),
                   ),
                 );

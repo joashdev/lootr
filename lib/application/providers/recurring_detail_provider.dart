@@ -4,14 +4,20 @@ import '../../domain/entities/mappers.dart';
 import '../../domain/entities/recurring_template.dart';
 import '../../domain/entities/transaction.dart';
 import '../../data/repositories/transaction_repo.dart';
+import '../../data/database/app_database.dart';
 import 'repo_providers.dart';
 
 final recurringDetailProvider =
     StreamProvider.family<
-      ({RecurringTemplate template, List<Transaction> transactions})?,
+      ({
+        RecurringTemplate template,
+        List<Transaction> transactions,
+        List<RecurringOccurrenceData> occurrences,
+      })?,
       String
     >((ref, templateId) {
       final recurringRepo = ref.watch(recurringRepoProvider);
+      final occurrenceRepo = ref.watch(recurringOccurrenceRepoProvider);
       final txnRepo = ref.watch(transactionRepoProvider);
 
       final templateStream = recurringRepo
@@ -27,11 +33,23 @@ final recurringDetailProvider =
                 .toList(),
           );
 
-      return Rx.combineLatest2(templateStream, txnStream, (
+      final occurrenceStream = occurrenceRepo.watchForTemplate(templateId);
+
+      return Rx.combineLatest3(templateStream, txnStream, occurrenceStream, (
         RecurringTemplate? template,
         List<Transaction> transactions,
+        List<RecurringOccurrenceData> occurrences,
       ) {
         if (template == null) return null;
-        return (template: template, transactions: transactions);
+        return (
+          template: template,
+          transactions: transactions,
+          occurrences: occurrences,
+        );
       });
+    });
+
+final recurringOccurrenceProvider =
+    StreamProvider.family<RecurringOccurrenceData?, String>((ref, id) {
+      return ref.watch(recurringOccurrenceRepoProvider).watchById(id);
     });

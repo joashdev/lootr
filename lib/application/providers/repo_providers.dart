@@ -4,12 +4,15 @@ import '../../data/repositories/account_repo.dart';
 import '../../data/repositories/ai_processing_log_repo.dart';
 import '../../data/repositories/budget_repo.dart';
 import '../../data/repositories/category_repo.dart';
+import '../../data/repositories/categorization_rule_repo.dart';
 import '../../data/repositories/composite_budget_repo.dart';
 import '../../data/repositories/debt_repo.dart';
 import '../../data/repositories/goal_repo.dart';
 import '../../data/repositories/household_repo.dart';
 import '../../data/repositories/payee_repo.dart';
 import '../../data/repositories/recurring_repo.dart';
+import '../../data/repositories/recurring_occurrence_repo.dart';
+import '../../data/repositories/recurring_occurrence_service.dart';
 import '../../data/repositories/sync_metadata_repo.dart';
 import '../../data/repositories/transaction_repo.dart';
 import '../../data/repositories/transfer_repo.dart';
@@ -54,6 +57,26 @@ final goalRepoProvider = Provider<GoalRepo>((ref) {
 
 final recurringRepoProvider = Provider<RecurringRepo>((ref) {
   return RecurringRepo(ref.watch(databaseProvider));
+});
+
+final recurringOccurrenceRepoProvider = Provider<RecurringOccurrenceRepo>((
+  ref,
+) {
+  return RecurringOccurrenceRepo(ref.watch(databaseProvider));
+});
+
+final recurringOccurrenceServiceProvider = Provider<RecurringOccurrenceService>(
+  (ref) {
+    return RecurringOccurrenceService(
+      ref.watch(databaseProvider),
+      ref.watch(transactionRepoProvider),
+      ref.watch(recurringOccurrenceRepoProvider),
+    );
+  },
+);
+
+final categorizationRuleRepoProvider = Provider<CategorizationRuleRepo>((ref) {
+  return CategorizationRuleRepo(ref.watch(databaseProvider));
 });
 
 final userRepoProvider = Provider<UserRepo>((ref) {

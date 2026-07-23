@@ -183,6 +183,9 @@ class _OcrScanScreenState extends State<OcrScanScreen>
       '/transactions/new',
       extra: AddTransactionSheetArgs(
         initialParsedTransaction: payload.extractedFields,
+        entrySource: 'ocr',
+        sourceConfidence: payload.confidence,
+        sourceSummary: 'On-device receipt scan',
       ),
     );
   }

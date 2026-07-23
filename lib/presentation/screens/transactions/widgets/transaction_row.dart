@@ -16,6 +16,9 @@ class TransactionRowWidget extends StatelessWidget {
     required this.accountName,
     this.leading,
     this.onTap,
+    this.onLongPress,
+    this.isSelected = false,
+    this.showSelectionIndicator = false,
     this.showDate = false,
   });
 
@@ -25,6 +28,9 @@ class TransactionRowWidget extends StatelessWidget {
   final String accountName;
   final Widget? leading;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
+  final bool isSelected;
+  final bool showSelectionIndicator;
 
   /// When true, the trailing block prefixes the time with a short `MM/dd` date
   /// (e.g. "05/26 · 4:42 PM"). Defaults to false so date-grouped lists stay
@@ -85,83 +91,96 @@ class TransactionRowWidget extends StatelessWidget {
               transaction.note ??
               accountName;
 
-    final row = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-      ),
-      child: Row(
-        children: [
-          leading ??
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest,
-                  shape: BoxShape.circle,
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  initials,
-                  style: AppTypography.captionMedium.copyWith(
-                    color: lotrColors.textSecondary,
+    final row = Semantics(
+      selected: isSelected,
+      button: onTap != null,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? colorScheme.primaryContainer.withValues(alpha: 0.45)
+              : colorScheme.surface,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
+        child: Row(
+          children: [
+            if (showSelectionIndicator) ...[
+              IgnorePointer(
+                child: Checkbox(value: isSelected, onChanged: (_) {}),
+              ),
+              const SizedBox(width: AppSpacing.space1),
+            ],
+            leading ??
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHighest,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    initials,
+                    style: AppTypography.captionMedium.copyWith(
+                      color: lotrColors.textSecondary,
+                    ),
                   ),
                 ),
+            const SizedBox(width: AppSpacing.space3),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: AppTypography.h3.copyWith(
+                      color: colorScheme.onSurface,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    categoryLabel,
+                    style: AppTypography.caption.copyWith(
+                      color: lotrColors.textSecondary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
-          const SizedBox(width: AppSpacing.space3),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+            const SizedBox(width: AppSpacing.space2),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  title,
-                  style: AppTypography.h3.copyWith(
-                    color: colorScheme.onSurface,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  '${_amountPrefix()}${MoneyFormat.exactMoney(transaction.exactAmount)}',
+                  style: AppTypography.h3Mono.copyWith(color: directionColor),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  categoryLabel,
+                  time,
                   style: AppTypography.caption.copyWith(
-                    color: lotrColors.textSecondary,
+                    color: lotrColors.textTertiary,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
-          ),
-          const SizedBox(width: AppSpacing.space2),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '${_amountPrefix()}${MoneyFormat.exactMoney(transaction.exactAmount)}',
-                style: AppTypography.h3Mono.copyWith(color: directionColor),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                time,
-                style: AppTypography.caption.copyWith(
-                  color: lotrColors.textTertiary,
-                ),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
 
-    if (onTap != null) {
+    if (onTap != null || onLongPress != null) {
       return Material(
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(AppRadius.md),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
+          onLongPress: onLongPress,
           borderRadius: BorderRadius.circular(AppRadius.md),
           child: row,
         ),

@@ -30,6 +30,7 @@ Derived from `docs/solutions-arch.md`. Build order follows the dependency rule: 
 | 20 | Testing Infrastructure | 01 | High | [x] |
 | 21 | Backend — NestJS Setup & Auth | — | Medium |
 | 22 | Backend — Sync Endpoints | 21 | Medium |
+| 23 | Adopted V1 Product Features & UX Refinement | 12, 13, 14, 15, 16, 19 | High | [x] |
 
 ## Status Legend
 - `[ ]` Pending
@@ -44,4 +45,4 @@ Derived from `docs/solutions-arch.md`. Build order follows the dependency rule: 
 | 2 — Core Logic | 06, 07, 08 | Use cases, providers, sync engine |
 | 3 — UI Shell | 10 | Navigation, tab bar, routing |
 | 4 — Feature Screens | 11, 12, 13, 14, 15, 16, 17 | All screens and sheets |
-| 5 — Polish | 09, 18, 19, 20, 21, 22 | AI, demo data, notifications, testing, backend |
+| 5 — Polish | 09, 18, 19, 20, 21, 22, 23 | AI, demo data, notifications, testing, adopted UX, backend |

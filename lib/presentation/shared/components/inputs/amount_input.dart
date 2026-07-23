@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/enums.dart';
 import '../../../../core/format/money_format.dart';
+import '../../../../core/format/amount_expression.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/radius.dart';
 import '../../../../core/theme/typography.dart';
@@ -15,6 +16,7 @@ class AmountInput extends StatelessWidget {
     this.currency = 'PHP',
     this.onChanged,
     this.label,
+    this.enableCalculator = true,
   });
 
   final TransactionDirection direction;
@@ -22,6 +24,7 @@ class AmountInput extends StatelessWidget {
   final String currency;
   final ValueChanged<String>? onChanged;
   final String? label;
+  final bool enableCalculator;
 
   Color _directionColor(BuildContext context) {
     final colors = Theme.of(context).extension<LootrColorScheme>()!;
@@ -87,10 +90,79 @@ class AmountInput extends StatelessWidget {
                   ),
                 ),
               ),
+              if (enableCalculator)
+                IconButton(
+                  tooltip: 'Open amount calculator',
+                  onPressed: controller == null
+                      ? null
+                      : () => _openCalculator(context),
+                  icon: const Icon(Icons.calculate_outlined, size: 20),
+                ),
             ],
           ),
         ),
       ],
     );
+  }
+
+  Future<void> _openCalculator(BuildContext context) async {
+    final expressionController = TextEditingController(
+      text: controller?.text ?? '',
+    );
+    String? error;
+    final result = await showDialog<double>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Amount calculator'),
+          content: TextField(
+            controller: expressionController,
+            autofocus: true,
+            keyboardType: TextInputType.text,
+            decoration: InputDecoration(
+              hintText: '(120 + 30) / 2',
+              helperText: 'Use +, −, ×, ÷, and parentheses.',
+              errorText: error,
+            ),
+            onSubmitted: (_) {
+              try {
+                Navigator.pop(
+                  dialogContext,
+                  AmountExpression.evaluate(expressionController.text),
+                );
+              } on FormatException catch (exception) {
+                setState(() => error = exception.message);
+              }
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                try {
+                  Navigator.pop(
+                    dialogContext,
+                    AmountExpression.evaluate(expressionController.text),
+                  );
+                } on FormatException catch (exception) {
+                  setState(() => error = exception.message);
+                }
+              },
+              child: const Text('Use amount'),
+            ),
+          ],
+        ),
+      ),
+    );
+    expressionController.dispose();
+    if (result == null || controller == null) return;
+    final formatted = result == result.roundToDouble()
+        ? result.toStringAsFixed(0)
+        : result.toStringAsFixed(2);
+    controller!.text = formatted;
+    onChanged?.call(formatted);
   }
 }

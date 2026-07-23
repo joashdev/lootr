@@ -547,7 +547,8 @@ void main() {
       expect(sections[1].items[1].label, 'Insights');
       expect(sections[1].items[1].enabled, isFalse);
       expect(sections[2].header, 'Manage');
-      expect(sections[2].items.length, 3);
+      expect(sections[2].items.length, 4);
+      expect(sections[2].items[1].label, 'Category Rules');
       expect(sections[3].header, 'Settings');
       expect(sections[3].items.length, 8);
       expect(

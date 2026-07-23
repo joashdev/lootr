@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:drift/drift.dart' hide isNull;
 import 'package:lootr/application/providers/accounts_provider.dart';
 import 'package:lootr/application/providers/categories_provider.dart';
 import 'package:lootr/application/providers/debts_provider.dart';
+import 'package:lootr/application/providers/database_provider.dart';
 import 'package:lootr/application/providers/filtered_transactions_provider.dart';
 import 'package:lootr/application/providers/payees_provider.dart';
 import 'package:lootr/core/theme/theme.dart';
+import 'package:lootr/data/database/app_database.dart';
 import 'package:lootr/domain/entities/account.dart';
 import 'package:lootr/domain/entities/category.dart';
 import 'package:lootr/domain/entities/debt_record.dart';
@@ -17,12 +20,15 @@ import 'package:lootr/presentation/sheets/add_transaction_sheet.dart';
 import 'package:lootr/presentation/shared/components/buttons/primary_button.dart';
 import 'package:lootr/presentation/shared/components/inputs/account_dropdown.dart';
 import 'package:lootr/presentation/shared/components/inputs/amount_input.dart';
+import 'package:lootr/presentation/shared/components/inputs/category_autocomplete.dart';
+import 'package:lootr/presentation/shared/components/inputs/payee_autocomplete.dart';
 
 Widget _wrap(
   Widget child, {
   List<Account> accounts = const [],
   List<Category> categories = const [],
   List<Payee> payees = const [],
+  AppDatabase? database,
 }) {
   return ProviderScope(
     overrides: [
@@ -33,6 +39,7 @@ Widget _wrap(
       filteredTransactionsProvider.overrideWith(
         (ref) => Stream.value(const <Transaction>[]),
       ),
+      if (database != null) databaseProvider.overrideWith((ref) => database),
     ],
     child: MaterialApp(
       theme: AppTheme.light,
@@ -70,6 +77,14 @@ Account _secondAccount() => Account(
 Category _category() => Category(
   id: 'cat-1',
   name: 'Coffee',
+  categoryGroup: 'expense',
+  createdAt: DateTime(2026, 1, 1),
+  updatedAt: DateTime(2026, 1, 1),
+);
+
+Category _transportCategory() => Category(
+  id: 'cat-2',
+  name: 'Transport',
   categoryGroup: 'expense',
   createdAt: DateTime(2026, 1, 1),
   updatedAt: DateTime(2026, 1, 1),
@@ -195,5 +210,78 @@ void main() {
         findsOneWidget,
       );
     });
+
+    testWidgets(
+      'surfaces remembered category reason and offers future-only correction',
+      (tester) async {
+        final db = AppDatabase.inMemory();
+        addTearDown(db.close);
+        await db.categories.insertAll([
+          CategoriesCompanion.insert(
+            id: 'cat-1',
+            name: 'Coffee',
+            categoryGroup: 'expense',
+          ),
+          CategoriesCompanion.insert(
+            id: 'cat-2',
+            name: 'Transport',
+            categoryGroup: 'expense',
+          ),
+        ]);
+        await db.categorizationRules.insertOne(
+          CategorizationRulesCompanion.insert(
+            id: 'rule-1',
+            matchTarget: 'payee',
+            matchKind: 'exact',
+            pattern: 'Brew Lab',
+            normalizedPattern: 'brew lab',
+            categoryId: 'cat-1',
+          ),
+        );
+
+        await tester.pumpWidget(
+          _wrap(
+            const AddTransactionSheet(),
+            accounts: [_account()],
+            categories: [_category(), _transportCategory()],
+            payees: [_payee()],
+            database: db,
+          ),
+        );
+        await tester.pump();
+
+        await tester.enterText(
+          find.descendant(
+            of: find.byType(PayeeAutocomplete),
+            matching: find.byType(TextField),
+          ),
+          'Brew Lab',
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.textContaining(
+            'Suggested Coffee because payee “Brew Lab” matched',
+          ),
+          findsOneWidget,
+        );
+
+        final categoryField = find.descendant(
+          of: find.byType(CategoryAutocomplete),
+          matching: find.byType(TextField),
+        );
+        await tester.tap(categoryField);
+        await tester.enterText(categoryField, 'Transport');
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Transport').last);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Remember this correction'), findsOneWidget);
+        expect(
+          find.text('Use your chosen category for future matches only.'),
+          findsOneWidget,
+        );
+      },
+    );
   });
 }

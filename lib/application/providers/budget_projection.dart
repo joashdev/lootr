@@ -15,6 +15,7 @@ class BudgetOverview {
     required this.isReadOnly,
     required this.needsReview,
     required this.missingReferenceCount,
+    this.isComposite = false,
     this.categoryId,
     this.legacyBudget,
   });
@@ -29,6 +30,7 @@ class BudgetOverview {
   final bool isReadOnly;
   final bool needsReview;
   final int missingReferenceCount;
+  final bool isComposite;
   final String? categoryId;
   final Budget? legacyBudget;
 

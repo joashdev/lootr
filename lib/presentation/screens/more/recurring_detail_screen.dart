@@ -18,15 +18,21 @@ import '../../../data/database/app_database.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/entities/category.dart';
 import '../../../domain/entities/payee.dart';
+import '../../../domain/value_objects/exact_money.dart';
 import 'more_form_sheets.dart';
 import '../../shared/components/app_snackbar.dart';
 import '../../shared/components/buttons/ghost_button.dart';
 import '../../shared/components/buttons/secondary_button.dart';
 
 class RecurringDetailScreen extends ConsumerWidget {
-  const RecurringDetailScreen({super.key, required this.id});
+  const RecurringDetailScreen({
+    super.key,
+    required this.id,
+    this.highlightedOccurrenceId,
+  });
 
   final String id;
+  final String? highlightedOccurrenceId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -52,6 +58,7 @@ class RecurringDetailScreen extends ConsumerWidget {
 
           final template = detail.template;
           final transactions = detail.transactions;
+          final occurrences = detail.occurrences;
           final isDisabled = template.autoCreateDisabled;
           final accountNames = {
             for (final account in accounts) account.id: account.name,
@@ -138,19 +145,19 @@ class RecurringDetailScreen extends ConsumerWidget {
                     AppSpacing.space1,
                   ),
                   child: Text(
-                    'Transaction History',
+                    'Occurrence History',
                     style: AppTypography.captionMedium.copyWith(
                       color: lootrColors.textSecondary,
                     ),
                   ),
                 ),
               ),
-              if (transactions.isEmpty)
+              if (occurrences.isEmpty)
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.all(AppSpacing.space8),
                     child: Text(
-                      'No transactions generated yet.',
+                      'No occurrences recorded yet.',
                       style: AppTypography.body.copyWith(
                         color: lootrColors.textSecondary,
                       ),
@@ -161,26 +168,72 @@ class RecurringDetailScreen extends ConsumerWidget {
               else
                 SliverList(
                   delegate: SliverChildBuilderDelegate((context, index) {
-                    final tx = transactions[index];
-                    return ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.pagePaddingMobile,
-                      ),
-                      title: Text(
-                        formatDate(tx.occurredAt),
-                        style: AppTypography.bodyMedium.copyWith(
-                          color: colorScheme.onSurface,
-                        ),
-                      ),
-                      trailing: Text(
-                        MoneyFormat.exactMoney(tx.exactAmount),
-                        style: AppTypography.mono.copyWith(
-                          color: colorScheme.onSurface,
-                        ),
+                    final occurrence = occurrences[index];
+                    return Container(
+                      color: occurrence.id == highlightedOccurrenceId
+                          ? colorScheme.primaryContainer.withValues(alpha: 0.35)
+                          : null,
+                      child: _OccurrenceTile(
+                        occurrence: occurrence,
+                        onPay: _isActionable(occurrence)
+                            ? () => _payOccurrence(context, ref, occurrence)
+                            : null,
+                        onSkip: _isActionable(occurrence)
+                            ? () => _skipOccurrence(context, ref, occurrence)
+                            : null,
+                        onEdit: _isActionable(occurrence)
+                            ? () => _editOccurrence(context, ref, occurrence)
+                            : null,
                       ),
                     );
-                  }, childCount: transactions.length),
+                  }, childCount: occurrences.length),
                 ),
+              if (transactions.any(
+                (transaction) => !occurrences.any(
+                  (occurrence) => occurrence.transactionId == transaction.id,
+                ),
+              ))
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.pagePaddingMobile,
+                      AppSpacing.space3,
+                      AppSpacing.pagePaddingMobile,
+                      AppSpacing.space1,
+                    ),
+                    child: Text(
+                      'Other Series Transactions',
+                      style: AppTypography.captionMedium.copyWith(
+                        color: lootrColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ),
+              SliverList(
+                delegate: SliverChildListDelegate(
+                  transactions
+                      .where(
+                        (transaction) => !occurrences.any(
+                          (occurrence) =>
+                              occurrence.transactionId == transaction.id,
+                        ),
+                      )
+                      .map(
+                        (transaction) => ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.pagePaddingMobile,
+                          ),
+                          title: Text(formatDate(transaction.occurredAt)),
+                          subtitle: const Text('Finalized transaction'),
+                          trailing: Text(
+                            MoneyFormat.exactMoney(transaction.exactAmount),
+                            style: AppTypography.mono,
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(
@@ -195,7 +248,7 @@ class RecurringDetailScreen extends ConsumerWidget {
                         children: [
                           Expanded(
                             child: SecondaryButton(
-                              label: 'Edit',
+                              label: 'Edit Series',
                               icon: const Icon(LucideIcons.pencil, size: 18),
                               onPressed: () => showRecurringSheet(
                                 context,
@@ -340,6 +393,296 @@ class RecurringDetailScreen extends ConsumerWidget {
       'Dec',
     ];
     return '${months[dt.month]} ${dt.day}, ${dt.year}';
+  }
+
+  static bool _isActionable(RecurringOccurrenceData occurrence) =>
+      occurrence.status == 'due' || occurrence.status == 'unpaid';
+
+  Future<void> _payOccurrence(
+    BuildContext context,
+    WidgetRef ref,
+    RecurringOccurrenceData occurrence,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Mark occurrence paid?'),
+        content: const Text(
+          'This creates one finalized ledger transaction for this occurrence.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Pay'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ref.read(recurringOccurrenceServiceProvider).pay(occurrence.id);
+      await ref.read(notificationSchedulerProvider).rebuildSchedule();
+      if (!context.mounted) return;
+      AppSnackBar.show(
+        context,
+        'Occurrence paid and transaction created.',
+        variant: AppSnackBarVariant.success,
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      AppSnackBar.show(
+        context,
+        'Occurrence could not be paid. No changes were applied.',
+        variant: AppSnackBarVariant.error,
+      );
+    }
+  }
+
+  Future<void> _skipOccurrence(
+    BuildContext context,
+    WidgetRef ref,
+    RecurringOccurrenceData occurrence,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Skip this occurrence?'),
+        content: const Text(
+          'This occurrence will be kept in history. No transaction is created.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Skip'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ref.read(recurringOccurrenceServiceProvider).skip(occurrence.id);
+      await ref.read(notificationSchedulerProvider).rebuildSchedule();
+      if (!context.mounted) return;
+      AppSnackBar.show(context, 'Occurrence skipped.');
+    } catch (_) {
+      if (!context.mounted) return;
+      AppSnackBar.show(
+        context,
+        'Occurrence could not be skipped. No changes were applied.',
+        variant: AppSnackBarVariant.error,
+      );
+    }
+  }
+
+  Future<void> _editOccurrence(
+    BuildContext context,
+    WidgetRef ref,
+    RecurringOccurrenceData occurrence,
+  ) async {
+    final amount = ExactMoney(
+      coefficient: BigInt.parse(occurrence.amountAtoms),
+      scale: occurrence.amountScale,
+      currencyCode: occurrence.currencyCode,
+    );
+    final amountController = TextEditingController(
+      text: amount.toDecimalString(),
+    );
+    var dueAt = occurrence.dueAt;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setState) => Padding(
+          padding: EdgeInsets.fromLTRB(
+            AppSpacing.pagePaddingMobile,
+            AppSpacing.space5,
+            AppSpacing.pagePaddingMobile,
+            MediaQuery.viewInsetsOf(context).bottom + AppSpacing.space5,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Edit Occurrence',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: AppSpacing.space4),
+              TextField(
+                controller: amountController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: InputDecoration(
+                  labelText: 'Amount (${occurrence.currencyCode})',
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.space3),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Due date'),
+                subtitle: Text(DateFormat('MMM d, yyyy').format(dueAt)),
+                trailing: const Icon(LucideIcons.calendar),
+                onTap: () async {
+                  final selected = await showDatePicker(
+                    context: context,
+                    initialDate: dueAt,
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime(2100),
+                  );
+                  if (selected != null) {
+                    setState(
+                      () => dueAt = DateTime(
+                        selected.year,
+                        selected.month,
+                        selected.day,
+                        dueAt.hour,
+                        dueAt.minute,
+                      ),
+                    );
+                  }
+                },
+              ),
+              const SizedBox(height: AppSpacing.space4),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () async {
+                    try {
+                      final edited = ExactMoney.parse(
+                        amountController.text,
+                        occurrence.currencyCode,
+                      ).rescale(occurrence.amountScale);
+                      if (edited.isNegative || edited.isZero) {
+                        throw const FormatException();
+                      }
+                      await ref
+                          .read(recurringOccurrenceRepoProvider)
+                          .updateOccurrence(
+                            id: occurrence.id,
+                            dueAt: dueAt,
+                            amountAtoms: edited.coefficient.toString(),
+                            amountScale: edited.scale,
+                            currencyCode: edited.currencyCode,
+                          );
+                      if (!sheetContext.mounted) return;
+                      Navigator.pop(sheetContext);
+                    } catch (_) {
+                      AppSnackBar.show(
+                        sheetContext,
+                        'Enter a valid amount at the existing precision.',
+                        variant: AppSnackBarVariant.warning,
+                      );
+                    }
+                  },
+                  child: const Text('Save Occurrence'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    amountController.dispose();
+  }
+}
+
+class _OccurrenceTile extends StatelessWidget {
+  const _OccurrenceTile({
+    required this.occurrence,
+    required this.onPay,
+    required this.onSkip,
+    required this.onEdit,
+  });
+
+  final RecurringOccurrenceData occurrence;
+  final VoidCallback? onPay;
+  final VoidCallback? onSkip;
+  final VoidCallback? onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final money = ExactMoney(
+      coefficient: BigInt.parse(occurrence.amountAtoms),
+      scale: occurrence.amountScale,
+      currencyCode: occurrence.currencyCode,
+    );
+    final status = _statusLabel(occurrence, DateTime.now());
+    final changedDueDate = occurrence.originalDueAt != occurrence.dueAt;
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.pagePaddingMobile,
+        vertical: AppSpacing.space2,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  DateFormat('MMM d, yyyy').format(occurrence.dueAt),
+                  style: AppTypography.bodyMedium,
+                ),
+              ),
+              Text(MoneyFormat.exactMoney(money), style: AppTypography.mono),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.space1),
+          Text(
+            changedDueDate
+                ? '$status · originally due '
+                      '${DateFormat('MMM d, yyyy').format(occurrence.originalDueAt)}'
+                : status,
+            style: AppTypography.caption.copyWith(
+              color: context.lootrColors.textSecondary,
+            ),
+          ),
+          if (onPay != null || onSkip != null || onEdit != null) ...[
+            const SizedBox(height: AppSpacing.space2),
+            Wrap(
+              spacing: AppSpacing.space2,
+              children: [
+                if (onPay != null)
+                  FilledButton.tonal(
+                    onPressed: onPay,
+                    child: const Text('Pay'),
+                  ),
+                if (onSkip != null)
+                  OutlinedButton(onPressed: onSkip, child: const Text('Skip')),
+                if (onEdit != null)
+                  TextButton(
+                    onPressed: onEdit,
+                    child: const Text('Edit occurrence'),
+                  ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _statusLabel(RecurringOccurrenceData occurrence, DateTime now) {
+    return switch (occurrence.status) {
+      'paid' => 'Paid',
+      'skipped' => 'Skipped',
+      'dismissed' => 'Dismissed',
+      'unpaid' => 'Overdue',
+      'due' when occurrence.dueAt.isAfter(now) => 'Upcoming',
+      'due' => 'Due',
+      _ => occurrence.status,
+    };
   }
 }
 

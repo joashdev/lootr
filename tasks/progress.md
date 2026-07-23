@@ -2,6 +2,13 @@
 
 ---
 
+## 2026-07-23 — Adopted V1 Experience Complete
+
+**Feature:** Adopted V1 Product Features & UX Refinement ✅
+**Summary:** Connected the unified Add flow, persistent transaction intent and atomic bulk cleanup, shared month/custom-cycle navigation, explainable report and composite-budget drill-down, explicit categorization memory, recurring occurrence Pay/Skip lifecycle, bounded dashboard customization, and accessibility refinements to the post-migration data model. Added deterministic calculator entry, exact-occurrence reminder routes, imported-budget review handling, persistent dashboard preferences, contrast and reduced-motion coverage, focused repository/provider/widget/navigation tests, and an updated migration review golden. The branch passes full static analysis and the complete Flutter test suite.
+
+---
+
 ## 2026-07-18 — Cashew Migration V1 Complete
 
 **Feature:** Cashew-to-Lootr Migration ✅

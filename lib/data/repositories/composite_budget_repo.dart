@@ -103,6 +103,46 @@ class CompositeBudgetSnapshot {
   final CompositeBudgetReviewSummary review;
 }
 
+class CompositeBudgetDraft {
+  const CompositeBudgetDraft({
+    required this.id,
+    required this.ownerUserId,
+    required this.name,
+    required this.limit,
+    required this.periodType,
+    required this.directionFilter,
+    required this.membershipMode,
+    this.householdId,
+    this.periodStart,
+    this.periodEnd,
+    this.cycleRule,
+    this.includedAccountIds = const {},
+    this.excludedAccountIds = const {},
+    this.includedCategoryIds = const {},
+    this.excludedCategoryIds = const {},
+    this.includedTransactionIds = const {},
+    this.excludedTransactionIds = const {},
+  });
+
+  final String id;
+  final String ownerUserId;
+  final String? householdId;
+  final String name;
+  final ExactMoney limit;
+  final String periodType;
+  final DateTime? periodStart;
+  final DateTime? periodEnd;
+  final String? cycleRule;
+  final String directionFilter;
+  final String membershipMode;
+  final Set<String> includedAccountIds;
+  final Set<String> excludedAccountIds;
+  final Set<String> includedCategoryIds;
+  final Set<String> excludedCategoryIds;
+  final Set<String> includedTransactionIds;
+  final Set<String> excludedTransactionIds;
+}
+
 /// Query service for V1 composite budgets.
 ///
 /// Membership is evaluated in memory after a bounded database query so the
@@ -117,6 +157,159 @@ class CompositeBudgetRepo {
           ..where((row) => row.id.equals(id) & row.deletedAt.isNull())
           ..limit(1))
         .getSingleOrNull();
+  }
+
+  Future<CompositeBudgetDraft?> getDraft(String id) async {
+    final definition = await getById(id);
+    if (definition == null) return null;
+    final accounts = await (_db.select(
+      _db.budgetAccountMemberships,
+    )..where((row) => row.budgetId.equals(id))).get();
+    final categories = await (_db.select(
+      _db.budgetCategoryMemberships,
+    )..where((row) => row.budgetId.equals(id))).get();
+    final transactions = await (_db.select(
+      _db.budgetTransactionMemberships,
+    )..where((row) => row.budgetId.equals(id))).get();
+    Set<String> members<T>(
+      List<T> rows,
+      String membership,
+      String? Function(T) idOf,
+      String Function(T) membershipOf,
+    ) => {
+      for (final row in rows)
+        if (membershipOf(row) == membership && idOf(row) != null) idOf(row)!,
+    };
+    return CompositeBudgetDraft(
+      id: definition.id,
+      ownerUserId: definition.ownerUserId,
+      householdId: definition.householdId,
+      name: definition.name ?? '',
+      limit: ExactMoney(
+        coefficient: BigInt.parse(definition.amountAtoms),
+        scale: definition.amountScale,
+        currencyCode: definition.currencyCode,
+      ),
+      periodType: definition.periodType,
+      periodStart: definition.periodStart,
+      periodEnd: definition.periodEnd,
+      cycleRule: definition.cycleRule,
+      directionFilter: definition.directionFilter,
+      membershipMode: definition.membershipMode,
+      includedAccountIds: members(
+        accounts,
+        'include',
+        (row) => row.accountId,
+        (row) => row.membership,
+      ),
+      excludedAccountIds: members(
+        accounts,
+        'exclude',
+        (row) => row.accountId,
+        (row) => row.membership,
+      ),
+      includedCategoryIds: members(
+        categories,
+        'include',
+        (row) => row.categoryId,
+        (row) => row.membership,
+      ),
+      excludedCategoryIds: members(
+        categories,
+        'exclude',
+        (row) => row.categoryId,
+        (row) => row.membership,
+      ),
+      includedTransactionIds: members(
+        transactions,
+        'include',
+        (row) => row.transactionId,
+        (row) => row.membership,
+      ),
+      excludedTransactionIds: members(
+        transactions,
+        'exclude',
+        (row) => row.transactionId,
+        (row) => row.membership,
+      ),
+    );
+  }
+
+  Future<String> create(CompositeBudgetDraft draft) async {
+    await _validateDraft(draft);
+    await _db.transaction(() async {
+      await _db
+          .into(_db.budgetDefinitions)
+          .insert(
+            BudgetDefinitionsCompanion.insert(
+              id: draft.id,
+              ownerUserId: draft.ownerUserId,
+              householdId: Value(draft.householdId),
+              name: Value(draft.name.trim()),
+              amountAtoms: draft.limit.coefficient.toString(),
+              amountScale: draft.limit.scale,
+              currencyCode: draft.limit.currencyCode,
+              periodType: Value(draft.periodType),
+              periodStart: Value(draft.periodStart),
+              periodEnd: Value(draft.periodEnd),
+              cycleRule: Value(draft.cycleRule),
+              directionFilter: Value(draft.directionFilter),
+              membershipMode: Value(draft.membershipMode),
+              reviewState: const Value('ready'),
+              isReadOnly: const Value(false),
+            ),
+          );
+      await _replaceMemberships(draft);
+      await _replaceMaterializedPeriod(draft);
+    });
+    return draft.id;
+  }
+
+  Future<void> update(CompositeBudgetDraft draft) async {
+    final existing = await _requireBudget(draft.id);
+    if (existing.isReadOnly) {
+      throw StateError('Imported read-only budgets cannot be edited');
+    }
+    await _validateDraft(draft);
+    await _db.transaction(() async {
+      await (_db.update(
+        _db.budgetDefinitions,
+      )..where((row) => row.id.equals(draft.id))).write(
+        BudgetDefinitionsCompanion(
+          name: Value(draft.name.trim()),
+          amountAtoms: Value(draft.limit.coefficient.toString()),
+          amountScale: Value(draft.limit.scale),
+          currencyCode: Value(draft.limit.currencyCode),
+          periodType: Value(draft.periodType),
+          periodStart: Value(draft.periodStart),
+          periodEnd: Value(draft.periodEnd),
+          cycleRule: Value(draft.cycleRule),
+          directionFilter: Value(draft.directionFilter),
+          membershipMode: Value(draft.membershipMode),
+          reviewState: const Value('ready'),
+          syncStatus: const Value('pending_sync'),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+      await _replaceMemberships(draft);
+      await _replaceMaterializedPeriod(draft);
+    });
+  }
+
+  Future<void> softDelete(String id) async {
+    final existing = await _requireBudget(id);
+    if (existing.isReadOnly) {
+      throw StateError('Imported read-only budgets cannot be deleted');
+    }
+    await (_db.update(
+      _db.budgetDefinitions,
+    )..where((row) => row.id.equals(id))).write(
+      BudgetDefinitionsCompanion(
+        deletedAt: Value(DateTime.now()),
+        syncStatus: const Value('pending_sync'),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
   }
 
   /// Watches all definitions whose resolved period contains [anchor].
@@ -447,6 +640,197 @@ class CompositeBudgetRepo {
       incomeTotal: income,
       matches: List.unmodifiable(matches),
     );
+  }
+
+  Future<void> _validateDraft(CompositeBudgetDraft draft) async {
+    if (draft.name.trim().isEmpty) {
+      throw ArgumentError('Budget name is required');
+    }
+    if (draft.limit.coefficient <= BigInt.zero) {
+      throw ArgumentError('Budget amount must be greater than zero');
+    }
+    if (!const {
+      'monthly',
+      'date_range',
+      'custom_cycle',
+    }.contains(draft.periodType)) {
+      throw ArgumentError('Unsupported budget period type');
+    }
+    if (draft.periodType != 'monthly') {
+      if (draft.periodStart == null ||
+          draft.periodEnd == null ||
+          !draft.periodEnd!.isAfter(draft.periodStart!)) {
+        throw ArgumentError('A valid start and end date are required');
+      }
+    }
+    if (!const {'expense', 'income', 'both'}.contains(draft.directionFilter)) {
+      throw ArgumentError('Unsupported direction filter');
+    }
+    if (!const {
+      'all_matching',
+      'explicit_only',
+    }.contains(draft.membershipMode)) {
+      throw ArgumentError('Unsupported membership mode');
+    }
+    _ensureDisjoint(
+      draft.includedAccountIds,
+      draft.excludedAccountIds,
+      'account',
+    );
+    _ensureDisjoint(
+      draft.includedCategoryIds,
+      draft.excludedCategoryIds,
+      'category',
+    );
+    _ensureDisjoint(
+      draft.includedTransactionIds,
+      draft.excludedTransactionIds,
+      'transaction',
+    );
+
+    final accountIds = {
+      ...draft.includedAccountIds,
+      ...draft.excludedAccountIds,
+    }.toList();
+    final accounts = accountIds.isEmpty
+        ? const <AccountData>[]
+        : await (_db.select(_db.accounts)..where(
+                (row) =>
+                    row.id.isIn(accountIds) &
+                    row.deletedAt.isNull() &
+                    row.isArchived.equals(false),
+              ))
+              .get();
+    if (accounts.length != accountIds.length) {
+      throw ArgumentError('One or more selected accounts are unavailable');
+    }
+    if (accounts.any(
+      (account) => account.currencyCode != draft.limit.currencyCode,
+    )) {
+      throw ArgumentError(
+        'Every included account must use ${draft.limit.currencyCode}',
+      );
+    }
+
+    final categoryIds = {
+      ...draft.includedCategoryIds,
+      ...draft.excludedCategoryIds,
+    }.toList();
+    final categories = categoryIds.isEmpty
+        ? const <CategoryData>[]
+        : await (_db.select(_db.categories)..where(
+                (row) => row.id.isIn(categoryIds) & row.deletedAt.isNull(),
+              ))
+              .get();
+    if (categories.length != categoryIds.length) {
+      throw ArgumentError('One or more selected categories are unavailable');
+    }
+
+    final transactionIds = {
+      ...draft.includedTransactionIds,
+      ...draft.excludedTransactionIds,
+    }.toList();
+    if (transactionIds.isNotEmpty) {
+      final transactions =
+          await (_db.select(_db.transactions)..where(
+                (row) => row.id.isIn(transactionIds) & row.deletedAt.isNull(),
+              ))
+              .get();
+      if (transactions.length != transactionIds.length) {
+        throw ArgumentError(
+          'One or more selected transactions are unavailable',
+        );
+      }
+    }
+  }
+
+  static void _ensureDisjoint(
+    Set<String> included,
+    Set<String> excluded,
+    String label,
+  ) {
+    if (included.intersection(excluded).isNotEmpty) {
+      throw ArgumentError('A $label cannot be both included and excluded');
+    }
+  }
+
+  Future<void> _replaceMemberships(CompositeBudgetDraft draft) async {
+    await (_db.delete(
+      _db.budgetAccountMemberships,
+    )..where((row) => row.budgetId.equals(draft.id))).go();
+    await (_db.delete(
+      _db.budgetCategoryMemberships,
+    )..where((row) => row.budgetId.equals(draft.id))).go();
+    await (_db.delete(
+      _db.budgetTransactionMemberships,
+    )..where((row) => row.budgetId.equals(draft.id))).go();
+
+    for (final membership in [
+      for (final id in draft.includedAccountIds) (id, 'include'),
+      for (final id in draft.excludedAccountIds) (id, 'exclude'),
+    ]) {
+      await _db
+          .into(_db.budgetAccountMemberships)
+          .insert(
+            BudgetAccountMembershipsCompanion.insert(
+              id: '${draft.id}-account-${membership.$2}-${membership.$1}',
+              budgetId: draft.id,
+              accountId: Value(membership.$1),
+              membership: Value(membership.$2),
+            ),
+          );
+    }
+    for (final membership in [
+      for (final id in draft.includedCategoryIds) (id, 'include'),
+      for (final id in draft.excludedCategoryIds) (id, 'exclude'),
+    ]) {
+      await _db
+          .into(_db.budgetCategoryMemberships)
+          .insert(
+            BudgetCategoryMembershipsCompanion.insert(
+              id: '${draft.id}-category-${membership.$2}-${membership.$1}',
+              budgetId: draft.id,
+              categoryId: Value(membership.$1),
+              membership: Value(membership.$2),
+            ),
+          );
+    }
+    for (final membership in [
+      for (final id in draft.includedTransactionIds) (id, 'include'),
+      for (final id in draft.excludedTransactionIds) (id, 'exclude'),
+    ]) {
+      await _db
+          .into(_db.budgetTransactionMemberships)
+          .insert(
+            BudgetTransactionMembershipsCompanion.insert(
+              id: '${draft.id}-transaction-${membership.$2}-${membership.$1}',
+              budgetId: draft.id,
+              transactionId: Value(membership.$1),
+              membership: Value(membership.$2),
+              reasonCode: const Value('user_selected'),
+            ),
+          );
+    }
+  }
+
+  Future<void> _replaceMaterializedPeriod(CompositeBudgetDraft draft) async {
+    await (_db.delete(
+      _db.budgetPeriods,
+    )..where((row) => row.budgetId.equals(draft.id))).go();
+    if (draft.periodType != 'custom_cycle') return;
+    await _db
+        .into(_db.budgetPeriods)
+        .insert(
+          BudgetPeriodsCompanion.insert(
+            id: '${draft.id}-period-${draft.periodStart!.microsecondsSinceEpoch}',
+            budgetId: draft.id,
+            startsAt: draft.periodStart!,
+            endsAt: draft.periodEnd!,
+            amountAtoms: draft.limit.coefficient.toString(),
+            amountScale: draft.limit.scale,
+            currencyCode: draft.limit.currencyCode,
+          ),
+        );
   }
 
   Future<BudgetDefinitionData> _requireBudget(String id) async {
