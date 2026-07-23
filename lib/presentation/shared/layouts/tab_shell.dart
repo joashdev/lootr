@@ -240,21 +240,24 @@ class _NavTab extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 3),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(icon, color: color, size: 20),
                   const SizedBox(height: 2),
                   // Scale down long labels (e.g. "Transactions") instead of
                   // clipping them; short labels render at full size.
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      style: AppTypography.micro.copyWith(
-                        fontWeight: fontWeight,
-                        color: color,
-                        height: 1.1,
+                  Expanded(
+                    child: Center(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          label,
+                          maxLines: 1,
+                          style: AppTypography.micro.copyWith(
+                            fontWeight: fontWeight,
+                            color: color,
+                            height: 1.1,
+                          ),
+                        ),
                       ),
                     ),
                   ),
