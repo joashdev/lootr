@@ -252,4 +252,18 @@ Each spec, when written, should be a standalone markdown doc that is concrete en
 
 ---
 
+## 16. Adopted V1 Experience ✅
+
+**Status:** Done.
+**Produces:** `docs/adopted-v1-experience.md` + `docs/mandocs/adopted-v1-experience.html`
+**Purpose:** Define the connected Cashew-inspired V1 workflows while preserving Lootr’s stable navigation, privacy boundary, and calm interaction model.
+**Coverage:**
+- Unified Add with progressive correction, calculator fallback, and Undo
+- Persistent ledger search, filters, period, sort, scroll, and atomic bulk cleanup
+- Explainable reports, categorization memory, recurring occurrence lifecycle, and composite budgets
+- Bounded dashboard customization, semantic color, accessibility, and verification
+**Priority:** Critical
+
+---
+
 > **Suggested work order:** Write specs 1–3 → start coding foundation → write 4–6 in parallel → write 7–10 before leaving foundation phase → 11–12 before launch.

@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Adopted V1 Experience — Personal Finance App</title>
+  <style>
+    :root{--bg:#fafafa;--surface:#fff;--text:#1b1b1f;--muted:#63666e;--border:#e2e4e8;--accent:#5c64cc;--soft:#eeeffe;--code:#f2f4f7}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+    main{max-width:920px;margin:40px auto;padding:40px;background:var(--surface);border:1px solid var(--border);border-radius:18px}
+    h1{font-size:32px;line-height:1.2;margin:0 0 10px} h2{font-size:21px;margin:38px 0 12px;padding-top:10px;border-top:1px solid var(--border)}
+    p{margin:8px 0 14px} .lede,.refs{color:var(--muted)} code,.mono{font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--code);padding:2px 5px;border-radius:5px}
+    table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px} th,td{padding:10px 12px;text-align:left;vertical-align:top;border:1px solid var(--border)} th{background:var(--soft)}
+    ul{padding-left:22px}.diagram{white-space:pre-wrap;background:#17171b;color:#f0f0f5;border-radius:12px;padding:16px;font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .note{border-left:4px solid var(--accent);background:var(--soft);padding:12px 16px;border-radius:0 10px 10px 0}
+    @media(max-width:700px){main{margin:0;padding:24px 18px;border:0;border-radius:0}table{display:block;overflow-x:auto}}
+    @media(prefers-color-scheme:dark){:root{--bg:#0f0f11;--surface:#1a1a1e;--text:#f0f0f5;--muted:#9ca3af;--border:#2e2e33;--soft:#25263d;--code:#242428}}
+  </style>
+</head>
+<body>
+<main>
+  <h1>Adopted V1 Experience — Personal Finance App</h1>
+  <p class="lede">The connected interaction contract for Cashew-inspired daily-use improvements without copying Cashew’s product surface.</p>
+  <p class="refs">References: <code>cashew-product-benchmark.md</code> (adoption decisions), <code>cashew-data-migration.md</code> (unified model and onboarding), <code>navigation-arch.md</code> (stable frame), <code>design.md</code> (tokens and accessibility), <code>state-management.md</code> (persistence and Undo).</p>
+
+  <h2>1. Product Boundary</h2>
+  <p>Lootr keeps four fixed tabs, the rightmost Add island, one canonical transaction list, dedicated transfers, confirm-before-finalize recurrence, and calm factual feedback. The adopted experience adds progressive power inside those stable surfaces.</p>
+  <table><thead><tr><th>Area</th><th>V1 outcome</th><th>Boundary</th></tr></thead><tbody>
+    <tr><td class="mono">add</td><td>One type, speak, scan, calculate, or manual flow</td><td>Assistance previews; it never silently writes</td></tr>
+    <tr><td class="mono">ledger</td><td>Persistent period, search, filters, sort, scroll, and focused bulk cleanup</td><td>Canonical Filter Sheet uses AND semantics</td></tr>
+    <tr><td class="mono">aggregates</td><td>Human-readable explanation and exact ledger drill-down</td><td>Mixed currencies remain separated</td></tr>
+    <tr><td class="mono">memory</td><td>Explicit-correction categorization rules</td><td>No retroactive mutation</td></tr>
+    <tr><td class="mono">recurrence</td><td>Due, overdue, paid, skipped, and dismissed occurrences</td><td>Posting remains confirm-first</td></tr>
+    <tr><td class="mono">budgets</td><td>Composite scopes, cycles, inclusion reasons, and history</td><td>Unsafe imports remain read-only</td></tr>
+    <tr><td class="mono">dashboard</td><td>Hide, show, and reorder secondary modules</td><td>Hero, tabs, Add, and ledger stay fixed</td></tr>
+  </tbody></table>
+
+  <h2>2. Shared Period Context</h2>
+  <p>Transactions, budgets, and reports use one <code>PeriodContext</code> vocabulary:</p>
+  <div class="diagram">calendar month ── previous / direct select / next
+custom cycle   ── cycle label + exact start/end dates
+drill-down     ── originating period + filters + scroll restoration key</div>
+  <ul>
+    <li>A calendar month is labeled by month and year.</li>
+    <li>A custom cycle shows its name and date range; it is never described as a calendar month.</li>
+    <li>Changing period preserves every non-date filter.</li>
+    <li>A drill-down passes a structured ledger query, not a precomputed total.</li>
+    <li>Returning restores the originating selector, filter chips, sort, selection, and scroll offset.</li>
+  </ul>
+
+  <h2>3. Unified Add</h2>
+  <p>The Add island opens one sheet with Quick, Manual, and Scan entry. Quick keeps the microphone inside its text field and accepts deterministic arithmetic. Manual and Scan return to the same in-context preview.</p>
+  <p>The preview exposes amount, account, category, payee, date, and recurrence as tappable correction rows. “More details” expands note, goal/debt link, source metadata, and advanced fields without leaving the sheet.</p>
+  <p>Suggestion copy is human-readable:</p>
+  <ul>
+    <li>“From your wording” for deterministic parsing;</li>
+    <li>“Remembered from this payee/title” for an active correction rule;</li>
+    <li>“From your last choice” for a visible remembered default;</li>
+    <li>“Needs review” when required information is missing or ambiguous.</li>
+  </ul>
+  <p>Save is one database transaction. On success the sheet closes unless “Add another” is active, focus returns to Quick entry for rapid capture, and a five-second Undo snackbar is shown. Rule creation is a separate explicit “Remember this correction” choice and never changes old rows.</p>
+
+  <h2>4. Ledger Search, Filters, and Cleanup</h2>
+  <p>The transaction tab owns durable in-memory navigation state for the app session:</p>
+  <table><thead><tr><th>State</th><th>Restoration rule</th></tr></thead><tbody>
+    <tr><td class="mono">query</td><td>Preserved across tab/detail navigation until cleared</td></tr>
+    <tr><td class="mono">filters</td><td>Visible removable chips; Reset clears all groups</td></tr>
+    <tr><td class="mono">period</td><td>Shared period context; non-date filters survive changes</td></tr>
+    <tr><td class="mono">sort</td><td>Preserved until explicitly changed</td></tr>
+    <tr><td class="mono">scroll</td><td>Restored after detail/edit/drill-down return</td></tr>
+    <tr><td class="mono">selection</td><td>Cleared only after successful batch, explicit cancel, or invalidation</td></tr>
+  </tbody></table>
+  <p>Search deterministically recognizes text, exact decimal amount with an explicit currency, and month names or <code>YYYY-MM</code>. Search and filter groups compose with AND semantics.</p>
+  <p>Long press and swipe may enter or accelerate selection, but a visible Select action is always present. Batch recategorize, move account, and delete first validate the complete selection. If any row is incompatible—such as a transfer or currency/account mismatch—the sheet explains the exact count and applies nothing. Successful batches use one database transaction and expose Undo when a lossless rollback snapshot exists.</p>
+
+  <h2>5. Explainable Aggregates</h2>
+  <div class="diagram">summary
+  → “What is included” explanation
+  → canonical transaction list with named filters
+  → editable transaction or transfer detail</div>
+  <p>Chart segments, totals, account balances, budget progress, safe-to-spend components, goal progress, and debt balances either open this path or use non-interactive styling. Static insight prose is replaced by deterministic facts.</p>
+  <p>Currency aggregation returns partitions. A single-currency partition may show one total; multiple currencies show separate labeled totals and never a converted-looking sum.</p>
+
+  <h2>6. Categorization Memory</h2>
+  <p>Rules are created only after an explicit correction and opt-in. Exact matches precede contains matches; priority, pattern specificity, creation time, and ID provide deterministic tie-breaking.</p>
+  <p>The Add preview shows the suggested category and the reason. Override is one tap. Settings exposes active and archived rules with edit, enable/disable, archive, restore, and delete. Imported rules use the same table and matching engine, retain provenance, and never create payees as a matching side effect.</p>
+  <p>Rule edits affect future suggestions only.</p>
+
+  <h2>7. Recurring Occurrences</h2>
+  <table><thead><tr><th>Status</th><th>Meaning</th><th>Visible actions</th></tr></thead><tbody>
+    <tr><td class="mono">upcoming</td><td>Due in the future</td><td>Edit occurrence, Edit series</td></tr>
+    <tr><td class="mono">due</td><td>Due today</td><td>Pay, Skip, Edit occurrence, Edit series</td></tr>
+    <tr><td class="mono">overdue</td><td>Unresolved after original due time</td><td>Pay, Skip, Edit occurrence, Edit series</td></tr>
+    <tr><td class="mono">paid</td><td>Linked to one finalized ledger row</td><td>Open transaction</td></tr>
+    <tr><td class="mono">skipped</td><td>Deliberately not posted</td><td>View history</td></tr>
+    <tr><td class="mono">dismissed</td><td>Resolved without posting</td><td>View history</td></tr>
+  </tbody></table>
+  <p>Pay opens the normal Add experience prefilled from the occurrence. Confirming creates the ledger row and resolves the occurrence atomically. Skip/dismiss records resolution time while preserving original due time and next occurrence. Reminder deep links identify the exact occurrence. Optional auto-pay, if enabled later, must be explicit, reversible, and auditable.</p>
+
+  <h2>8. Composite Budgets</h2>
+  <p>Create/edit supports multiple included or excluded accounts and categories, explicit transaction membership, direction, monthly or custom/date-range periods, and amount/currency. The detail page shows scope, unresolved imported members, overlap information, historical periods, per-currency totals, and every matching transaction’s inclusion reason.</p>
+  <p>Imported definitions with unsafe or missing relationships remain visible and read-only until reviewed. Missing accounts are never silently replaced. Overlaps use neutral copy because each budget evaluates independently.</p>
+
+  <h2>9. Bounded Dashboard Customization</h2>
+  <p>Safe-to-Spend stays first. A visible Customize action controls only these secondary modules: net worth, accounts, income/expense, budgets, spending categories, recent transactions, and upcoming recurring. The product may expose at most six at once.</p>
+  <p>Users may hide/show and reorder them, then Restore Defaults. Persistence is local. Screen-reader traversal follows visual order. Hidden modules do not change underlying calculations, reports, tabs, or navigation.</p>
+
+  <h2>10. Visual and Accessibility Contract</h2>
+  <ul>
+    <li>Use semantic theme extensions for positive, attention, needs-review, information, selection, surfaces, and text.</li>
+    <li>Status always includes text and/or an icon; red and green are never the sole signal.</li>
+    <li>Normal text and meaningful controls meet WCAG AA where applicable.</li>
+    <li>Touch targets are at least 44dp; focus, pressed, selected, and disabled states remain visible.</li>
+    <li>Layout supports 200% text, compact phones, tablet width, safe areas, keyboard navigation, and screen readers.</li>
+    <li>Motion is short and interruptible; non-essential motion is removed when reduced motion is requested.</li>
+    <li>Empty, loading, and error states preserve context and provide the next safe action.</li>
+  </ul>
+
+  <h2>11. Verification Matrix</h2>
+  <table><thead><tr><th>Layer</th><th>Required proof</th></tr></thead><tbody>
+    <tr><td class="mono">unit</td><td>Search parsing, rule precedence, period math, inclusion reasons, currency partitions</td></tr>
+    <tr><td class="mono">repository</td><td>Atomic batch/Undo, occurrence resolution, composite membership, dashboard persistence</td></tr>
+    <tr><td class="mono">provider</td><td>Tab/detail restoration and deterministic invalidation</td></tr>
+    <tr><td class="mono">widget</td><td>Visible actions, correction preview, chips, bulk validation, occurrence actions</td></tr>
+    <tr><td class="mono">navigation</td><td>Period/filter/scroll restoration and exact reminder/drill-down routes</td></tr>
+    <tr><td class="mono">golden</td><td>Light/dark, large text, compact phone, tablet, reduced-motion states</td></tr>
+    <tr><td class="mono">integration</td><td>Add/Undo, bulk cleanup, report-to-edit, rule learning, Pay/Skip, composite budget</td></tr>
+  </tbody></table>
+  <p>Formatting, code generation, static analysis, all relevant tests, synthetic visual review, standards/spec review, and over-engineering review must pass before completion.</p>
+
+  <h2>12. Acceptance Criteria</h2>
+  <ul>
+    <li>Every adopted feature is reachable from the normal app flow and writes through real repositories.</li>
+    <li>Add remains one coherent surface and every save or correction is user-controlled.</li>
+    <li>Query, filters, period, sort, and scroll restore after tabs, details, edits, and drill-down.</li>
+    <li>Batch operations are atomic and preflight incompatible rows before mutation.</li>
+    <li>Every interactive aggregate explains itself and opens its exact source ledger.</li>
+    <li>Mixed currencies are partitioned without false conversion.</li>
+    <li>Explicit corrections can create visible, manageable future-only categorization rules.</li>
+    <li>Recurring Pay/Skip preserves occurrence history without duplicating ledger rows.</li>
+    <li>Composite budget membership and inclusion reasons are inspectable.</li>
+    <li>Dashboard customization is bounded, persistent, reversible, and accessible.</li>
+    <li>Light/dark/accessibility verification artifacts exist and the relevant test suite passes.</li>
+  </ul>
+</main>
+</body>
+</html>
