@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lootr/application/migration/migration_coordinator.dart';
@@ -11,6 +12,10 @@ import 'package:lootr/presentation/screens/more/settings/data/cashew_migration_r
 
 void main() {
   testWidgets('renders a redacted migration review artifact', (tester) async {
+    final materialIcons = FontLoader('MaterialIcons')
+      ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
+    await materialIcons.load();
+
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(390, 844);
     addTearDown(tester.view.reset);

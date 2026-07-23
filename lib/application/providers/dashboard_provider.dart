@@ -14,6 +14,8 @@ import '../../domain/entities/transaction.dart';
 import '../../domain/entities/user.dart';
 import '../../domain/services/currency_aggregation.dart';
 import '../../domain/use_cases/calculate_safe_to_spend.dart';
+import '../../domain/value_objects/ledger_query.dart';
+import '../../domain/value_objects/period_context.dart';
 import '../../domain/value_objects/exact_money.dart';
 import 'repo_providers.dart';
 
@@ -100,11 +102,17 @@ class DashboardInsight {
     required this.id,
     required this.title,
     required this.body,
+    this.ledgerQuery,
+    this.destinationRoute,
   });
 
   final String id;
   final String title;
   final String body;
+  final LedgerQuery? ledgerQuery;
+  final String? destinationRoute;
+
+  bool get isDrillable => ledgerQuery != null || destinationRoute != null;
 }
 
 class DashboardData {
@@ -450,6 +458,8 @@ final dashboardProvider = StreamProvider<DashboardData>((ref) {
       monthlyIncome: monthlyIncome,
       safeToSpend: safeToSpend.amount,
       budgets: budgetSummaries,
+      now: now,
+      currencyCode: currencyCode,
     );
 
     return DashboardData(
@@ -595,6 +605,8 @@ List<DashboardInsight> _buildInsights({
   required double monthlyIncome,
   required double safeToSpend,
   required List<DashboardBudgetSummary> budgets,
+  required DateTime now,
+  required String currencyCode,
 }) {
   if (!aiEnabled) {
     return const [];
@@ -609,6 +621,13 @@ List<DashboardInsight> _buildInsights({
         title: '${topSlice.name} is leading this month',
         body:
             '${(topSlice.percentage * 100).round()}% of your spending is in ${topSlice.name.toLowerCase()}.',
+        ledgerQuery: LedgerQuery(
+          explanation: '${topSlice.name} expenses this month · $currencyCode',
+          period: PeriodContext.calendarMonth(now),
+          directions: const ['expense'],
+          categoryIds: [topSlice.categoryId],
+          currencyCode: currencyCode,
+        ),
       ),
     );
   }
@@ -624,6 +643,9 @@ List<DashboardInsight> _buildInsights({
         title: '${budget.name} is close to the limit',
         body:
             'You have ${(budget.progress * 100).round()}% of the ${budget.name.toLowerCase()} budget used.',
+        destinationRoute: budget.isImported
+            ? '/budgets/imported/${budget.id}'
+            : '/budgets/${budget.id}',
       ),
     );
   } else if (monthlyIncome > 0) {

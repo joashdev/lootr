@@ -143,4 +143,22 @@ void main() {
     expect(await repo.getById('delete-me'), isNull);
     expect(await repo.match(title: 'merchant'), isNull);
   });
+
+  test('restore re-enables an archived rule', () async {
+    await repo.create(
+      id: 'restore-me',
+      matchTarget: 'title',
+      matchKind: 'exact',
+      pattern: 'merchant',
+      categoryId: 'exact',
+    );
+    await repo.archive('restore-me');
+
+    await repo.restore('restore-me');
+
+    final restored = await repo.getById('restore-me');
+    expect(restored?.isArchived, isFalse);
+    expect(restored?.isActive, isTrue);
+    expect((await repo.match(title: 'merchant'))?.id, 'restore-me');
+  });
 }

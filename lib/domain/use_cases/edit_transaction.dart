@@ -10,7 +10,10 @@ class EditTransaction {
 
   EditTransaction(this._transactionRepo, this._accountRepo);
 
-  Future<Result<void>> call(Transaction updated) async {
+  Future<Result<void>> call(
+    Transaction updated, {
+    String? freeTypedPayeeName,
+  }) async {
     if (updated.exactAmount.coefficient <= BigInt.zero) {
       return Failure(
         'Amount must be greater than zero',
@@ -69,7 +72,15 @@ class EditTransaction {
     }
 
     try {
-      await _transactionRepo.update(updated.toUpdateCompanion());
+      final payeeName = freeTypedPayeeName?.trim();
+      if (payeeName == null || payeeName.isEmpty) {
+        await _transactionRepo.update(updated.toUpdateCompanion());
+      } else {
+        await _transactionRepo.updateWithPayeeName(
+          updated.toUpdateCompanion(),
+          payeeName,
+        );
+      }
       return const Success(null);
     } catch (e) {
       return Failure('Failed to edit transaction: $e', code: 'update_error');

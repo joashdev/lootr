@@ -96,7 +96,7 @@ Currency aggregation returns partitions. A single-currency partition may show on
 
 Rules are created only after an explicit correction and opt-in. Exact matches precede contains matches; priority, pattern specificity, creation time, and ID provide deterministic tie-breaking.
 
-The Add preview shows the suggested category and the reason. Override is one tap. Settings exposes active and archived rules with edit, enable/disable, archive, restore, and delete. Imported rules use the same table and matching engine, retain provenance, and never create payees as a matching side effect.
+The Add preview shows the suggested category and the reason. Override is one tap. Settings cannot create arbitrary rules; it exposes active and archived rules with edit, enable/disable, archive, restore, and delete. Imported rules use the same table and matching engine, retain provenance, and never create payees as a matching side effect.
 
 Rule edits affect future suggestions only.
 

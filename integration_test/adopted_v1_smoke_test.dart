@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lootr/app.dart';
@@ -155,17 +154,101 @@ void main() {
     await tester.tap(find.text('Netflix'));
     await shot(tester, '06-recurring-lifecycle');
 
+    // A due occurrence opens the transaction form with its immutable amount
+    // prefilled. Cancelling must leave the occurrence actionable.
+    await tester.tap(find.text('Pay'));
+    await settle(tester);
+    expect(find.text('Add Transaction'), findsWidgets);
+    final recurringAmount = tester
+        .widgetList<TextField>(find.byType(TextField))
+        .map((field) => field.controller?.text)
+        .whereType<String>();
+    expect(recurringAmount, contains('549.00'));
+    await tester.tap(find.byIcon(Icons.close).last);
+    await settle(tester);
+    expect(
+      (await (db.select(db.recurringOccurrences)
+                ..where((row) => row.id.equals('smoke-occurrence-netflix')))
+              .getSingle())
+          .status,
+      'due',
+    );
+
+    // Confirm the alternate lifecycle action and assert persisted state, not
+    // only the rendered screenshot.
+    await tester.tap(find.text('Skip'));
+    await settle(tester);
+    expect(find.text('Skip this occurrence?'), findsOneWidget);
+    await tester.tap(find.text('Skip').last);
+    await settle(tester);
+    expect(
+      (await (db.select(db.recurringOccurrences)
+                ..where((row) => row.id.equals('smoke-occurrence-netflix')))
+              .getSingle())
+          .status,
+      'skipped',
+    );
+    expect(find.text('Skipped'), findsOneWidget);
+
     await tester.pageBack();
     await settle(tester);
-    await tester.tap(find.byIcon(LucideIcons.plus).last);
+    await tester.pump(const Duration(seconds: 5));
+    await settle(tester);
+    final addIsland = find.bySemanticsLabel(
+      'Add transaction, transfer, or scan receipt',
+    );
+    expect(addIsland, findsOneWidget);
+    await tester.ensureVisible(addIsland);
+    await tester.tap(addIsland);
     await shot(tester, '07-unified-add-quick');
 
     await tester.tap(find.text('Manual').last);
     await shot(tester, '08-unified-add-manual');
 
-    await tester.tap(find.byIcon(Icons.close).last);
+    final activeBefore = (await db.select(db.transactions).get())
+        .where((row) => row.deletedAt == null)
+        .length;
+    final amountField = find.byWidgetPredicate(
+      (widget) =>
+          widget is TextField && widget.decoration?.hintText == '0.00',
+    );
+    expect(amountField, findsOneWidget);
+    await tester.enterText(amountField, '123.45');
+    FocusManager.instance.primaryFocus?.unfocus();
+    await settle(tester);
+    final accountSelector = find.byType(DropdownButton<String>);
+    expect(accountSelector, findsOneWidget);
+    await tester.ensureVisible(accountSelector);
+    await settle(tester);
+    await tester.tap(accountSelector);
+    await settle(tester);
+    await tester.tap(find.text('BDO Savings').last);
+    await settle(tester);
+    final addTransactionAction = find.text('Add Transaction').last;
+    await tester.ensureVisible(addTransactionAction);
+    await settle(tester);
+    await tester.tap(addTransactionAction);
+    await settle(tester);
+    expect(find.text('Transaction saved'), findsOneWidget);
+    expect(find.text('UNDO'), findsOneWidget);
+    expect(
+      (await db.select(db.transactions).get())
+          .where((row) => row.deletedAt == null)
+          .length,
+      activeBefore + 1,
+    );
+    await tester.tap(find.text('UNDO'));
+    await settle(tester);
+    expect(
+      (await db.select(db.transactions).get())
+          .where((row) => row.deletedAt == null)
+          .length,
+      activeBefore,
+    );
+
     await settle(tester);
     await container.read(themeModeProvider.notifier).setMode(ThemeMode.dark);
+    expect(prefs.getString('theme_mode'), 'dark');
     await tester.tap(find.text('Home').last);
     await shot(tester, '09-dashboard-dark');
 

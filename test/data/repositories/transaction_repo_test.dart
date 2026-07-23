@@ -90,6 +90,49 @@ void main() {
       expect(account.balance, 700.0);
     });
 
+    test(
+      'free-typed payee rolls back when the transaction write fails',
+      () async {
+        await expectLater(
+          repo.createWithPayeeName(
+            TransactionsCompanion.insert(
+              id: 'txn-invalid',
+              accountId: 'missing-account',
+              amount: 100,
+              transactionDirection: 'expense',
+              transactionMode: 'one_time',
+              occurredAt: DateTime(2026, 6, 19),
+            ),
+            'Corner Market',
+          ),
+          throwsA(anything),
+        );
+
+        expect(await db.select(db.transactions).get(), isEmpty);
+        expect(await db.select(db.payees).get(), isEmpty);
+      },
+    );
+
+    test('free-typed payee and transaction are saved together', () async {
+      await repo.createWithPayeeName(
+        TransactionsCompanion.insert(
+          id: 'txn-with-payee',
+          accountId: 'acc-1',
+          amount: 100,
+          transactionDirection: 'expense',
+          transactionMode: 'one_time',
+          occurredAt: DateTime(2026, 6, 19),
+        ),
+        'Corner Market',
+      );
+
+      final payee = await db.select(db.payees).getSingle();
+      final transaction = await db.select(db.transactions).getSingle();
+      expect(payee.normalizedName, 'corner market');
+      expect(payee.displayName, 'Corner Market');
+      expect(transaction.payeeId, payee.id);
+    });
+
     test('softDelete reverts balance and sets deleted_at', () async {
       await repo.create(
         TransactionsCompanion.insert(
@@ -230,6 +273,38 @@ void main() {
         )..where((t) => t.id.equals('rec-1'))).getSingle();
         // Undo must not re-run create() side effects.
         expect(afterUndo.nextOccurrenceAt, advancedOnce);
+      },
+    );
+
+    test(
+      'recurring-linked transaction advances quarterly at month end',
+      () async {
+        await db.recurringTemplates.insertOne(
+          RecurringTemplatesCompanion.insert(
+            id: 'rec-quarterly',
+            accountId: 'acc-1',
+            amount: 100.0,
+            recurrenceRule: 'quarterly',
+            nextOccurrenceAt: Value(DateTime(2026, 1, 31, 9, 45)),
+          ),
+        );
+
+        await repo.create(
+          TransactionsCompanion.insert(
+            id: 'txn-quarterly',
+            accountId: 'acc-1',
+            amount: 100.0,
+            transactionDirection: 'expense',
+            transactionMode: 'recurring',
+            recurringTemplateId: const Value('rec-quarterly'),
+            occurredAt: DateTime(2026, 1, 31, 9, 45),
+          ),
+        );
+
+        final template = await (db.select(
+          db.recurringTemplates,
+        )..where((row) => row.id.equals('rec-quarterly'))).getSingle();
+        expect(template.nextOccurrenceAt, DateTime(2026, 4, 30, 9, 45));
       },
     );
 

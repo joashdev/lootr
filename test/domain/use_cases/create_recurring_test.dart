@@ -61,7 +61,14 @@ void main() {
     });
 
     test('should accept all valid rules', () async {
-      const validRules = ['daily', 'weekly', 'biweekly', 'monthly', 'yearly'];
+      const validRules = [
+        'daily',
+        'weekly',
+        'biweekly',
+        'monthly',
+        'quarterly',
+        'yearly',
+      ];
 
       for (final rule in validRules) {
         when(() => mockRepo.create(any())).thenAnswer((_) async => 'rec-1');

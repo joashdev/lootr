@@ -5,12 +5,16 @@ import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
+import '../../application/categorization/categorization_rules.dart';
 import '../../application/providers/accounts_provider.dart';
+import '../../application/providers/categorization_rules_provider.dart';
 import '../../application/providers/categories_provider.dart';
 import '../../application/providers/debts_provider.dart';
 import '../../application/providers/filtered_transactions_provider.dart';
+import '../../application/providers/goals_provider.dart';
 import '../../application/providers/notification_provider.dart';
 import '../../application/providers/payees_provider.dart';
+import '../../application/providers/recurring_detail_provider.dart';
 import '../../application/providers/repo_providers.dart';
 import '../../application/providers/undo_stack_provider.dart';
 import '../../core/constants/enums.dart' as ui;
@@ -18,11 +22,10 @@ import '../../core/format/money_format.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/radius.dart';
 import '../../core/theme/typography.dart';
-import '../../data/database/app_database.dart';
-import '../../data/repositories/categorization_rule_repo.dart';
 import '../../domain/entities/account.dart';
 import '../../domain/entities/category.dart';
 import '../../domain/entities/debt_record.dart';
+import '../../domain/entities/goal.dart';
 import '../../domain/entities/mappers.dart';
 import '../../domain/entities/payee.dart';
 import '../../domain/entities/transaction.dart';
@@ -33,6 +36,7 @@ import '../../domain/use_cases/edit_transaction.dart';
 import '../../domain/use_cases/edit_transfer.dart';
 import '../../domain/use_cases/parse_nl.dart';
 import '../../domain/value_objects/field_types.dart' as fields;
+import '../../domain/value_objects/exact_money.dart';
 import '../../domain/value_objects/parsed_transaction.dart';
 import '../../domain/value_objects/undo_entry.dart';
 import '../shared/components/buttons/primary_button.dart';
@@ -55,6 +59,7 @@ class AddTransactionSheetArgs {
     this.entrySource,
     this.sourceConfidence,
     this.sourceSummary,
+    this.recurringPayment,
   });
 
   final Transaction? initialTransaction;
@@ -65,6 +70,7 @@ class AddTransactionSheetArgs {
   final String? entrySource;
   final double? sourceConfidence;
   final String? sourceSummary;
+  final RecurringPaymentPrefill? recurringPayment;
 }
 
 class AddTransactionSheet extends ConsumerStatefulWidget {
@@ -78,6 +84,7 @@ class AddTransactionSheet extends ConsumerStatefulWidget {
     this.entrySource,
     this.sourceConfidence,
     this.sourceSummary,
+    this.recurringPayment,
   });
 
   final Transaction? initialTransaction;
@@ -88,6 +95,7 @@ class AddTransactionSheet extends ConsumerStatefulWidget {
   final String? entrySource;
   final double? sourceConfidence;
   final String? sourceSummary;
+  final RecurringPaymentPrefill? recurringPayment;
 
   @override
   ConsumerState<AddTransactionSheet> createState() =>
@@ -109,6 +117,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   String? _sourceAccountId;
   String? _destinationAccountId;
   String? _parentTransactionId;
+  String? _goalId;
   String? _debtRecordId;
   String _payeeDraft = '';
   String? _categoryDraft;
@@ -129,12 +138,13 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
 
   ParsedTransaction? _parsedPreview;
   String? _parseError;
-  CategorizationRuleData? _matchedCategoryRule;
+  CategorizationRuleView? _matchedCategoryRule;
   String? _suggestedCategoryId;
   String? _matchedRuleInput;
 
   bool get _isTransactionEditing => widget.initialTransaction != null;
   bool get _isTransferEditing => widget.initialTransfer != null;
+  bool get _isOccurrencePayment => widget.recurringPayment != null;
 
   @override
   void dispose() {
@@ -152,6 +162,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     super.initState();
     final initialTransaction = widget.initialTransaction;
     final initialTransfer = widget.initialTransfer;
+    final recurringPayment = widget.recurringPayment;
 
     _isQuickMode =
         widget.startInQuickMode &&
@@ -162,23 +173,30 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     }
 
     _direction =
-        initialTransaction?.direction == fields.TransactionDirection.income
+        recurringPayment?.direction == fields.TransactionDirection.income ||
+            initialTransaction?.direction == fields.TransactionDirection.income
         ? fields.TransactionDirection.income
         : fields.TransactionDirection.expense;
-    _mode = initialTransaction?.mode ?? fields.TransactionMode.oneTime;
+    _mode = recurringPayment != null
+        ? fields.TransactionMode.recurring
+        : initialTransaction?.mode ?? fields.TransactionMode.oneTime;
     _occurredAt =
+        recurringPayment?.occurredAt ??
         initialTransaction?.occurredAt ??
         initialTransfer?.occurredAt ??
         DateTime.now();
-    _accountId = initialTransaction?.accountId;
-    _categoryId = initialTransaction?.categoryId;
-    _payeeId = initialTransaction?.payeeId;
+    _accountId = recurringPayment?.accountId ?? initialTransaction?.accountId;
+    _categoryId =
+        recurringPayment?.categoryId ?? initialTransaction?.categoryId;
+    _payeeId = recurringPayment?.payeeId ?? initialTransaction?.payeeId;
     _parentTransactionId = initialTransaction?.parentTransactionId;
     _sourceAccountId = initialTransfer?.sourceAccountId;
     _destinationAccountId = initialTransfer?.destinationAccountId;
 
     _amountController.text = initialTransaction != null
         ? initialTransaction.amount.toStringAsFixed(2)
+        : recurringPayment != null
+        ? recurringPayment.amount.toDecimalString()
         : initialTransfer != null
         ? initialTransfer.amount.toStringAsFixed(2)
         : '';
@@ -192,6 +210,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
 
     final metadata = initialTransaction?.metadata ?? const <String, dynamic>{};
     _recurrenceRule = metadata['recurrenceRule'] as String? ?? _recurrenceRule;
+    _goalId = metadata['goalId'] as String?;
     _debtRecordId = metadata['debtRecordId'] as String?;
   }
 
@@ -360,10 +379,12 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
       // Keep the raw label only when unresolved, so a matched category
       // displays its real name (icon + name) instead of the parsed alias.
       _categoryDraft = _categoryId == null ? parsed.category : null;
+      _suggestedCategoryId = _categoryId;
     }
     if (parsed.payee != null) {
       _payeeId = _matchPayeeId(parsed.payee!, payees);
       _payeeDraft = parsed.payee!;
+      _matchedRuleInput = parsed.payee;
     }
     if (parsed.note != null && _noteController.text.trim().isEmpty) {
       _noteController.text = parsed.note!;
@@ -417,17 +438,20 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     }
 
     final rule = await ref
-        .read(categorizationRuleRepoProvider)
+        .read(categorizationRulesCommandsProvider)
         .match(title: matchTitle, payee: matchPayee);
     if (!mounted || request != _ruleSuggestionRequest) return;
     setState(() {
       _matchedCategoryRule = rule;
-      _suggestedCategoryId = rule?.categoryId;
-      _matchedRuleInput = rule == null
-          ? null
-          : rule.matchTarget == 'title'
-          ? matchTitle
-          : matchPayee;
+      if (rule != null) {
+        _suggestedCategoryId = rule.categoryId;
+        _matchedRuleInput = rule.matchTarget == 'title'
+            ? matchTitle
+            : matchPayee;
+      } else if (_parsedPreview == null) {
+        _suggestedCategoryId = null;
+        _matchedRuleInput = null;
+      }
       _rememberCategoryCorrection = false;
       if (rule != null &&
           !_isTransactionEditing &&
@@ -451,36 +475,23 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     final rule = _matchedCategoryRule;
     final input = _matchedRuleInput?.trim();
     if (!_rememberCategoryCorrection ||
-        rule == null ||
         categoryId == null ||
         input == null ||
         input.isEmpty ||
-        categoryId == rule.categoryId) {
+        categoryId == _suggestedCategoryId) {
       return;
     }
 
-    final repo = ref.read(categorizationRuleRepoProvider);
-    final normalizedInput = CategorizationRuleRepo.normalize(input);
-    if (rule.matchKind == 'exact' &&
-        rule.normalizedPattern == normalizedInput) {
-      await repo.update(
-        id: rule.id,
-        matchTarget: rule.matchTarget,
-        matchKind: 'exact',
-        pattern: input,
-        categoryId: categoryId,
-        priority: rule.priority,
-      );
-      return;
-    }
-    await repo.create(
-      id: 'rule-${DateTime.now().microsecondsSinceEpoch}',
-      matchTarget: rule.matchTarget,
-      matchKind: 'exact',
-      pattern: input,
-      categoryId: categoryId,
-      priority: rule.priority + 1,
-    );
+    await ref
+        .read(categorizationRulesCommandsProvider)
+        .rememberCorrection(
+          RememberCategorizationCorrectionCommand(
+            rule: rule,
+            matchTarget: rule?.matchTarget ?? 'payee',
+            correctedCategoryId: categoryId,
+            input: input,
+          ),
+        );
   }
 
   void _ensureSeededFromInitialParsed(
@@ -561,7 +572,10 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     if (_mode == fields.TransactionMode.recurring) {
       metadata['recurrenceRule'] = _recurrenceRule;
     }
-    if (_mode == fields.TransactionMode.debt && _debtRecordId != null) {
+    if (_goalId != null) {
+      metadata['goalId'] = _goalId;
+    }
+    if (_debtRecordId != null) {
       metadata['debtRecordId'] = _debtRecordId;
     }
     final source =
@@ -576,17 +590,11 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     if ((widget.sourceSummary ?? '').trim().isNotEmpty) {
       metadata['sourceSummary'] = widget.sourceSummary!.trim();
     }
+    if (widget.recurringPayment case final payment?) {
+      metadata['source'] = 'recurring_occurrence';
+      metadata['recurringOccurrenceId'] = payment.occurrenceId;
+    }
     return metadata.isEmpty ? null : metadata;
-  }
-
-  Future<String?> _resolvePayeeId() async {
-    if (_payeeId != null) return _payeeId;
-    final payeeName = _payeeDraft.trim();
-    if (payeeName.isEmpty) return null;
-    final payee = await ref
-        .read(payeeRepoProvider)
-        .createOrGet(_normalize(payeeName));
-    return payee.id;
   }
 
   Future<void> _saveTransaction() async {
@@ -612,7 +620,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     final now = DateTime.now();
 
     try {
-      final payeeId = await _resolvePayeeId();
+      final freeTypedPayeeName = _payeeId == null ? _payeeDraft.trim() : null;
       final previous = widget.initialTransaction;
       // Fall back to resolving free-typed category text (e.g. an NL
       // quick-add label that was never tapped in the picker) at save time.
@@ -627,13 +635,32 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
         id: previous?.id ?? 'txn-${now.microsecondsSinceEpoch}',
         accountId: _accountId!,
         categoryId: categoryId,
-        payeeId: payeeId,
+        payeeId: _payeeId,
         parentTransactionId: _mode == fields.TransactionMode.installment
             ? _parentTransactionId
             : null,
-        recurringTemplateId: previous?.recurringTemplateId,
+        recurringTemplateId:
+            widget.recurringPayment?.recurringTemplateId ??
+            previous?.recurringTemplateId,
         amount: amount,
-        title: previous?.title,
+        amountAtoms: widget.recurringPayment == null
+            ? previous?.amountAtoms
+            : ExactMoney.parse(
+                _amountController.text,
+                widget.recurringPayment!.amount.currencyCode,
+              ).coefficient.toString(),
+        amountScale: widget.recurringPayment == null
+            ? previous?.amountScale
+            : ExactMoney.parse(
+                _amountController.text,
+                widget.recurringPayment!.amount.currencyCode,
+              ).scale,
+        currencyCode:
+            widget.recurringPayment?.amount.currencyCode ??
+            previous?.currencyCode,
+        title:
+            previous?.title ??
+            (_isOccurrencePayment ? 'Recurring payment' : null),
         direction: _direction,
         mode: _mode,
         subtype: previous?.subtype,
@@ -645,11 +672,17 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
         deletedAt: previous?.deletedAt,
       );
 
-      if (_isTransactionEditing) {
+      if (_isOccurrencePayment) {
+        final transactionId = await ref
+            .read(recurringOccurrenceCommandsProvider)
+            .confirmPayment(widget.recurringPayment!.occurrenceId, transaction);
+        if (!mounted) return;
+        _handleSaveSuccess(transactionId, isEdit: false, allowUndo: false);
+      } else if (_isTransactionEditing) {
         final result = await EditTransaction(
           transactionRepo,
           accountRepo,
-        ).call(transaction);
+        ).call(transaction, freeTypedPayeeName: freeTypedPayeeName);
         if (result.isSuccess) {
           try {
             await _rememberCorrectionIfRequested(categoryId);
@@ -672,7 +705,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
         final result = await AddTransaction(
           transactionRepo,
           accountRepo,
-        ).call(transaction);
+        ).call(transaction, freeTypedPayeeName: freeTypedPayeeName);
         if (result.isSuccess) {
           try {
             await _rememberCorrectionIfRequested(categoryId);
@@ -751,31 +784,37 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     String transactionId, {
     required bool isEdit,
     Transaction? previousTransaction,
+    bool allowUndo = true,
   }) {
     final message = isEdit ? 'Transaction updated' : 'Transaction saved';
 
-    ref
-        .read(undoStackProvider.notifier)
-        .push(
-          UndoEntry(
-            transactionId: transactionId,
-            message: message,
-            rollback: () async {
-              if (isEdit && previousTransaction != null) {
-                await ref
-                    .read(transactionRepoProvider)
-                    .update(previousTransaction.toUpdateCompanion());
-                await ref.read(notificationSchedulerProvider).rebuildSchedule();
-                return;
-              }
-              await ref.read(transactionRepoProvider).softDelete(transactionId);
-              await ref.read(notificationSchedulerProvider).rebuildSchedule();
-            },
-            createdAt: DateTime.now(),
-          ),
-        );
+    if (allowUndo) {
+      final transactionRepo = ref.read(transactionRepoProvider);
+      final notificationScheduler = ref.read(notificationSchedulerProvider);
+      ref.read(undoStackProvider.notifier).push(
+        UndoEntry(
+          transactionId: transactionId,
+          message: message,
+          rollback: () async {
+            if (isEdit && previousTransaction != null) {
+              await transactionRepo.update(
+                previousTransaction.toUpdateCompanion(),
+              );
+              await notificationScheduler.rebuildSchedule();
+              return;
+            }
+            await transactionRepo.softDelete(transactionId);
+            await notificationScheduler.rebuildSchedule();
+          },
+          createdAt: DateTime.now(),
+        ),
+      );
+    }
 
-    _showSnackBar(message, transactionId: transactionId);
+    _showSnackBar(
+      _isOccurrencePayment ? 'Occurrence paid' : message,
+      transactionId: allowUndo ? transactionId : null,
+    );
     if (!mounted) return;
     if (!isEdit && _addAnother) {
       setState(() {
@@ -784,6 +823,8 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
         _quickAddController.clear();
         _payeeId = null;
         _payeeDraft = '';
+        _goalId = null;
+        _debtRecordId = null;
         _matchedCategoryRule = null;
         _suggestedCategoryId = null;
         _matchedRuleInput = null;
@@ -803,6 +844,9 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   }
 
   void _showSnackBar(String message, {String? transactionId}) {
+    final undoNotifier = transactionId == null
+        ? null
+        : ref.read(undoStackProvider.notifier);
     final isError = switch (message) {
       'Enter a valid amount.' ||
       'Select an account to continue.' ||
@@ -818,7 +862,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
           : AppSnackBarVariant.success,
       actionLabel: transactionId != null ? 'UNDO' : null,
       onAction: transactionId != null
-          ? () => ref.read(undoStackProvider.notifier).undo(transactionId)
+          ? () => undoNotifier!.undo(transactionId)
           : null,
       duration: const Duration(seconds: 5),
     );
@@ -909,6 +953,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     final payees = ref.watch(payeesProvider).asData?.value ?? const <Payee>[];
     final debts =
         ref.watch(debtsProvider).asData?.value ?? const <DebtRecord>[];
+    final goals = ref.watch(goalsProvider).asData?.value ?? const <Goal>[];
     final parentTransactions =
         ref.watch(filteredTransactionsProvider).asData?.value ??
         const <Transaction>[];
@@ -960,7 +1005,9 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                 ],
               ),
             ),
-            if (!_isTransactionEditing && !_isTransferEditing)
+            if (!_isTransactionEditing &&
+                !_isTransferEditing &&
+                !_isOccurrencePayment)
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
                 child: EntryModeTabs(
@@ -984,6 +1031,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                           accounts,
                           categories,
                           payees,
+                          goals,
                           debts,
                           parentTransactions,
                         ),
@@ -1013,14 +1061,17 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     List<Account> accounts,
     List<Category> categories,
     List<Payee> payees,
+    List<Goal> goals,
     List<DebtRecord> debts,
     List<Transaction> parentTransactions,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildTransactionTypeTabs(),
-        const SizedBox(height: 16),
+        if (!_isOccurrencePayment) ...[
+          _buildTransactionTypeTabs(),
+          const SizedBox(height: 16),
+        ],
         AmountInput(
           direction: _amountDirection(),
           controller: _amountController,
@@ -1052,7 +1103,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
             onChanged: _selectCategory,
             onTextChanged: (value) => _categoryDraft = value,
           ),
-          if (_matchedCategoryRule != null)
+          if (_suggestedCategoryId != null)
             _buildCategorySuggestion(categories),
           const SizedBox(height: 16),
           _buildLabel('Payee'),
@@ -1086,11 +1137,17 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
             tilePadding: EdgeInsets.zero,
             childrenPadding: EdgeInsets.zero,
             title: const Text('Transaction Mode'),
-            subtitle: const Text('More details: note, date, recurrence, links'),
+            subtitle: const Text(
+              'More details: note, date, goal/debt link, source metadata',
+            ),
             children: [
               _noteField(),
               const SizedBox(height: 16),
               _dateTimeSection(),
+              const SizedBox(height: 16),
+              _buildGoalDebtLink(goals, debts),
+              const SizedBox(height: 16),
+              _buildSourceMetadata(),
               const SizedBox(height: 16),
               Align(
                 alignment: Alignment.centerLeft,
@@ -1106,13 +1163,10 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                 const SizedBox(height: 16),
                 _buildParentTransactionPicker(parentTransactions),
               ],
-              if (_mode == fields.TransactionMode.debt) ...[
-                const SizedBox(height: 16),
-                _buildDebtPicker(debts),
-              ],
             ],
           ),
-          if (!_isTransactionEditing) _buildAddAnotherToggle(),
+          if (!_isTransactionEditing && !_isOccurrencePayment)
+            _buildAddAnotherToggle(),
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
@@ -1128,7 +1182,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   }
 
   Widget _buildCategorySuggestion(List<Category> categories) {
-    final rule = _matchedCategoryRule!;
+    final rule = _matchedCategoryRule;
     final suggestedName = categories
         .cast<Category?>()
         .firstWhere(
@@ -1137,7 +1191,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
         )
         ?.name;
     if (suggestedName == null) return const SizedBox.shrink();
-    final input = _matchedRuleInput ?? rule.pattern;
+    final input = _matchedRuleInput ?? rule?.pattern ?? '';
     final overridden =
         _categoryWasExplicitlyEdited &&
         _categoryId != null &&
@@ -1154,8 +1208,10 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Suggested $suggestedName because ${rule.matchTarget} '
-            '“$input” matched a remembered rule.',
+            rule == null
+                ? 'Suggested $suggestedName from your wording.'
+                : 'Suggested $suggestedName because ${rule.matchTarget} '
+                      '“$input” matched a remembered rule.',
             style: AppTypography.caption.copyWith(
               color: Theme.of(context).colorScheme.onSecondaryContainer,
             ),
@@ -1334,6 +1390,8 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     // The parser produces a single overall confidence, so it is surfaced once
     // below the rows rather than repeated per field.
     final confidence = parsed.confidence;
+    final confidencePrefix =
+        'Confidence ${(confidence * 100).toStringAsFixed(0)}% · ';
 
     Widget previewRow(String label, String value) {
       return InkWell(
@@ -1408,13 +1466,10 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
               const SizedBox(width: 8),
               Text(
                 widget.entrySource == 'ocr'
-                    ? 'Confidence ${(confidence * 100).toStringAsFixed(0)}% · '
-                          'Read from your receipt; review before saving'
+                    ? '${confidencePrefix}Read from your receipt; review before saving'
                     : confidence >= 0.7
-                    ? 'Confidence ${(confidence * 100).toStringAsFixed(0)}% · '
-                          'Matched from your wording'
-                    : 'Confidence ${(confidence * 100).toStringAsFixed(0)}% · '
-                          'Needs review before saving',
+                    ? '${confidencePrefix}Matched from your wording'
+                    : '${confidencePrefix}Needs review before saving',
                 style: AppTypography.caption.copyWith(
                   color: lootrColors.textSecondary,
                 ),
@@ -1628,34 +1683,102 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     );
   }
 
-  Widget _buildDebtPicker(List<DebtRecord> debts) {
+  Widget _buildGoalDebtLink(List<Goal> goals, List<DebtRecord> debts) {
+    final selectedValue = _goalId != null
+        ? 'goal:$_goalId'
+        : _debtRecordId != null
+        ? 'debt:$_debtRecordId'
+        : null;
+    final availableValues = <String>{
+      ...goals.map((goal) => 'goal:${goal.id}'),
+      ...debts.map((debt) => 'debt:${debt.id}'),
+    };
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildLabel('Debt Record'),
+        _buildLabel('Goal / Debt Link'),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          initialValue: debts.any((debt) => debt.id == _debtRecordId)
-              ? _debtRecordId
-              : null,
-          items: debts
-              .map(
-                (debt) => DropdownMenuItem<String>(
-                  value: debt.id,
-                  child: Text(
-                    '${debt.counterpartyName} • '
-                    '${MoneyFormat.exact(debt.remainingBalance, 'PHP')}',
-                  ),
-                ),
-              )
-              .toList(),
-          onChanged: debts.isEmpty
+          initialValue: availableValues.contains(selectedValue)
+              ? selectedValue
+              : '',
+          items: [
+            const DropdownMenuItem<String>(
+              value: '',
+              child: Text('No goal or debt link'),
+            ),
+            ...goals.map(
+              (goal) => DropdownMenuItem<String>(
+                value: 'goal:${goal.id}',
+                child: Text('Goal · ${goal.name}'),
+              ),
+            ),
+            ...debts.map(
+              (debt) => DropdownMenuItem<String>(
+                value: 'debt:${debt.id}',
+                child: Text('Debt · ${debt.counterpartyName}'),
+              ),
+            ),
+          ],
+          onChanged: availableValues.isEmpty
               ? null
-              : (value) => setState(() => _debtRecordId = value),
+              : (value) => setState(() {
+                  if (value == null || value.isEmpty) {
+                    _goalId = null;
+                    _debtRecordId = null;
+                  } else if (value.startsWith('goal:')) {
+                    _goalId = value.substring('goal:'.length);
+                    _debtRecordId = null;
+                  } else {
+                    _goalId = null;
+                    _debtRecordId = value.substring('debt:'.length);
+                  }
+                }),
           decoration: InputDecoration(
-            hintText: debts.isEmpty
-                ? 'No debt records yet'
-                : 'Select debt record',
+            hintText: availableValues.isEmpty
+                ? 'No goals or debts yet'
+                : 'Link a goal or debt (optional)',
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSourceMetadata() {
+    final source =
+        widget.entrySource ??
+        (_parsedPreview != null ? 'natural_language' : 'manual');
+    final confidence = widget.sourceConfidence ?? _parsedPreview?.confidence;
+    final summary = widget.sourceSummary?.trim();
+    final sourceLabel = switch (source) {
+      'natural_language' => 'Natural language',
+      'ocr' => 'Receipt scan',
+      'manual' => 'Manual entry',
+      _ => source,
+    };
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLabel('Source Metadata'),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Source · $sourceLabel'),
+              if (confidence != null)
+                Text('Confidence · ${(confidence * 100).toStringAsFixed(0)}%'),
+              if (summary != null && summary.isNotEmpty)
+                Text('Summary · $summary'),
+            ],
           ),
         ),
       ],

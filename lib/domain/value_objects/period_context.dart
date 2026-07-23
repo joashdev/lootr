@@ -47,21 +47,40 @@ class PeriodContext {
 
   DateTime get inclusiveEnd => endsAt.subtract(const Duration(microseconds: 1));
 
+  String get dateRangeLabel =>
+      '${_shortDate(startsAt)}–${_shortDate(inclusiveEnd)}';
+
   String get description => kind == PeriodContextKind.calendarMonth
       ? label
-      : '$label · ${_shortDate(startsAt)}–${_shortDate(inclusiveEnd)}';
+      : '$label · $dateRangeLabel';
 
   PeriodContext previous() {
-    if (kind != PeriodContextKind.calendarMonth) return this;
+    if (kind == PeriodContextKind.customCycle) {
+      return moveTo(startsAt.subtract(endsAt.difference(startsAt)));
+    }
     return PeriodContext.calendarMonth(
       DateTime(startsAt.year, startsAt.month - 1),
     );
   }
 
   PeriodContext next() {
-    if (kind != PeriodContextKind.calendarMonth) return this;
+    if (kind == PeriodContextKind.customCycle) {
+      return moveTo(endsAt);
+    }
     return PeriodContext.calendarMonth(
       DateTime(startsAt.year, startsAt.month + 1),
+    );
+  }
+
+  PeriodContext moveTo(DateTime newStartsAt) {
+    if (kind == PeriodContextKind.calendarMonth) {
+      return PeriodContext.calendarMonth(newStartsAt);
+    }
+    return PeriodContext.customCycle(
+      id: cycleId!,
+      name: label,
+      startsAt: newStartsAt,
+      endsAt: newStartsAt.add(endsAt.difference(startsAt)),
     );
   }
 

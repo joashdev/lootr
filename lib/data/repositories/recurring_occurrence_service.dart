@@ -1,5 +1,8 @@
 import 'package:drift/drift.dart';
 
+import '../../core/recurring/recurrence_date.dart';
+import '../../domain/entities/mappers.dart';
+import '../../domain/entities/transaction.dart';
 import '../../domain/value_objects/exact_money.dart';
 import '../database/app_database.dart';
 import 'recurring_occurrence_repo.dart';
@@ -44,7 +47,11 @@ class RecurringOccurrenceService {
     });
   }
 
-  Future<String> pay(String occurrenceId, {DateTime? resolvedAt}) {
+  Future<String> pay(
+    String occurrenceId,
+    Transaction transaction, {
+    DateTime? resolvedAt,
+  }) {
     return _db.transaction(() async {
       final occurrence = await _requireActionable(occurrenceId);
       final template =
@@ -52,30 +59,21 @@ class RecurringOccurrenceService {
                 ..where((row) => row.id.equals(occurrence.recurringTemplateId))
                 ..limit(1))
               .getSingle();
-      final amount = ExactMoney(
+      final occurrenceAmount = ExactMoney(
         coefficient: BigInt.parse(occurrence.amountAtoms),
         scale: occurrence.amountScale,
         currencyCode: occurrence.currencyCode,
       );
       final now = resolvedAt ?? DateTime.now();
-      final transactionId = 'txn-occ-${now.microsecondsSinceEpoch}';
-
-      await _transactionRepo.create(
-        TransactionsCompanion.insert(
-          id: transactionId,
-          accountId: template.accountId,
-          categoryId: Value(template.categoryId),
-          payeeId: Value(template.payeeId),
-          recurringTemplateId: Value(template.id),
-          amount: amount.toDouble(),
-          amountAtoms: Value(amount.coefficient.toString()),
-          amountScale: Value(amount.scale),
-          currencyCode: Value(amount.currencyCode),
-          title: const Value('Recurring payment'),
-          transactionDirection: template.transactionDirection ?? 'expense',
-          transactionMode: 'recurring',
-          occurredAt: occurrence.dueAt,
-        ),
+      if (transaction.recurringTemplateId != template.id) {
+        throw ArgumentError('Transaction must belong to the occurrence series');
+      }
+      if (transaction.exactAmount.currencyCode !=
+          occurrenceAmount.currencyCode) {
+        throw ArgumentError('Transaction currency must match the occurrence');
+      }
+      final transactionId = await _transactionRepo.create(
+        transaction.toCompanion(),
       );
       await _occurrenceRepo.markPaid(
         occurrence.id,
@@ -135,7 +133,7 @@ class RecurringOccurrenceService {
       return;
     }
 
-    final nextDue = _nextDue(resolvedDueAt, template.recurrenceRule);
+    final nextDue = nextRecurrenceDate(resolvedDueAt, template.recurrenceRule);
     if (nextDue == null) {
       await _setTemplateNext(template.id, null);
       return;
@@ -151,7 +149,9 @@ class RecurringOccurrenceService {
     final amountAtoms =
         template.amountAtoms ??
         BigInt.from(
-          (template.amount * _pow10(template.amountScale ?? 2)).round(),
+          (template.amount *
+                  BigInt.from(10).pow(template.amountScale ?? 2).toDouble())
+              .round(),
         ).toString();
     final amountScale = template.amountScale ?? 2;
     final currencyCode = template.currencyCode ?? 'PHP';
@@ -183,43 +183,5 @@ class RecurringOccurrenceService {
         syncStatus: const Value('pending_sync'),
       ),
     );
-  }
-
-  DateTime? _nextDue(DateTime current, String rule) {
-    return switch (rule) {
-      'daily' => current.add(const Duration(days: 1)),
-      'weekly' => current.add(const Duration(days: 7)),
-      'biweekly' => current.add(const Duration(days: 14)),
-      'monthly' => DateTime(
-        current.month == 12 ? current.year + 1 : current.year,
-        current.month == 12 ? 1 : current.month + 1,
-        current.day > 28 ? 28 : current.day,
-        current.hour,
-        current.minute,
-      ),
-      'quarterly' => DateTime(
-        current.year + ((current.month + 2) ~/ 12),
-        ((current.month + 2) % 12) + 1,
-        current.day > 28 ? 28 : current.day,
-        current.hour,
-        current.minute,
-      ),
-      'yearly' => DateTime(
-        current.year + 1,
-        current.month,
-        current.day > 28 ? 28 : current.day,
-        current.hour,
-        current.minute,
-      ),
-      _ => null,
-    };
-  }
-
-  int _pow10(int scale) {
-    var result = 1;
-    for (var index = 0; index < scale; index++) {
-      result *= 10;
-    }
-    return result;
   }
 }

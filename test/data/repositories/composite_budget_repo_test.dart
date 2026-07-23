@@ -326,6 +326,26 @@ void main() {
     },
   );
 
+  test('excluded accounts may use a different currency', () async {
+    final draft = CompositeBudgetDraft(
+      id: 'currency-exclusion',
+      ownerUserId: 'user',
+      name: 'USD except yen',
+      limit: ExactMoney.parse('500.00', 'USD'),
+      periodType: 'monthly',
+      directionFilter: 'expense',
+      membershipMode: 'all_matching',
+      includedAccountIds: const {'cash'},
+      excludedAccountIds: const {'other-currency'},
+    );
+
+    await repo.create(draft);
+
+    final loaded = await repo.getDraft('currency-exclusion');
+    expect(loaded?.includedAccountIds, {'cash'});
+    expect(loaded?.excludedAccountIds, {'other-currency'});
+  });
+
   test(
     'preserves imported read-only definitions from edit and delete',
     () async {

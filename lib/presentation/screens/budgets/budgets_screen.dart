@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../application/providers/budgets_tab_provider.dart';
 import '../../../application/providers/categories_provider.dart';
+import '../../../application/providers/period_context_provider.dart';
 import '../../../core/extensions/async_value_x.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
@@ -38,8 +39,9 @@ class BudgetsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final budgetsAsync = ref.watch(budgetsTabProvider);
     final categoriesAsync = ref.watch(categoriesProvider);
-    final month = ref.watch(budgetMonthProvider);
-    final year = ref.watch(budgetYearProvider);
+    final period = ref.watch(periodContextProvider);
+    final month = period.startsAt.month;
+    final year = period.startsAt.year;
     final isReadOnly = isPastBudgetPeriod(month, year);
     final hasBudgets = budgetsAsync.asData?.value.isNotEmpty ?? false;
 

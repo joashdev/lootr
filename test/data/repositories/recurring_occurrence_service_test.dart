@@ -4,6 +4,7 @@ import 'package:lootr/data/database/app_database.dart';
 import 'package:lootr/data/repositories/recurring_occurrence_repo.dart';
 import 'package:lootr/data/repositories/recurring_occurrence_service.dart';
 import 'package:lootr/data/repositories/transaction_repo.dart';
+import 'package:lootr/domain/entities/transaction.dart';
 
 void main() {
   late AppDatabase db;
@@ -61,6 +62,7 @@ void main() {
   test('Pay atomically creates and links one transaction', () async {
     final transactionId = await service.pay(
       'occurrence',
+      _payment(),
       resolvedAt: DateTime(2026, 7, 20, 12),
     );
 
@@ -73,7 +75,8 @@ void main() {
     expect(occurrence.transactionId, transactionId);
     expect(transaction.id, transactionId);
     expect(transaction.recurringTemplateId, 'series');
-    expect(transaction.amountAtoms, '2500');
+    expect(transaction.amountAtoms, '3000');
+    expect(transaction.title, 'Edited before confirmation');
     expect(
       await db.recurringOccurrences.select().get().then(
         (rows) => rows.where((row) => row.status == 'due').length,
@@ -98,9 +101,9 @@ void main() {
   );
 
   test('resolved occurrence cannot create a second transaction', () async {
-    await service.pay('occurrence');
+    await service.pay('occurrence', _payment());
 
-    expect(() => service.pay('occurrence'), throwsStateError);
+    expect(() => service.pay('occurrence', _payment()), throwsStateError);
     expect(await db.transactions.select().get(), hasLength(1));
   });
 
@@ -109,7 +112,10 @@ void main() {
           ..where((row) => row.id.equals('occurrence')))
         .write(const RecurringOccurrencesCompanion(currencyCode: Value('EUR')));
 
-    await expectLater(service.pay('occurrence'), throwsA(isA<ArgumentError>()));
+    await expectLater(
+      service.pay('occurrence', _payment()),
+      throwsA(isA<ArgumentError>()),
+    );
 
     expect(
       await db.recurringOccurrences.select().getSingle().then(
@@ -119,4 +125,23 @@ void main() {
     );
     expect(await db.transactions.select().get(), isEmpty);
   });
+}
+
+Transaction _payment() {
+  final now = DateTime(2026, 7, 20, 12);
+  return Transaction(
+    id: 'confirmed-payment',
+    accountId: 'account',
+    recurringTemplateId: 'series',
+    amount: 30,
+    amountAtoms: '3000',
+    amountScale: 2,
+    currencyCode: 'USD',
+    title: 'Edited before confirmation',
+    direction: 'expense',
+    mode: 'recurring',
+    occurredAt: DateTime(2026, 7, 20),
+    createdAt: now,
+    updatedAt: now,
+  );
 }

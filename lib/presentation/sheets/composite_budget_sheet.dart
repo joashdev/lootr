@@ -1,28 +1,19 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../application/providers/accounts_provider.dart';
 import '../../application/providers/categories_provider.dart';
-import '../../application/providers/filtered_transactions_provider.dart';
+import '../../application/providers/composite_budget_controller.dart';
 import '../../application/providers/period_context_provider.dart';
-import '../../application/providers/repo_providers.dart';
 import '../../core/format/money_format.dart';
 import '../../core/theme/spacing.dart';
-import '../../data/repositories/composite_budget_repo.dart';
 import '../../domain/entities/account.dart';
 import '../../domain/entities/category.dart';
 import '../../domain/entities/transaction.dart';
 import '../../domain/value_objects/exact_money.dart';
 import '../shared/components/app_snackbar.dart';
 import '../shared/components/sheet_handle.dart';
-
-String _compositeBudgetId() {
-  final random = Random();
-  return 'budget-${List.generate(20, (_) => random.nextInt(16).toRadixString(16)).join()}';
-}
 
 class CompositeBudgetSheet extends ConsumerStatefulWidget {
   const CompositeBudgetSheet({super.key, this.budgetId});
@@ -38,6 +29,7 @@ class _CompositeBudgetSheetState extends ConsumerState<CompositeBudgetSheet> {
   final _nameController = TextEditingController();
   final _amountController = TextEditingController();
   final _cycleController = TextEditingController();
+  final _transactionSearchController = TextEditingController();
   final Map<String, String> _accounts = {};
   final Map<String, String> _categories = {};
   final Map<String, String> _transactions = {};
@@ -50,7 +42,7 @@ class _CompositeBudgetSheetState extends ConsumerState<CompositeBudgetSheet> {
   DateTime? _end;
   bool _loading = false;
   bool _saving = false;
-  CompositeBudgetDraft? _loadedDraft;
+  CompositeBudgetFormDraft? _loadedDraft;
 
   bool get _isEditing => widget.budgetId != null;
 
@@ -72,13 +64,14 @@ class _CompositeBudgetSheetState extends ConsumerState<CompositeBudgetSheet> {
     _nameController.dispose();
     _amountController.dispose();
     _cycleController.dispose();
+    _transactionSearchController.dispose();
     super.dispose();
   }
 
   Future<void> _load() async {
     final draft = await ref
-        .read(compositeBudgetRepoProvider)
-        .getDraft(widget.budgetId!);
+        .read(compositeBudgetControllerProvider)
+        .load(widget.budgetId!);
     if (!mounted) return;
     if (draft == null) {
       Navigator.pop(context);
@@ -124,12 +117,6 @@ class _CompositeBudgetSheetState extends ConsumerState<CompositeBudgetSheet> {
 
   Future<void> _save() async {
     if (_saving) return;
-    final user = await ref.read(userRepoProvider).getCurrentUser();
-    final ownerId = _loadedDraft?.ownerUserId ?? user?.id;
-    if (ownerId == null) {
-      _error('Create a user profile before adding budgets.');
-      return;
-    }
     ExactMoney limit;
     try {
       limit = ExactMoney.parse(_amountController.text, _currency);
@@ -137,9 +124,9 @@ class _CompositeBudgetSheetState extends ConsumerState<CompositeBudgetSheet> {
       _error('Enter a valid budget amount.');
       return;
     }
-    final draft = CompositeBudgetDraft(
-      id: widget.budgetId ?? _compositeBudgetId(),
-      ownerUserId: ownerId,
+    final draft = CompositeBudgetFormDraft(
+      id: widget.budgetId,
+      ownerUserId: _loadedDraft?.ownerUserId,
       householdId: _loadedDraft?.householdId,
       name: _nameController.text,
       limit: limit,
@@ -160,8 +147,7 @@ class _CompositeBudgetSheetState extends ConsumerState<CompositeBudgetSheet> {
     );
     setState(() => _saving = true);
     try {
-      final repo = ref.read(compositeBudgetRepoProvider);
-      _isEditing ? await repo.update(draft) : await repo.create(draft);
+      await ref.read(compositeBudgetControllerProvider).save(draft);
       if (mounted) Navigator.pop(context);
     } catch (error) {
       _error(error.toString().replaceFirst('Invalid argument(s): ', ''));
@@ -206,7 +192,7 @@ class _CompositeBudgetSheetState extends ConsumerState<CompositeBudgetSheet> {
     final categories =
         ref.watch(categoriesProvider).asData?.value ?? const <Category>[];
     final transactions =
-        ref.watch(filteredTransactionsProvider).asData?.value ??
+        ref.watch(compositeBudgetTransactionOptionsProvider).asData?.value ??
         const <Transaction>[];
     final currencies = accounts.map((row) => row.currencyCode).toSet().toList()
       ..sort();
@@ -393,15 +379,7 @@ class _CompositeBudgetSheetState extends ConsumerState<CompositeBudgetSheet> {
                       labelOf: (row) => row.name,
                       values: _categories,
                     ),
-                    _membershipSection<Transaction>(
-                      title: 'Explicit transactions',
-                      items: transactions,
-                      idOf: (row) => row.id,
-                      labelOf: (row) =>
-                          '${row.title ?? row.note ?? 'Transaction'} · '
-                          '${MoneyFormat.exactMoney(row.exactAmount)}',
-                      values: _transactions,
-                    ),
+                    _transactionMembershipSection(transactions),
                     const SizedBox(height: AppSpacing.space4),
                     FilledButton(
                       onPressed: _saving ? null : _save,
@@ -475,5 +453,105 @@ class _CompositeBudgetSheetState extends ConsumerState<CompositeBudgetSheet> {
             ),
       ],
     );
+  }
+
+  Widget _transactionMembershipSection(List<Transaction> transactions) {
+    final byId = {
+      for (final transaction in transactions) transaction.id: transaction,
+    };
+    final selected =
+        _transactions.keys
+            .map((id) => byId[id])
+            .whereType<Transaction>()
+            .toList()
+          ..sort((left, right) => right.occurredAt.compareTo(left.occurredAt));
+    final query = _transactionSearchController.text.trim().toLowerCase();
+    final available = transactions.where((transaction) {
+      if (_transactions.containsKey(transaction.id)) return false;
+      if (query.isEmpty) return true;
+      return _transactionSearchText(transaction).contains(query);
+    }).toList();
+
+    return ExpansionTile(
+      tilePadding: EdgeInsets.zero,
+      title: const Text('Explicit transactions'),
+      subtitle: Text(
+        '${_transactions.values.where((value) => value == 'include').length} included · '
+        '${_transactions.values.where((value) => value == 'exclude').length} excluded',
+      ),
+      children: [
+        TextField(
+          key: const Key('composite-transaction-search'),
+          controller: _transactionSearchController,
+          decoration: const InputDecoration(
+            labelText: 'Search all transactions',
+            hintText: 'Title, note, amount, or date',
+            prefixIcon: Icon(Icons.search),
+          ),
+          onChanged: (_) => setState(() {}),
+        ),
+        if (selected.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.space2),
+          const Align(alignment: Alignment.centerLeft, child: Text('Selected')),
+          for (final transaction in selected)
+            _transactionMembershipTile(transaction),
+        ],
+        const SizedBox(height: AppSpacing.space2),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Text(query.isEmpty ? 'Available' : 'Search results'),
+        ),
+        if (available.isEmpty)
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(
+              query.isEmpty
+                  ? 'No available transactions'
+                  : 'No matching transactions',
+            ),
+          )
+        else
+          for (final transaction in available)
+            _transactionMembershipTile(transaction),
+      ],
+    );
+  }
+
+  Widget _transactionMembershipTile(Transaction transaction) {
+    return ListTile(
+      key: Key('composite-transaction-${transaction.id}'),
+      contentPadding: EdgeInsets.zero,
+      title: Text(_transactionLabel(transaction)),
+      trailing: DropdownButton<String>(
+        value: _transactions[transaction.id] ?? 'ignore',
+        items: const [
+          DropdownMenuItem(value: 'ignore', child: Text('Ignore')),
+          DropdownMenuItem(value: 'include', child: Text('Include')),
+          DropdownMenuItem(value: 'exclude', child: Text('Exclude')),
+        ],
+        onChanged: (value) => setState(() {
+          if (value == null || value == 'ignore') {
+            _transactions.remove(transaction.id);
+          } else {
+            _transactions[transaction.id] = value;
+          }
+        }),
+      ),
+    );
+  }
+
+  String _transactionLabel(Transaction transaction) =>
+      '${transaction.title ?? transaction.note ?? 'Transaction'} · '
+      '${MoneyFormat.exactMoney(transaction.exactAmount)} · '
+      '${DateFormat.yMMMd().format(transaction.occurredAt)}';
+
+  String _transactionSearchText(Transaction transaction) {
+    return [
+      transaction.title,
+      transaction.note,
+      transaction.exactAmount.toDecimalString(),
+      transaction.exactAmount.currencyCode,
+      DateFormat.yMMMd().format(transaction.occurredAt),
+    ].whereType<String>().join(' ').toLowerCase();
   }
 }

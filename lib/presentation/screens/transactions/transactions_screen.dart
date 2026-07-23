@@ -11,6 +11,7 @@ import '../../../application/providers/payees_provider.dart';
 import '../../../application/providers/period_context_provider.dart';
 import '../../../application/providers/repo_providers.dart';
 import '../../../application/providers/sync_providers.dart';
+import '../../../application/providers/transaction_bulk_command_provider.dart';
 import '../../../application/providers/transaction_entry_support.dart';
 import '../../../application/providers/transaction_filters_provider.dart';
 import '../../../application/providers/transaction_list_intent_provider.dart';
@@ -28,7 +29,6 @@ import '../../../domain/use_cases/delete_transfer.dart';
 import '../../../domain/value_objects/transaction_filters.dart';
 import '../../../domain/value_objects/transaction_list_intent.dart';
 import '../../../domain/value_objects/undo_entry.dart';
-import '../../../data/repositories/transaction_repo.dart';
 import '../more/more_form_sheets.dart';
 import '../../sheets/filter_sheet.dart';
 import '../../shared/category_visuals.dart';
@@ -325,8 +325,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       operation: operation,
       targetId: targetId,
     );
-    final repo = ref.read(transactionRepoProvider);
-    final plan = await repo.preflightBulk(request);
+    final command = ref.read(transactionBulkCommandProvider);
+    final plan = await command.preflight(request);
     if (!mounted) return;
     if (!plan.canApply) {
       await _showBulkIssues(plan.issues);
@@ -360,7 +360,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     }
 
     try {
-      final undo = await repo.applyBulk(plan);
+      final undo = await command.apply(plan);
       await ref.read(notificationSchedulerProvider).rebuildSchedule();
       if (!mounted) return;
       final batchId = 'bulk-${DateTime.now().microsecondsSinceEpoch}';

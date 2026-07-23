@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart' hide isNull;
 import 'package:rxdart/rxdart.dart';
 
+import '../../core/recurring/recurrence_date.dart';
 import '../database/app_database.dart';
 import '../../domain/value_objects/exact_money.dart';
 import 'exact_money_codec.dart';
@@ -212,99 +213,122 @@ class TransactionRepo {
 
   Future<String> create(TransactionsCompanion tx) async {
     if (!tx.id.present) throw ArgumentError('id is required for create');
-    final txId = tx.id.value;
+    return _db.transaction(() => _create(tx));
+  }
 
-    await _db.transaction(() async {
-      await _db.into(_db.transactions).insert(tx);
-
-      final row =
-          await (_db.select(_db.transactions)
-                ..where((t) => t.id.equals(txId))
-                ..limit(1))
-              .getSingle();
-
-      final account =
-          await (_db.select(_db.accounts)
-                ..where((a) => a.id.equals(row.accountId))
-                ..limit(1))
-              .getSingle();
-      final amount = ExactMoneyCodec.transactionAmount(row, account);
-      ExactMoneyCodec.requirePositive(amount, 'amount');
-      await _normalizeExactColumns(row.id, amount);
-      await _applyAccountImpact(
-        account,
-        _signedImpact(amount, row.transactionDirection),
-      );
-
-      if (row.recurringTemplateId != null) {
-        await _advanceNextOccurrence(row.recurringTemplateId!);
-      }
+  /// Resolves a free-typed payee and creates the ledger row in one database
+  /// transaction, so a failed transaction write cannot leave an orphan payee.
+  Future<String> createWithPayeeName(
+    TransactionsCompanion tx,
+    String payeeName,
+  ) {
+    if (!tx.id.present) throw ArgumentError('id is required for create');
+    return _db.transaction(() async {
+      final payeeId = await _resolvePayeeId(payeeName);
+      return _create(tx.copyWith(payeeId: Value(payeeId)));
     });
+  }
 
+  Future<String> _create(TransactionsCompanion tx) async {
+    final txId = tx.id.value;
+    await _db.into(_db.transactions).insert(tx);
+
+    final row =
+        await (_db.select(_db.transactions)
+              ..where((t) => t.id.equals(txId))
+              ..limit(1))
+            .getSingle();
+
+    final account =
+        await (_db.select(_db.accounts)
+              ..where((a) => a.id.equals(row.accountId))
+              ..limit(1))
+            .getSingle();
+    final amount = ExactMoneyCodec.transactionAmount(row, account);
+    ExactMoneyCodec.requirePositive(amount, 'amount');
+    await _normalizeExactColumns(row.id, amount);
+    await _applyAccountImpact(
+      account,
+      _signedImpact(amount, row.transactionDirection),
+    );
+
+    if (row.recurringTemplateId != null) {
+      await _advanceNextOccurrence(row.recurringTemplateId!);
+    }
     return txId;
   }
 
   Future<void> update(TransactionsCompanion tx) async {
     if (!tx.id.present) throw ArgumentError('id is required for update');
-    final id = tx.id.value;
+    await _db.transaction(() => _update(tx));
+  }
 
-    await _db.transaction(() async {
-      final old =
-          await (_db.select(_db.transactions)
-                ..where((t) => t.id.equals(id))
-                ..limit(1))
-              .getSingle();
-
-      final oldAccount =
-          await (_db.select(_db.accounts)
-                ..where((a) => a.id.equals(old.accountId))
-                ..limit(1))
-              .getSingle();
-      final oldAmount = ExactMoneyCodec.transactionAmount(old, oldAccount);
-      await _applyAccountImpact(
-        oldAccount,
-        -_signedImpact(oldAmount, old.transactionDirection),
-      );
-
-      await (_db.update(
-        _db.transactions,
-      )..where((t) => t.id.equals(id))).write(tx);
-
-      await (_db.update(_db.transactions)..where((t) => t.id.equals(id))).write(
-        TransactionsCompanion(
-          syncStatus: const Value('pending_sync'),
-          updatedAt: Value(DateTime.now()),
-        ),
-      );
-
-      final updated =
-          await (_db.select(_db.transactions)
-                ..where((t) => t.id.equals(id))
-                ..limit(1))
-              .getSingle();
-
-      final newAccount =
-          await (_db.select(_db.accounts)
-                ..where((a) => a.id.equals(updated.accountId))
-                ..limit(1))
-              .getSingle();
-      final preferLegacyProjection =
-          tx.amount.present &&
-          !tx.amountAtoms.present &&
-          !tx.amountScale.present &&
-          !tx.currencyCode.present;
-      final newAmount = ExactMoneyCodec.transactionAmount(
-        updated,
-        newAccount,
-        preferLegacyProjection: preferLegacyProjection,
-      );
-      ExactMoneyCodec.requirePositive(newAmount, 'amount');
-      await _normalizeExactColumns(updated.id, newAmount);
-      await _applyAccountImpact(
-        newAccount,
-        _signedImpact(newAmount, updated.transactionDirection),
-      );
+  /// Resolves a free-typed payee and updates the ledger row atomically.
+  Future<void> updateWithPayeeName(TransactionsCompanion tx, String payeeName) {
+    if (!tx.id.present) throw ArgumentError('id is required for update');
+    return _db.transaction(() async {
+      final payeeId = await _resolvePayeeId(payeeName);
+      await _update(tx.copyWith(payeeId: Value(payeeId)));
     });
+  }
+
+  Future<void> _update(TransactionsCompanion tx) async {
+    final id = tx.id.value;
+    final old =
+        await (_db.select(_db.transactions)
+              ..where((t) => t.id.equals(id))
+              ..limit(1))
+            .getSingle();
+
+    final oldAccount =
+        await (_db.select(_db.accounts)
+              ..where((a) => a.id.equals(old.accountId))
+              ..limit(1))
+            .getSingle();
+    final oldAmount = ExactMoneyCodec.transactionAmount(old, oldAccount);
+    await _applyAccountImpact(
+      oldAccount,
+      -_signedImpact(oldAmount, old.transactionDirection),
+    );
+
+    await (_db.update(
+      _db.transactions,
+    )..where((t) => t.id.equals(id))).write(tx);
+
+    await (_db.update(_db.transactions)..where((t) => t.id.equals(id))).write(
+      TransactionsCompanion(
+        syncStatus: const Value('pending_sync'),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+
+    final updated =
+        await (_db.select(_db.transactions)
+              ..where((t) => t.id.equals(id))
+              ..limit(1))
+            .getSingle();
+
+    final newAccount =
+        await (_db.select(_db.accounts)
+              ..where((a) => a.id.equals(updated.accountId))
+              ..limit(1))
+            .getSingle();
+    final preferLegacyProjection =
+        tx.amount.present &&
+        !tx.amountAtoms.present &&
+        !tx.amountScale.present &&
+        !tx.currencyCode.present;
+    final newAmount = ExactMoneyCodec.transactionAmount(
+      updated,
+      newAccount,
+      preferLegacyProjection: preferLegacyProjection,
+    );
+    ExactMoneyCodec.requirePositive(newAmount, 'amount');
+    await _normalizeExactColumns(updated.id, newAmount);
+    await _applyAccountImpact(
+      newAccount,
+      _signedImpact(newAmount, updated.transactionDirection),
+    );
   }
 
   Future<void> softDelete(String id) async {
@@ -715,7 +739,7 @@ class TransactionRepo {
 
     if (template.nextOccurrenceAt == null) return;
 
-    final next = _computeNext(
+    final next = nextRecurrenceDate(
       template.nextOccurrenceAt!,
       template.recurrenceRule,
     );
@@ -730,30 +754,6 @@ class TransactionRepo {
         updatedAt: Value(DateTime.now()),
       ),
     );
-  }
-
-  DateTime? _computeNext(DateTime current, String rule) {
-    switch (rule) {
-      case 'daily':
-        return current.add(const Duration(days: 1));
-      case 'weekly':
-        return current.add(const Duration(days: 7));
-      case 'biweekly':
-        return current.add(const Duration(days: 14));
-      case 'monthly':
-        final y = current.month == 12 ? current.year + 1 : current.year;
-        final m = current.month == 12 ? 1 : current.month + 1;
-        final d = current.day > 28 ? 28 : current.day;
-        return DateTime(y, m, d);
-      case 'yearly':
-        return DateTime(
-          current.year + 1,
-          current.month,
-          current.day > 28 ? 28 : current.day,
-        );
-      default:
-        return null;
-    }
   }
 
   ExactMoney _signedImpact(ExactMoney amount, String direction) {
@@ -775,6 +775,40 @@ class TransactionRepo {
         currencyCode: Value(amount.currencyCode),
       ),
     );
+  }
+
+  Future<String> _resolvePayeeId(String name) async {
+    final displayName = name.trim();
+    final normalizedName = displayName.toLowerCase().replaceAll(
+      RegExp(r'\s+'),
+      ' ',
+    );
+    if (normalizedName.isEmpty) {
+      throw ArgumentError.value(name, 'payeeName', 'must not be empty');
+    }
+
+    final existing =
+        await (_db.select(_db.payees)
+              ..where(
+                (payee) =>
+                    payee.normalizedName.equals(normalizedName) &
+                    payee.deletedAt.isNull(),
+              )
+              ..limit(1))
+            .getSingleOrNull();
+    if (existing != null) return existing.id;
+
+    final id = 'pay-${DateTime.now().microsecondsSinceEpoch}';
+    await _db
+        .into(_db.payees)
+        .insert(
+          PayeesCompanion.insert(
+            id: id,
+            normalizedName: normalizedName,
+            displayName: Value(displayName),
+          ),
+        );
+    return id;
   }
 
   Future<void> _applyAccountImpact(

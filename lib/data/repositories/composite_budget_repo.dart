@@ -93,14 +93,64 @@ class CompositeBudgetReviewSummary {
   bool get needsReview => missingReferenceCount > 0 || reviewRequiredCount > 0;
 }
 
+class CompositeBudgetMemberReference {
+  const CompositeBudgetMemberReference({
+    required this.kind,
+    required this.membership,
+    required this.reviewState,
+    this.resolvedId,
+    this.sourceReference,
+  });
+
+  final String kind;
+  final String membership;
+  final String reviewState;
+  final String? resolvedId;
+  final String? sourceReference;
+
+  bool get isUnresolved => resolvedId == null;
+}
+
+class CompositeBudgetScope {
+  const CompositeBudgetScope({
+    required this.membershipMode,
+    required this.directionFilter,
+    required this.periodType,
+    required this.members,
+  });
+
+  final String membershipMode;
+  final String directionFilter;
+  final String periodType;
+  final List<CompositeBudgetMemberReference> members;
+}
+
+class CompositeBudgetOverlap {
+  const CompositeBudgetOverlap({
+    required this.budgetId,
+    required this.budgetName,
+    required this.sharedTransactionCount,
+  });
+
+  final String budgetId;
+  final String budgetName;
+  final int sharedTransactionCount;
+}
+
 class CompositeBudgetSnapshot {
   const CompositeBudgetSnapshot({
     required this.evaluation,
     required this.review,
+    required this.scope,
+    required this.history,
+    required this.overlaps,
   });
 
   final CompositeBudgetEvaluation evaluation;
   final CompositeBudgetReviewSummary review;
+  final CompositeBudgetScope scope;
+  final List<BudgetPeriodWindow> history;
+  final List<CompositeBudgetOverlap> overlaps;
 }
 
 class CompositeBudgetDraft {
@@ -335,12 +385,7 @@ class CompositeBudgetRepo {
           continue;
         }
         if (!period.contains(anchor)) continue;
-        snapshots.add(
-          CompositeBudgetSnapshot(
-            evaluation: await evaluate(definition.id, period: period),
-            review: await reviewSummary(definition.id),
-          ),
-        );
+        snapshots.add(await _snapshot(definition, period));
       }
       return snapshots;
     });
@@ -356,6 +401,117 @@ class CompositeBudgetRepo {
       }
       return null;
     });
+  }
+
+  Future<CompositeBudgetSnapshot> _snapshot(
+    BudgetDefinitionData definition,
+    BudgetPeriodWindow period,
+  ) async {
+    final evaluation = await evaluate(definition.id, period: period);
+    final results = await Future.wait([
+      reviewSummary(definition.id),
+      scope(definition.id),
+      listHistoricalPeriods(definition.id),
+      _overlaps(evaluation),
+    ]);
+    return CompositeBudgetSnapshot(
+      evaluation: evaluation,
+      review: results[0] as CompositeBudgetReviewSummary,
+      scope: results[1] as CompositeBudgetScope,
+      history: results[2] as List<BudgetPeriodWindow>,
+      overlaps: results[3] as List<CompositeBudgetOverlap>,
+    );
+  }
+
+  Future<CompositeBudgetScope> scope(String budgetId) async {
+    final budget = await _requireBudget(budgetId);
+    final results = await Future.wait([
+      (_db.select(
+        _db.budgetAccountMemberships,
+      )..where((row) => row.budgetId.equals(budgetId))).get(),
+      (_db.select(
+        _db.budgetCategoryMemberships,
+      )..where((row) => row.budgetId.equals(budgetId))).get(),
+      (_db.select(
+        _db.budgetTransactionMemberships,
+      )..where((row) => row.budgetId.equals(budgetId))).get(),
+    ]);
+    final members = <CompositeBudgetMemberReference>[
+      for (final row in results[0] as List<BudgetAccountMembershipData>)
+        CompositeBudgetMemberReference(
+          kind: 'account',
+          membership: row.membership,
+          reviewState: row.reviewState,
+          resolvedId: row.accountId,
+          sourceReference: row.sourceReference,
+        ),
+      for (final row in results[1] as List<BudgetCategoryMembershipData>)
+        CompositeBudgetMemberReference(
+          kind: 'category',
+          membership: row.membership,
+          reviewState: row.reviewState,
+          resolvedId: row.categoryId,
+          sourceReference: row.sourceReference,
+        ),
+      for (final row in results[2] as List<BudgetTransactionMembershipData>)
+        CompositeBudgetMemberReference(
+          kind: 'transaction',
+          membership: row.membership,
+          reviewState: row.reviewState,
+          resolvedId: row.transactionId,
+          sourceReference: row.sourceReference,
+        ),
+    ];
+    return CompositeBudgetScope(
+      membershipMode: budget.membershipMode,
+      directionFilter: budget.directionFilter,
+      periodType: budget.periodType,
+      members: List.unmodifiable(members),
+    );
+  }
+
+  Future<List<CompositeBudgetOverlap>> _overlaps(
+    CompositeBudgetEvaluation evaluation,
+  ) async {
+    final transactionIds = {
+      for (final match in evaluation.matches) match.transaction.id,
+    };
+    if (transactionIds.isEmpty) return const [];
+    final definitions =
+        await (_db.select(_db.budgetDefinitions)..where(
+              (row) =>
+                  row.id.equals(evaluation.budget.id).not() &
+                  row.deletedAt.isNull(),
+            ))
+            .get();
+    final overlaps = <CompositeBudgetOverlap>[];
+    for (final definition in definitions) {
+      BudgetPeriodWindow otherPeriod;
+      try {
+        otherPeriod = await resolvePeriod(
+          definition.id,
+          evaluation.period.startsAt,
+        );
+      } on StateError {
+        continue;
+      }
+      final other = await evaluate(definition.id, period: otherPeriod);
+      final count = other.matches
+          .where((match) => transactionIds.contains(match.transaction.id))
+          .length;
+      if (count == 0) continue;
+      overlaps.add(
+        CompositeBudgetOverlap(
+          budgetId: definition.id,
+          budgetName: definition.name?.trim().isNotEmpty == true
+              ? definition.name!.trim()
+              : 'Imported budget',
+          sharedTransactionCount: count,
+        ),
+      );
+    }
+    overlaps.sort((left, right) => left.budgetName.compareTo(right.budgetName));
+    return List.unmodifiable(overlaps);
   }
 
   Future<CompositeBudgetReviewSummary> reviewSummary(String budgetId) async {
@@ -705,7 +861,9 @@ class CompositeBudgetRepo {
       throw ArgumentError('One or more selected accounts are unavailable');
     }
     if (accounts.any(
-      (account) => account.currencyCode != draft.limit.currencyCode,
+      (account) =>
+          draft.includedAccountIds.contains(account.id) &&
+          account.currencyCode != draft.limit.currencyCode,
     )) {
       throw ArgumentError(
         'Every included account must use ${draft.limit.currencyCode}',

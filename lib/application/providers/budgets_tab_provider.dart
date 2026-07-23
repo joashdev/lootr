@@ -14,38 +14,6 @@ bool isPastBudgetPeriod(int month, int year) {
   return year < now.year || (year == now.year && month < now.month);
 }
 
-class BudgetMonthNotifier extends Notifier<int> {
-  @override
-  int build() => ref.watch(periodContextProvider).startsAt.month;
-
-  void goTo(int month) {
-    final period = ref.read(periodContextProvider);
-    ref
-        .read(periodContextProvider.notifier)
-        .selectMonth(DateTime(period.startsAt.year, month));
-  }
-}
-
-class BudgetYearNotifier extends Notifier<int> {
-  @override
-  int build() => ref.watch(periodContextProvider).startsAt.year;
-
-  void goTo(int year) {
-    final period = ref.read(periodContextProvider);
-    ref
-        .read(periodContextProvider.notifier)
-        .selectMonth(DateTime(year, period.startsAt.month));
-  }
-}
-
-final budgetMonthProvider = NotifierProvider<BudgetMonthNotifier, int>(
-  BudgetMonthNotifier.new,
-);
-
-final budgetYearProvider = NotifierProvider<BudgetYearNotifier, int>(
-  BudgetYearNotifier.new,
-);
-
 final budgetsTabProvider = StreamProvider<List<BudgetOverview>>((ref) {
   final budgetRepo = ref.watch(budgetRepoProvider);
   final compositeBudgetRepo = ref.watch(compositeBudgetRepoProvider);

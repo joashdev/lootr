@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lootr/application/providers/dashboard_provider.dart';
+import 'package:lootr/application/providers/period_context_provider.dart';
 import 'package:lootr/application/providers/sync_providers.dart';
 import 'package:lootr/core/theme/theme.dart';
 import 'package:lootr/domain/entities/account.dart';
@@ -98,6 +99,45 @@ void main() {
     );
     expect(find.text('Insights'), findsOneWidget);
   });
+
+  testWidgets('safe-to-spend breakdown links truthful source components', (
+    tester,
+  ) async {
+    final stream = Stream.value(_sampleDashboardData());
+    final container = ProviderContainer(
+      overrides: [
+        dashboardProvider.overrideWith((ref) => stream),
+        syncStatusIconProvider.overrideWith((ref) => SyncIconState.synced),
+      ],
+    );
+    addTearDown(container.dispose);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(container: container, child: _dashboardApp()),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('SAFE TO SPEND'));
+    await tester.pumpAndSettle();
+
+    final income = find.text('Income this month');
+    final committed = find.text('Committed before month end');
+    expect(
+      find.ancestor(of: income, matching: find.byType(InkWell)),
+      findsOneWidget,
+    );
+    expect(
+      find.ancestor(of: committed, matching: find.byType(InkWell)),
+      findsOneWidget,
+    );
+
+    await tester.tap(income);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Transactions destination'), findsOneWidget);
+    final query = container.read(activeLedgerQueryProvider);
+    expect(query?.directions, const ['income']);
+    expect(query?.period.startsAt, DateTime(2026, 6));
+  });
 }
 
 Widget _wrapWithApp(DashboardData data) {
@@ -105,11 +145,26 @@ Widget _wrapWithApp(DashboardData data) {
 }
 
 Widget _wrapWithDashboardStream(Stream<DashboardData> stream) {
+  return ProviderScope(
+    overrides: [
+      dashboardProvider.overrideWith((ref) => stream),
+      syncStatusIconProvider.overrideWith((ref) => SyncIconState.synced),
+    ],
+    child: _dashboardApp(),
+  );
+}
+
+Widget _dashboardApp() {
   final router = GoRouter(
     initialLocation: '/',
     routes: [
       GoRoute(path: '/', builder: (_, _) => const DashboardScreen()),
       GoRoute(path: '/transactions/new', builder: (_, _) => const Scaffold()),
+      GoRoute(
+        path: '/transactions',
+        builder: (_, _) =>
+            const Scaffold(body: Text('Transactions destination')),
+      ),
       GoRoute(path: '/transactions/:id', builder: (_, _) => const Scaffold()),
       GoRoute(path: '/budgets/:id', builder: (_, _) => const Scaffold()),
       GoRoute(path: '/more/accounts/:id', builder: (_, _) => const Scaffold()),
@@ -120,13 +175,7 @@ Widget _wrapWithDashboardStream(Stream<DashboardData> stream) {
     ],
   );
 
-  return ProviderScope(
-    overrides: [
-      dashboardProvider.overrideWith((ref) => stream),
-      syncStatusIconProvider.overrideWith((ref) => SyncIconState.synced),
-    ],
-    child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
-  );
+  return MaterialApp.router(theme: AppTheme.light, routerConfig: router);
 }
 
 DashboardData _sampleDashboardData() {

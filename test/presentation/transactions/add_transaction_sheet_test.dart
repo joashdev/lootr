@@ -7,12 +7,14 @@ import 'package:lootr/application/providers/categories_provider.dart';
 import 'package:lootr/application/providers/debts_provider.dart';
 import 'package:lootr/application/providers/database_provider.dart';
 import 'package:lootr/application/providers/filtered_transactions_provider.dart';
+import 'package:lootr/application/providers/goals_provider.dart';
 import 'package:lootr/application/providers/payees_provider.dart';
 import 'package:lootr/core/theme/theme.dart';
 import 'package:lootr/data/database/app_database.dart';
 import 'package:lootr/domain/entities/account.dart';
 import 'package:lootr/domain/entities/category.dart';
 import 'package:lootr/domain/entities/debt_record.dart';
+import 'package:lootr/domain/entities/goal.dart';
 import 'package:lootr/domain/entities/payee.dart';
 import 'package:lootr/domain/entities/transaction.dart';
 import 'package:lootr/domain/entities/transfer.dart';
@@ -36,6 +38,7 @@ Widget _wrap(
       categoriesProvider.overrideWith((ref) => Stream.value(categories)),
       payeesProvider.overrideWith((ref) => Stream.value(payees)),
       debtsProvider.overrideWith((ref) => Stream.value(const <DebtRecord>[])),
+      goalsProvider.overrideWith((ref) => Stream.value(const <Goal>[])),
       filteredTransactionsProvider.overrideWith(
         (ref) => Stream.value(const <Transaction>[]),
       ),
@@ -143,6 +146,35 @@ void main() {
       // the active mode instead of a stale default.
       final tabs = tester.widget<EntryModeTabs>(find.byType(EntryModeTabs));
       expect(tabs.selected, EntryMode.manual);
+    });
+
+    testWidgets('More details exposes goal/debt link and source metadata', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          const AddTransactionSheet(
+            entrySource: 'ocr',
+            sourceConfidence: 0.82,
+            sourceSummary: 'Receipt image',
+          ),
+          accounts: [_account()],
+          categories: [_category()],
+        ),
+      );
+      await tester.pump();
+
+      final moreDetails = find.textContaining('More details:');
+      await tester.ensureVisible(moreDetails);
+      await tester.pumpAndSettle();
+      await tester.tap(moreDetails);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Goal / Debt Link'), findsOneWidget);
+      expect(find.text('Source Metadata'), findsOneWidget);
+      expect(find.text('Source · Receipt scan'), findsOneWidget);
+      expect(find.text('Confidence · 82%'), findsOneWidget);
+      expect(find.text('Summary · Receipt image'), findsOneWidget);
     });
 
     testWidgets('renders prefilled edit mode', (tester) async {

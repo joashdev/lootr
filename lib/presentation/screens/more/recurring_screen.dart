@@ -6,8 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../application/providers/accounts_provider.dart';
 import '../../../application/providers/payees_provider.dart';
 import '../../../application/providers/recurring_provider.dart';
-import '../../../application/providers/notification_provider.dart';
-import '../../../application/providers/repo_providers.dart';
+import '../../../application/providers/recurring_detail_provider.dart';
 import '../../../core/format/money_format.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
@@ -15,7 +14,6 @@ import '../../../core/theme/typography.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/entities/payee.dart';
 import '../../../domain/entities/recurring_template.dart';
-import '../../../data/database/app_database.dart';
 import '../../shared/components/app_snackbar.dart';
 import '../../shared/components/buttons/ghost_button.dart';
 import '../../shared/components/empty_state.dart';
@@ -32,7 +30,7 @@ class RecurringScreen extends ConsumerWidget {
     final recurringAsync = ref.watch(recurringProvider);
     final occurrences =
         ref.watch(recurringOccurrencesProvider).asData?.value ??
-        const <RecurringOccurrenceData>[];
+        const <RecurringOccurrenceView>[];
     final subscriptionTemplateIdsAsync = ref.watch(
       subscriptionRecurringTemplateIdsProvider,
     );
@@ -101,7 +99,7 @@ class RecurringScreen extends ConsumerWidget {
     required List<Account> accounts,
     required Map<String, String> payeeNames,
     required List<RecurringTemplate> templates,
-    required List<RecurringOccurrenceData> occurrences,
+    required List<RecurringOccurrenceView> occurrences,
   }) {
     if (templates.isEmpty) {
       return EmptyState(
@@ -147,7 +145,7 @@ class _RecurringList extends ConsumerWidget {
   final List<RecurringTemplate> templates;
   final Map<String, String> payeeNames;
   final List<Account> accounts;
-  final Map<String, List<RecurringOccurrenceData>> occurrencesByTemplate;
+  final Map<String, List<RecurringOccurrenceView>> occurrencesByTemplate;
 
   /// Same confirm + soft delete flow as the recurring detail screen.
   Future<void> _deleteTemplate(
@@ -179,8 +177,9 @@ class _RecurringList extends ConsumerWidget {
       ),
     );
     if (confirmed != true) return;
-    await ref.read(recurringRepoProvider).softDelete(template.id);
-    await ref.read(notificationSchedulerProvider).rebuildSchedule();
+    await ref
+        .read(recurringOccurrenceCommandsProvider)
+        .deleteSeries(template.id);
     if (!context.mounted) return;
     AppSnackBar.show(
       context,
@@ -221,7 +220,7 @@ class _RecurringList extends ConsumerWidget {
 
   String _occurrenceLabel(
     RecurringTemplate template,
-    List<RecurringOccurrenceData> occurrences,
+    List<RecurringOccurrenceView> occurrences,
   ) {
     final actionable =
         occurrences
@@ -332,7 +331,7 @@ class _RecurringList extends ConsumerWidget {
                   _occurrenceLabel(
                     t,
                     occurrencesByTemplate[t.id] ??
-                        const <RecurringOccurrenceData>[],
+                        const <RecurringOccurrenceView>[],
                   ),
                   style: AppTypography.caption.copyWith(
                     color: t.autoCreateDisabled

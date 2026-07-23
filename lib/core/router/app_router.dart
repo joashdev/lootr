@@ -152,6 +152,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               entrySource: args?.entrySource,
               sourceConfidence: args?.sourceConfidence,
               sourceSummary: args?.sourceSummary,
+              recurringPayment: args?.recurringPayment,
             ),
             key: state.pageKey,
           );

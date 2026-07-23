@@ -22,7 +22,12 @@ void main() {
 
     expect(cycle.kind, PeriodContextKind.customCycle);
     expect(cycle.description, 'Pay cycle · 2026-06-15–2026-07-14');
-    expect(cycle.previous(), same(cycle));
+    expect(cycle.dateRangeLabel, '2026-06-15–2026-07-14');
+    expect(cycle.previous().startsAt, DateTime(2026, 5, 16));
+    expect(cycle.previous().endsAt, DateTime(2026, 6, 15));
+    expect(cycle.next().startsAt, DateTime(2026, 7, 15));
+    expect(cycle.next().endsAt, DateTime(2026, 8, 14));
+    expect(cycle.moveTo(DateTime(2026, 8)).label, 'Pay cycle');
     expect(cycle.inclusiveEnd.isBefore(cycle.endsAt), isTrue);
   });
 }

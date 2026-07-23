@@ -7,6 +7,7 @@ import '../../domain/entities/payee.dart';
 import '../../domain/entities/transaction.dart';
 import '../../domain/value_objects/exact_money.dart';
 import '../../domain/value_objects/transaction_list_intent.dart';
+import '../search/transaction_search.dart';
 import 'payees_provider.dart';
 import 'period_context_provider.dart';
 import 'repo_providers.dart';
@@ -25,7 +26,7 @@ final filteredTransactionsProvider = StreamProvider<List<Transaction>>((ref) {
   final listIntent = ref.watch(transactionListIntentProvider);
   final payees = ref.watch(payeesProvider).asData?.value ?? const <Payee>[];
   final payeesById = {for (final payee in payees) payee.id: payee};
-  final normalizedQuery = normalizeSearchText(searchQuery);
+  final search = TransactionSearch.parse(searchQuery);
 
   final effectiveFrom = _later(
     _later(filters.dateRange?.start, ledgerFilters?.dateRange?.start),
@@ -126,10 +127,10 @@ final filteredTransactionsProvider = StreamProvider<List<Transaction>>((ref) {
     }
 
     // Search composes with active filters via AND logic (Task 16.4).
-    if (normalizedQuery.isNotEmpty) {
+    if (searchQuery.isNotEmpty) {
       txns = txns.where((t) {
         final payee = t.payeeId == null ? null : payeesById[t.payeeId];
-        return _matchesSearch(t, payee, normalizedQuery);
+        return search.matches(t, payee);
       }).toList();
     }
 
@@ -152,44 +153,4 @@ DateTime? _earlier(DateTime? left, DateTime? right) {
   if (left == null) return right;
   if (right == null) return left;
   return left.isBefore(right) ? left : right;
-}
-
-bool _matchesSearch(
-  Transaction transaction,
-  Payee? payee,
-  String normalizedQuery,
-) {
-  final values = <String?>[
-    transaction.title,
-    transaction.note,
-    transaction.amount.toString(),
-    transaction.amount.toStringAsFixed(2),
-    payee?.displayName,
-    payee?.normalizedName,
-  ];
-
-  return values.any(
-    (value) =>
-        value != null && normalizeSearchText(value).contains(normalizedQuery),
-  );
-}
-
-/// Lower-cases and strips diacritics for accent-insensitive search (Task 16.4).
-String normalizeSearchText(String value) {
-  return value
-      .toLowerCase()
-      .replaceAll(RegExp('[àáâãäåāăą]'), 'a')
-      .replaceAll(RegExp('[çćč]'), 'c')
-      .replaceAll(RegExp('[ďđ]'), 'd')
-      .replaceAll(RegExp('[èéêëēĕėęě]'), 'e')
-      .replaceAll(RegExp('[ìíîïīĭįı]'), 'i')
-      .replaceAll(RegExp('[ñńň]'), 'n')
-      .replaceAll(RegExp('[òóôõöøōŏő]'), 'o')
-      .replaceAll(RegExp('[ŕř]'), 'r')
-      .replaceAll(RegExp('[śšş]'), 's')
-      .replaceAll(RegExp('[ťţ]'), 't')
-      .replaceAll(RegExp('[ùúûüūŭůűų]'), 'u')
-      .replaceAll(RegExp('[ýÿ]'), 'y')
-      .replaceAll(RegExp('[žźż]'), 'z')
-      .trim();
 }

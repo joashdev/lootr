@@ -102,6 +102,18 @@ class CategorizationRuleRepo {
     );
   }
 
+  Future<void> restore(String id) {
+    return (_db.update(
+      _db.categorizationRules,
+    )..where((row) => row.id.equals(id))).write(
+      CategorizationRulesCompanion(
+        isArchived: const Value(false),
+        isActive: const Value(true),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
   Future<void> delete(String id) async {
     await (_db.delete(
       _db.categorizationRules,

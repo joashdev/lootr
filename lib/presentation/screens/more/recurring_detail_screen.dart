@@ -1,24 +1,22 @@
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../application/providers/accounts_provider.dart';
 import '../../../application/providers/categories_provider.dart';
-import '../../../application/providers/notification_provider.dart';
 import '../../../application/providers/payees_provider.dart';
-import '../../../application/providers/repo_providers.dart';
 import '../../../application/providers/recurring_detail_provider.dart';
 import '../../../core/format/money_format.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
-import '../../../data/database/app_database.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/entities/category.dart';
 import '../../../domain/entities/payee.dart';
 import '../../../domain/value_objects/exact_money.dart';
+import '../../sheets/add_transaction_sheet.dart';
 import 'more_form_sheets.dart';
 import '../../shared/components/app_snackbar.dart';
 import '../../shared/components/buttons/ghost_button.dart';
@@ -184,6 +182,11 @@ class RecurringDetailScreen extends ConsumerWidget {
                         onEdit: _isActionable(occurrence)
                             ? () => _editOccurrence(context, ref, occurrence)
                             : null,
+                        onOpenTransaction: occurrence.transactionId == null
+                            ? null
+                            : () => context.push(
+                                '/transactions/${occurrence.transactionId}',
+                              ),
                       ),
                     );
                   }, childCount: occurrences.length),
@@ -296,11 +299,8 @@ class RecurringDetailScreen extends ConsumerWidget {
                                 );
                                 if (confirmed != true) return;
                                 await ref
-                                    .read(recurringRepoProvider)
-                                    .softDelete(template.id);
-                                await ref
-                                    .read(notificationSchedulerProvider)
-                                    .rebuildSchedule();
+                                    .read(recurringOccurrenceCommandsProvider)
+                                    .deleteSeries(template.id);
                                 if (!context.mounted) return;
                                 AppSnackBar.show(
                                   context,
@@ -322,18 +322,11 @@ class RecurringDetailScreen extends ConsumerWidget {
                         ),
                         onPressed: () async {
                           await ref
-                              .read(recurringRepoProvider)
-                              .update(
-                                RecurringTemplatesCompanion(
-                                  id: Value(template.id),
-                                  autoCreateDisabled: Value(
-                                    !template.autoCreateDisabled,
-                                  ),
-                                ),
+                              .read(recurringOccurrenceCommandsProvider)
+                              .setSeriesEnabled(
+                                template.id,
+                                enabled: template.autoCreateDisabled,
                               );
-                          await ref
-                              .read(notificationSchedulerProvider)
-                              .rebuildSchedule();
                           if (!context.mounted) return;
                           AppSnackBar.show(
                             context,
@@ -395,57 +388,38 @@ class RecurringDetailScreen extends ConsumerWidget {
     return '${months[dt.month]} ${dt.day}, ${dt.year}';
   }
 
-  static bool _isActionable(RecurringOccurrenceData occurrence) =>
-      occurrence.status == 'due' || occurrence.status == 'unpaid';
+  static bool _isActionable(RecurringOccurrenceView occurrence) =>
+      occurrence.isActionable;
 
   Future<void> _payOccurrence(
     BuildContext context,
     WidgetRef ref,
-    RecurringOccurrenceData occurrence,
+    RecurringOccurrenceView occurrence,
   ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Mark occurrence paid?'),
-        content: const Text(
-          'This creates one finalized ledger transaction for this occurrence.',
+    final detail = ref.read(recurringDetailProvider(id)).asData?.value;
+    if (detail == null) return;
+    final template = detail.template;
+    context.push(
+      '/transactions/new',
+      extra: AddTransactionSheetArgs(
+        recurringPayment: RecurringPaymentPrefill(
+          occurrenceId: occurrence.id,
+          recurringTemplateId: template.id,
+          accountId: template.accountId,
+          categoryId: template.categoryId,
+          payeeId: template.payeeId,
+          amount: occurrence.amount,
+          direction: detail.transactionDirection,
+          occurredAt: occurrence.dueAt,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Pay'),
-          ),
-        ],
       ),
     );
-    if (confirmed != true) return;
-    try {
-      await ref.read(recurringOccurrenceServiceProvider).pay(occurrence.id);
-      await ref.read(notificationSchedulerProvider).rebuildSchedule();
-      if (!context.mounted) return;
-      AppSnackBar.show(
-        context,
-        'Occurrence paid and transaction created.',
-        variant: AppSnackBarVariant.success,
-      );
-    } catch (error) {
-      if (!context.mounted) return;
-      AppSnackBar.show(
-        context,
-        'Occurrence could not be paid. No changes were applied.',
-        variant: AppSnackBarVariant.error,
-      );
-    }
   }
 
   Future<void> _skipOccurrence(
     BuildContext context,
     WidgetRef ref,
-    RecurringOccurrenceData occurrence,
+    RecurringOccurrenceView occurrence,
   ) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -468,8 +442,7 @@ class RecurringDetailScreen extends ConsumerWidget {
     );
     if (confirmed != true) return;
     try {
-      await ref.read(recurringOccurrenceServiceProvider).skip(occurrence.id);
-      await ref.read(notificationSchedulerProvider).rebuildSchedule();
+      await ref.read(recurringOccurrenceCommandsProvider).skip(occurrence.id);
       if (!context.mounted) return;
       AppSnackBar.show(context, 'Occurrence skipped.');
     } catch (_) {
@@ -485,13 +458,9 @@ class RecurringDetailScreen extends ConsumerWidget {
   Future<void> _editOccurrence(
     BuildContext context,
     WidgetRef ref,
-    RecurringOccurrenceData occurrence,
+    RecurringOccurrenceView occurrence,
   ) async {
-    final amount = ExactMoney(
-      coefficient: BigInt.parse(occurrence.amountAtoms),
-      scale: occurrence.amountScale,
-      currencyCode: occurrence.currencyCode,
-    );
+    final amount = occurrence.amount;
     final amountController = TextEditingController(
       text: amount.toDecimalString(),
     );
@@ -523,7 +492,7 @@ class RecurringDetailScreen extends ConsumerWidget {
                   decimal: true,
                 ),
                 decoration: InputDecoration(
-                  labelText: 'Amount (${occurrence.currencyCode})',
+                  labelText: 'Amount (${occurrence.amount.currencyCode})',
                   border: const OutlineInputBorder(),
                 ),
               ),
@@ -561,19 +530,17 @@ class RecurringDetailScreen extends ConsumerWidget {
                     try {
                       final edited = ExactMoney.parse(
                         amountController.text,
-                        occurrence.currencyCode,
-                      ).rescale(occurrence.amountScale);
+                        occurrence.amount.currencyCode,
+                      ).rescale(occurrence.amount.scale);
                       if (edited.isNegative || edited.isZero) {
                         throw const FormatException();
                       }
                       await ref
-                          .read(recurringOccurrenceRepoProvider)
+                          .read(recurringOccurrenceCommandsProvider)
                           .updateOccurrence(
                             id: occurrence.id,
                             dueAt: dueAt,
-                            amountAtoms: edited.coefficient.toString(),
-                            amountScale: edited.scale,
-                            currencyCode: edited.currencyCode,
+                            amount: edited,
                           );
                       if (!sheetContext.mounted) return;
                       Navigator.pop(sheetContext);
@@ -603,20 +570,18 @@ class _OccurrenceTile extends StatelessWidget {
     required this.onPay,
     required this.onSkip,
     required this.onEdit,
+    required this.onOpenTransaction,
   });
 
-  final RecurringOccurrenceData occurrence;
+  final RecurringOccurrenceView occurrence;
   final VoidCallback? onPay;
   final VoidCallback? onSkip;
   final VoidCallback? onEdit;
+  final VoidCallback? onOpenTransaction;
 
   @override
   Widget build(BuildContext context) {
-    final money = ExactMoney(
-      coefficient: BigInt.parse(occurrence.amountAtoms),
-      scale: occurrence.amountScale,
-      currencyCode: occurrence.currencyCode,
-    );
+    final money = occurrence.amount;
     final status = _statusLabel(occurrence, DateTime.now());
     final changedDueDate = occurrence.originalDueAt != occurrence.dueAt;
     return Padding(
@@ -648,7 +613,10 @@ class _OccurrenceTile extends StatelessWidget {
               color: context.lootrColors.textSecondary,
             ),
           ),
-          if (onPay != null || onSkip != null || onEdit != null) ...[
+          if (onPay != null ||
+              onSkip != null ||
+              onEdit != null ||
+              onOpenTransaction != null) ...[
             const SizedBox(height: AppSpacing.space2),
             Wrap(
               spacing: AppSpacing.space2,
@@ -665,6 +633,11 @@ class _OccurrenceTile extends StatelessWidget {
                     onPressed: onEdit,
                     child: const Text('Edit occurrence'),
                   ),
+                if (onOpenTransaction != null)
+                  TextButton(
+                    onPressed: onOpenTransaction,
+                    child: const Text('Open transaction'),
+                  ),
               ],
             ),
           ],
@@ -673,7 +646,7 @@ class _OccurrenceTile extends StatelessWidget {
     );
   }
 
-  String _statusLabel(RecurringOccurrenceData occurrence, DateTime now) {
+  String _statusLabel(RecurringOccurrenceView occurrence, DateTime now) {
     return switch (occurrence.status) {
       'paid' => 'Paid',
       'skipped' => 'Skipped',

@@ -1,11 +1,15 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/database/app_database.dart';
+import '../categorization/categorization_rules.dart';
 import 'repo_providers.dart';
 
+final categorizationRulesCommandsProvider = Provider<CategorizationRules>((
+  ref,
+) {
+  return CategorizationRules(ref.watch(categorizationRuleRepoProvider));
+});
+
 final categorizationRulesProvider =
-    StreamProvider<List<CategorizationRuleData>>((ref) {
-      return ref
-          .watch(categorizationRuleRepoProvider)
-          .watchAll(includeArchived: true);
+    StreamProvider<List<CategorizationRuleView>>((ref) {
+      return ref.watch(categorizationRulesCommandsProvider).watchAll();
     });

@@ -14,6 +14,7 @@ class PeriodSelector extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final period = ref.watch(periodContextProvider);
     final isMonth = period.kind == PeriodContextKind.calendarMonth;
+    final notifier = ref.read(periodContextProvider.notifier);
 
     return Semantics(
       container: true,
@@ -22,38 +23,49 @@ class PeriodSelector extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           IconButton(
-            tooltip: isMonth ? 'Previous month' : 'Previous cycle unavailable',
-            onPressed: isMonth
-                ? ref.read(periodContextProvider.notifier).previous
-                : null,
+            tooltip: isMonth ? 'Previous month' : 'Previous cycle',
+            onPressed: notifier.previous,
             icon: const Icon(LucideIcons.chevronLeft, size: 18),
           ),
           InkWell(
             borderRadius: BorderRadius.circular(8),
-            onTap: isMonth
-                ? () => _showMonthPicker(context, ref, period)
-                : null,
+            onTap: () => _showPicker(context, ref, period),
             child: ConstrainedBox(
               constraints: BoxConstraints(
-                minWidth: compact ? 96 : 144,
+                minWidth: compact ? 144 : 168,
                 minHeight: 44,
               ),
               child: Center(
-                child: Text(
-                  period.description,
-                  textAlign: TextAlign.center,
-                  maxLines: compact ? 1 : 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelLarge,
-                ),
+                child: isMonth
+                    ? Text(
+                        period.label,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.labelLarge,
+                      )
+                    : Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            period.label,
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.labelLarge,
+                          ),
+                          Text(
+                            period.dateRangeLabel,
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
               ),
             ),
           ),
           IconButton(
-            tooltip: isMonth ? 'Next month' : 'Next cycle unavailable',
-            onPressed: isMonth
-                ? ref.read(periodContextProvider.notifier).next
-                : null,
+            tooltip: isMonth ? 'Next month' : 'Next cycle',
+            onPressed: notifier.next,
             icon: const Icon(LucideIcons.chevronRight, size: 18),
           ),
         ],
@@ -61,7 +73,7 @@ class PeriodSelector extends ConsumerWidget {
     );
   }
 
-  Future<void> _showMonthPicker(
+  Future<void> _showPicker(
     BuildContext context,
     WidgetRef ref,
     PeriodContext period,
@@ -72,10 +84,12 @@ class PeriodSelector extends ConsumerWidget {
       firstDate: DateTime(2020),
       lastDate: DateTime(DateTime.now().year + 5, 12, 31),
       initialDatePickerMode: DatePickerMode.year,
-      helpText: 'Select month',
+      helpText: period.kind == PeriodContextKind.calendarMonth
+          ? 'Select month'
+          : 'Select cycle start',
     );
     if (selected != null) {
-      ref.read(periodContextProvider.notifier).selectMonth(selected);
+      ref.read(periodContextProvider.notifier).moveTo(selected);
     }
   }
 }

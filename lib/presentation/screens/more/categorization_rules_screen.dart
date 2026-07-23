@@ -2,13 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../application/categorization/categorization_rules.dart';
 import '../../../application/providers/categorization_rules_provider.dart';
 import '../../../application/providers/categories_provider.dart';
-import '../../../application/providers/repo_providers.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
-import '../../../data/database/app_database.dart';
 import '../../../domain/entities/category.dart';
 import '../../shared/components/app_snackbar.dart';
 import '../../shared/components/empty_state.dart';
@@ -23,33 +22,17 @@ class CategorizationRulesScreen extends ConsumerWidget {
         ref.watch(categoriesProvider).asData?.value ?? const <Category>[];
 
     return Scaffold(
-      appBar: AppBar(
-        centerTitle: false,
-        title: const Text('Category Rules'),
-        actions: [
-          IconButton(
-            tooltip: 'Add category rule',
-            onPressed: categories.isEmpty
-                ? null
-                : () => _showRuleSheet(context, ref, categories: categories),
-            icon: const Icon(LucideIcons.plus),
-          ),
-        ],
-      ),
+      appBar: AppBar(centerTitle: false, title: const Text('Category Rules')),
       body: rulesAsync.when(
         data: (rules) {
           if (rules.isEmpty) {
             return EmptyState(
               headline: 'No remembered rules',
               subtext:
-                  'Rules suggest a category from a matching title or payee. '
-                  'They never change saved transactions.',
-              ctaLabel: categories.isEmpty
-                  ? 'Create a Category First'
-                  : 'Add Rule',
-              onCtaPressed: categories.isEmpty
-                  ? null
-                  : () => _showRuleSheet(context, ref, categories: categories),
+                  'Choose “Remember this correction” in Add after changing a '
+                  'suggested category. Rules never change saved transactions.',
+              ctaLabel: 'Back to Settings',
+              onCtaPressed: () => Navigator.maybePop(context),
             );
           }
           final categoryNames = {
@@ -72,7 +55,7 @@ class CategorizationRulesScreen extends ConsumerWidget {
                 onToggle: rule.isArchived
                     ? null
                     : (active) => ref
-                          .read(categorizationRuleRepoProvider)
+                          .read(categorizationRulesCommandsProvider)
                           .setActive(rule.id, active),
                 onEdit: rule.isArchived
                     ? null
@@ -85,6 +68,9 @@ class CategorizationRulesScreen extends ConsumerWidget {
                 onArchive: rule.isArchived
                     ? null
                     : () => _archiveRule(context, ref, rule),
+                onRestore: rule.isArchived
+                    ? () => _restoreRule(context, ref, rule)
+                    : null,
                 onDelete: () => _deleteRule(context, ref, rule),
               );
             },
@@ -100,17 +86,27 @@ class CategorizationRulesScreen extends ConsumerWidget {
   Future<void> _archiveRule(
     BuildContext context,
     WidgetRef ref,
-    CategorizationRuleData rule,
+    CategorizationRuleView rule,
   ) async {
-    await ref.read(categorizationRuleRepoProvider).archive(rule.id);
+    await ref.read(categorizationRulesCommandsProvider).archive(rule.id);
     if (!context.mounted) return;
     AppSnackBar.show(context, 'Rule archived.');
+  }
+
+  Future<void> _restoreRule(
+    BuildContext context,
+    WidgetRef ref,
+    CategorizationRuleView rule,
+  ) async {
+    await ref.read(categorizationRulesCommandsProvider).restore(rule.id);
+    if (!context.mounted) return;
+    AppSnackBar.show(context, 'Rule restored.');
   }
 
   Future<void> _deleteRule(
     BuildContext context,
     WidgetRef ref,
-    CategorizationRuleData rule,
+    CategorizationRuleView rule,
   ) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -133,7 +129,7 @@ class CategorizationRulesScreen extends ConsumerWidget {
       ),
     );
     if (confirmed != true) return;
-    await ref.read(categorizationRuleRepoProvider).delete(rule.id);
+    await ref.read(categorizationRulesCommandsProvider).delete(rule.id);
     if (!context.mounted) return;
     AppSnackBar.show(context, 'Rule deleted.');
   }
@@ -146,14 +142,16 @@ class _RuleTile extends StatelessWidget {
     required this.onToggle,
     required this.onEdit,
     required this.onArchive,
+    required this.onRestore,
     required this.onDelete,
   });
 
-  final CategorizationRuleData rule;
+  final CategorizationRuleView rule;
   final String categoryName;
   final ValueChanged<bool>? onToggle;
   final VoidCallback? onEdit;
   final VoidCallback? onArchive;
+  final VoidCallback? onRestore;
   final VoidCallback onDelete;
 
   @override
@@ -197,6 +195,8 @@ class _RuleTile extends StatelessWidget {
               onEdit?.call();
             case 'archive':
               onArchive?.call();
+            case 'restore':
+              onRestore?.call();
             case 'delete':
               onDelete();
           }
@@ -211,6 +211,8 @@ class _RuleTile extends StatelessWidget {
             const PopupMenuItem(value: 'edit', child: Text('Edit')),
           if (onArchive != null)
             const PopupMenuItem(value: 'archive', child: Text('Archive')),
+          if (onRestore != null)
+            const PopupMenuItem(value: 'restore', child: Text('Restore')),
           const PopupMenuItem(value: 'delete', child: Text('Delete')),
         ],
       ),
@@ -225,12 +227,12 @@ Future<void> _showRuleSheet(
   BuildContext context,
   WidgetRef ref, {
   required List<Category> categories,
-  CategorizationRuleData? initial,
+  required CategorizationRuleView initial,
 }) async {
-  final patternController = TextEditingController(text: initial?.pattern ?? '');
-  var target = initial?.matchTarget ?? 'payee';
-  var kind = initial?.matchKind ?? 'exact';
-  var categoryId = initial?.categoryId ?? categories.first.id;
+  final patternController = TextEditingController(text: initial.pattern);
+  var target = initial.matchTarget;
+  var kind = initial.matchKind;
+  var categoryId = initial.categoryId;
   final formKey = GlobalKey<FormState>();
 
   await showModalBottomSheet<void>(
@@ -252,7 +254,7 @@ Future<void> _showRuleSheet(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                initial == null ? 'New Category Rule' : 'Edit Category Rule',
+                'Edit Category Rule',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: AppSpacing.space4),
@@ -323,28 +325,22 @@ Future<void> _showRuleSheet(
                 child: FilledButton(
                   onPressed: () async {
                     if (formKey.currentState?.validate() != true) return;
-                    final repo = ref.read(categorizationRuleRepoProvider);
-                    if (initial == null) {
-                      await repo.create(
-                        id: 'rule-${DateTime.now().microsecondsSinceEpoch}',
-                        matchTarget: target,
-                        matchKind: kind,
-                        pattern: patternController.text.trim(),
-                        categoryId: categoryId,
-                      );
-                    } else {
-                      await repo.update(
-                        id: initial.id,
-                        matchTarget: target,
-                        matchKind: kind,
-                        pattern: patternController.text.trim(),
-                        categoryId: categoryId,
-                      );
-                    }
+                    await ref
+                        .read(categorizationRulesCommandsProvider)
+                        .update(
+                          UpdateCategorizationRuleCommand(
+                            id: initial.id,
+                            matchTarget: target,
+                            matchKind: kind,
+                            pattern: patternController.text.trim(),
+                            categoryId: categoryId,
+                            priority: initial.priority,
+                          ),
+                        );
                     if (!sheetContext.mounted) return;
                     Navigator.pop(sheetContext);
                   },
-                  child: Text(initial == null ? 'Save Rule' : 'Save Changes'),
+                  child: const Text('Save Changes'),
                 ),
               ),
             ],

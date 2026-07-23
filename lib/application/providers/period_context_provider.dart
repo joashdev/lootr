@@ -30,6 +30,7 @@ class PeriodContextNotifier extends Notifier<PeriodContext> {
 
   void previous() => state = state.previous();
   void next() => state = state.next();
+  void moveTo(DateTime startsAt) => state = state.moveTo(startsAt);
 }
 
 final periodContextProvider =
