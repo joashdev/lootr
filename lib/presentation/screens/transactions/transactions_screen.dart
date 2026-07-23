@@ -161,15 +161,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       grouped[dateKey]!.add(txn);
     }
 
-    final sorted = Map<String, List<Transaction>>.fromEntries(
-      grouped.entries.toList()..sort((a, b) {
-        final dateA = DateFormat('dd/MM/yyyy').parse(a.key);
-        final dateB = DateFormat('dd/MM/yyyy').parse(b.key);
-        return dateB.compareTo(dateA);
-      }),
-    );
-
-    return sorted;
+    // Dart maps preserve insertion order, so date groups follow the already
+    // sorted provider output for both newest-first and oldest-first modes.
+    return grouped;
   }
 
   Future<void> _onDelete(String id) async {

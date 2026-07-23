@@ -365,7 +365,7 @@ final netWorthReportProvider = StreamProvider<List<NetWorthReport>>((ref) {
         .toList(),
   );
   final transactionsStream = transactionRepo
-      .watchFiltered(TransactionRepoFilters(from: windowStart, to: periodEnd))
+      .watchFiltered(TransactionRepoFilters(from: windowStart))
       .map(_activeTransactions);
 
   return Rx.combineLatest2<
@@ -415,6 +415,12 @@ NetWorthReport _buildNetWorthReport({
   final netWorth = exactNetWorth.toDouble();
 
   final impactByDay = <int, ExactMoney>{};
+  final zero = ExactMoney(
+    coefficient: BigInt.zero,
+    scale: exactNetWorth.scale,
+    currencyCode: currencyCode,
+  );
+  var totalImpactSinceWindowStart = zero;
   for (final txn in transactions) {
     if (txn.exactAmount.currencyCode != currencyCode) continue;
     final day = DateTime(
@@ -423,13 +429,14 @@ NetWorthReport _buildNetWorthReport({
       txn.occurredAt.day,
     );
     final index = day.difference(windowStart).inDays;
-    if (index < 0 || index >= days) continue;
     final impact = switch (txn.direction) {
       'income' => txn.exactAmount,
       'expense' => -txn.exactAmount,
       _ => null,
     };
     if (impact == null) continue;
+    totalImpactSinceWindowStart += impact;
+    if (index < 0 || index >= days) continue;
     impactByDay.update(
       index,
       (current) => current + impact,
@@ -437,16 +444,7 @@ NetWorthReport _buildNetWorthReport({
     );
   }
 
-  final zero = ExactMoney(
-    coefficient: BigInt.zero,
-    scale: exactNetWorth.scale,
-    currencyCode: currencyCode,
-  );
-  final totalImpact = impactByDay.values.fold<ExactMoney>(
-    zero,
-    (sum, value) => sum + value,
-  );
-  var running = exactNetWorth - totalImpact;
+  var running = exactNetWorth - totalImpactSinceWindowStart;
   final series = <double>[];
   for (var i = 0; i < days; i++) {
     running += impactByDay[i] ?? zero;

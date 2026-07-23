@@ -630,6 +630,16 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
             _categoryDraft ?? '',
             ref.read(categoriesProvider).asData?.value ?? const <Category>[],
           );
+      final selectedAccount = await accountRepo.watchById(_accountId!).first;
+      if (selectedAccount == null) {
+        _showSnackBar('Selected account is no longer available.');
+        return;
+      }
+      final exactAmount = ExactMoney.parse(
+        _amountController.text,
+        widget.recurringPayment?.amount.currencyCode ??
+            selectedAccount.currencyCode,
+      );
 
       final transaction = Transaction(
         id: previous?.id ?? 'txn-${now.microsecondsSinceEpoch}',
@@ -643,21 +653,9 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
             widget.recurringPayment?.recurringTemplateId ??
             previous?.recurringTemplateId,
         amount: amount,
-        amountAtoms: widget.recurringPayment == null
-            ? previous?.amountAtoms
-            : ExactMoney.parse(
-                _amountController.text,
-                widget.recurringPayment!.amount.currencyCode,
-              ).coefficient.toString(),
-        amountScale: widget.recurringPayment == null
-            ? previous?.amountScale
-            : ExactMoney.parse(
-                _amountController.text,
-                widget.recurringPayment!.amount.currencyCode,
-              ).scale,
-        currencyCode:
-            widget.recurringPayment?.amount.currencyCode ??
-            previous?.currencyCode,
+        amountAtoms: exactAmount.coefficient.toString(),
+        amountScale: exactAmount.scale,
+        currencyCode: exactAmount.currencyCode,
         title:
             previous?.title ??
             (_isOccurrencePayment ? 'Recurring payment' : null),

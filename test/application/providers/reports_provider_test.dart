@@ -467,6 +467,31 @@ void main() {
       expect(reports.first.current, 0.000000000001);
       expect(reports.last.current, 1000);
     });
+
+    test('reverses transactions after a historical report endpoint', () async {
+      await (db.update(db.accounts)..where((row) => row.id.equals('acc-cash')))
+          .write(const AccountsCompanion(balance: Value(900)));
+      await insertTxn(
+        id: 'txn-after-period',
+        amount: 100,
+        direction: 'expense',
+        occurredAt: DateTime(2026, 6, 10),
+        categoryId: 'cat-food',
+      );
+
+      final container = makeContainer();
+      container
+          .read(periodContextProvider.notifier)
+          .selectMonth(DateTime(2026, 5));
+      final reports = await readAsyncValue<List<NetWorthReport>>(
+        container,
+        netWorthReportProvider,
+      );
+
+      expect(reports.single.current, 900);
+      expect(reports.single.series.last, 1000);
+      expect(reports.single.endDate, DateTime(2026, 5, 31));
+    });
   });
 
   group('budgetPerformanceReportProvider', () {
