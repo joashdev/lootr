@@ -7,7 +7,7 @@ References: `product-strategy.md` (privacy and V1 scope), `security-model.md` (r
 
 ## 1. Scope and Version
 
-The first public build is `v0.1.0-alpha.1`. It is a universal Android APK distributed only through GitHub Releases under `joashdev/lootr`.
+The first public build is `v0.1.0-alpha.2`. It is a universal Android APK distributed only through GitHub Releases under `joashdev/lootr`.
 
 Alpha releases are daily-use previews, not stable financial or accounting advice. Users must be warned to back up data before upgrades and to install only artifacts produced by the official repository.
 
@@ -83,7 +83,7 @@ Local release builds without `android/key.properties` must never fall back to th
 
 ## 6. Acceptance Criteria
 
-- `pubspec.yaml` declares `0.1.0-alpha.1`
+- `pubspec.yaml` declares `0.1.0-alpha.2`
 - The About screen displays runtime version/build values
 - Bug reporting warns first and prepopulates only public app context
 - The repository contains README, AGPL license, notice, security policy, issue form, and release guide
