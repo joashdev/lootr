@@ -32,7 +32,10 @@ class RecurringOccurrenceView {
   final DateTime? resolvedAt;
   final String? transactionId;
 
-  bool get isActionable => status == 'due' || status == 'unpaid';
+  bool get isActionable => isActionableAt(DateTime.now());
+
+  bool isActionableAt(DateTime now) =>
+      (status == 'due' || status == 'unpaid') && !dueAt.isAfter(now);
 }
 
 class RecurringDetailView {
@@ -88,8 +91,13 @@ RecurringOccurrenceView _occurrenceView(RecurringOccurrenceData row) {
   );
 }
 
+final recurringOccurrenceBootstrapProvider = FutureProvider<void>((ref) {
+  return ref.watch(recurringOccurrenceServiceProvider).ensureNextOccurrences();
+});
+
 final recurringDetailProvider =
     StreamProvider.family<RecurringDetailView?, String>((ref, templateId) {
+      ref.watch(recurringOccurrenceBootstrapProvider);
       final recurringRepo = ref.watch(recurringRepoProvider);
       final occurrenceRepo = ref.watch(recurringOccurrenceRepoProvider);
       final txnRepo = ref.watch(transactionRepoProvider);

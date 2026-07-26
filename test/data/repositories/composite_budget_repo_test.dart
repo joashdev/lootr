@@ -301,6 +301,42 @@ void main() {
     expect(await repo.listHistoricalPeriods('editable'), hasLength(1));
   });
 
+  test('custom-cycle edits preserve earlier materialized periods', () async {
+    final first = CompositeBudgetDraft(
+      id: 'cycle-history',
+      ownerUserId: 'user',
+      name: 'Pay cycle',
+      limit: ExactMoney.parse('500.00', 'USD'),
+      periodType: 'custom_cycle',
+      periodStart: DateTime(2026, 6, 1),
+      periodEnd: DateTime(2026, 6, 15),
+      directionFilter: 'expense',
+      membershipMode: 'all_matching',
+    );
+    await repo.create(first);
+
+    await repo.update(
+      CompositeBudgetDraft(
+        id: 'cycle-history',
+        ownerUserId: 'user',
+        name: 'Renamed pay cycle',
+        limit: ExactMoney.parse('600.00', 'USD'),
+        periodType: 'custom_cycle',
+        periodStart: DateTime(2026, 6, 15),
+        periodEnd: DateTime(2026, 7, 1),
+        directionFilter: 'expense',
+        membershipMode: 'all_matching',
+      ),
+    );
+
+    final history = await repo.listHistoricalPeriods('cycle-history');
+    expect(history, hasLength(2));
+    expect(history.map((period) => period.startsAt), [
+      DateTime(2026, 6, 15),
+      DateTime(2026, 6, 1),
+    ]);
+  });
+
   test(
     'rejects invalid scope without partially writing a definition',
     () async {

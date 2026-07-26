@@ -488,7 +488,7 @@ void main() {
         netWorthReportProvider,
       );
 
-      expect(reports.single.current, 900);
+      expect(reports.single.current, 1000);
       expect(reports.single.series.last, 1000);
       expect(reports.single.endDate, DateTime(2026, 5, 31));
     });

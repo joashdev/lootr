@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -76,8 +75,8 @@ void main() {
 class _TolerantGoldenFileComparator extends LocalFileComparator {
   _TolerantGoldenFileComparator(
     super.testFile, {
-    required double precisionTolerance,
-  }) : _precisionTolerance = precisionTolerance;
+    required this._precisionTolerance,
+  });
 
   final double _precisionTolerance;
 

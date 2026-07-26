@@ -23,6 +23,19 @@ class RecurringOccurrenceService {
   final TransactionRepo _transactionRepo;
   final RecurringOccurrenceRepo _occurrenceRepo;
 
+  Future<void> ensureNextOccurrences() async {
+    final templateIds =
+        await (_db.select(_db.recurringTemplates)..where(
+              (row) =>
+                  row.deletedAt.isNull() & row.autoCreateDisabled.equals(false),
+            ))
+            .map((row) => row.id)
+            .get();
+    for (final templateId in templateIds) {
+      await ensureNextOccurrence(templateId);
+    }
+  }
+
   Future<void> ensureNextOccurrence(String templateId) {
     return _db.transaction(() async {
       final template =
@@ -39,9 +52,13 @@ class RecurringOccurrenceService {
                       row.recurringTemplateId.equals(templateId) &
                       (row.status.equals('due') | row.status.equals('unpaid')),
                 )
+                ..orderBy([(row) => OrderingTerm.asc(row.dueAt)])
                 ..limit(1))
               .getSingleOrNull();
-      if (existing != null) return;
+      if (existing != null) {
+        await _setTemplateNext(template.id, existing.dueAt);
+        return;
+      }
       await _insertOccurrence(template, anchor);
       await _setTemplateNext(template.id, anchor);
     });

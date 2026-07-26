@@ -972,10 +972,12 @@ class CompositeBudgetRepo {
   }
 
   Future<void> _replaceMaterializedPeriod(CompositeBudgetDraft draft) async {
-    await (_db.delete(
-      _db.budgetPeriods,
-    )..where((row) => row.budgetId.equals(draft.id))).go();
-    if (draft.periodType != 'custom_cycle') return;
+    if (draft.periodType != 'custom_cycle') {
+      await (_db.delete(
+        _db.budgetPeriods,
+      )..where((row) => row.budgetId.equals(draft.id))).go();
+      return;
+    }
     await _db
         .into(_db.budgetPeriods)
         .insert(
@@ -988,6 +990,7 @@ class CompositeBudgetRepo {
             amountScale: draft.limit.scale,
             currencyCode: draft.limit.currencyCode,
           ),
+          mode: InsertMode.insertOrReplace,
         );
   }
 

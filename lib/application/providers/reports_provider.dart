@@ -412,8 +412,6 @@ NetWorthReport _buildNetWorthReport({
         scale: 2,
         currencyCode: currencyCode,
       );
-  final netWorth = exactNetWorth.toDouble();
-
   final impactByDay = <int, ExactMoney>{};
   final zero = ExactMoney(
     coefficient: BigInt.zero,
@@ -458,7 +456,7 @@ NetWorthReport _buildNetWorthReport({
 
   return NetWorthReport(
     currencyCode: currencyCode,
-    current: netWorth,
+    current: series.last,
     series: series,
     changePercent: changePercent,
     startDate: windowStart,

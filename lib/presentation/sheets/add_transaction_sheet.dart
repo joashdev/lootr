@@ -635,10 +635,17 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
         _showSnackBar('Selected account is no longer available.');
         return;
       }
+      final recurringCurrency = widget.recurringPayment?.amount.currencyCode;
+      if (recurringCurrency != null &&
+          selectedAccount.currencyCode != recurringCurrency) {
+        _showSnackBar(
+          'Select a $recurringCurrency account for this recurring payment.',
+        );
+        return;
+      }
       final exactAmount = ExactMoney.parse(
         _amountController.text,
-        widget.recurringPayment?.amount.currencyCode ??
-            selectedAccount.currencyCode,
+        recurringCurrency ?? selectedAccount.currencyCode,
       );
 
       final transaction = Transaction(
@@ -789,24 +796,26 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     if (allowUndo) {
       final transactionRepo = ref.read(transactionRepoProvider);
       final notificationScheduler = ref.read(notificationSchedulerProvider);
-      ref.read(undoStackProvider.notifier).push(
-        UndoEntry(
-          transactionId: transactionId,
-          message: message,
-          rollback: () async {
-            if (isEdit && previousTransaction != null) {
-              await transactionRepo.update(
-                previousTransaction.toUpdateCompanion(),
-              );
-              await notificationScheduler.rebuildSchedule();
-              return;
-            }
-            await transactionRepo.softDelete(transactionId);
-            await notificationScheduler.rebuildSchedule();
-          },
-          createdAt: DateTime.now(),
-        ),
-      );
+      ref
+          .read(undoStackProvider.notifier)
+          .push(
+            UndoEntry(
+              transactionId: transactionId,
+              message: message,
+              rollback: () async {
+                if (isEdit && previousTransaction != null) {
+                  await transactionRepo.update(
+                    previousTransaction.toUpdateCompanion(),
+                  );
+                  await notificationScheduler.rebuildSchedule();
+                  return;
+                }
+                await transactionRepo.softDelete(transactionId);
+                await notificationScheduler.rebuildSchedule();
+              },
+              createdAt: DateTime.now(),
+            ),
+          );
     }
 
     _showSnackBar(
@@ -848,8 +857,13 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     final isError = switch (message) {
       'Enter a valid amount.' ||
       'Select an account to continue.' ||
+      'Selected account is no longer available.' ||
       'Select both source and destination accounts.' ||
       'Enter valid transfer amounts.' => true,
+      _
+          when message.startsWith('Select a ') &&
+              message.endsWith(' account for this recurring payment.') =>
+        true,
       _ => false,
     };
     AppSnackBar.show(

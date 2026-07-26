@@ -125,6 +125,34 @@ void main() {
     );
     expect(await db.transactions.select().get(), isEmpty);
   });
+
+  test('backfills missing occurrences for existing templates', () async {
+    await db.recurringOccurrences.deleteAll();
+
+    await service.ensureNextOccurrences();
+
+    final occurrence = await db.recurringOccurrences.select().getSingle();
+    expect(occurrence.recurringTemplateId, 'series');
+    expect(occurrence.dueAt, DateTime(2026, 7, 20));
+  });
+
+  test(
+    'resynchronizes template date to the earliest unresolved occurrence',
+    () async {
+      await (db.update(
+        db.recurringTemplates,
+      )..where((row) => row.id.equals('series'))).write(
+        RecurringTemplatesCompanion(
+          nextOccurrenceAt: Value(DateTime(2026, 8, 20)),
+        ),
+      );
+
+      await service.ensureNextOccurrence('series');
+
+      final template = await db.recurringTemplates.select().getSingle();
+      expect(template.nextOccurrenceAt, DateTime(2026, 7, 20));
+    },
+  );
 }
 
 Transaction _payment() {
