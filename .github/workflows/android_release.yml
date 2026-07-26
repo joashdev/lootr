@@ -168,7 +168,7 @@ jobs:
           printf '%s\n' "$certificate_output"
           actual_fingerprint="$(
             printf '%s\n' "$certificate_output" \
-              | awk -F': ' '/Signer #1 certificate SHA-256 digest:/{print $2; exit}' \
+              | awk -F': ' '/certificate SHA-256 digest:/{print $NF; exit}' \
               | tr '[:upper:]' '[:lower:]' \
               | tr -d ':'
           )"
@@ -177,6 +177,10 @@ jobs:
               | tr '[:upper:]' '[:lower:]' \
               | tr -d ':'
           )"
+          if [[ -z "$actual_fingerprint" ]]; then
+            echo "Could not extract the APK signing certificate fingerprint."
+            exit 1
+          fi
           if [[ "$actual_fingerprint" != "$expected_fingerprint" ]]; then
             echo "APK signer does not match the pinned Lootr release certificate."
             exit 1
