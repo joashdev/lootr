@@ -6,9 +6,14 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:lootr/application/providers/database_provider.dart';
 import 'package:lootr/application/providers/filtered_transactions_provider.dart';
+import 'package:lootr/application/providers/period_context_provider.dart';
 import 'package:lootr/application/providers/transaction_filters_provider.dart';
+import 'package:lootr/application/providers/transaction_list_intent_provider.dart';
 import 'package:lootr/data/database/app_database.dart';
 import 'package:lootr/domain/value_objects/date_range.dart';
+import 'package:lootr/domain/value_objects/ledger_query.dart';
+import 'package:lootr/domain/value_objects/period_context.dart';
+import 'package:lootr/domain/value_objects/transaction_list_intent.dart';
 
 Future<T?> readStreamValue<T>(
   StreamProvider<T> provider,
@@ -147,7 +152,10 @@ void main() {
   group('filteredTransactionsProvider', () {
     test('matches payee names accent-insensitively and by amount', () async {
       final container = ProviderContainer(
-        overrides: [databaseProvider.overrideWith((ref) => db)],
+        overrides: [
+          databaseProvider.overrideWith((ref) => db),
+          periodContextClockProvider.overrideWithValue(DateTime(2026, 6, 20)),
+        ],
       );
       addTearDown(container.dispose);
 
@@ -180,7 +188,10 @@ void main() {
 
     test('composes active filters with search using AND logic', () async {
       final container = ProviderContainer(
-        overrides: [databaseProvider.overrideWith((ref) => db)],
+        overrides: [
+          databaseProvider.overrideWith((ref) => db),
+          periodContextClockProvider.overrideWithValue(DateTime(2026, 6, 20)),
+        ],
       );
       addTearDown(container.dispose);
 
@@ -211,7 +222,10 @@ void main() {
 
     test('rebuilds when date and amount filters change', () async {
       final container = ProviderContainer(
-        overrides: [databaseProvider.overrideWith((ref) => db)],
+        overrides: [
+          databaseProvider.overrideWith((ref) => db),
+          periodContextClockProvider.overrideWithValue(DateTime(2026, 6, 20)),
+        ],
       );
       addTearDown(container.dispose);
 
@@ -245,7 +259,10 @@ void main() {
       'filters a cross-currency transfer by its selected account leg',
       () async {
         final container = ProviderContainer(
-          overrides: [databaseProvider.overrideWith((ref) => db)],
+          overrides: [
+            databaseProvider.overrideWith((ref) => db),
+            periodContextClockProvider.overrideWithValue(DateTime(2026, 6, 20)),
+          ],
         );
         addTearDown(container.dispose);
 
@@ -278,6 +295,70 @@ void main() {
           container,
         );
         expect(sourceResults, isEmpty);
+      },
+    );
+
+    test('sort intent switches between newest and oldest', () async {
+      final container = ProviderContainer(
+        overrides: [
+          databaseProvider.overrideWith((ref) => db),
+          periodContextClockProvider.overrideWithValue(DateTime(2026, 6, 20)),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      container
+          .read(transactionListIntentProvider.notifier)
+          .setSort(TransactionSort.oldestFirst);
+      final oldestFirst = await readStreamValue(
+        filteredTransactionsProvider,
+        container,
+      );
+      expect(oldestFirst?.first.id, 'txn-rent');
+
+      container
+          .read(transactionListIntentProvider.notifier)
+          .setSort(TransactionSort.newestFirst);
+      final newestFirst = await readStreamValue(
+        filteredTransactionsProvider,
+        container,
+      );
+      expect(newestFirst?.first.id, 'transfer-cross-currency');
+    });
+
+    test(
+      'report ledger query layers over preserved non-date filters',
+      () async {
+        final container = ProviderContainer(
+          overrides: [
+            databaseProvider.overrideWith((ref) => db),
+            periodContextClockProvider.overrideWithValue(DateTime(2026, 6, 20)),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        container
+            .read(transactionFiltersProvider.notifier)
+            .setMode('recurring');
+        container
+            .read(activeLedgerQueryProvider.notifier)
+            .open(
+              LedgerQuery(
+                explanation: 'Food expenses in June 2026 · PHP',
+                period: PeriodContext.calendarMonth(DateTime(2026, 6)),
+                directions: const ['expense'],
+                categoryIds: const ['cat-food'],
+                currencyCode: 'PHP',
+              ),
+            );
+
+        final results = await readStreamValue(
+          filteredTransactionsProvider,
+          container,
+        );
+
+        expect(results?.map((item) => item.id), ['txn-rent']);
+        expect(container.read(transactionFiltersProvider).mode, 'recurring');
       },
     );
   });

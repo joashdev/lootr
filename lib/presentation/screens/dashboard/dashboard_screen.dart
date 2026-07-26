@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../application/providers/dashboard_provider.dart';
+import '../../../application/providers/dashboard_layout_provider.dart';
 import '../../../application/providers/sync_providers.dart';
 import '../../../core/theme/spacing.dart';
 import '../../shared/components/empty_state.dart';
@@ -28,7 +29,10 @@ class DashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: dashboard.maybeWhen(
-        data: (data) => _DashboardHeader(data: data),
+        data: (data) => _DashboardHeader(
+          data: data,
+          onCustomize: () => _showDashboardCustomization(context),
+        ),
         orElse: () => const PrimaryScreenHeader(title: 'Dashboard'),
       ),
       body: dashboard.when(
@@ -41,6 +45,7 @@ class DashboardScreen extends ConsumerWidget {
             );
           }
 
+          final layout = ref.watch(dashboardLayoutProvider);
           return RefreshIndicator(
             onRefresh: () => ref.read(syncManagerProvider).sync(),
             child: ListView(
@@ -52,32 +57,11 @@ class DashboardScreen extends ConsumerWidget {
               ),
               children: [
                 SafeToSpendHero(data: data),
-                const SizedBox(height: AppSpacing.space4),
-                NetWorthSparkline(data: data),
-                const SizedBox(height: AppSpacing.space4),
-                AccountSummaryCards(
-                  accounts: data.accounts,
-                  currencyCode: data.currencyCode,
-                ),
-                const SizedBox(height: AppSpacing.space4),
-                IncomeExpenseStrip(data: data),
-                const SizedBox(height: AppSpacing.space4),
-                BudgetProgressRings(
-                  budgets: data.budgets,
-                  currencyCode: data.currencyCode,
-                ),
-                const SizedBox(height: AppSpacing.space4),
-                SpendingDonut(data: data),
-                const SizedBox(height: AppSpacing.space4),
-                RecentTransactionsList(
-                  transactions: data.recentTransactions,
-                  currencyCode: data.currencyCode,
-                ),
-                const SizedBox(height: AppSpacing.space4),
-                UpcomingRecurringList(
-                  items: data.upcomingRecurring,
-                  currencyCode: data.currencyCode,
-                ),
+                for (final module in layout.order)
+                  if (layout.isVisible(module)) ...[
+                    const SizedBox(height: AppSpacing.space4),
+                    _DashboardModule(module: module, data: data),
+                  ],
                 if (data.insights.isNotEmpty) ...[
                   const SizedBox(height: AppSpacing.space4),
                   InsightsSection(insights: data.insights),
@@ -89,12 +73,24 @@ class DashboardScreen extends ConsumerWidget {
       ),
     );
   }
+
+  void _showDashboardCustomization(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (_) => const _DashboardCustomizationSheet(),
+    );
+  }
 }
 
 class _DashboardHeader extends ConsumerWidget implements PreferredSizeWidget {
-  const _DashboardHeader({required this.data});
+  const _DashboardHeader({required this.data, required this.onCustomize});
 
   final DashboardData data;
+  final VoidCallback onCustomize;
 
   @override
   Size get preferredSize => Size.fromHeight(
@@ -117,6 +113,144 @@ class _DashboardHeader extends ConsumerWidget implements PreferredSizeWidget {
       eyebrow: _hasName ? data.greeting : null,
       title: _hasName ? name : data.greeting,
       subtitle: DateFormat('EEEE, MMMM d').format(data.currentDate),
+      actions: [
+        IconButton(
+          tooltip: 'Customize dashboard',
+          onPressed: onCustomize,
+          icon: const Icon(Icons.tune),
+        ),
+      ],
+    );
+  }
+}
+
+class _DashboardModule extends StatelessWidget {
+  const _DashboardModule({required this.module, required this.data});
+
+  final DashboardModule module;
+  final DashboardData data;
+
+  @override
+  Widget build(BuildContext context) {
+    return KeyedSubtree(
+      key: ValueKey('dashboard-${module.name}'),
+      child: switch (module) {
+        DashboardModule.netWorth => NetWorthSparkline(data: data),
+        DashboardModule.accounts => AccountSummaryCards(
+          accounts: data.accounts,
+          currencyCode: data.currencyCode,
+        ),
+        DashboardModule.cashFlow => IncomeExpenseStrip(data: data),
+        DashboardModule.budgets => BudgetProgressRings(
+          budgets: data.budgets,
+          currencyCode: data.currencyCode,
+        ),
+        DashboardModule.spending => SpendingDonut(data: data),
+        DashboardModule.activity => Column(
+          children: [
+            RecentTransactionsList(
+              transactions: data.recentTransactions,
+              currencyCode: data.currencyCode,
+            ),
+            const SizedBox(height: AppSpacing.space4),
+            UpcomingRecurringList(
+              items: data.upcomingRecurring,
+              currencyCode: data.currencyCode,
+            ),
+          ],
+        ),
+      },
+    );
+  }
+}
+
+class _DashboardCustomizationSheet extends ConsumerWidget {
+  const _DashboardCustomizationSheet();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final layout = ref.watch(dashboardLayoutProvider);
+    final notifier = ref.read(dashboardLayoutProvider.notifier);
+
+    return SizedBox(
+      height: MediaQuery.sizeOf(context).height * 0.72,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.space5,
+              0,
+              AppSpacing.space3,
+              AppSpacing.space2,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Customize dashboard',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
+                TextButton(
+                  onPressed: notifier.restoreDefaults,
+                  child: const Text('Restore defaults'),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space5),
+            child: Text(
+              'Safe to Spend stays first. Keep at least '
+              '${DashboardLayoutNotifier.minimumVisible} modules visible.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.space2),
+          Expanded(
+            child: ReorderableListView.builder(
+              buildDefaultDragHandles: false,
+              itemCount: layout.order.length,
+              onReorderItem: notifier.reorderItem,
+              itemBuilder: (context, index) {
+                final module = layout.order[index];
+                final isVisible = layout.isVisible(module);
+                return Semantics(
+                  key: ValueKey(module.name),
+                  label: '${module.label} dashboard module',
+                  toggled: isVisible,
+                  child: ListTile(
+                    leading: ReorderableDragStartListener(
+                      index: index,
+                      child: const Icon(Icons.drag_handle),
+                    ),
+                    title: Text(module.label),
+                    trailing: Switch(
+                      value: isVisible,
+                      onChanged: (value) async {
+                        final changed = await notifier.setVisible(
+                          module,
+                          value,
+                        );
+                        if (!changed && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Keep at least four dashboard modules visible.',
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

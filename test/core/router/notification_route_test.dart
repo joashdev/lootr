@@ -28,4 +28,18 @@ void main() {
       expect(match.last.route.path, '/recurring');
     },
   );
+
+  test('/recurring/occurrence/:id matches the exact occurrence route', () {
+    final container = ProviderContainer(
+      overrides: [onboardingProvider.overrideWith(_CompletedOnboarding.new)],
+    );
+    addTearDown(container.dispose);
+
+    final router = container.read(appRouterProvider);
+    final match = router.configuration.findMatch(
+      Uri.parse('/recurring/occurrence/occ-1'),
+    );
+
+    expect(match.last.route.path, '/recurring/occurrence/:occurrenceId');
+  });
 }

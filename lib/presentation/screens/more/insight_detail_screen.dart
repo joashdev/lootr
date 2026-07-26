@@ -14,12 +14,20 @@ class InsightDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    final title = id == 'spending-trend'
-        ? 'Spending Trend'
-        : 'Unusual Activity';
-    final description = id == 'spending-trend'
-        ? 'Your spending in this category has increased significantly compared to previous months. Consider reviewing your budget for this category.'
-        : 'An unusually large transaction was detected. If this was not you, you may want to review this transaction.';
+    final (title, description) = switch (id) {
+      'spending-trend' => (
+        'Spending Trend',
+        'Your spending in this category has increased significantly compared to previous months. Consider reviewing your budget for this category.',
+      ),
+      'unusual-activity' => (
+        'Unusual Activity',
+        'An unusually large transaction was detected. If this was not you, you may want to review this transaction.',
+      ),
+      _ => (
+        'Insight unavailable',
+        'This insight is no longer available. Return to the dashboard for current, data-backed insights.',
+      ),
+    };
 
     return Scaffold(
       appBar: AppBar(centerTitle: false, title: Text(title)),

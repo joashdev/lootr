@@ -13,6 +13,7 @@ import '../../domain/services/currency_aggregation.dart';
 import '../../domain/value_objects/exact_money.dart';
 import 'budget_projection.dart';
 import 'budgets_tab_provider.dart';
+import 'period_context_provider.dart';
 import 'repo_providers.dart';
 
 /// Injectable clock so report aggregation windows are testable.
@@ -173,12 +174,15 @@ final categorySpendingReportProvider =
       final categoryRepo = ref.watch(categoryRepoProvider);
       final transactionRepo = ref.watch(transactionRepoProvider);
 
-      final now = ref.watch(reportsClockProvider);
-      final monthStart = DateTime(now.year, now.month);
+      final period = ref.watch(periodContextProvider);
+      final periodStart = period.startsAt;
+      final periodEnd = period.inclusiveEnd;
 
       final categoriesStream = categoryRepo.watchAll().map(_activeCategories);
       final transactionsStream = transactionRepo
-          .watchFiltered(TransactionRepoFilters(from: monthStart, to: now))
+          .watchFiltered(
+            TransactionRepoFilters(from: periodStart, to: periodEnd),
+          )
           .map(_activeTransactions);
 
       return Rx.combineLatest2<
@@ -209,7 +213,7 @@ final categorySpendingReportProvider =
           for (final currencyCode in currencyCodes)
             _buildCategorySpendingReport(
               currencyCode: currencyCode,
-              periodLabel: DateFormat.yMMMM().format(monthStart),
+              periodLabel: period.description,
               categoryById: categoryById,
               totals: totalsByCurrency[currencyCode]!,
             ),
@@ -250,11 +254,12 @@ final monthlyFlowReportProvider = StreamProvider<List<MonthlyFlowReport>>((
 ) {
   final transactionRepo = ref.watch(transactionRepoProvider);
 
-  final now = ref.watch(reportsClockProvider);
-  final windowStart = DateTime(now.year, now.month - 5);
+  final period = ref.watch(periodContextProvider);
+  final windowEnd = period.inclusiveEnd;
+  final windowStart = DateTime(period.startsAt.year, period.startsAt.month - 5);
 
   final transactionsStream = transactionRepo
-      .watchFiltered(TransactionRepoFilters(from: windowStart, to: now))
+      .watchFiltered(TransactionRepoFilters(from: windowStart, to: windowEnd))
       .map(_activeTransactions);
 
   return transactionsStream.map((transactions) {
@@ -273,7 +278,7 @@ final monthlyFlowReportProvider = StreamProvider<List<MonthlyFlowReport>>((
         _buildMonthlyFlowReport(
           currencyCode: currencyCode,
           transactions: transactions,
-          now: now,
+          now: period.startsAt,
         ),
     ];
   });
@@ -342,8 +347,9 @@ final netWorthReportProvider = StreamProvider<List<NetWorthReport>>((ref) {
   final accountRepo = ref.watch(accountRepoProvider);
   final transactionRepo = ref.watch(transactionRepoProvider);
 
-  final now = ref.watch(reportsClockProvider);
-  final today = DateTime(now.year, now.month, now.day);
+  final period = ref.watch(periodContextProvider);
+  final periodEnd = period.inclusiveEnd;
+  final today = DateTime(periodEnd.year, periodEnd.month, periodEnd.day);
   const days = 90;
   final windowStart = today.subtract(const Duration(days: days - 1));
 
@@ -359,7 +365,7 @@ final netWorthReportProvider = StreamProvider<List<NetWorthReport>>((ref) {
         .toList(),
   );
   final transactionsStream = transactionRepo
-      .watchFiltered(TransactionRepoFilters(from: windowStart, to: now))
+      .watchFiltered(TransactionRepoFilters(from: windowStart))
       .map(_activeTransactions);
 
   return Rx.combineLatest2<
@@ -406,9 +412,13 @@ NetWorthReport _buildNetWorthReport({
         scale: 2,
         currencyCode: currencyCode,
       );
-  final netWorth = exactNetWorth.toDouble();
-
   final impactByDay = <int, ExactMoney>{};
+  final zero = ExactMoney(
+    coefficient: BigInt.zero,
+    scale: exactNetWorth.scale,
+    currencyCode: currencyCode,
+  );
+  var totalImpactSinceWindowStart = zero;
   for (final txn in transactions) {
     if (txn.exactAmount.currencyCode != currencyCode) continue;
     final day = DateTime(
@@ -417,13 +427,14 @@ NetWorthReport _buildNetWorthReport({
       txn.occurredAt.day,
     );
     final index = day.difference(windowStart).inDays;
-    if (index < 0 || index >= days) continue;
     final impact = switch (txn.direction) {
       'income' => txn.exactAmount,
       'expense' => -txn.exactAmount,
       _ => null,
     };
     if (impact == null) continue;
+    totalImpactSinceWindowStart += impact;
+    if (index < 0 || index >= days) continue;
     impactByDay.update(
       index,
       (current) => current + impact,
@@ -431,16 +442,7 @@ NetWorthReport _buildNetWorthReport({
     );
   }
 
-  final zero = ExactMoney(
-    coefficient: BigInt.zero,
-    scale: exactNetWorth.scale,
-    currencyCode: currencyCode,
-  );
-  final totalImpact = impactByDay.values.fold<ExactMoney>(
-    zero,
-    (sum, value) => sum + value,
-  );
-  var running = exactNetWorth - totalImpact;
+  var running = exactNetWorth - totalImpactSinceWindowStart;
   final series = <double>[];
   for (var i = 0; i < days; i++) {
     running += impactByDay[i] ?? zero;
@@ -454,7 +456,7 @@ NetWorthReport _buildNetWorthReport({
 
   return NetWorthReport(
     currencyCode: currencyCode,
-    current: netWorth,
+    current: series.last,
     series: series,
     changePercent: changePercent,
     startDate: windowStart,
@@ -469,11 +471,12 @@ final budgetPerformanceReportProvider =
       final compositeBudgetRepo = ref.watch(compositeBudgetRepoProvider);
       final categoryRepo = ref.watch(categoryRepoProvider);
 
-      final now = ref.watch(reportsClockProvider);
+      final period = ref.watch(periodContextProvider);
+      final anchor = period.startsAt;
 
       final categoriesStream = categoryRepo.watchAll().map(_activeCategories);
       final legacyBudgetsStream = budgetRepo
-          .watchAll(month: now.month, year: now.year)
+          .watchAll(month: anchor.month, year: anchor.year)
           .map(
             (rows) => rows
                 .map((row) => BudgetDataMapper(row).toEntity())
@@ -496,10 +499,10 @@ final budgetPerformanceReportProvider =
                     categoryId: budgets[i].categoryId,
                     budgeted: budgets[i].exactAmount,
                     spent: spentValues[i],
-                    startsAt: DateTime(now.year, now.month),
-                    endsAt: now.month == 12
-                        ? DateTime(now.year + 1)
-                        : DateTime(now.year, now.month + 1),
+                    startsAt: DateTime(anchor.year, anchor.month),
+                    endsAt: anchor.month == 12
+                        ? DateTime(anchor.year + 1)
+                        : DateTime(anchor.year, anchor.month + 1),
                     isImported: false,
                     isReadOnly: false,
                     needsReview: false,
@@ -510,7 +513,7 @@ final budgetPerformanceReportProvider =
             });
           });
       final importedBudgetsStream = compositeBudgetRepo
-          .watchForPeriod(DateTime(now.year, now.month))
+          .watchForPeriod(anchor)
           .map((snapshots) => snapshots.map(compositeBudgetOverview).toList());
       final budgetsStream =
           Rx.combineLatest2<
@@ -538,9 +541,7 @@ final budgetPerformanceReportProvider =
           for (final currencyCode in currencyCodes)
             _buildBudgetPerformanceReport(
               currencyCode: currencyCode,
-              periodLabel: DateFormat.yMMMM().format(
-                DateTime(now.year, now.month),
-              ),
+              periodLabel: period.description,
               categoryById: categoryById,
               entries: entries,
             ),

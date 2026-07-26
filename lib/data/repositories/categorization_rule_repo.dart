@@ -45,6 +45,40 @@ class CategorizationRuleRepo {
     return query.watch();
   }
 
+  Future<CategorizationRuleData?> getById(String id) {
+    return (_db.select(_db.categorizationRules)
+          ..where((row) => row.id.equals(id))
+          ..limit(1))
+        .getSingleOrNull();
+  }
+
+  Future<void> update({
+    required String id,
+    required String matchTarget,
+    required String matchKind,
+    required String pattern,
+    required String categoryId,
+    int? priority,
+  }) async {
+    final normalized = normalize(pattern);
+    if (normalized.isEmpty) {
+      throw ArgumentError.value(pattern, 'pattern', 'must not be empty');
+    }
+    await (_db.update(
+      _db.categorizationRules,
+    )..where((row) => row.id.equals(id))).write(
+      CategorizationRulesCompanion(
+        matchTarget: Value(matchTarget),
+        matchKind: Value(matchKind),
+        pattern: Value(pattern.trim()),
+        normalizedPattern: Value(normalized),
+        categoryId: Value(categoryId),
+        priority: priority == null ? const Value.absent() : Value(priority),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
   Future<void> setActive(String id, bool active) {
     return (_db.update(
       _db.categorizationRules,
@@ -66,6 +100,24 @@ class CategorizationRuleRepo {
         updatedAt: Value(DateTime.now()),
       ),
     );
+  }
+
+  Future<void> restore(String id) {
+    return (_db.update(
+      _db.categorizationRules,
+    )..where((row) => row.id.equals(id))).write(
+      CategorizationRulesCompanion(
+        isArchived: const Value(false),
+        isActive: const Value(true),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  Future<void> delete(String id) async {
+    await (_db.delete(
+      _db.categorizationRules,
+    )..where((row) => row.id.equals(id))).go();
   }
 
   /// Returns one deterministic match. Exact rules always precede contains

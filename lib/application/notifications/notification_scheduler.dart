@@ -31,6 +31,7 @@ class ScheduledNotificationRecord {
     required this.scheduledAt,
     required this.title,
     required this.body,
+    this.deepLinkPath,
   });
 
   final String id;
@@ -39,6 +40,7 @@ class ScheduledNotificationRecord {
   final DateTime scheduledAt;
   final String title;
   final String body;
+  final String? deepLinkPath;
 }
 
 class NotificationScheduler {
@@ -183,6 +185,7 @@ class NotificationScheduler {
           path: notificationDeepLinkFor(
             notificationType: notification.notificationType,
             relatedEntityId: notification.relatedEntityId,
+            occurrencePath: notification.deepLinkPath,
           ),
         ).encode(),
       );
@@ -279,10 +282,22 @@ class NotificationScheduler {
               (row) =>
                   row.deletedAt.isNull() &
                   row.reminderEnabled.equals(true) &
-                  row.nextOccurrenceAt.isNotNull() &
-                  row.nextOccurrenceAt.isBiggerOrEqualValue(now),
+                  row.nextOccurrenceAt.isNotNull(),
             ))
             .get();
+    final occurrences =
+        await (_db.select(_db.recurringOccurrences)..where(
+              (row) =>
+                  (row.status.equals('due') | row.status.equals('unpaid')) &
+                  row.dueAt.isBiggerOrEqualValue(now),
+            ))
+            .get();
+    final occurrencesByTemplate = <String, List<RecurringOccurrenceData>>{};
+    for (final occurrence in occurrences) {
+      occurrencesByTemplate
+          .putIfAbsent(occurrence.recurringTemplateId, () => [])
+          .add(occurrence);
+    }
 
     final results = <ScheduledNotificationRecord>[];
 
@@ -298,20 +313,44 @@ class NotificationScheduler {
           ? 'Subscription: $payee ${_formatPeso(template.amount)}'
           : 'Pay $payee ${_formatPeso(template.amount)} — $account';
 
-      results.add(
-        ScheduledNotificationRecord(
-          id: _notificationRowId(
+      final templateOccurrences =
+          occurrencesByTemplate[template.id] ??
+          const <RecurringOccurrenceData>[];
+      if (templateOccurrences.isEmpty) {
+        if (template.nextOccurrenceAt!.isBefore(now)) continue;
+        results.add(
+          ScheduledNotificationRecord(
+            id: _notificationRowId(
+              notificationType: notificationType,
+              relatedEntityId: template.id,
+              scheduledAt: template.nextOccurrenceAt!,
+            ),
             notificationType: notificationType,
             relatedEntityId: template.id,
             scheduledAt: template.nextOccurrenceAt!,
+            title: 'Lootr Reminder',
+            body: body,
           ),
-          notificationType: notificationType,
-          relatedEntityId: template.id,
-          scheduledAt: template.nextOccurrenceAt!,
-          title: 'Lootr Reminder',
-          body: body,
-        ),
-      );
+        );
+        continue;
+      }
+      for (final occurrence in templateOccurrences) {
+        results.add(
+          ScheduledNotificationRecord(
+            id: _notificationRowId(
+              notificationType: notificationType,
+              relatedEntityId: occurrence.id,
+              scheduledAt: occurrence.dueAt,
+            ),
+            notificationType: notificationType,
+            relatedEntityId: occurrence.id,
+            scheduledAt: occurrence.dueAt,
+            title: 'Lootr Reminder',
+            body: body,
+            deepLinkPath: '/recurring/occurrence/${occurrence.id}',
+          ),
+        );
+      }
     }
 
     return results;

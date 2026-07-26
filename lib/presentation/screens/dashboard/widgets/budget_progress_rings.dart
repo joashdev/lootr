@@ -153,29 +153,38 @@ class _AnimatedProgressRingState extends State<_AnimatedProgressRing>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _animation,
-      builder: (context, _) {
-        return CustomPaint(
-          painter: _ProgressRingPainter(
-            progress: _animation.value,
-            color: widget.color,
-            trackColor: Theme.of(context).colorScheme.surfaceContainerLow,
-          ),
-          child: SizedBox(
-            width: 80,
-            height: 80,
-            child: Center(
-              child: buildCategoryVisual(
-                widget.iconName,
-                color: widget.color,
-                size: 28,
-                categoryName: widget.categoryName,
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final semanticValue = '${(widget.progress * 100).round()}% used';
+    return Semantics(
+      label: widget.categoryName == null
+          ? 'Budget progress'
+          : '${widget.categoryName} budget progress',
+      value: semanticValue,
+      child: AnimatedBuilder(
+        animation: reduceMotion ? const AlwaysStoppedAnimation(1) : _animation,
+        builder: (context, _) {
+          final progress = reduceMotion ? widget.progress : _animation.value;
+          return CustomPaint(
+            painter: _ProgressRingPainter(
+              progress: progress,
+              color: widget.color,
+              trackColor: Theme.of(context).colorScheme.surfaceContainerLow,
+            ),
+            child: SizedBox(
+              width: 80,
+              height: 80,
+              child: Center(
+                child: buildCategoryVisual(
+                  widget.iconName,
+                  color: widget.color,
+                  size: 28,
+                  categoryName: widget.categoryName,
+                ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }

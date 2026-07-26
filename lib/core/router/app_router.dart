@@ -13,6 +13,7 @@ import '../../presentation/screens/dashboard/dashboard_screen.dart';
 import '../../presentation/screens/more/account_detail_screen.dart';
 import '../../presentation/screens/more/accounts_screen.dart';
 import '../../presentation/screens/more/categories_screen.dart';
+import '../../presentation/screens/more/categorization_rules_screen.dart';
 import '../../presentation/screens/more/debt_detail_screen.dart';
 import '../../presentation/screens/more/debts_screen.dart';
 import '../../presentation/screens/more/goal_detail_screen.dart';
@@ -25,6 +26,7 @@ import '../../presentation/screens/more/more_screen.dart';
 import '../../presentation/screens/more/payee_detail_screen.dart';
 import '../../presentation/screens/more/payees_screen.dart';
 import '../../presentation/screens/more/recurring_detail_screen.dart';
+import '../../presentation/screens/more/recurring_occurrence_screen.dart';
 import '../../presentation/screens/more/recurring_screen.dart';
 import '../../presentation/screens/more/report_detail_screen.dart';
 import '../../presentation/screens/more/reports_screen.dart';
@@ -119,6 +121,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
+        path: '/recurring/occurrence/:occurrenceId',
+        redirect: (context, state) =>
+            '/more/recurring/occurrence/${state.pathParameters['occurrenceId']}',
+      ),
+      GoRoute(
         path: '/recurring/:templateId',
         redirect: (context, state) =>
             '/more/recurring/${state.pathParameters['templateId']}',
@@ -142,6 +149,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               startInQuickMode: args?.startInQuickMode ?? false,
               initialParsedTransaction: args?.initialParsedTransaction,
               initialQuickText: args?.initialQuickText,
+              entrySource: args?.entrySource,
+              sourceConfidence: args?.sourceConfidence,
+              sourceSummary: args?.sourceSummary,
+              recurringPayment: args?.recurringPayment,
             ),
             key: state.pageKey,
           );
@@ -280,6 +291,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     ),
                     routes: [
                       GoRoute(
+                        path: 'occurrence/:occurrenceId',
+                        pageBuilder: (context, state) => _pushPage(
+                          RecurringOccurrenceScreen(
+                            id: state.pathParameters['occurrenceId']!,
+                          ),
+                          key: state.pageKey,
+                        ),
+                      ),
+                      GoRoute(
                         path: ':id',
                         pageBuilder: (context, state) => _pushPage(
                           RecurringDetailScreen(
@@ -324,6 +344,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     path: 'categories',
                     pageBuilder: (context, state) =>
                         _pushPage(const CategoriesScreen(), key: state.pageKey),
+                    routes: [
+                      GoRoute(
+                        path: 'rules',
+                        pageBuilder: (context, state) => _pushPage(
+                          const CategorizationRulesScreen(),
+                          key: state.pageKey,
+                        ),
+                      ),
+                    ],
                   ),
                   GoRoute(
                     path: 'payees',

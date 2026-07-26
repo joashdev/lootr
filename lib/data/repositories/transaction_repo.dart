@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart' hide isNull;
 import 'package:rxdart/rxdart.dart';
 
+import '../../core/recurring/recurrence_date.dart';
 import '../database/app_database.dart';
 import '../../domain/value_objects/exact_money.dart';
 import 'exact_money_codec.dart';
@@ -47,6 +48,74 @@ class TransactionRepoFilters {
              (minAmountCoefficient == null && maxAmountCoefficient == null),
          'Exact amount bounds require an explicit currencyCode',
        );
+}
+
+enum TransactionBulkOperation { recategorize, moveAccount, delete }
+
+class TransactionBulkRequest {
+  const TransactionBulkRequest({
+    required this.transactionIds,
+    required this.operation,
+    this.targetId,
+  });
+
+  final Set<String> transactionIds;
+  final TransactionBulkOperation operation;
+  final String? targetId;
+}
+
+class TransactionBulkIssue {
+  const TransactionBulkIssue(this.transactionId, this.message);
+
+  final String transactionId;
+  final String message;
+}
+
+class TransactionBulkPlan {
+  const TransactionBulkPlan({
+    required this.request,
+    required this.transactionIds,
+    required this.issues,
+  });
+
+  final TransactionBulkRequest request;
+  final List<String> transactionIds;
+  final List<TransactionBulkIssue> issues;
+
+  bool get canApply => transactionIds.isNotEmpty && issues.isEmpty;
+}
+
+class TransactionBulkUndo {
+  const TransactionBulkUndo({
+    required this.transactionIds,
+    required this.rollback,
+  });
+
+  final List<String> transactionIds;
+  final Future<void> Function() rollback;
+}
+
+class TransactionBulkPreflightException implements Exception {
+  const TransactionBulkPreflightException(this.issues);
+
+  final List<TransactionBulkIssue> issues;
+
+  @override
+  String toString() => issues.map((issue) => issue.message).toSet().join('\n');
+}
+
+class _TransactionBulkSnapshot {
+  const _TransactionBulkSnapshot({
+    required this.id,
+    required this.accountId,
+    required this.categoryId,
+    required this.deletedAt,
+  });
+
+  final String id;
+  final String accountId;
+  final String? categoryId;
+  final DateTime? deletedAt;
 }
 
 class TransactionRepo {
@@ -144,99 +213,122 @@ class TransactionRepo {
 
   Future<String> create(TransactionsCompanion tx) async {
     if (!tx.id.present) throw ArgumentError('id is required for create');
-    final txId = tx.id.value;
+    return _db.transaction(() => _create(tx));
+  }
 
-    await _db.transaction(() async {
-      await _db.into(_db.transactions).insert(tx);
-
-      final row =
-          await (_db.select(_db.transactions)
-                ..where((t) => t.id.equals(txId))
-                ..limit(1))
-              .getSingle();
-
-      final account =
-          await (_db.select(_db.accounts)
-                ..where((a) => a.id.equals(row.accountId))
-                ..limit(1))
-              .getSingle();
-      final amount = ExactMoneyCodec.transactionAmount(row, account);
-      ExactMoneyCodec.requirePositive(amount, 'amount');
-      await _normalizeExactColumns(row.id, amount);
-      await _applyAccountImpact(
-        account,
-        _signedImpact(amount, row.transactionDirection),
-      );
-
-      if (row.recurringTemplateId != null) {
-        await _advanceNextOccurrence(row.recurringTemplateId!);
-      }
+  /// Resolves a free-typed payee and creates the ledger row in one database
+  /// transaction, so a failed transaction write cannot leave an orphan payee.
+  Future<String> createWithPayeeName(
+    TransactionsCompanion tx,
+    String payeeName,
+  ) {
+    if (!tx.id.present) throw ArgumentError('id is required for create');
+    return _db.transaction(() async {
+      final payeeId = await _resolvePayeeId(payeeName);
+      return _create(tx.copyWith(payeeId: Value(payeeId)));
     });
+  }
 
+  Future<String> _create(TransactionsCompanion tx) async {
+    final txId = tx.id.value;
+    await _db.into(_db.transactions).insert(tx);
+
+    final row =
+        await (_db.select(_db.transactions)
+              ..where((t) => t.id.equals(txId))
+              ..limit(1))
+            .getSingle();
+
+    final account =
+        await (_db.select(_db.accounts)
+              ..where((a) => a.id.equals(row.accountId))
+              ..limit(1))
+            .getSingle();
+    final amount = ExactMoneyCodec.transactionAmount(row, account);
+    ExactMoneyCodec.requirePositive(amount, 'amount');
+    await _normalizeExactColumns(row.id, amount);
+    await _applyAccountImpact(
+      account,
+      _signedImpact(amount, row.transactionDirection),
+    );
+
+    if (row.recurringTemplateId != null) {
+      await _advanceNextOccurrence(row.recurringTemplateId!);
+    }
     return txId;
   }
 
   Future<void> update(TransactionsCompanion tx) async {
     if (!tx.id.present) throw ArgumentError('id is required for update');
-    final id = tx.id.value;
+    await _db.transaction(() => _update(tx));
+  }
 
-    await _db.transaction(() async {
-      final old =
-          await (_db.select(_db.transactions)
-                ..where((t) => t.id.equals(id))
-                ..limit(1))
-              .getSingle();
-
-      final oldAccount =
-          await (_db.select(_db.accounts)
-                ..where((a) => a.id.equals(old.accountId))
-                ..limit(1))
-              .getSingle();
-      final oldAmount = ExactMoneyCodec.transactionAmount(old, oldAccount);
-      await _applyAccountImpact(
-        oldAccount,
-        -_signedImpact(oldAmount, old.transactionDirection),
-      );
-
-      await (_db.update(
-        _db.transactions,
-      )..where((t) => t.id.equals(id))).write(tx);
-
-      await (_db.update(_db.transactions)..where((t) => t.id.equals(id))).write(
-        TransactionsCompanion(
-          syncStatus: const Value('pending_sync'),
-          updatedAt: Value(DateTime.now()),
-        ),
-      );
-
-      final updated =
-          await (_db.select(_db.transactions)
-                ..where((t) => t.id.equals(id))
-                ..limit(1))
-              .getSingle();
-
-      final newAccount =
-          await (_db.select(_db.accounts)
-                ..where((a) => a.id.equals(updated.accountId))
-                ..limit(1))
-              .getSingle();
-      final preferLegacyProjection =
-          tx.amount.present &&
-          !tx.amountAtoms.present &&
-          !tx.amountScale.present &&
-          !tx.currencyCode.present;
-      final newAmount = ExactMoneyCodec.transactionAmount(
-        updated,
-        newAccount,
-        preferLegacyProjection: preferLegacyProjection,
-      );
-      ExactMoneyCodec.requirePositive(newAmount, 'amount');
-      await _normalizeExactColumns(updated.id, newAmount);
-      await _applyAccountImpact(
-        newAccount,
-        _signedImpact(newAmount, updated.transactionDirection),
-      );
+  /// Resolves a free-typed payee and updates the ledger row atomically.
+  Future<void> updateWithPayeeName(TransactionsCompanion tx, String payeeName) {
+    if (!tx.id.present) throw ArgumentError('id is required for update');
+    return _db.transaction(() async {
+      final payeeId = await _resolvePayeeId(payeeName);
+      await _update(tx.copyWith(payeeId: Value(payeeId)));
     });
+  }
+
+  Future<void> _update(TransactionsCompanion tx) async {
+    final id = tx.id.value;
+    final old =
+        await (_db.select(_db.transactions)
+              ..where((t) => t.id.equals(id))
+              ..limit(1))
+            .getSingle();
+
+    final oldAccount =
+        await (_db.select(_db.accounts)
+              ..where((a) => a.id.equals(old.accountId))
+              ..limit(1))
+            .getSingle();
+    final oldAmount = ExactMoneyCodec.transactionAmount(old, oldAccount);
+    await _applyAccountImpact(
+      oldAccount,
+      -_signedImpact(oldAmount, old.transactionDirection),
+    );
+
+    await (_db.update(
+      _db.transactions,
+    )..where((t) => t.id.equals(id))).write(tx);
+
+    await (_db.update(_db.transactions)..where((t) => t.id.equals(id))).write(
+      TransactionsCompanion(
+        syncStatus: const Value('pending_sync'),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+
+    final updated =
+        await (_db.select(_db.transactions)
+              ..where((t) => t.id.equals(id))
+              ..limit(1))
+            .getSingle();
+
+    final newAccount =
+        await (_db.select(_db.accounts)
+              ..where((a) => a.id.equals(updated.accountId))
+              ..limit(1))
+            .getSingle();
+    final preferLegacyProjection =
+        tx.amount.present &&
+        !tx.amountAtoms.present &&
+        !tx.amountScale.present &&
+        !tx.currencyCode.present;
+    final newAmount = ExactMoneyCodec.transactionAmount(
+      updated,
+      newAccount,
+      preferLegacyProjection: preferLegacyProjection,
+    );
+    ExactMoneyCodec.requirePositive(newAmount, 'amount');
+    await _normalizeExactColumns(updated.id, newAmount);
+    await _applyAccountImpact(
+      newAccount,
+      _signedImpact(newAmount, updated.transactionDirection),
+    );
   }
 
   Future<void> softDelete(String id) async {
@@ -305,6 +397,339 @@ class TransactionRepo {
     });
   }
 
+  Future<TransactionBulkPlan> preflightBulk(
+    TransactionBulkRequest request,
+  ) async {
+    final ids = request.transactionIds.toSet().toList()..sort();
+    final issues = <TransactionBulkIssue>[];
+    if (ids.isEmpty) {
+      issues.add(const TransactionBulkIssue('', 'Select at least one item.'));
+      return TransactionBulkPlan(
+        request: request,
+        transactionIds: ids,
+        issues: issues,
+      );
+    }
+
+    final rows = await (_db.select(
+      _db.transactions,
+    )..where((row) => row.id.isIn(ids) & row.deletedAt.isNull())).get();
+    final rowsById = {for (final row in rows) row.id: row};
+    for (final id in ids) {
+      if (!rowsById.containsKey(id)) {
+        issues.add(
+          TransactionBulkIssue(
+            id,
+            '“$id” is unavailable or is not a ledger transaction.',
+          ),
+        );
+      }
+    }
+
+    switch (request.operation) {
+      case TransactionBulkOperation.recategorize:
+        final targetId = request.targetId;
+        if (targetId == null) {
+          issues.add(
+            const TransactionBulkIssue('', 'Choose a target category.'),
+          );
+          break;
+        }
+        final category =
+            await (_db.select(_db.categories)
+                  ..where(
+                    (row) => row.id.equals(targetId) & row.deletedAt.isNull(),
+                  )
+                  ..limit(1))
+                .getSingleOrNull();
+        if (category == null || category.isArchived == true) {
+          issues.add(
+            const TransactionBulkIssue(
+              '',
+              'The target category is unavailable.',
+            ),
+          );
+          break;
+        }
+        for (final row in rows) {
+          final requiredGroup = row.transactionDirection == 'income'
+              ? 'income'
+              : 'expense';
+          if (category.categoryGroup != requiredGroup) {
+            issues.add(
+              TransactionBulkIssue(
+                row.id,
+                '“${row.id}” needs a $requiredGroup category.',
+              ),
+            );
+          }
+        }
+      case TransactionBulkOperation.moveAccount:
+        final targetId = request.targetId;
+        if (targetId == null) {
+          issues.add(
+            const TransactionBulkIssue('', 'Choose a target account.'),
+          );
+          break;
+        }
+        final target =
+            await (_db.select(_db.accounts)
+                  ..where(
+                    (row) => row.id.equals(targetId) & row.deletedAt.isNull(),
+                  )
+                  ..limit(1))
+                .getSingleOrNull();
+        if (target == null || target.isArchived) {
+          issues.add(
+            const TransactionBulkIssue(
+              '',
+              'The target account is unavailable.',
+            ),
+          );
+          break;
+        }
+        final sourceIds = rows.map((row) => row.accountId).toSet().toList();
+        final sources = sourceIds.isEmpty
+            ? const <AccountData>[]
+            : await (_db.select(
+                _db.accounts,
+              )..where((row) => row.id.isIn(sourceIds))).get();
+        final sourcesById = {for (final source in sources) source.id: source};
+        for (final row in rows) {
+          final source = sourcesById[row.accountId];
+          if (source == null) {
+            issues.add(
+              TransactionBulkIssue(row.id, 'Its current account is missing.'),
+            );
+            continue;
+          }
+          if (source.currencyCode != target.currencyCode) {
+            issues.add(
+              TransactionBulkIssue(
+                row.id,
+                'It uses ${source.currencyCode}; ${target.name} uses '
+                '${target.currencyCode}.',
+              ),
+            );
+            continue;
+          }
+          try {
+            ExactMoneyCodec.atAccountScale(
+              ExactMoneyCodec.transactionAmount(row, source),
+              target,
+            );
+          } on StateError {
+            issues.add(
+              TransactionBulkIssue(
+                row.id,
+                'Its amount cannot be represented by ${target.name}.',
+              ),
+            );
+          }
+        }
+      case TransactionBulkOperation.delete:
+        break;
+    }
+
+    return TransactionBulkPlan(
+      request: request,
+      transactionIds: ids,
+      issues: issues,
+    );
+  }
+
+  Future<TransactionBulkUndo> applyBulk(TransactionBulkPlan plan) async {
+    final verified = await preflightBulk(plan.request);
+    if (!verified.canApply) {
+      throw TransactionBulkPreflightException(verified.issues);
+    }
+
+    final snapshots = <_TransactionBulkSnapshot>[];
+    await _db.transaction(() async {
+      for (final id in verified.transactionIds) {
+        final row =
+            await (_db.select(_db.transactions)
+                  ..where(
+                    (item) => item.id.equals(id) & item.deletedAt.isNull(),
+                  )
+                  ..limit(1))
+                .getSingle();
+        snapshots.add(
+          _TransactionBulkSnapshot(
+            id: row.id,
+            accountId: row.accountId,
+            categoryId: row.categoryId,
+            deletedAt: row.deletedAt,
+          ),
+        );
+        await _applyBulkRow(row, verified.request);
+      }
+    });
+
+    return TransactionBulkUndo(
+      transactionIds: verified.transactionIds,
+      rollback: () => _rollbackBulk(snapshots, verified.request),
+    );
+  }
+
+  Future<void> _applyBulkRow(
+    TransactionData row,
+    TransactionBulkRequest request,
+  ) async {
+    final now = DateTime.now();
+    switch (request.operation) {
+      case TransactionBulkOperation.recategorize:
+        await (_db.update(
+          _db.transactions,
+        )..where((item) => item.id.equals(row.id))).write(
+          TransactionsCompanion(
+            categoryId: Value(request.targetId),
+            syncStatus: const Value('pending_sync'),
+            updatedAt: Value(now),
+          ),
+        );
+      case TransactionBulkOperation.moveAccount:
+        final oldAccount =
+            await (_db.select(_db.accounts)
+                  ..where((item) => item.id.equals(row.accountId))
+                  ..limit(1))
+                .getSingle();
+        final newAccount =
+            await (_db.select(_db.accounts)
+                  ..where((item) => item.id.equals(request.targetId!))
+                  ..limit(1))
+                .getSingle();
+        final amount = ExactMoneyCodec.transactionAmount(row, oldAccount);
+        await _applyAccountImpact(
+          oldAccount,
+          -_signedImpact(amount, row.transactionDirection),
+        );
+        final refreshedNewAccount =
+            await (_db.select(_db.accounts)
+                  ..where((item) => item.id.equals(newAccount.id))
+                  ..limit(1))
+                .getSingle();
+        await _applyAccountImpact(
+          refreshedNewAccount,
+          _signedImpact(amount, row.transactionDirection),
+        );
+        await (_db.update(
+          _db.transactions,
+        )..where((item) => item.id.equals(row.id))).write(
+          TransactionsCompanion(
+            accountId: Value(newAccount.id),
+            syncStatus: const Value('pending_sync'),
+            updatedAt: Value(now),
+          ),
+        );
+      case TransactionBulkOperation.delete:
+        final account =
+            await (_db.select(_db.accounts)
+                  ..where((item) => item.id.equals(row.accountId))
+                  ..limit(1))
+                .getSingle();
+        final amount = ExactMoneyCodec.transactionAmount(row, account);
+        await _applyAccountImpact(
+          account,
+          -_signedImpact(amount, row.transactionDirection),
+        );
+        await (_db.update(
+          _db.transactions,
+        )..where((item) => item.id.equals(row.id))).write(
+          TransactionsCompanion(
+            deletedAt: Value(now),
+            syncStatus: const Value('pending_sync'),
+            updatedAt: Value(now),
+          ),
+        );
+    }
+  }
+
+  Future<void> _rollbackBulk(
+    List<_TransactionBulkSnapshot> snapshots,
+    TransactionBulkRequest request,
+  ) async {
+    await _db.transaction(() async {
+      for (final snapshot in snapshots) {
+        final current =
+            await (_db.select(_db.transactions)
+                  ..where((row) => row.id.equals(snapshot.id))
+                  ..limit(1))
+                .getSingle();
+        final now = DateTime.now();
+        switch (request.operation) {
+          case TransactionBulkOperation.recategorize:
+            await (_db.update(
+              _db.transactions,
+            )..where((row) => row.id.equals(snapshot.id))).write(
+              TransactionsCompanion(
+                categoryId: Value(snapshot.categoryId),
+                syncStatus: const Value('pending_sync'),
+                updatedAt: Value(now),
+              ),
+            );
+          case TransactionBulkOperation.moveAccount:
+            final currentAccount =
+                await (_db.select(_db.accounts)
+                      ..where((row) => row.id.equals(current.accountId))
+                      ..limit(1))
+                    .getSingle();
+            final originalAccount =
+                await (_db.select(_db.accounts)
+                      ..where((row) => row.id.equals(snapshot.accountId))
+                      ..limit(1))
+                    .getSingle();
+            final amount = ExactMoneyCodec.transactionAmount(
+              current,
+              currentAccount,
+            );
+            await _applyAccountImpact(
+              currentAccount,
+              -_signedImpact(amount, current.transactionDirection),
+            );
+            final refreshedOriginal =
+                await (_db.select(_db.accounts)
+                      ..where((row) => row.id.equals(originalAccount.id))
+                      ..limit(1))
+                    .getSingle();
+            await _applyAccountImpact(
+              refreshedOriginal,
+              _signedImpact(amount, current.transactionDirection),
+            );
+            await (_db.update(
+              _db.transactions,
+            )..where((row) => row.id.equals(snapshot.id))).write(
+              TransactionsCompanion(
+                accountId: Value(snapshot.accountId),
+                syncStatus: const Value('pending_sync'),
+                updatedAt: Value(now),
+              ),
+            );
+          case TransactionBulkOperation.delete:
+            final account =
+                await (_db.select(_db.accounts)
+                      ..where((row) => row.id.equals(snapshot.accountId))
+                      ..limit(1))
+                    .getSingle();
+            final amount = ExactMoneyCodec.transactionAmount(current, account);
+            await _applyAccountImpact(
+              account,
+              _signedImpact(amount, current.transactionDirection),
+            );
+            await (_db.update(
+              _db.transactions,
+            )..where((row) => row.id.equals(snapshot.id))).write(
+              TransactionsCompanion(
+                deletedAt: Value(snapshot.deletedAt),
+                syncStatus: const Value('pending_sync'),
+                updatedAt: Value(now),
+              ),
+            );
+        }
+      }
+    });
+  }
+
   Future<void> _advanceNextOccurrence(String templateId) async {
     final template =
         await (_db.select(_db.recurringTemplates)
@@ -314,7 +739,7 @@ class TransactionRepo {
 
     if (template.nextOccurrenceAt == null) return;
 
-    final next = _computeNext(
+    final next = nextRecurrenceDate(
       template.nextOccurrenceAt!,
       template.recurrenceRule,
     );
@@ -329,30 +754,6 @@ class TransactionRepo {
         updatedAt: Value(DateTime.now()),
       ),
     );
-  }
-
-  DateTime? _computeNext(DateTime current, String rule) {
-    switch (rule) {
-      case 'daily':
-        return current.add(const Duration(days: 1));
-      case 'weekly':
-        return current.add(const Duration(days: 7));
-      case 'biweekly':
-        return current.add(const Duration(days: 14));
-      case 'monthly':
-        final y = current.month == 12 ? current.year + 1 : current.year;
-        final m = current.month == 12 ? 1 : current.month + 1;
-        final d = current.day > 28 ? 28 : current.day;
-        return DateTime(y, m, d);
-      case 'yearly':
-        return DateTime(
-          current.year + 1,
-          current.month,
-          current.day > 28 ? 28 : current.day,
-        );
-      default:
-        return null;
-    }
   }
 
   ExactMoney _signedImpact(ExactMoney amount, String direction) {
@@ -374,6 +775,40 @@ class TransactionRepo {
         currencyCode: Value(amount.currencyCode),
       ),
     );
+  }
+
+  Future<String> _resolvePayeeId(String name) async {
+    final displayName = name.trim();
+    final normalizedName = displayName.toLowerCase().replaceAll(
+      RegExp(r'\s+'),
+      ' ',
+    );
+    if (normalizedName.isEmpty) {
+      throw ArgumentError.value(name, 'payeeName', 'must not be empty');
+    }
+
+    final existing =
+        await (_db.select(_db.payees)
+              ..where(
+                (payee) =>
+                    payee.normalizedName.equals(normalizedName) &
+                    payee.deletedAt.isNull(),
+              )
+              ..limit(1))
+            .getSingleOrNull();
+    if (existing != null) return existing.id;
+
+    final id = 'pay-${DateTime.now().microsecondsSinceEpoch}';
+    await _db
+        .into(_db.payees)
+        .insert(
+          PayeesCompanion.insert(
+            id: id,
+            normalizedName: normalizedName,
+            displayName: Value(displayName),
+          ),
+        );
+    return id;
   }
 
   Future<void> _applyAccountImpact(

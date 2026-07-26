@@ -315,7 +315,6 @@ class _AccountTypeSelector extends ConsumerWidget {
               ),
             ),
         ],
-        icon: const Text('v', semanticsLabel: 'Choose account type'),
         onChanged: (value) {
           if (value == null) return;
           unawaited(

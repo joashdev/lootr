@@ -7,13 +7,17 @@ import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../application/providers/reports_provider.dart';
+import '../../../application/providers/period_context_provider.dart';
 import '../../../core/format/money_format.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/radius.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
+import '../../../domain/value_objects/ledger_query.dart';
+import '../../../domain/value_objects/period_context.dart';
 import '../../shared/components/cards/standard_card.dart';
 import '../../shared/components/empty_state.dart';
+import '../../shared/components/period_selector.dart';
 import '../../shared/components/progress/budget_progress_bar.dart';
 import '../../shared/components/progress/sparkline.dart';
 
@@ -46,22 +50,36 @@ class ReportDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(centerTitle: false, title: Text(_title)),
-      body: switch (type) {
-        'spending-category' => const _CategorySpendingReportBody(),
-        'income-vs-expenses' => const _MonthlyFlowReportBody(
-          mode: _FlowMode.incomeVsExpenses,
-        ),
-        'cash-flow' => const _MonthlyFlowReportBody(mode: _FlowMode.cashFlow),
-        'net-worth' => const _NetWorthReportBody(),
-        'budget-performance' => const _BudgetPerformanceReportBody(),
-        _ => EmptyState(
-          headline: 'Report not found',
-          subtext: 'This report type is not available.',
-          ctaLabel: 'Back to Reports',
-          onCtaPressed: () => context.pop(),
-          illustration: const Icon(LucideIcons.chartBarBig, size: 64),
-        ),
-      },
+      body: Column(
+        children: [
+          const Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: AppSpacing.pagePaddingMobile,
+            ),
+            child: PeriodSelector(),
+          ),
+          Expanded(
+            child: switch (type) {
+              'spending-category' => const _CategorySpendingReportBody(),
+              'income-vs-expenses' => const _MonthlyFlowReportBody(
+                mode: _FlowMode.incomeVsExpenses,
+              ),
+              'cash-flow' => const _MonthlyFlowReportBody(
+                mode: _FlowMode.cashFlow,
+              ),
+              'net-worth' => const _NetWorthReportBody(),
+              'budget-performance' => const _BudgetPerformanceReportBody(),
+              _ => EmptyState(
+                headline: 'Report not found',
+                subtext: 'This report type is not available.',
+                ctaLabel: 'Back to Reports',
+                onCtaPressed: () => context.pop(),
+                illustration: const Icon(LucideIcons.chartBarBig, size: 64),
+              ),
+            },
+          ),
+        ],
+      ),
     );
   }
 }
@@ -92,38 +110,64 @@ Widget _reportError(BuildContext context, Object error) => Center(
   ),
 );
 
+Future<void> _openLedger(
+  BuildContext context,
+  WidgetRef ref,
+  LedgerQuery query,
+) async {
+  ref.read(activeLedgerQueryProvider.notifier).open(query);
+  await context.push('/transactions');
+  if (ref.read(activeLedgerQueryProvider) == query) {
+    ref.read(activeLedgerQueryProvider.notifier).clear();
+  }
+}
+
 class _ReportSummaryStat extends StatelessWidget {
   const _ReportSummaryStat({
     required this.label,
     required this.value,
     this.valueColor,
+    this.onTap,
   });
 
   final String label;
   final String value;
   final Color? valueColor;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: AppTypography.caption.copyWith(
+            color: context.lootrColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: AppTypography.h3Mono.copyWith(
+            color: valueColor ?? Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+      ],
+    );
     return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: AppTypography.caption.copyWith(
-              color: context.lootrColors.textSecondary,
+      child: onTap == null
+          ? content
+          : InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: AppSpacing.space1,
+                ),
+                child: content,
+              ),
             ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            style: AppTypography.h3Mono.copyWith(
-              color: valueColor ?? Theme.of(context).colorScheme.onSurface,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -169,14 +213,15 @@ class _CategorySpendingReportBody extends ConsumerWidget {
   }
 }
 
-class _CategoryCurrencySection extends StatelessWidget {
+class _CategoryCurrencySection extends ConsumerWidget {
   const _CategoryCurrencySection({required this.data});
 
   final CategorySpendingReport data;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final lootrColors = context.lootrColors;
+    final period = ref.watch(periodContextProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -196,21 +241,35 @@ class _CategoryCurrencySection extends StatelessWidget {
                 child: CustomPaint(
                   painter: _DonutPainter(slices: data.slices),
                   child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Total spent',
-                          style: AppTypography.captionMedium.copyWith(
-                            color: lootrColors.textSecondary,
+                    child: InkWell(
+                      onTap: () => _openLedger(
+                        context,
+                        ref,
+                        LedgerQuery(
+                          explanation:
+                              'Expenses in ${period.description} · ${data.currencyCode}',
+                          period: period,
+                          directions: const ['expense'],
+                          currencyCode: data.currencyCode,
+                        ),
+                      ),
+                      borderRadius: BorderRadius.circular(AppRadius.full),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Total spent',
+                            style: AppTypography.captionMedium.copyWith(
+                              color: lootrColors.textSecondary,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          MoneyFormat.display(data.total, data.currencyCode),
-                          style: AppTypography.h2Mono,
-                        ),
-                      ],
+                          const SizedBox(height: 2),
+                          Text(
+                            MoneyFormat.display(data.total, data.currencyCode),
+                            style: AppTypography.h2Mono,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -219,42 +278,68 @@ class _CategoryCurrencySection extends StatelessWidget {
               for (final slice in data.slices)
                 Padding(
                   padding: const EdgeInsets.only(bottom: AppSpacing.space2),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          color: slice.color,
-                          borderRadius: BorderRadius.circular(AppRadius.full),
-                        ),
+                  child: InkWell(
+                    onTap: () => _openLedger(
+                      context,
+                      ref,
+                      LedgerQuery(
+                        explanation:
+                            '${slice.name} expenses in ${period.description} · ${data.currencyCode}',
+                        period: period,
+                        directions: const ['expense'],
+                        categoryIds: slice.categoryId == null
+                            ? const []
+                            : [slice.categoryId!],
+                        currencyCode: data.currencyCode,
+                        uncategorizedOnly: slice.categoryId == null,
                       ),
-                      const SizedBox(width: AppSpacing.space2),
-                      Expanded(
-                        child: Text(
-                          slice.name,
-                          style: AppTypography.bodyMedium,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Text(
-                        MoneyFormat.display(slice.amount, data.currencyCode),
-                        style: AppTypography.mono,
-                      ),
-                      const SizedBox(width: AppSpacing.space2),
-                      SizedBox(
-                        width: 40,
-                        child: Text(
-                          '${(slice.percentage * 100).round()}%',
-                          textAlign: TextAlign.right,
-                          style: AppTypography.mono.copyWith(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w400,
-                            color: lootrColors.textSecondary,
+                    ),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(minHeight: 48),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 12,
+                            height: 12,
+                            decoration: BoxDecoration(
+                              color: slice.color,
+                              borderRadius: BorderRadius.circular(
+                                AppRadius.full,
+                              ),
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: AppSpacing.space2),
+                          Expanded(
+                            child: Text(
+                              slice.name,
+                              style: AppTypography.bodyMedium,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Text(
+                            MoneyFormat.display(
+                              slice.amount,
+                              data.currencyCode,
+                            ),
+                            style: AppTypography.mono,
+                          ),
+                          const SizedBox(width: AppSpacing.space2),
+                          SizedBox(
+                            width: 40,
+                            child: Text(
+                              '${(slice.percentage * 100).round()}%',
+                              textAlign: TextAlign.right,
+                              style: AppTypography.mono.copyWith(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w400,
+                                color: lootrColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
             ],
@@ -351,7 +436,7 @@ class _MonthlyFlowReportBody extends ConsumerWidget {
   }
 }
 
-class _MonthlyFlowCurrencySection extends StatelessWidget {
+class _MonthlyFlowCurrencySection extends ConsumerWidget {
   const _MonthlyFlowCurrencySection({required this.data, required this.mode});
 
   final MonthlyFlowReport data;
@@ -366,8 +451,27 @@ class _MonthlyFlowCurrencySection extends StatelessWidget {
       data.months.fold<double>(0, (max, m) => math.max(max, m.net.abs()));
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final lootrColors = context.lootrColors;
+    final sixMonthPeriod = PeriodContext.customCycle(
+      id: 'report-six-months',
+      name: 'Last 6 months',
+      startsAt: DateTime(data.months.first.year, data.months.first.month),
+      endsAt: DateTime(data.months.last.year, data.months.last.month + 1),
+    );
+    void open(List<String> directions, String label, PeriodContext period) {
+      _openLedger(
+        context,
+        ref,
+        LedgerQuery(
+          explanation: '$label · ${period.description} · ${data.currencyCode}',
+          period: period,
+          directions: directions,
+          currencyCode: data.currencyCode,
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -385,6 +489,7 @@ class _MonthlyFlowCurrencySection extends StatelessWidget {
                 label: 'Income',
                 value: MoneyFormat.display(data.totalIncome, data.currencyCode),
                 valueColor: lootrColors.income,
+                onTap: () => open(const ['income'], 'Income', sixMonthPeriod),
               ),
               _ReportSummaryStat(
                 label: 'Expenses',
@@ -393,6 +498,8 @@ class _MonthlyFlowCurrencySection extends StatelessWidget {
                   data.currencyCode,
                 ),
                 valueColor: lootrColors.expense,
+                onTap: () =>
+                    open(const ['expense'], 'Expenses', sixMonthPeriod),
               ),
               _ReportSummaryStat(
                 label: 'Net',
@@ -400,6 +507,11 @@ class _MonthlyFlowCurrencySection extends StatelessWidget {
                 valueColor: data.totalNet >= 0
                     ? lootrColors.success
                     : lootrColors.danger,
+                onTap: () => open(
+                  const ['income', 'expense'],
+                  'Income and expenses',
+                  sixMonthPeriod,
+                ),
               ),
             ],
           ),
@@ -417,11 +529,32 @@ class _MonthlyFlowCurrencySection extends StatelessWidget {
                           point: month,
                           maxValue: _maxFlowValue,
                           currencyCode: data.currencyCode,
+                          onIncomeTap: () => open(
+                            const ['income'],
+                            'Income',
+                            PeriodContext.calendarMonth(
+                              DateTime(month.year, month.month),
+                            ),
+                          ),
+                          onExpenseTap: () => open(
+                            const ['expense'],
+                            'Expenses',
+                            PeriodContext.calendarMonth(
+                              DateTime(month.year, month.month),
+                            ),
+                          ),
                         )
                       : _CashFlowMonthRow(
                           point: month,
                           maxAbsNet: _maxAbsNet,
                           currencyCode: data.currencyCode,
+                          onTap: () => open(
+                            const ['income', 'expense'],
+                            'Cash flow',
+                            PeriodContext.calendarMonth(
+                              DateTime(month.year, month.month),
+                            ),
+                          ),
                         ),
                 ),
             ],
@@ -437,11 +570,15 @@ class _IncomeExpenseMonthRow extends StatelessWidget {
     required this.point,
     required this.maxValue,
     required this.currencyCode,
+    required this.onIncomeTap,
+    required this.onExpenseTap,
   });
 
   final MonthlyFlowPoint point;
   final double maxValue;
   final String currencyCode;
+  final VoidCallback onIncomeTap;
+  final VoidCallback onExpenseTap;
 
   @override
   Widget build(BuildContext context) {
@@ -462,6 +599,7 @@ class _IncomeExpenseMonthRow extends StatelessWidget {
           maxValue: maxValue,
           color: lootrColors.income,
           label: MoneyFormat.display(point.income, currencyCode),
+          onTap: onIncomeTap,
         ),
         const SizedBox(height: AppSpacing.space1),
         _FlowBar(
@@ -469,6 +607,7 @@ class _IncomeExpenseMonthRow extends StatelessWidget {
           maxValue: maxValue,
           color: lootrColors.expense,
           label: MoneyFormat.display(point.expense, currencyCode),
+          onTap: onExpenseTap,
         ),
       ],
     );
@@ -480,11 +619,13 @@ class _CashFlowMonthRow extends StatelessWidget {
     required this.point,
     required this.maxAbsNet,
     required this.currencyCode,
+    required this.onTap,
   });
 
   final MonthlyFlowPoint point;
   final double maxAbsNet;
   final String currencyCode;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -518,6 +659,7 @@ class _CashFlowMonthRow extends StatelessWidget {
           value: point.net.abs(),
           maxValue: maxAbsNet,
           color: positive ? lootrColors.success : lootrColors.danger,
+          onTap: onTap,
         ),
       ],
     );
@@ -530,12 +672,14 @@ class _FlowBar extends StatelessWidget {
     required this.maxValue,
     required this.color,
     this.label,
+    this.onTap,
   });
 
   final double value;
   final double maxValue;
   final Color color;
   final String? label;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -563,21 +707,37 @@ class _FlowBar extends StatelessWidget {
       ),
     );
 
-    if (label == null) return bar;
-
-    return Row(
-      children: [
-        Expanded(child: bar),
-        const SizedBox(width: AppSpacing.space2),
-        SizedBox(
-          width: 88,
-          child: Text(
-            label!,
-            textAlign: TextAlign.right,
-            style: AppTypography.mono.copyWith(fontSize: 13, color: color),
-          ),
+    final content = label == null
+        ? bar
+        : Row(
+            children: [
+              Expanded(child: bar),
+              const SizedBox(width: AppSpacing.space2),
+              SizedBox(
+                width: 88,
+                child: Text(
+                  label!,
+                  textAlign: TextAlign.right,
+                  style: AppTypography.mono.copyWith(
+                    fontSize: 13,
+                    color: color,
+                  ),
+                ),
+              ),
+            ],
+          );
+    if (onTap == null) return content;
+    return Semantics(
+      button: true,
+      label: label == null ? 'Open transactions' : '$label. Open transactions',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 48),
+          child: content,
         ),
-      ],
+      ),
     );
   }
 }

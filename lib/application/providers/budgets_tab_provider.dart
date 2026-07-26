@@ -4,7 +4,9 @@ import '../../core/extensions/async_value_x.dart';
 import '../../data/repositories/composite_budget_repo.dart';
 import '../../domain/entities/mappers.dart';
 import '../../domain/value_objects/exact_money.dart';
+import '../../domain/value_objects/period_context.dart';
 import 'budget_projection.dart';
+import 'period_context_provider.dart';
 import 'repo_providers.dart';
 
 bool isPastBudgetPeriod(int month, int year) {
@@ -12,34 +14,20 @@ bool isPastBudgetPeriod(int month, int year) {
   return year < now.year || (year == now.year && month < now.month);
 }
 
-class BudgetMonthNotifier extends Notifier<int> {
-  @override
-  int build() => DateTime.now().month;
-
-  void goTo(int month) => state = month;
-}
-
-class BudgetYearNotifier extends Notifier<int> {
-  @override
-  int build() => DateTime.now().year;
-
-  void goTo(int year) => state = year;
-}
-
-final budgetMonthProvider = NotifierProvider<BudgetMonthNotifier, int>(
-  BudgetMonthNotifier.new,
-);
-
-final budgetYearProvider = NotifierProvider<BudgetYearNotifier, int>(
-  BudgetYearNotifier.new,
-);
-
 final budgetsTabProvider = StreamProvider<List<BudgetOverview>>((ref) {
   final budgetRepo = ref.watch(budgetRepoProvider);
   final compositeBudgetRepo = ref.watch(compositeBudgetRepoProvider);
-  final month = ref.watch(budgetMonthProvider);
-  final year = ref.watch(budgetYearProvider);
-  final anchor = DateTime(year, month, 1);
+  final period = ref.watch(periodContextProvider);
+  final month = period.startsAt.month;
+  final year = period.startsAt.year;
+  final anchor = period.kind == PeriodContextKind.calendarMonth
+      ? period.startsAt
+      : period.startsAt.add(
+          Duration(
+            microseconds:
+                period.endsAt.difference(period.startsAt).inMicroseconds ~/ 2,
+          ),
+        );
 
   final legacyStream = budgetRepo.watchAll(month: month, year: year).switchMap((
     rows,
@@ -132,8 +120,9 @@ BudgetOverview compositeBudgetOverview(CompositeBudgetSnapshot snapshot) {
     spent: evaluation.trackedTotal,
     startsAt: evaluation.period.startsAt,
     endsAt: evaluation.period.endsAt,
-    isImported: true,
-    isReadOnly: true,
+    isImported: definition.isReadOnly,
+    isReadOnly: definition.isReadOnly,
+    isComposite: true,
     needsReview: needsReview,
     missingReferenceCount: snapshot.review.missingReferenceCount,
   );

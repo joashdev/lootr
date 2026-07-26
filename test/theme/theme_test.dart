@@ -36,8 +36,10 @@ void main() {
     });
 
     test('light and dark schemes differ', () {
-      final lightExt = AppTheme.light.extensions[LootrColorScheme]! as LootrColorScheme;
-      final darkExt = AppTheme.dark.extensions[LootrColorScheme]! as LootrColorScheme;
+      final lightExt =
+          AppTheme.light.extensions[LootrColorScheme]! as LootrColorScheme;
+      final darkExt =
+          AppTheme.dark.extensions[LootrColorScheme]! as LootrColorScheme;
       expect(lightExt.expense, isNot(darkExt.expense));
       expect(lightExt.income, isNot(darkExt.income));
       expect(lightExt.transfer, isNot(darkExt.transfer));
@@ -170,6 +172,25 @@ void main() {
       expect(LootrColorScheme.dark.income, AppColors.darkIncome);
       expect(LootrColorScheme.dark.transfer, AppColors.darkTransfer);
     });
+
+    test('small semantic and muted text colors meet WCAG AA', () {
+      expect(
+        _contrast(AppColors.expense, AppColors.lightSurface),
+        greaterThanOrEqualTo(4.5),
+      );
+      expect(
+        _contrast(AppColors.income, AppColors.lightSurface),
+        greaterThanOrEqualTo(4.5),
+      );
+      expect(
+        _contrast(AppColors.lightTextTertiary, AppColors.lightSurface),
+        greaterThanOrEqualTo(4.5),
+      );
+      expect(
+        _contrast(AppColors.darkTextTertiary, AppColors.darkSurface),
+        greaterThanOrEqualTo(4.5),
+      );
+    });
   });
 
   group('Animation tokens', () {
@@ -182,4 +203,13 @@ void main() {
       expect(AppTheme.buttonPressDuration, const Duration(milliseconds: 100));
     });
   });
+}
+
+double _contrast(Color foreground, Color background) {
+  final lighter = foreground.computeLuminance() > background.computeLuminance()
+      ? foreground
+      : background;
+  final darker = lighter == foreground ? background : foreground;
+  return (lighter.computeLuminance() + 0.05) /
+      (darker.computeLuminance() + 0.05);
 }

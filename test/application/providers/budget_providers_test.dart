@@ -8,6 +8,7 @@ import 'package:lootr/application/providers/budget_detail_provider.dart';
 import 'package:lootr/application/providers/budgets_tab_provider.dart';
 import 'package:lootr/application/providers/database_provider.dart';
 import 'package:lootr/application/providers/imported_budget_detail_provider.dart';
+import 'package:lootr/application/providers/period_context_provider.dart';
 import 'package:lootr/data/database/app_database.dart';
 
 Future<T> readAsyncValue<T>(
@@ -152,8 +153,9 @@ void main() {
         );
         addTearDown(container.dispose);
 
-        container.read(budgetMonthProvider.notifier).goTo(6);
-        container.read(budgetYearProvider.notifier).goTo(2026);
+        container
+            .read(periodContextProvider.notifier)
+            .selectMonth(DateTime(2026, 6));
 
         final budgets = await readAsyncValue(container, budgetsTabProvider);
         expect(budgets.map((b) => b.id), ['bud-food-jun', 'bud-transport-jun']);
@@ -340,6 +342,7 @@ void main() {
             amountScale: 4,
             currencyCode: 'USD',
             membershipMode: const Value('explicit_only'),
+            isReadOnly: const Value(true),
           ),
         );
         await db.transactions.insertOne(
@@ -375,8 +378,9 @@ void main() {
           overrides: [databaseProvider.overrideWith((ref) => db)],
         );
         addTearDown(container.dispose);
-        container.read(budgetMonthProvider.notifier).goTo(6);
-        container.read(budgetYearProvider.notifier).goTo(2026);
+        container
+            .read(periodContextProvider.notifier)
+            .selectMonth(DateTime(2026, 6));
 
         final budgets = await readAsyncValue(container, budgetsTabProvider);
         final imported = budgets.singleWhere(
@@ -404,7 +408,7 @@ void main() {
         expect(detail!.transactions.single.transaction.id, 'txn-explicit');
         expect(
           detail.transactions.single.inclusionReason,
-          'Explicitly attached',
+          'Included because this transaction is explicitly attached.',
         );
       },
     );

@@ -68,12 +68,13 @@ class _BudgetProgressBarState extends State<BudgetProgressBar>
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
 
     return Semantics(
       label: widget.semanticLabel,
       value: '${(widget.progress * 100).round()}%',
       child: AnimatedBuilder(
-        animation: _animation,
+        animation: reduceMotion ? const AlwaysStoppedAnimation(1) : _animation,
         builder: (context, child) {
           return ClipRRect(
             borderRadius: BorderRadius.circular(AppRadius.full),
@@ -83,7 +84,9 @@ class _BudgetProgressBarState extends State<BudgetProgressBar>
                 children: [
                   Container(color: colorScheme.surfaceContainerLow),
                   FractionallySizedBox(
-                    widthFactor: _animation.value.clamp(0.0, 1.0),
+                    widthFactor:
+                        (reduceMotion ? widget.progress : _animation.value)
+                            .clamp(0.0, 1.0),
                     child: Container(
                       decoration: BoxDecoration(
                         color: _fillColor(context),

@@ -1,21 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../application/providers/dashboard_provider.dart';
+import '../../../../application/providers/period_context_provider.dart';
 import '../../../../core/format/money_format.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/radius.dart';
 import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/typography.dart';
 import '../../../../domain/use_cases/calculate_safe_to_spend.dart';
+import '../../../../domain/value_objects/ledger_query.dart';
+import '../../../../domain/value_objects/period_context.dart';
 import '../../../shared/components/cards/cards.dart';
 
-class SafeToSpendHero extends StatelessWidget {
+class SafeToSpendHero extends ConsumerWidget {
   const SafeToSpendHero({super.key, required this.data});
 
   final DashboardData data;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final result = data.safeToSpend;
     final lootrColors = context.lootrColors;
     final colorScheme = Theme.of(context).colorScheme;
@@ -23,9 +29,7 @@ class SafeToSpendHero extends StatelessWidget {
     final baseline = result.basis == SafeToSpendBasis.monthlyIncome
         ? result.monthlyIncome
         : result.liquidBalance;
-    final remainingShare = baseline <= 0
-        ? 0.0
-        : result.amount / baseline;
+    final remainingShare = baseline <= 0 ? 0.0 : result.amount / baseline;
     final clampedShare = remainingShare.clamp(0.0, 1.0).toDouble();
     final semanticColor = result.isOverCommitted
         ? lootrColors.danger
@@ -37,7 +41,7 @@ class SafeToSpendHero extends StatelessWidget {
 
     return InkWell(
       borderRadius: BorderRadius.circular(AppRadius.lg),
-      onTap: () => _showBreakdown(context, result),
+      onTap: () => _showBreakdown(context, ref, result),
       child: HeroCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -146,7 +150,11 @@ class SafeToSpendHero extends StatelessWidget {
         'upcoming commitments.';
   }
 
-  void _showBreakdown(BuildContext context, SafeToSpendResult result) {
+  void _showBreakdown(
+    BuildContext context,
+    WidgetRef ref,
+    SafeToSpendResult result,
+  ) {
     final currency = data.currencyCode;
     showModalBottomSheet<void>(
       context: context,
@@ -168,25 +176,70 @@ class SafeToSpendHero extends StatelessWidget {
                 _BreakdownRow(
                   label: 'Income this month',
                   value: MoneyFormat.exact(result.monthlyIncome, currency),
+                  onTap: () async {
+                    Navigator.of(context, rootNavigator: true).pop();
+                    await _openLedger(
+                      context,
+                      ref,
+                      directions: const ['income'],
+                      explanation: 'Income this month · $currency',
+                    );
+                  },
                 ),
                 _BreakdownRow(
                   label: 'Spent this month',
                   value: MoneyFormat.exact(result.spentThisMonth, currency),
+                  onTap: () async {
+                    Navigator.of(context, rootNavigator: true).pop();
+                    await _openLedger(
+                      context,
+                      ref,
+                      directions: const ['expense'],
+                      explanation: 'Expenses this month · $currency',
+                    );
+                  },
                 ),
               ] else
                 _BreakdownRow(
                   label: 'Liquid account balances',
                   value: MoneyFormat.exact(result.liquidBalance, currency),
+                  onTap: () {
+                    Navigator.of(context, rootNavigator: true).pop();
+                    context.push('/more/accounts');
+                  },
                 ),
               _BreakdownRow(
                 label: 'Committed before month end',
                 value: MoneyFormat.exact(result.committedOutflows, currency),
+                onTap: () {
+                  Navigator.of(context, rootNavigator: true).pop();
+                  context.push('/recurring');
+                },
               ),
             ],
           ),
         );
       },
     );
+  }
+
+  Future<void> _openLedger(
+    BuildContext context,
+    WidgetRef ref, {
+    required List<String> directions,
+    required String explanation,
+  }) async {
+    final query = LedgerQuery(
+      explanation: explanation,
+      period: PeriodContext.calendarMonth(data.currentDate),
+      directions: directions,
+      currencyCode: data.currencyCode,
+    );
+    ref.read(activeLedgerQueryProvider.notifier).open(query);
+    await context.push('/transactions');
+    if (ref.read(activeLedgerQueryProvider) == query) {
+      ref.read(activeLedgerQueryProvider.notifier).clear();
+    }
   }
 
   String _statusLabel(SafeToSpendResult result, double remainingShare) {
@@ -229,15 +282,16 @@ class _HeroStatusPill extends StatelessWidget {
 }
 
 class _BreakdownRow extends StatelessWidget {
-  const _BreakdownRow({required this.label, required this.value});
+  const _BreakdownRow({required this.label, required this.value, this.onTap});
 
   final String label;
   final String value;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final lootrColors = context.lootrColors;
-    return Padding(
+    final row = Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.space3),
       child: Row(
         children: [
@@ -250,8 +304,22 @@ class _BreakdownRow extends StatelessWidget {
             ),
           ),
           Text(value, style: AppTypography.bodyMedium),
+          if (onTap != null) ...[
+            const SizedBox(width: AppSpacing.space1),
+            Icon(
+              LucideIcons.chevronRight,
+              size: 16,
+              color: lootrColors.textSecondary,
+            ),
+          ],
         ],
       ),
+    );
+    if (onTap == null) return row;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.sm),
+      child: row,
     );
   }
 }

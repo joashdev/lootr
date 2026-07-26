@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart' hide isNull;
 
+import '../../core/recurring/recurrence_date.dart';
 import '../../domain/value_objects/exact_money.dart';
 import '../database/app_database.dart';
 import 'exact_money_codec.dart';
@@ -78,7 +79,7 @@ class RecurringRepo {
 
       if (template.nextOccurrenceAt == null) return;
 
-      final next = _computeNext(
+      final next = nextRecurrenceDate(
         template.nextOccurrenceAt!,
         template.recurrenceRule,
       );
@@ -106,30 +107,6 @@ class RecurringRepo {
         updatedAt: Value(DateTime.now()),
       ),
     );
-  }
-
-  DateTime? _computeNext(DateTime current, String rule) {
-    switch (rule) {
-      case 'daily':
-        return current.add(const Duration(days: 1));
-      case 'weekly':
-        return current.add(const Duration(days: 7));
-      case 'biweekly':
-        return current.add(const Duration(days: 14));
-      case 'monthly':
-        final y = current.month == 12 ? current.year + 1 : current.year;
-        final m = current.month == 12 ? 1 : current.month + 1;
-        final d = current.day > 28 ? 28 : current.day;
-        return DateTime(y, m, d);
-      case 'yearly':
-        return DateTime(
-          current.year + 1,
-          current.month,
-          current.day > 28 ? 28 : current.day,
-        );
-      default:
-        return null;
-    }
   }
 
   Future<void> _normalizeExactAmount(

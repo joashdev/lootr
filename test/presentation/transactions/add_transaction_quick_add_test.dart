@@ -5,11 +5,13 @@ import 'package:lootr/application/providers/accounts_provider.dart';
 import 'package:lootr/application/providers/categories_provider.dart';
 import 'package:lootr/application/providers/debts_provider.dart';
 import 'package:lootr/application/providers/filtered_transactions_provider.dart';
+import 'package:lootr/application/providers/goals_provider.dart';
 import 'package:lootr/application/providers/payees_provider.dart';
 import 'package:lootr/core/theme/theme.dart';
 import 'package:lootr/domain/entities/account.dart';
 import 'package:lootr/domain/entities/category.dart';
 import 'package:lootr/domain/entities/debt_record.dart';
+import 'package:lootr/domain/entities/goal.dart';
 import 'package:lootr/domain/entities/payee.dart';
 import 'package:lootr/domain/entities/transaction.dart';
 import 'package:lootr/presentation/sheets/add_transaction_sheet.dart';
@@ -27,6 +29,7 @@ Widget _wrap(
       categoriesProvider.overrideWith((ref) => Stream.value(categories)),
       payeesProvider.overrideWith((ref) => Stream.value(payees)),
       debtsProvider.overrideWith((ref) => Stream.value(const <DebtRecord>[])),
+      goalsProvider.overrideWith((ref) => Stream.value(const <Goal>[])),
       filteredTransactionsProvider.overrideWith(
         (ref) => Stream.value(const <Transaction>[]),
       ),

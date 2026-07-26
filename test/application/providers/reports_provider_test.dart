@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:lootr/application/providers/database_provider.dart';
+import 'package:lootr/application/providers/period_context_provider.dart';
 import 'package:lootr/application/providers/reports_provider.dart';
 import 'package:lootr/data/database/app_database.dart';
 
@@ -43,6 +44,7 @@ void main() {
       overrides: [
         databaseProvider.overrideWith((ref) => db),
         reportsClockProvider.overrideWithValue(now),
+        periodContextClockProvider.overrideWithValue(now),
       ],
     );
     addTearDown(container.dispose);
@@ -464,6 +466,31 @@ void main() {
       expect(reports.map((report) => report.currencyCode), ['BTC', 'PHP']);
       expect(reports.first.current, 0.000000000001);
       expect(reports.last.current, 1000);
+    });
+
+    test('reverses transactions after a historical report endpoint', () async {
+      await (db.update(db.accounts)..where((row) => row.id.equals('acc-cash')))
+          .write(const AccountsCompanion(balance: Value(900)));
+      await insertTxn(
+        id: 'txn-after-period',
+        amount: 100,
+        direction: 'expense',
+        occurredAt: DateTime(2026, 6, 10),
+        categoryId: 'cat-food',
+      );
+
+      final container = makeContainer();
+      container
+          .read(periodContextProvider.notifier)
+          .selectMonth(DateTime(2026, 5));
+      final reports = await readAsyncValue<List<NetWorthReport>>(
+        container,
+        netWorthReportProvider,
+      );
+
+      expect(reports.single.current, 1000);
+      expect(reports.single.series.last, 1000);
+      expect(reports.single.endDate, DateTime(2026, 5, 31));
     });
   });
 

@@ -10,7 +10,10 @@ class AddTransaction {
 
   AddTransaction(this._transactionRepo, this._accountRepo);
 
-  Future<Result<String>> call(Transaction transaction) async {
+  Future<Result<String>> call(
+    Transaction transaction, {
+    String? freeTypedPayeeName,
+  }) async {
     if (transaction.exactAmount.coefficient <= BigInt.zero) {
       return Failure(
         'Amount must be greater than zero',
@@ -51,7 +54,13 @@ class AddTransaction {
     }
 
     try {
-      final id = await _transactionRepo.create(transaction.toCompanion());
+      final payeeName = freeTypedPayeeName?.trim();
+      final id = payeeName == null || payeeName.isEmpty
+          ? await _transactionRepo.create(transaction.toCompanion())
+          : await _transactionRepo.createWithPayeeName(
+              transaction.toCompanion(),
+              payeeName,
+            );
       return Success(id);
     } catch (e) {
       return Failure('Failed to add transaction: $e', code: 'create_error');

@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../application/providers/accounts_provider.dart';
 import '../../../application/providers/categories_provider.dart';
+import '../../../application/providers/budget_projection.dart';
 import '../../../application/providers/imported_budget_detail_provider.dart';
 import '../../../application/providers/payees_provider.dart';
 import '../../../core/extensions/async_value_x.dart';
@@ -16,6 +17,7 @@ import '../../../domain/entities/account.dart';
 import '../../../domain/value_objects/exact_money.dart';
 import '../../shared/components/progress/budget_progress_bar.dart';
 import '../transactions/widgets/transaction_row.dart';
+import '../../sheets/composite_budget_sheet.dart';
 
 class ImportedBudgetDetailScreen extends ConsumerWidget {
   const ImportedBudgetDetailScreen({
@@ -55,7 +57,7 @@ class ImportedBudgetDetailScreen extends ConsumerWidget {
     };
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Imported budget')),
+      appBar: AppBar(title: const Text('Composite budget')),
       body: detail.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => const Center(child: Text('Could not load budget')),
@@ -78,10 +80,98 @@ class ImportedBudgetDetailScreen extends ConsumerWidget {
               Text(budget.name, style: AppTypography.h2),
               const SizedBox(height: AppSpacing.space1),
               Text(
-                '${budget.currencyCode} · Read-only imported definition',
+                budget.isReadOnly
+                    ? '${budget.currencyCode} · Read-only imported definition'
+                    : '${budget.currencyCode} · Editable composite definition',
                 style: TextStyle(color: lootrColors.textSecondary),
               ),
+              if (!budget.isReadOnly) ...[
+                const SizedBox(height: AppSpacing.space2),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed: () => showModalBottomSheet<void>(
+                      context: context,
+                      useRootNavigator: true,
+                      isScrollControlled: true,
+                      backgroundColor: Theme.of(context).colorScheme.surface,
+                      builder: (_) => CompositeBudgetSheet(budgetId: id),
+                    ),
+                    icon: const Icon(LucideIcons.pencil, size: 18),
+                    label: const Text('Edit scope and period'),
+                  ),
+                ),
+              ],
               const SizedBox(height: AppSpacing.space3),
+              Text('Scope and membership', style: AppTypography.h3),
+              const SizedBox(height: AppSpacing.space2),
+              _ScopePanel(scope: data.compositeScope!),
+              if (data.unresolvedMembers.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.space4),
+                Text('Unresolved imported members', style: AppTypography.h3),
+                const SizedBox(height: AppSpacing.space1),
+                Text(
+                  'These source relationships are preserved individually and '
+                  'are not silently replaced.',
+                  style: TextStyle(color: lootrColors.textSecondary),
+                ),
+                const SizedBox(height: AppSpacing.space2),
+                _Panel(
+                  child: Column(
+                    children: [
+                      for (final member in data.unresolvedMembers)
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(LucideIcons.circleAlert),
+                          title: Text(
+                            '${_titleCase(member.membership)} '
+                            '${member.kind}',
+                          ),
+                          subtitle: Text(member.sourceReference),
+                          trailing: Text(_reviewLabel(member.reviewState)),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: AppSpacing.space4),
+              Text('Overlap information', style: AppTypography.h3),
+              const SizedBox(height: AppSpacing.space2),
+              if (data.overlaps.isEmpty)
+                const _Panel(
+                  child: Text(
+                    'No transactions in this period also match another budget.',
+                  ),
+                )
+              else
+                _Panel(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Budgets evaluate independently. Shared transactions '
+                        'remain included in each matching budget.',
+                      ),
+                      const SizedBox(height: AppSpacing.space2),
+                      for (final overlap in data.overlaps)
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(overlap.budgetName),
+                          subtitle: Text(
+                            '${overlap.sharedTransactionCount} shared '
+                            'transaction(s)',
+                          ),
+                          trailing: const Icon(LucideIcons.chevronRight),
+                          onTap: () => context.push(
+                            '/budgets/imported/${overlap.budgetId}'
+                            '?year=${budget.startsAt.year}'
+                            '&month=${budget.startsAt.month}',
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: AppSpacing.space4),
               _Panel(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -142,6 +232,35 @@ class ImportedBudgetDetailScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.space4),
+              Text('Period history', style: AppTypography.h3),
+              const SizedBox(height: AppSpacing.space2),
+              if (data.history.isEmpty)
+                const _Panel(
+                  child: Text('No materialized historical cycles yet'),
+                )
+              else
+                _Panel(
+                  child: Column(
+                    children: [
+                      for (final period in data.history)
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(LucideIcons.calendarRange),
+                          title: Text(
+                            '${_date(period.startsAt)} → '
+                            '${_date(period.endsAt.subtract(const Duration(days: 1)))}',
+                          ),
+                          trailing: const Icon(LucideIcons.chevronRight),
+                          onTap: () => context.push(
+                            '/budgets/imported/$id'
+                            '?year=${period.startsAt.year}'
+                            '&month=${period.startsAt.month}',
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: AppSpacing.space4),
               Text('Included transactions', style: AppTypography.h3),
               const SizedBox(height: AppSpacing.space1),
               Text(
@@ -192,6 +311,92 @@ class ImportedBudgetDetailScreen extends ConsumerWidget {
   }
 
   static String _exact(ExactMoney value) => MoneyFormat.exactMoney(value);
+
+  static String _date(DateTime value) =>
+      '${value.year}-${value.month.toString().padLeft(2, '0')}-'
+      '${value.day.toString().padLeft(2, '0')}';
+
+  static String _titleCase(String value) =>
+      value.isEmpty ? value : '${value[0].toUpperCase()}${value.substring(1)}';
+
+  static String _reviewLabel(String value) =>
+      value.split('_').map(_titleCase).join(' ');
+}
+
+class _ScopePanel extends StatelessWidget {
+  const _ScopePanel({required this.scope});
+
+  final CompositeBudgetScopeProjection scope;
+
+  @override
+  Widget build(BuildContext context) {
+    return _Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _ScopeLine(label: 'Membership', values: [_membershipLabel]),
+          _ScopeLine(label: 'Direction', values: [scope.direction]),
+          _ScopeLine(label: 'Period', values: [scope.periodType]),
+          _ScopeLine(
+            label: 'Included accounts',
+            values: scope.includedAccounts,
+          ),
+          _ScopeLine(
+            label: 'Excluded accounts',
+            values: scope.excludedAccounts,
+          ),
+          _ScopeLine(
+            label: 'Included categories',
+            values: scope.includedCategories,
+          ),
+          _ScopeLine(
+            label: 'Excluded categories',
+            values: scope.excludedCategories,
+          ),
+          _ScopeLine(
+            label: 'Attached transactions',
+            values: scope.includedTransactions,
+          ),
+          _ScopeLine(
+            label: 'Excluded transactions',
+            values: scope.excludedTransactions,
+          ),
+        ],
+      ),
+    );
+  }
+
+  String get _membershipLabel => scope.membershipMode == 'explicit_only'
+      ? 'Attached transactions only'
+      : 'Matching scope and attached transactions';
+}
+
+class _ScopeLine extends StatelessWidget {
+  const _ScopeLine({required this.label, required this.values});
+
+  final String label;
+  final List<String> values;
+
+  @override
+  Widget build(BuildContext context) {
+    if (values.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.space2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 130,
+            child: Text(
+              label,
+              style: TextStyle(color: context.lootrColors.textSecondary),
+            ),
+          ),
+          Expanded(child: Text(values.join(', '))),
+        ],
+      ),
+    );
+  }
 }
 
 class _Panel extends StatelessWidget {
@@ -202,15 +407,19 @@ class _Panel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: margin,
-      padding: const EdgeInsets.all(AppSpacing.cardPaddingStandard),
-      decoration: BoxDecoration(
+    return Padding(
+      padding: margin ?? EdgeInsets.zero,
+      child: Material(
         color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.cardPaddingStandard),
+          child: child,
+        ),
       ),
-      child: child,
     );
   }
 }

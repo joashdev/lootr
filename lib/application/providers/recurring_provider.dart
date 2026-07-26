@@ -6,10 +6,13 @@ import '../../domain/entities/category.dart';
 import '../../domain/entities/mappers.dart';
 import '../../domain/entities/payee.dart';
 import '../../domain/entities/recurring_template.dart';
+import '../../domain/value_objects/exact_money.dart';
+import '../../data/database/app_database.dart';
 import 'categories_provider.dart';
 import 'database_provider.dart';
 import 'payees_provider.dart';
 import 'repo_providers.dart';
+import 'recurring_detail_provider.dart';
 
 final recurringProvider = StreamProvider<List<RecurringTemplate>>((ref) {
   final repo = ref.watch(recurringRepoProvider);
@@ -24,6 +27,31 @@ final recurringProvider = StreamProvider<List<RecurringTemplate>>((ref) {
     return entities;
   });
 });
+
+final recurringOccurrencesProvider =
+    StreamProvider<List<RecurringOccurrenceView>>((ref) {
+      return ref
+          .watch(recurringOccurrenceRepoProvider)
+          .watchAll()
+          .map((rows) => rows.map(_recurringOccurrenceView).toList());
+    });
+
+RecurringOccurrenceView _recurringOccurrenceView(RecurringOccurrenceData row) {
+  return RecurringOccurrenceView(
+    id: row.id,
+    recurringTemplateId: row.recurringTemplateId,
+    status: row.status,
+    originalDueAt: row.originalDueAt,
+    dueAt: row.dueAt,
+    amount: ExactMoney(
+      coefficient: BigInt.parse(row.amountAtoms),
+      scale: row.amountScale,
+      currencyCode: row.currencyCode,
+    ),
+    resolvedAt: row.resolvedAt,
+    transactionId: row.transactionId,
+  );
+}
 
 final subscriptionRecurringTemplateIdsProvider = StreamProvider<Set<String>>((
   ref,

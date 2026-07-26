@@ -23,6 +23,8 @@ class AccountSummaryCards extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final lootrColors = context.lootrColors;
+    final textScale = MediaQuery.textScalerOf(context).scale(1);
+    final cardHeight = 132.0 + 28.0 * (textScale - 1).clamp(0, 1);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -30,7 +32,7 @@ class AccountSummaryCards extends StatelessWidget {
         Text('Accounts', style: AppTypography.h2),
         const SizedBox(height: AppSpacing.space3),
         SizedBox(
-          height: 132,
+          height: cardHeight,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: accounts.length,

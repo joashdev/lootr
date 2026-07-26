@@ -1142,8 +1142,9 @@ Future<void> showRecurringSheet(
                 }
 
                 final recurringRepo = ref.read(recurringRepoProvider);
+                late final String recurringId;
                 if (initial == null) {
-                  await recurringRepo.create(
+                  recurringId = await recurringRepo.create(
                     RecurringTemplatesCompanion.insert(
                       id: _makeId('rec'),
                       accountId: selectedAccountId,
@@ -1156,6 +1157,7 @@ Future<void> showRecurringSheet(
                     ),
                   );
                 } else {
+                  recurringId = initial.id;
                   await recurringRepo.update(
                     RecurringTemplatesCompanion(
                       id: Value(initial.id),
@@ -1172,6 +1174,9 @@ Future<void> showRecurringSheet(
                     ),
                   );
                 }
+                await ref
+                    .read(recurringOccurrenceServiceProvider)
+                    .ensureNextOccurrence(recurringId);
                 await _rebuildNotifications(ref);
 
                 if (!sheetContext.mounted || !context.mounted) return;

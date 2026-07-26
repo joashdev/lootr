@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../application/providers/dashboard_provider.dart';
+import '../../../../application/providers/period_context_provider.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/typography.dart';
 import '../../../shared/components/cards/cards.dart';
 
-class InsightsSection extends StatelessWidget {
+class InsightsSection extends ConsumerWidget {
   const InsightsSection({super.key, required this.insights});
 
   final List<DashboardInsight> insights;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -24,7 +26,9 @@ class InsightsSection extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(bottom: AppSpacing.space2),
             child: StandardCard(
-              onTap: () => context.push('/more/insights/${insight.id}'),
+              onTap: insight.isDrillable
+                  ? () => _openInsight(context, ref, insight)
+                  : null,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -54,5 +58,26 @@ class InsightsSection extends StatelessWidget {
           ),
       ],
     );
+  }
+
+  Future<void> _openInsight(
+    BuildContext context,
+    WidgetRef ref,
+    DashboardInsight insight,
+  ) async {
+    final ledgerQuery = insight.ledgerQuery;
+    if (ledgerQuery != null) {
+      ref.read(activeLedgerQueryProvider.notifier).open(ledgerQuery);
+      await context.push('/transactions');
+      if (ref.read(activeLedgerQueryProvider) == ledgerQuery) {
+        ref.read(activeLedgerQueryProvider.notifier).clear();
+      }
+      return;
+    }
+
+    final route = insight.destinationRoute;
+    if (route != null) {
+      await context.push(route);
+    }
   }
 }

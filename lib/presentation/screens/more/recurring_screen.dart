@@ -6,8 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../application/providers/accounts_provider.dart';
 import '../../../application/providers/payees_provider.dart';
 import '../../../application/providers/recurring_provider.dart';
-import '../../../application/providers/notification_provider.dart';
-import '../../../application/providers/repo_providers.dart';
+import '../../../application/providers/recurring_detail_provider.dart';
 import '../../../core/format/money_format.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
@@ -29,6 +28,9 @@ class RecurringScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final recurringAsync = ref.watch(recurringProvider);
+    final occurrences =
+        ref.watch(recurringOccurrencesProvider).asData?.value ??
+        const <RecurringOccurrenceView>[];
     final subscriptionTemplateIdsAsync = ref.watch(
       subscriptionRecurringTemplateIdsProvider,
     );
@@ -69,6 +71,7 @@ class RecurringScreen extends ConsumerWidget {
                           subscriptionTemplateIds.contains(template.id),
                     )
                     .toList(),
+                occurrences: occurrences,
               ),
               error: (err, _) => Center(child: Text('Error: $err')),
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -81,6 +84,7 @@ class RecurringScreen extends ConsumerWidget {
             accounts: accounts,
             payeeNames: payeeNames,
             templates: templates,
+            occurrences: occurrences,
           );
         },
         error: (err, _) => Center(child: Text('Error: $err')),
@@ -95,6 +99,7 @@ class RecurringScreen extends ConsumerWidget {
     required List<Account> accounts,
     required Map<String, String> payeeNames,
     required List<RecurringTemplate> templates,
+    required List<RecurringOccurrenceView> occurrences,
   }) {
     if (templates.isEmpty) {
       return EmptyState(
@@ -115,6 +120,14 @@ class RecurringScreen extends ConsumerWidget {
 
     return _RecurringList(
       templates: templates,
+      occurrencesByTemplate: {
+        for (final template in templates)
+          template.id: occurrences
+              .where(
+                (occurrence) => occurrence.recurringTemplateId == template.id,
+              )
+              .toList(),
+      },
       payeeNames: payeeNames,
       accounts: accounts,
     );
@@ -126,11 +139,13 @@ class _RecurringList extends ConsumerWidget {
     required this.templates,
     required this.payeeNames,
     required this.accounts,
+    required this.occurrencesByTemplate,
   });
 
   final List<RecurringTemplate> templates;
   final Map<String, String> payeeNames;
   final List<Account> accounts;
+  final Map<String, List<RecurringOccurrenceView>> occurrencesByTemplate;
 
   /// Same confirm + soft delete flow as the recurring detail screen.
   Future<void> _deleteTemplate(
@@ -162,8 +177,9 @@ class _RecurringList extends ConsumerWidget {
       ),
     );
     if (confirmed != true) return;
-    await ref.read(recurringRepoProvider).softDelete(template.id);
-    await ref.read(notificationSchedulerProvider).rebuildSchedule();
+    await ref
+        .read(recurringOccurrenceCommandsProvider)
+        .deleteSeries(template.id);
     if (!context.mounted) return;
     AppSnackBar.show(
       context,
@@ -200,6 +216,34 @@ class _RecurringList extends ConsumerWidget {
     if (diff.inDays == 1) return 'Tomorrow';
     if (diff.inDays < 7) return '${diff.inDays}d';
     return _formatDate(next);
+  }
+
+  String _occurrenceLabel(
+    RecurringTemplate template,
+    List<RecurringOccurrenceView> occurrences,
+  ) {
+    final actionable =
+        occurrences
+            .where(
+              (occurrence) =>
+                  occurrence.status == 'due' || occurrence.status == 'unpaid',
+            )
+            .toList()
+          ..sort((left, right) => left.dueAt.compareTo(right.dueAt));
+    if (actionable.isEmpty) return _nextDateLabel(template.nextOccurrenceAt);
+    final occurrence = actionable.first;
+    if (occurrence.status == 'unpaid' ||
+        occurrence.dueAt.isBefore(DateTime.now())) {
+      return 'Overdue · ${_formatDate(occurrence.dueAt)}';
+    }
+    final now = DateTime.now();
+    final sameDay =
+        occurrence.dueAt.year == now.year &&
+        occurrence.dueAt.month == now.month &&
+        occurrence.dueAt.day == now.day;
+    return sameDay
+        ? 'Due today'
+        : 'Upcoming · ${_formatDate(occurrence.dueAt)}';
   }
 
   String _formatDate(DateTime dt) {
@@ -284,7 +328,11 @@ class _RecurringList extends ConsumerWidget {
                   ),
                 ),
                 Text(
-                  _nextDateLabel(t.nextOccurrenceAt),
+                  _occurrenceLabel(
+                    t,
+                    occurrencesByTemplate[t.id] ??
+                        const <RecurringOccurrenceView>[],
+                  ),
                   style: AppTypography.caption.copyWith(
                     color: t.autoCreateDisabled
                         ? lootrColors.textTertiary

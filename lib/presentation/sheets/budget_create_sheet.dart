@@ -14,6 +14,7 @@ import '../../domain/entities/category.dart';
 import '../../domain/entities/mappers.dart';
 import '../../application/providers/budgets_tab_provider.dart';
 import '../../application/providers/categories_provider.dart';
+import '../../application/providers/period_context_provider.dart';
 import '../../application/providers/repo_providers.dart';
 import '../shared/category_visuals.dart';
 import '../shared/components/sheet_handle.dart';
@@ -81,11 +82,12 @@ class _BudgetCreateSheetState extends ConsumerState<BudgetCreateSheet> {
       return;
     }
 
+    final period = ref.read(periodContextProvider);
     final int month = widget.budget == null
-        ? ref.read(budgetMonthProvider)
+        ? period.startsAt.month
         : widget.budget!.month;
     final int year = widget.budget == null
-        ? ref.read(budgetYearProvider)
+        ? period.startsAt.year
         : widget.budget!.year;
     if (isPastBudgetPeriod(month, year)) {
       _showError('Past months are read-only');
@@ -161,8 +163,9 @@ class _BudgetCreateSheetState extends ConsumerState<BudgetCreateSheet> {
     final lootrColors = context.lootrColors;
     final categoriesAsync = ref.watch(categoriesProvider);
     final budgetsAsync = ref.watch(budgetsTabProvider);
-    final month = ref.watch(budgetMonthProvider);
-    final year = ref.watch(budgetYearProvider);
+    final period = ref.watch(periodContextProvider);
+    final month = period.startsAt.month;
+    final year = period.startsAt.year;
     final int sheetMonth = widget.budget == null ? month : widget.budget!.month;
     final int sheetYear = widget.budget == null ? year : widget.budget!.year;
     final isReadOnly = isPastBudgetPeriod(sheetMonth, sheetYear);
@@ -223,208 +226,211 @@ class _BudgetCreateSheetState extends ConsumerState<BudgetCreateSheet> {
           Flexible(
             child: SingleChildScrollView(
               child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.sheetPaddingHorizontal,
-              0,
-              8,
-              AppSpacing.sheetPaddingHorizontal,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.sheetPaddingHorizontal,
+                  0,
+                  8,
+                  AppSpacing.sheetPaddingHorizontal,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Text(
-                        isEditing ? 'Edit Budget' : 'New Budget',
-                        style: AppTypography.h2.copyWith(
-                          color: colorScheme.onSurface,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            isEditing ? 'Edit Budget' : 'New Budget',
+                            style: AppTypography.h2.copyWith(
+                              color: colorScheme.onSurface,
+                            ),
+                          ),
                         ),
+                        IconButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(Icons.close),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.space5),
+                    Text(
+                      'Category',
+                      style: AppTypography.captionMedium.copyWith(
+                        color: lootrColors.textSecondary,
                       ),
                     ),
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.space5),
-                Text(
-                  'Category',
-                  style: AppTypography.captionMedium.copyWith(
-                    color: lootrColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.space2),
-                categoriesAsync.when(
-                  data: (_) => _CategoryDropdown(
-                    categories: expenseCategories,
-                    controller: _categoryController,
-                    focusNode: _categoryFocusNode,
-                    selectedCategoryId: _selectedCategoryId,
-                    enabled: !isReadOnly,
-                    onTextChanged: (value) {
-                      final normalized = value.trim().toLowerCase();
-                      final exactMatch = expenseCategories
-                          .where(
-                            (category) =>
-                                category.name.toLowerCase() == normalized,
-                          )
-                          .firstOrNull;
+                    const SizedBox(height: AppSpacing.space2),
+                    categoriesAsync.when(
+                      data: (_) => _CategoryDropdown(
+                        categories: expenseCategories,
+                        controller: _categoryController,
+                        focusNode: _categoryFocusNode,
+                        selectedCategoryId: _selectedCategoryId,
+                        enabled: !isReadOnly,
+                        onTextChanged: (value) {
+                          final normalized = value.trim().toLowerCase();
+                          final exactMatch = expenseCategories
+                              .where(
+                                (category) =>
+                                    category.name.toLowerCase() == normalized,
+                              )
+                              .firstOrNull;
 
-                      setState(() {
-                        _selectedCategoryId = exactMatch?.id;
-                      });
-                    },
-                    onChanged: (cat) {
-                      setState(() {
-                        _selectedCategoryId = cat.id;
-                      });
-                    },
-                  ),
-                  loading: () => const SizedBox(
-                    height: 48,
-                    child: Center(
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  ),
-                  error: (_, _) => const Text('Failed to load categories'),
-                ),
-                const SizedBox(height: AppSpacing.space4),
-                Text(
-                  'Amount',
-                  style: AppTypography.captionMedium.copyWith(
-                    color: lootrColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.space2),
-                Container(
-                  decoration: BoxDecoration(
-                    color: colorScheme.surface,
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    border: Border.all(color: colorScheme.outline),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.space4,
-                    vertical: AppSpacing.space3,
-                  ),
-                  child: Row(
-                    children: [
-                      Text(
-                        '₱',
-                        style: AppTypography.mono.copyWith(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w600,
-                          color: lootrColors.textTertiary,
+                          setState(() {
+                            _selectedCategoryId = exactMatch?.id;
+                          });
+                        },
+                        onChanged: (cat) {
+                          setState(() {
+                            _selectedCategoryId = cat.id;
+                          });
+                        },
+                      ),
+                      loading: () => const SizedBox(
+                        height: 48,
+                        child: Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
                         ),
                       ),
-                      const SizedBox(width: AppSpacing.space2),
-                      Expanded(
-                        child: TextField(
-                          controller: _amountController,
-                          enabled: !isReadOnly,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          style: AppTypography.mono.copyWith(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w600,
-                            color: colorScheme.onSurface,
-                          ),
-                          decoration: InputDecoration(
-                            hintText: '0.00',
-                            hintStyle: AppTypography.mono.copyWith(
+                      error: (_, _) => const Text('Failed to load categories'),
+                    ),
+                    const SizedBox(height: AppSpacing.space4),
+                    Text(
+                      'Amount',
+                      style: AppTypography.captionMedium.copyWith(
+                        color: lootrColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.space2),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: colorScheme.surface,
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        border: Border.all(color: colorScheme.outline),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.space4,
+                        vertical: AppSpacing.space3,
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            '₱',
+                            style: AppTypography.mono.copyWith(
                               fontSize: 24,
                               fontWeight: FontWeight.w600,
                               color: lootrColors.textTertiary,
                             ),
-                            border: InputBorder.none,
-                            isDense: true,
-                            contentPadding: EdgeInsets.zero,
                           ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.space2),
-                Text(
-                  '${monthNames[sheetMonth - 1]} $sheetYear',
-                  style: AppTypography.caption.copyWith(
-                    color: lootrColors.textTertiary,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.space4),
-                _AppearancePicker(
-                  category: selectedCategory,
-                  iconOverride: _iconOverride,
-                  colorOverride: _colorOverride,
-                  enabled: !isReadOnly,
-                  onIconChanged: (value) =>
-                      setState(() => _iconOverride = value),
-                  onColorChanged: (value) =>
-                      setState(() => _colorOverride = value),
-                  onReset: () => setState(() {
-                    _iconOverride = null;
-                    _colorOverride = null;
-                  }),
-                ),
-                const SizedBox(height: AppSpacing.space5),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: isReadOnly ? null : _save,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colorScheme.primary,
-                      foregroundColor: colorScheme.onPrimary,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.full),
+                          const SizedBox(width: AppSpacing.space2),
+                          Expanded(
+                            child: TextField(
+                              controller: _amountController,
+                              enabled: !isReadOnly,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              style: AppTypography.mono.copyWith(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w600,
+                                color: colorScheme.onSurface,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: '0.00',
+                                hintStyle: AppTypography.mono.copyWith(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w600,
+                                  color: lootrColors.textTertiary,
+                                ),
+                                border: InputBorder.none,
+                                isDense: true,
+                                contentPadding: EdgeInsets.zero,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    child: Text(
-                      isEditing ? 'Save Changes' : 'Save Budget',
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
+                    const SizedBox(height: AppSpacing.space2),
+                    Text(
+                      '${monthNames[sheetMonth - 1]} $sheetYear',
+                      style: AppTypography.caption.copyWith(
+                        color: lootrColors.textTertiary,
                       ),
                     ),
-                  ),
-                ),
-                if (isEditing && !isReadOnly)
-                  Padding(
-                    padding: const EdgeInsets.only(top: AppSpacing.space3),
-                    child: SizedBox(
+                    const SizedBox(height: AppSpacing.space4),
+                    _AppearancePicker(
+                      category: selectedCategory,
+                      iconOverride: _iconOverride,
+                      colorOverride: _colorOverride,
+                      enabled: !isReadOnly,
+                      onIconChanged: (value) =>
+                          setState(() => _iconOverride = value),
+                      onColorChanged: (value) =>
+                          setState(() => _colorOverride = value),
+                      onReset: () => setState(() {
+                        _iconOverride = null;
+                        _colorOverride = null;
+                      }),
+                    ),
+                    const SizedBox(height: AppSpacing.space5),
+                    SizedBox(
                       width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed: () => _confirmDelete(),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: lootrColors.danger,
+                      child: ElevatedButton(
+                        onPressed: isReadOnly ? null : _save,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: colorScheme.primary,
+                          foregroundColor: colorScheme.onPrimary,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(AppRadius.full),
                           ),
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(LucideIcons.trash2, size: 18),
-                            const SizedBox(width: 8),
-                            const Text(
-                              'Delete Budget',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
+                        child: Text(
+                          isEditing ? 'Save Changes' : 'Save Budget',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                const SizedBox(height: AppSpacing.space4),
-              ],
-            ),
+                    if (isEditing && !isReadOnly)
+                      Padding(
+                        padding: const EdgeInsets.only(top: AppSpacing.space3),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton(
+                            onPressed: () => _confirmDelete(),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: lootrColors.danger,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.full,
+                                ),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(LucideIcons.trash2, size: 18),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'Delete Budget',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: AppSpacing.space4),
+                  ],
+                ),
               ),
             ),
           ),

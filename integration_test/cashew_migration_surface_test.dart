@@ -9,7 +9,7 @@ import 'package:lootr/core/theme/theme.dart';
 import 'package:lootr/presentation/screens/more/settings/data/cashew_migration_run_screen.dart';
 
 void main() {
-  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('device surface completes the redacted migration review path', (
     tester,
@@ -45,6 +45,10 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('analyze-cashew-backup')));
     await tester.pumpAndSettle();
     expect(find.text('Review the dry run'), findsOneWidget);
+    expect(find.byIcon(Icons.arrow_drop_down), findsWidgets);
+    await binding.takeScreenshot(
+      'adopted-v1/11-imported-account-type-default-icon',
+    );
 
     for (final group in (await coordinator.watchRun(run.id).first)!
         .reviewGroups

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import '../../../../application/providers/budgets_tab_provider.dart';
+import '../../../../application/providers/period_context_provider.dart';
 import '../../../../core/theme/colors.dart';
 
 const _monthNames = [
@@ -42,8 +42,9 @@ class MonthNavigator extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final month = ref.watch(budgetMonthProvider);
-    final year = ref.watch(budgetYearProvider);
+    final period = ref.watch(periodContextProvider);
+    final month = period.startsAt.month;
+    final year = period.startsAt.year;
     final colorScheme = Theme.of(context).colorScheme;
 
     return Row(
@@ -51,14 +52,7 @@ class MonthNavigator extends ConsumerWidget {
       children: [
         IconButton(
           icon: const Icon(LucideIcons.chevronLeft, size: 16),
-          onPressed: () {
-            if (month == 1) {
-              ref.read(budgetMonthProvider.notifier).goTo(12);
-              ref.read(budgetYearProvider.notifier).goTo(year - 1);
-            } else {
-              ref.read(budgetMonthProvider.notifier).goTo(month - 1);
-            }
-          },
+          onPressed: ref.read(periodContextProvider.notifier).previous,
           tooltip: 'Previous month',
           splashRadius: 20,
         ),
@@ -79,14 +73,7 @@ class MonthNavigator extends ConsumerWidget {
         ),
         IconButton(
           icon: const Icon(LucideIcons.chevronRight, size: 16),
-          onPressed: () {
-            if (month == 12) {
-              ref.read(budgetMonthProvider.notifier).goTo(1);
-              ref.read(budgetYearProvider.notifier).goTo(year + 1);
-            } else {
-              ref.read(budgetMonthProvider.notifier).goTo(month + 1);
-            }
-          },
+          onPressed: ref.read(periodContextProvider.notifier).next,
           tooltip: 'Next month',
           splashRadius: 20,
         ),
@@ -95,8 +82,9 @@ class MonthNavigator extends ConsumerWidget {
   }
 
   void _showMonthPicker(BuildContext context, WidgetRef ref) {
-    final month = ref.read(budgetMonthProvider);
-    final year = ref.read(budgetYearProvider);
+    final period = ref.read(periodContextProvider);
+    final month = period.startsAt.month;
+    final year = period.startsAt.year;
     final now = DateTime.now();
     final colorScheme = Theme.of(context).colorScheme;
     final lootrColors = context.lootrColors;
@@ -169,10 +157,9 @@ class MonthNavigator extends ConsumerWidget {
                       onTap: isDisabled
                           ? null
                           : () {
-                              ref.read(budgetMonthProvider.notifier).goTo(m);
                               ref
-                                  .read(budgetYearProvider.notifier)
-                                  .goTo(selectedYear);
+                                  .read(periodContextProvider.notifier)
+                                  .selectMonth(DateTime(selectedYear, m));
                               Navigator.of(ctx).pop();
                             },
                       borderRadius: BorderRadius.circular(8),

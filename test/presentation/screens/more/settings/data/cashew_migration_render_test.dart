@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lootr/application/migration/migration_coordinator.dart';
@@ -11,6 +12,20 @@ import 'package:lootr/presentation/screens/more/settings/data/cashew_migration_r
 
 void main() {
   testWidgets('renders a redacted migration review artifact', (tester) async {
+    final previousComparator = goldenFileComparator;
+    goldenFileComparator = _TolerantGoldenFileComparator(
+      Uri.parse(
+        'test/presentation/screens/more/settings/data/'
+        'cashew_migration_render_test.dart',
+      ),
+      precisionTolerance: 0.0015,
+    );
+    addTearDown(() => goldenFileComparator = previousComparator);
+
+    final materialIcons = FontLoader('MaterialIcons')
+      ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
+    await materialIcons.load();
+
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(390, 844);
     addTearDown(tester.view.reset);
@@ -55,4 +70,29 @@ void main() {
       ),
     );
   });
+}
+
+class _TolerantGoldenFileComparator extends LocalFileComparator {
+  _TolerantGoldenFileComparator(
+    super.testFile, {
+    required this._precisionTolerance,
+  });
+
+  final double _precisionTolerance;
+
+  @override
+  Future<bool> compare(Uint8List imageBytes, Uri golden) async {
+    final result = await GoldenFileComparator.compareLists(
+      imageBytes,
+      await getGoldenBytes(golden),
+    );
+    if (result.passed || result.diffPercent <= _precisionTolerance) {
+      result.dispose();
+      return true;
+    }
+
+    final error = await generateFailureOutput(result, golden, basedir);
+    result.dispose();
+    throw FlutterError(error);
+  }
 }

@@ -1,4 +1,3 @@
-import '../../data/repositories/composite_budget_repo.dart';
 import '../../domain/entities/budget.dart';
 import '../../domain/entities/transaction.dart';
 import '../../domain/value_objects/exact_money.dart';
@@ -15,6 +14,7 @@ class BudgetOverview {
     required this.isReadOnly,
     required this.needsReview,
     required this.missingReferenceCount,
+    this.isComposite = false,
     this.categoryId,
     this.legacyBudget,
   });
@@ -29,6 +29,7 @@ class BudgetOverview {
   final bool isReadOnly;
   final bool needsReview;
   final int missingReferenceCount;
+  final bool isComposite;
   final String? categoryId;
   final Budget? legacyBudget;
 
@@ -67,12 +68,75 @@ class BudgetDetailProjection {
   const BudgetDetailProjection({
     required this.overview,
     required this.transactions,
-    this.compositeReview,
+    this.compositeScope,
+    this.unresolvedMembers = const [],
+    this.overlaps = const [],
+    this.history = const [],
   });
 
   final BudgetOverview overview;
   final List<BudgetTransactionProjection> transactions;
-  final CompositeBudgetReviewSummary? compositeReview;
+  final CompositeBudgetScopeProjection? compositeScope;
+  final List<UnresolvedBudgetMemberProjection> unresolvedMembers;
+  final List<BudgetOverlapProjection> overlaps;
+  final List<BudgetHistoryProjection> history;
 
   Budget? get editableLegacyBudget => overview.legacyBudget;
+}
+
+class CompositeBudgetScopeProjection {
+  const CompositeBudgetScopeProjection({
+    required this.membershipMode,
+    required this.direction,
+    required this.periodType,
+    required this.includedAccounts,
+    required this.excludedAccounts,
+    required this.includedCategories,
+    required this.excludedCategories,
+    required this.includedTransactions,
+    required this.excludedTransactions,
+  });
+
+  final String membershipMode;
+  final String direction;
+  final String periodType;
+  final List<String> includedAccounts;
+  final List<String> excludedAccounts;
+  final List<String> includedCategories;
+  final List<String> excludedCategories;
+  final List<String> includedTransactions;
+  final List<String> excludedTransactions;
+}
+
+class UnresolvedBudgetMemberProjection {
+  const UnresolvedBudgetMemberProjection({
+    required this.kind,
+    required this.membership,
+    required this.sourceReference,
+    required this.reviewState,
+  });
+
+  final String kind;
+  final String membership;
+  final String sourceReference;
+  final String reviewState;
+}
+
+class BudgetOverlapProjection {
+  const BudgetOverlapProjection({
+    required this.budgetId,
+    required this.budgetName,
+    required this.sharedTransactionCount,
+  });
+
+  final String budgetId;
+  final String budgetName;
+  final int sharedTransactionCount;
+}
+
+class BudgetHistoryProjection {
+  const BudgetHistoryProjection({required this.startsAt, required this.endsAt});
+
+  final DateTime startsAt;
+  final DateTime endsAt;
 }
