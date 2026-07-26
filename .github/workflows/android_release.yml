@@ -1,0 +1,217 @@
+name: Android Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: "3.44.2"
+          channel: stable
+          cache: true
+
+      - name: Verify tag points to main
+        shell: bash
+        run: |
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "Release tags must point to a commit reachable from main."
+            exit 1
+          fi
+
+      - name: Verify version tag
+        id: version
+        shell: bash
+        run: |
+          package_version="$(awk '/^version:/{print $2}' pubspec.yaml)"
+          release_version="${package_version%%+*}"
+          if [[ "${GITHUB_REF_NAME}" != "v${release_version}" ]]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match pubspec version ${release_version}."
+            exit 1
+          fi
+          echo "release_version=${release_version}" >> "$GITHUB_OUTPUT"
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Generate code
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Analyze
+        run: flutter analyze --no-pub --no-fatal-infos --no-fatal-warnings
+
+      - name: Test
+        run: flutter test --no-pub
+
+      - name: Build unsigned release APK
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.release_version }}
+        run: |
+          flutter build apk --release \
+            --build-name "$RELEASE_VERSION" \
+            --build-number "$GITHUB_RUN_NUMBER"
+
+      - name: Prepare unsigned artifact
+        shell: bash
+        run: |
+          unsigned_asset="lootr-${GITHUB_REF_NAME}-android-unsigned.apk"
+          mv build/app/outputs/flutter-apk/app-release.apk "$unsigned_asset"
+          echo "unsigned_asset=$unsigned_asset" >> "$GITHUB_ENV"
+
+      - name: Upload unsigned artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: lootr-${{ github.ref_name }}-android-unsigned
+          path: ${{ env.unsigned_asset }}
+          if-no-files-found: error
+          retention-days: 1
+
+  release:
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: android-release
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - name: Download validated unsigned APK
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: lootr-${{ github.ref_name }}-android-unsigned
+
+      - name: Locate Android signer
+        shell: bash
+        run: |
+          apksigner_path="$(
+            find "$ANDROID_HOME/build-tools" -type f -name apksigner \
+              | sort -V \
+              | tail -1
+          )"
+          if [[ -z "$apksigner_path" ]]; then
+            echo "Android apksigner was not found."
+            exit 1
+          fi
+          echo "apksigner_path=$apksigner_path" >> "$GITHUB_ENV"
+
+      - name: Validate signing configuration
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          ANDROID_SIGNING_CERT_SHA256: ${{ vars.ANDROID_SIGNING_CERT_SHA256 }}
+        shell: bash
+        run: |
+          for value in \
+            "$ANDROID_KEYSTORE_BASE64" \
+            "$ANDROID_KEY_ALIAS" \
+            "$ANDROID_KEY_PASSWORD" \
+            "$ANDROID_STORE_PASSWORD" \
+            "$ANDROID_SIGNING_CERT_SHA256"; do
+            if [[ -z "$value" ]]; then
+              echo "Android signing secrets or certificate fingerprint are missing."
+              exit 1
+            fi
+          done
+
+      - name: Sign validated APK
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+        shell: bash
+        run: |
+          unsigned_asset="lootr-${GITHUB_REF_NAME}-android-unsigned.apk"
+          asset="lootr-${GITHUB_REF_NAME}-android.apk"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" \
+            | base64 --decode > android-upload.jks
+          "$apksigner_path" sign \
+            --ks android-upload.jks \
+            --ks-key-alias "$ANDROID_KEY_ALIAS" \
+            --ks-pass env:ANDROID_STORE_PASSWORD \
+            --key-pass env:ANDROID_KEY_PASSWORD \
+            --out "$asset" \
+            "$unsigned_asset"
+          rm -f "$unsigned_asset"
+          echo "asset=$asset" >> "$GITHUB_ENV"
+
+      - name: Verify signing identity
+        env:
+          ANDROID_SIGNING_CERT_SHA256: ${{ vars.ANDROID_SIGNING_CERT_SHA256 }}
+        shell: bash
+        run: |
+          certificate_output="$(
+            "$apksigner_path" verify --verbose --print-certs "$asset"
+          )"
+          printf '%s\n' "$certificate_output"
+          actual_fingerprint="$(
+            printf '%s\n' "$certificate_output" \
+              | awk -F': ' '/Signer #1 certificate SHA-256 digest:/{print $2; exit}' \
+              | tr '[:upper:]' '[:lower:]' \
+              | tr -d ':'
+          )"
+          expected_fingerprint="$(
+            printf '%s' "$ANDROID_SIGNING_CERT_SHA256" \
+              | tr '[:upper:]' '[:lower:]' \
+              | tr -d ':'
+          )"
+          if [[ "$actual_fingerprint" != "$expected_fingerprint" ]]; then
+            echo "APK signer does not match the pinned Lootr release certificate."
+            exit 1
+          fi
+
+      - name: Create checksum
+        run: sha256sum "$asset" > "${asset}.sha256"
+
+      - name: Attest APK provenance
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4
+        with:
+          subject-path: ${{ env.asset }}
+
+      - name: Preserve signed workflow artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: lootr-${{ github.ref_name }}-android
+          path: |
+            ${{ env.asset }}
+            ${{ env.asset }}.sha256
+          if-no-files-found: error
+
+      - name: Publish GitHub prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "$asset" \
+            "${asset}.sha256" \
+            --verify-tag \
+            --prerelease \
+            --generate-notes \
+            --title "Lootr ${GITHUB_REF_NAME}"
+
+      - name: Remove signing material
+        if: always()
+        run: rm -f android-upload.jks

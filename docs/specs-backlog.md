@@ -266,4 +266,18 @@ Each spec, when written, should be a standalone markdown doc that is concrete en
 
 ---
 
+## 17. Public Alpha Release ✅
+
+**Status:** Done.
+**Produces:** `docs/public-alpha-release.md` + `docs/mandocs/public-alpha-release.html`
+**Purpose:** Define an auditable, signed Android alpha release and privacy-safe GitHub feedback path.
+**Coverage:**
+- AGPL public-audit and official-project governance boundary
+- Privacy-safe in-app and repository bug reporting
+- Protected, signed, tag-driven GitHub APK release
+- Checksums, provenance, signing continuity, and acceptance criteria
+**Priority:** Critical
+
+---
+
 > **Suggested work order:** Write specs 1–3 → start coding foundation → write 4–6 in parallel → write 7–10 before leaving foundation phase → 11–12 before launch.
