@@ -1,0 +1,6 @@
+# Copy to android/key.properties for a local signed release.
+# Never commit key.properties or the keystore.
+storePassword=replace-me
+keyPassword=replace-me
+keyAlias=lootr-upload
+storeFile=upload-keystore.jks

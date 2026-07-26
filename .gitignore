@@ -23,6 +23,8 @@ migrate_working_dir/
 # is commented out by default.
 #.vscode/
 .obsidian
+.graymatter/
+.worktrees/
 
 # Flutter/Dart/Pub related
 **/doc/api/
