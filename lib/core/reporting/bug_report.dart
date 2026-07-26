@@ -54,6 +54,7 @@ Uri buildBugReportUri(BugReportDetails details) {
 ''';
 
   return Uri.https('github.com', '/joashdev/lootr/issues/new', {
+    'template': 'bug_report.md',
     'title': '[Bug] ',
     'labels': 'bug',
     'body': body,

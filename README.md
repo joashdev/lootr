@@ -51,7 +51,7 @@ Before submitting an issue, remove:
 - Export, backup, or database files
 - Authentication tokens, secrets, and personally identifying information
 
-Use the [bug report form](https://github.com/joashdev/lootr/issues/new?template=bug_report.yml)
+Use the [bug report template](https://github.com/joashdev/lootr/issues/new?template=bug_report.md)
 for ordinary defects. Security vulnerabilities should be reported privately as
 described in [SECURITY.md](SECURITY.md).
 

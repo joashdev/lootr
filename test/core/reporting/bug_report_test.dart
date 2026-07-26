@@ -14,6 +14,7 @@ void main() {
 
     expect(uri.origin, 'https://github.com');
     expect(uri.path, '/joashdev/lootr/issues/new');
+    expect(uri.queryParameters['template'], 'bug_report.md');
     expect(uri.queryParameters['title'], '[Bug] ');
     expect(uri.queryParameters['labels'], 'bug');
     expect(uri.queryParameters['body'], contains('Version: 0.1.0-alpha.1'));
