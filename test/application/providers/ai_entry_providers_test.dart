@@ -64,6 +64,8 @@ void main() {
       ],
     );
     addTearDown(container.dispose);
+    final subscription = container.listen(categorizerProvider, (_, _) {});
+    addTearDown(subscription.close);
 
     await container.read(runOCRProvider)('/missing/receipt.jpg');
     final categorizer = await container.read(categorizerProvider.future);
@@ -97,6 +99,8 @@ void main() {
         ],
       );
       addTearDown(container.dispose);
+      final subscription = container.listen(categorizerProvider, (_, _) {});
+      addTearDown(subscription.close);
 
       final ocrResult = await container.read(runOCRProvider)('/receipt.jpg');
       final pipelineResult = await container
