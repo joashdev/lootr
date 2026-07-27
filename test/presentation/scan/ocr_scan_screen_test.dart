@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lootr/application/providers/ai_settings_provider.dart';
 import 'package:lootr/ai/ocr_pipeline.dart';
 import 'package:lootr/core/theme/theme.dart';
 import 'package:lootr/domain/use_cases/run_ocr.dart';
@@ -8,8 +10,9 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 void main() {
   group('OcrScanScreen', () {
-    testWidgets('renders capture controls and falls back without a camera',
-        (tester) async {
+    testWidgets('renders capture controls and falls back without a camera', (
+      tester,
+    ) async {
       // Inject a deterministic OCR pipeline so no platform channel is touched.
       final runOcr = RunOCR(
         pipeline: OCRPipeline(
@@ -18,9 +21,12 @@ void main() {
       );
 
       await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.light,
-          home: OcrScanScreen(runOcr: runOcr),
+        ProviderScope(
+          overrides: [aiEnabledProvider.overrideWith((ref) => true)],
+          child: MaterialApp(
+            theme: AppTheme.light,
+            home: OcrScanScreen(runOcr: runOcr),
+          ),
         ),
       );
       await tester.pump();
@@ -36,9 +42,12 @@ void main() {
 
     testWidgets('flash toggle flips its icon', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.light,
-          home: const OcrScanScreen(),
+        ProviderScope(
+          overrides: [aiEnabledProvider.overrideWith((ref) => true)],
+          child: MaterialApp(
+            theme: AppTheme.light,
+            home: const OcrScanScreen(),
+          ),
         ),
       );
       await tester.pump();
@@ -47,6 +56,32 @@ void main() {
       await tester.tap(find.byIcon(LucideIcons.zapOff));
       await tester.pump();
       expect(find.byIcon(LucideIcons.zap), findsOneWidget);
+    });
+
+    testWidgets('disabled assistance blocks receipt entry', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [aiEnabledProvider.overrideWith((ref) => false)],
+          child: MaterialApp(
+            theme: AppTheme.light,
+            home: const OcrScanScreen(),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(
+        find.textContaining('Smart Entry Assistance is off'),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .widget<IconButton>(
+              find.widgetWithIcon(IconButton, LucideIcons.image),
+            )
+            .onPressed,
+        isNull,
+      );
     });
   });
 }

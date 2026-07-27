@@ -2,10 +2,22 @@
 
 **Status:** Done (✅ Code review fixes applied 2025-06-20)
 
+**Production wiring update (Issue #10):**
+- `ParseNL`, `RunOCR`, `OCRPipeline`, and `Categorizer` are created by
+  Riverpod providers using the persisted setting and local processing-log repo.
+- The setting is presented as **Smart Entry Assistance** because this alpha
+  ships deterministic parsing, payee-history/keyword suggestions, and ML Kit
+  OCR—not a downloadable generative model.
+- When disabled, Quick Add parsing, voice-derived parsing, receipt OCR, and
+  category suggestions are unavailable; Manual entry remains fully available.
+- NLP, OCR, and categorization only prefill a preview/form. A user must still
+  tap Add Transaction to write a finalized ledger entry.
+
 **Review fixes (7 blocking + 5 non-blocking):**
 - **Block 1:** RunOCR wired to OCRPipeline, returns Success/Failure based on aiEnabled
 - **Block 2:** `google_mlkit_text_recognition: ^0.14.0` added to pubspec.yaml
-- **Block 3:** AiProcessingLogRepo injected into NLParser, OCRPipeline, Categorizer — all operations log to ai_processing_logs
+- **Block 3:** AiProcessingLogRepo injected into NLParser, OCRPipeline, and
+  Categorizer so enabled, non-empty processing attempts are logged
 - **Block 4:** ParsedTransaction now populated with isTransfer, sourceAccount, destAccount from ParseResult
 - **Block 5:** ParseNL.updateLists fixed — `_parser` made non-final, reassigned after copyWith
 - **Block 6:** AiSettingsNotifier.build() reads ai_enabled from users table via UserRepo.getCurrentUser()
@@ -20,7 +32,11 @@
 
 ## Objective
 
-Implement the on-device AI pipeline: deterministic NL parser, OCR via Google ML Kit, and optional AI categorizer (llama.cpp). AI is assistive only — it never writes to `transactions` directly. Core flows work with AI disabled.
+Implement the on-device Smart Entry pipeline: deterministic NL parsing,
+receipt OCR via Google ML Kit, and deterministic categorization. Assistance is
+preview-only—it never writes to `transactions` directly. Manual entry works
+when Smart Entry is disabled. A downloadable model runtime is deferred to
+Issue #11.
 
 References: `docs/solutions-arch.md §6.4`, `docs/product-strategy.md` (AI section), `docs/navigation-arch.md §2`
 
@@ -51,26 +67,29 @@ References: `docs/solutions-arch.md §6.4`, `docs/product-strategy.md` (AI secti
 - Handles receipt formats (store name, date, items, total)
 - Logs to `ai_processing_logs` table
 
-### 9.3 AI categorizer (`lib/ai/categorizer.dart`)
-- **Disabled by default** (requires model download)
+### 9.3 Deterministic categorizer (`lib/ai/categorizer.dart`)
+- Controlled by the persisted Smart Entry Assistance setting
 - Input: transaction (amount, payee, note)
 - Output: suggested category ID + confidence
-- Deterministic fallback: if payee has a previously-used category, reuse it
-- AI fallback: llama.cpp / GGUF model inference (stub in V1)
+- If a payee has a previously used category, reuse it
+- Otherwise use a bounded local keyword heuristic
+- Downloadable model/GGUF inference is not part of this task
 - Never auto-assigns; user must confirm
 
 ### 9.4 AI processing logs
-Every AI interaction writes to `ai_processing_logs`:
+Every enabled, non-empty Smart Entry processing attempt writes to
+`ai_processing_logs`:
 - `source_type`: `ocr`, `nlp`, `categorization`
 - `source_reference_id`: transaction ID (if applicable)
-- `model_used`: `regex`, `mlkit`, `llama-3b`, etc.
+- `model_used`: local method such as `regex`, `mlkit`, `history`, or `heuristic`
 - `extracted_payload`: JSON of extracted fields + user corrections
 - `confidence_score`: 0.0–1.0
 
-### 9.5 AI settings screen data
-- AI enabled/disabled toggle (persisted in `users.ai_enabled`)
-- Model download status / size indicator
-- Processing log list (read from `ai_processing_logs`)
+### 9.5 Smart Entry settings screen data
+- Smart Entry Assistance toggle (persisted in `users.ai_enabled`)
+- Accurate explanation of deterministic parsing, categorization, and ML Kit OCR
+- Explicit copy that no downloadable generative model ships in this alpha
+- Processing log list and payload detail (read from `ai_processing_logs`)
 
 ## Acceptance Criteria
 
@@ -78,9 +97,11 @@ Every AI interaction writes to `ai_processing_logs`:
 - [x] NL parser handles currency symbols and abbreviations
 - [x] OCR pipeline processes a receipt image and extracts text via ML Kit
 - [x] OCR text is passed to NL parser for field extraction
-- [x] Every AI operation writes an audit log to `ai_processing_logs`
+- [x] Every enabled, non-empty processing attempt writes an audit log to
+  `ai_processing_logs`
 - [x] AI categorizer deterministic fallback suggests category from payee history
-- [x] `ai_enabled=false` bypasses all AI processing (core flows unaffected)
+- [x] `ai_enabled=false` bypasses Smart Entry processing; Manual entry remains
+  available
 - [x] AI never writes to `transactions` table — only fills preview fields
 - [x] All AI functions are optional and gated behind user settings
 

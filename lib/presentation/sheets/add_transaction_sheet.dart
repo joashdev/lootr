@@ -6,7 +6,10 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
 import '../../application/categorization/categorization_rules.dart';
+import '../../application/categorization/category_matcher.dart';
 import '../../application/providers/accounts_provider.dart';
+import '../../application/providers/ai_entry_providers.dart';
+import '../../application/providers/ai_settings_provider.dart';
 import '../../application/providers/categorization_rules_provider.dart';
 import '../../application/providers/categories_provider.dart';
 import '../../application/providers/debts_provider.dart';
@@ -34,7 +37,6 @@ import '../../domain/use_cases/add_transaction.dart';
 import '../../domain/use_cases/create_transfer.dart';
 import '../../domain/use_cases/edit_transaction.dart';
 import '../../domain/use_cases/edit_transfer.dart';
-import '../../domain/use_cases/parse_nl.dart';
 import '../../domain/value_objects/field_types.dart' as fields;
 import '../../domain/value_objects/exact_money.dart';
 import '../../domain/value_objects/parsed_transaction.dart';
@@ -215,6 +217,12 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   }
 
   Future<void> _toggleSpeechInput() async {
+    if (!ref.read(smartEntryAssistanceEnabledProvider)) {
+      _showSnackBar(
+        'Enable Smart Entry Assistance in Settings to parse voice input.',
+      );
+      return;
+    }
     if (_isListening) {
       await _speech.stop();
       if (mounted) {
@@ -323,31 +331,11 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     List<Category> categories, {
     String? direction,
   }) {
-    final normalized = _normalize(label);
-    if (normalized.isEmpty) return null;
-    final group =
-        (direction ?? _direction) == fields.TransactionDirection.income
-        ? fields.CategoryGroup.income
-        : fields.CategoryGroup.expense;
-    final candidates = categories
-        .where(
-          (category) =>
-              category.deletedAt == null && category.categoryGroup == group,
-        )
-        .toList();
-    final exact = candidates.cast<Category?>().firstWhere(
-      (category) => _normalize(category!.name) == normalized,
-      orElse: () => null,
-    );
-    if (exact != null) return exact.id;
-    // Fuzzy fallback: NL quick-add emits short labels ("Dining") that
-    // otherwise match no real category ("Food & Dining") and would save
-    // the transaction uncategorized.
-    final fuzzy = candidates.cast<Category?>().firstWhere((category) {
-      final name = _normalize(category!.name);
-      return name.contains(normalized) || normalized.contains(name);
-    }, orElse: () => null);
-    return fuzzy?.id;
+    return CategoryMatcher.resolve(
+      idOrLabel: label,
+      categories: categories,
+      direction: direction ?? _direction,
+    )?.id;
   }
 
   String? _matchPayeeId(String label, List<Payee> payees) {
@@ -357,6 +345,14 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
       return _normalize(displayName) == normalized;
     }, orElse: () => null);
     return match?.id;
+  }
+
+  Category? _categoryById(String? id, List<Category> categories) {
+    if (id == null) return null;
+    return categories.cast<Category?>().firstWhere(
+      (category) => category?.id == id,
+      orElse: () => null,
+    );
   }
 
   void _seedFromParsedTransaction(
@@ -502,16 +498,17 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     if (_seededInitialParsed || widget.initialParsedTransaction == null) {
       return;
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted || _seededInitialParsed) return;
+      _seededInitialParsed = true;
+      final assistance = await ref.read(smartEntryAssistanceProvider.future);
+      final parsed = await assistance.enrich(
+        widget.initialParsedTransaction!,
+        categories,
+      );
+      if (!mounted) return;
       setState(() {
-        _seededInitialParsed = true;
-        _seedFromParsedTransaction(
-          widget.initialParsedTransaction!,
-          accounts,
-          categories,
-          payees,
-        );
+        _seedFromParsedTransaction(parsed, accounts, categories, payees);
       });
     });
   }
@@ -890,25 +887,15 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
       return;
     }
 
-    final parser = ParseNL(
-      knownPayees: payees
-          .map<String>((payee) => payee.displayName ?? payee.normalizedName)
-          .toList(),
-      knownAccounts: accounts.map((account) => account.name).toList(),
+    final assistance = await ref.read(smartEntryAssistanceProvider.future);
+    final result = await assistance.parse(
+      input,
+      ref.read(categoriesProvider).asData?.value ?? const <Category>[],
     );
-
-    final result = parser(input);
+    if (!mounted) return;
     setState(() {
-      result.fold(
-        onSuccess: (parsed) {
-          _parsedPreview = parsed;
-          _parseError = null;
-        },
-        onFailure: (message, _) {
-          _parsedPreview = null;
-          _parseError = message;
-        },
-      );
+      _parsedPreview = result.valueOrNull;
+      _parseError = result.messageOrNull;
     });
   }
 
@@ -953,6 +940,11 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isQuickMode || widget.initialParsedTransaction != null) {
+      // Start loading local payee/category history with assisted entry so the
+      // first parse can produce a suggestion without a warm-up action.
+      ref.watch(smartEntryAssistanceProvider);
+    }
     final accounts =
         (ref.watch(accountsProvider).asData?.value ?? const <Account>[])
             .where(
@@ -1195,13 +1187,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
 
   Widget _buildCategorySuggestion(List<Category> categories) {
     final rule = _matchedCategoryRule;
-    final suggestedName = categories
-        .cast<Category?>()
-        .firstWhere(
-          (category) => category?.id == _suggestedCategoryId,
-          orElse: () => null,
-        )
-        ?.name;
+    final suggestedName = _categoryById(_suggestedCategoryId, categories)?.name;
     if (suggestedName == null) return const SizedBox.shrink();
     final input = _matchedRuleInput ?? rule?.pattern ?? '';
     final overridden =
@@ -1265,6 +1251,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     List<Payee> payees,
   ) {
     final lootrColors = context.lootrColors;
+    final assistanceEnabled = ref.watch(smartEntryAssistanceEnabledProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1286,7 +1273,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                   tooltip: _isListening
                       ? 'Stop listening'
                       : 'Start voice input',
-                  onPressed: _toggleSpeechInput,
+                  onPressed: assistanceEnabled ? _toggleSpeechInput : null,
                   icon: Icon(
                     _isListening ? LucideIcons.audioLines : LucideIcons.mic,
                     size: 18,
@@ -1297,17 +1284,23 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                 ),
                 IconButton(
                   tooltip: 'Parse',
-                  onPressed: () => _runQuickAdd(accounts, payees),
+                  onPressed: assistanceEnabled
+                      ? () => _runQuickAdd(accounts, payees)
+                      : null,
                   icon: const Icon(LucideIcons.arrowRight, size: 18),
                 ),
               ],
             ),
           ),
-          onSubmitted: (_) => _runQuickAdd(accounts, payees),
+          onSubmitted: assistanceEnabled
+              ? (_) => _runQuickAdd(accounts, payees)
+              : null,
         ),
         const SizedBox(height: 8),
         Text(
-          'Example: "mcdo 250 gcash"',
+          assistanceEnabled
+              ? 'Example: "mcdo 250 gcash"'
+              : 'Smart entry is off. Manual entry remains available.',
           style: AppTypography.caption.copyWith(
             color: lootrColors.textSecondary,
           ),
@@ -1377,14 +1370,13 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     List<Category> categories,
   ) {
     if (_suggestedCategoryId != null) {
-      final suggested = categories.cast<Category?>().firstWhere(
-        (category) => category?.id == _suggestedCategoryId,
-        orElse: () => null,
-      );
+      final suggested = _categoryById(_suggestedCategoryId, categories);
       if (suggested != null) return suggested.name;
     }
+    final parsedCategory = parsed.category;
+    if (parsedCategory == null) return 'Uncategorized';
     final matchedId = _matchCategoryId(
-      parsed.category!,
+      parsedCategory,
       categories,
       direction: parsed.direction,
     );
@@ -1465,7 +1457,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
             ),
           if (parsed.payee != null) previewRow('Payee', parsed.payee!),
           if (parsed.account != null) previewRow('Account', parsed.account!),
-          if (parsed.category != null)
+          if (parsed.category != null || _suggestedCategoryId != null)
             previewRow('Category', _previewCategoryLabel(parsed, categories)),
           if (parsed.direction != null)
             previewRow('Direction', _directionLabel(parsed.direction!)),
