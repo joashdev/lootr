@@ -1,0 +1,317 @@
+---
+import '../styles/global.css';
+
+const features = [
+  {
+    eyebrow: 'Budgets',
+    title: 'Gentle guardrails, not guilt.',
+    copy: 'Set flexible limits and see your pace at a glance. Lootr tells you what is useful—never how to feel.',
+  },
+  {
+    eyebrow: 'Accounts',
+    title: 'One view across real life.',
+    copy: 'Bring cash, banks, e-wallets, and liabilities into one manual-first picture without sharing a bank login.',
+  },
+  {
+    eyebrow: 'Goals',
+    title: 'Small progress made visible.',
+    copy: 'Turn the next trip, emergency fund, or debt payoff into a calm plan you can keep moving.',
+  },
+  {
+    eyebrow: 'Debts',
+    title: 'Borrow and lend, without awkwardness.',
+    copy: 'Track money between friends, family, and institutions with clear balances and a simple history.',
+  },
+];
+
+const steps = [
+  ['01', 'Record', 'Type a quick sentence, speak it, scan it, or use the familiar form.'],
+  ['02', 'Understand', 'See where money went, what changed, and what is still safe to spend.'],
+  ['03', 'Adjust', 'Make one useful choice today instead of rebuilding a spreadsheet tonight.'],
+];
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta
+      name="description"
+      content="Lootr is a calm, offline-first personal finance app for tracking accounts, budgets, goals, and everyday spending."
+    />
+    <meta name="theme-color" content="#fafafa" />
+    <meta property="og:title" content="Lootr — Know what’s safe to spend" />
+    <meta
+      property="og:description"
+      content="Financial clarity without spreadsheets, bank connections, or cloud AI."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" type="image/png" href="/images/lootr-app-icon.png" />
+    <link rel="apple-touch-icon" href="/images/lootr-app-icon.png" />
+    <title>Lootr — Know what’s safe to spend</title>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="Lootr home">
+        <span class="brand-mark" aria-hidden="true">
+          <img src="/images/lootr-app-icon.png" alt="" width="34" height="34" />
+        </span>
+        <span>Lootr</span>
+      </a>
+      <nav aria-label="Primary navigation">
+        <a href="#product">Product</a>
+        <a href="#how-it-works">How it works</a>
+        <a href="#principles">Principles</a>
+      </nav>
+      <a class="button button-small button-dark" href="https://github.com/joashdev/lootr">
+        Follow the build
+      </a>
+    </header>
+
+    <main id="top">
+      <section class="hero section-shell">
+        <div class="hero-copy">
+          <p class="eyebrow hero-animate">Calm money, clear mind</p>
+          <h1 class="hero-animate">Know what’s <span>safe to spend.</span></h1>
+          <p class="hero-intro hero-animate">
+            Track every account, budget, and everyday purchase—without spreadsheets,
+            bank connections, or giving up your privacy.
+          </p>
+          <div class="hero-actions hero-animate">
+            <a class="button button-primary" href="#product">See Lootr in action</a>
+            <a class="button button-secondary" href="https://github.com/joashdev/lootr">
+              View on GitHub
+            </a>
+          </div>
+          <p class="hero-note hero-animate">Built for Android and iOS. Fully useful offline.</p>
+        </div>
+
+        <div class="hero-visual hero-animate" aria-label="Lootr product illustration">
+          <div class="hero-glow" aria-hidden="true"></div>
+          <img
+            src="/images/lootr-clarity-hero.png"
+            alt="A calm illustration of a phone showing a personal finance dashboard"
+            width="1693"
+            height="929"
+            fetchpriority="high"
+          />
+          <div class="floating-stat floating-stat-top">
+            <span>Safe to spend</span>
+            <strong>₱24,580</strong>
+          </div>
+          <div class="floating-stat floating-stat-bottom">
+            <span class="status-dot"></span>
+            <strong>Comfortable</strong>
+            <small>this month</small>
+          </div>
+        </div>
+      </section>
+
+      <section class="trust-strip section-shell" aria-label="Product principles">
+        <span>Works offline</span>
+        <span>No bank login</span>
+        <span>Local AI optional</span>
+        <span>No guilt language</span>
+      </section>
+
+      <section class="product section-shell" id="product" data-reveal>
+        <div class="section-heading">
+          <p class="eyebrow">Product proof, before promises</p>
+          <h2>See the month clearly.</h2>
+          <p>
+            One quiet dashboard turns scattered money into a useful answer:
+            what can I comfortably spend next?
+          </p>
+        </div>
+
+        <div class="product-stage">
+          <div class="product-copy">
+            <div class="product-safe-card">
+              <div>
+                <span class="micro-label">Safe to spend</span>
+                <strong class="amount">₱24,580</strong>
+              </div>
+              <span class="comfort-pill">Comfortable</span>
+              <div class="progress-track" aria-label="72 percent of the month complete">
+                <span></span>
+              </div>
+              <p>After bills, budgets, and planned savings.</p>
+            </div>
+
+            <div class="demo-tabs" role="tablist" aria-label="Product previews">
+              <button
+                class="demo-tab is-active"
+                role="tab"
+                aria-selected="true"
+                data-demo="/images/dashboard.png"
+                data-label="Dashboard overview"
+              >
+                Dashboard
+              </button>
+              <button
+                class="demo-tab"
+                role="tab"
+                aria-selected="false"
+                data-demo="/images/transactions.png"
+                data-label="Transaction history"
+              >
+                Transactions
+              </button>
+              <button
+                class="demo-tab"
+                role="tab"
+                aria-selected="false"
+                data-demo="/images/budgets.png"
+                data-label="Monthly budgets"
+              >
+                Budgets
+              </button>
+            </div>
+
+            <div class="mini-proof-grid">
+              <article>
+                <span class="mini-proof-icon">Aa</span>
+                <strong>Add in seconds</strong>
+                <p>“Lunch 250 from GCash” becomes a clean transaction.</p>
+              </article>
+              <article>
+                <span class="mini-proof-icon">↗</span>
+                <strong>Useful signals</strong>
+                <p>Color guides attention without turning spending into shame.</p>
+              </article>
+            </div>
+          </div>
+
+          <div class="phone-showcase">
+            <div class="phone-frame">
+              <div class="phone-speaker"></div>
+              <img
+                id="demo-image"
+                src="/images/dashboard.png"
+                alt="Dashboard overview"
+                width="390"
+                height="844"
+              />
+            </div>
+            <div class="phone-orbit phone-orbit-one" aria-hidden="true"></div>
+            <div class="phone-orbit phone-orbit-two" aria-hidden="true"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="steps section-shell" id="how-it-works" data-reveal>
+        <div class="section-heading compact">
+          <p class="eyebrow">A tiny habit</p>
+          <h2>Three steps. Two minutes.</h2>
+        </div>
+        <div class="step-grid">
+          {
+            steps.map(([number, title, copy]) => (
+              <article class="step-card">
+                <span>{number}</span>
+                <h3>{title}</h3>
+                <p>{copy}</p>
+              </article>
+            ))
+          }
+        </div>
+      </section>
+
+      <section class="features section-shell" id="principles" data-reveal>
+        <div class="section-heading">
+          <p class="eyebrow">Everything important</p>
+          <h2>Nothing noisy.</h2>
+          <p>
+            Lootr has the depth to handle real finances, with the restraint to keep
+            everyday use light.
+          </p>
+        </div>
+        <div class="feature-grid">
+          {
+            features.map((feature, index) => (
+              <article class:list={['feature-card', `feature-card-${index + 1}`]}>
+                <span class="micro-label">{feature.eyebrow}</span>
+                <h3>{feature.title}</h3>
+                <p>{feature.copy}</p>
+                <span class="feature-number">0{index + 1}</span>
+              </article>
+            ))
+          }
+        </div>
+      </section>
+
+      <section class="privacy section-shell" data-reveal>
+        <div class="privacy-copy">
+          <p class="eyebrow">Private by architecture</p>
+          <h2>Your money story stays yours.</h2>
+          <p>
+            Transactions, budgets, reports, and optional AI work on your device.
+            Cloud sync is an opt-in backup—not the price of admission.
+          </p>
+          <a href="https://github.com/joashdev/lootr#privacy-first" class="text-link">
+            Read the product principles <span aria-hidden="true">→</span>
+          </a>
+        </div>
+        <div class="privacy-path" aria-label="Local-first data flow">
+          <div class="path-node">
+            <span>01</span>
+            <strong>You record</strong>
+          </div>
+          <div class="path-line"><span></span></div>
+          <div class="path-node path-node-accent">
+            <span>02</span>
+            <strong>Your device</strong>
+          </div>
+          <div class="path-line"><span></span></div>
+          <div class="path-node">
+            <span>03</span>
+            <strong>You understand</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="quote section-shell" data-reveal>
+        <blockquote>
+          “I finally know where my salary went—without feeling like I’m doing
+          accounting.”
+        </blockquote>
+        <p>Designed for the person who wants clarity, not another finance chore.</p>
+      </section>
+
+      <section class="final-cta section-shell" data-reveal>
+        <div>
+          <p class="eyebrow">Start with clarity</p>
+          <h2>A calmer relationship with money starts here.</h2>
+        </div>
+        <div class="final-actions">
+          <a class="button button-light" href="https://github.com/joashdev/lootr">
+            Follow Lootr on GitHub
+          </a>
+          <p>Open source. Privacy-first. Built in public.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer section-shell">
+      <a class="brand" href="#top">
+        <span class="brand-mark" aria-hidden="true">
+          <img src="/images/lootr-app-icon.png" alt="" width="34" height="34" />
+        </span>
+        <span>Lootr</span>
+      </a>
+      <p>A calm, offline-first personal finance app.</p>
+      <div>
+        <a href="https://github.com/joashdev/lootr">GitHub</a>
+        <a href="#principles">Privacy</a>
+        <a href="#top">Back to top</a>
+      </div>
+    </footer>
+
+    <script>
+      import '../scripts/motion.ts';
+    </script>
+  </body>
+</html>
