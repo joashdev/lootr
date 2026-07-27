@@ -35,6 +35,10 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
+/website/node_modules/
+/website/dist/
+/website/.astro/
+/.pnpm-store/
 
 # Code generation
 *.g.dart
