@@ -29,6 +29,7 @@ class SmartEntryAssistance {
     ParsedTransaction parsed,
     List<Category> categories,
   ) async {
+    if (parsed.category != null) return parsed;
     final suggestion = await _categorizer.suggest(
       amount: parsed.amount,
       payee: parsed.payee,

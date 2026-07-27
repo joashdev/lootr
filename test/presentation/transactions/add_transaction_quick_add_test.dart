@@ -307,6 +307,28 @@ void main() {
       },
     );
 
+    testWidgets('explicit category takes precedence over payee history', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          const AddTransactionSheet(startInQuickMode: true),
+          accounts: [_gcash()],
+          categories: [
+            _category('cat-groceries', 'Groceries'),
+            _category('cat-dining', 'Dining'),
+          ],
+          payeeCategoryHistory: const {'starbucks': 'cat-dining'},
+        ),
+      );
+      await tester.pump();
+
+      await _parseQuickInput(tester, 'starbucks 180 groceries');
+
+      expect(find.text('Groceries'), findsOneWidget);
+      expect(find.text('Dining'), findsNothing);
+    });
+
     testWidgets(
       'income heuristic label resolves to a real category in preview',
       (tester) async {
