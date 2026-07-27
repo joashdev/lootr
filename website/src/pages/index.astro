@@ -1,6 +1,8 @@
 ---
 import '../styles/global.css';
 
+const socialImage = new URL('/og.png', Astro.site ?? Astro.url);
+
 const features = [
   {
     eyebrow: 'Budgets',
@@ -47,7 +49,7 @@ const steps = [
       content="Financial clarity without spreadsheets, bank connections, or cloud AI."
     />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="/og.png" />
+    <meta property="og:image" content={socialImage.href} />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" type="image/png" href="/images/lootr-app-icon.png" />
     <link rel="apple-touch-icon" href="/images/lootr-app-icon.png" />
@@ -251,7 +253,7 @@ const steps = [
             Transactions, budgets, reports, and optional AI work on your device.
             Cloud sync is an opt-in backup—not the price of admission.
           </p>
-          <a href="https://github.com/joashdev/lootr#privacy-first" class="text-link">
+          <a href="#principles" class="text-link">
             Read the product principles <span aria-hidden="true">→</span>
           </a>
         </div>
