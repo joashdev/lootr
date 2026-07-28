@@ -11,6 +11,7 @@
   main { max-width: 960px; margin: 0 auto; padding: 40px 24px 80px; }
   h1 { margin: 0 0 8px; font-size: 28px; line-height: 1.25; }
   h2 { margin: 40px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); font-size: 21px; }
+  h3 { margin: 28px 0 10px; font-size: 17px; }
   p { margin: 0 0 12px; }
   li { margin-bottom: 5px; }
   code { padding: 2px 6px; border-radius: 4px; background: #f2f4f7; font: 13px var(--mono); overflow-wrap: anywhere; }
@@ -43,19 +44,57 @@
   <li>An owner-approved <code>android-release</code> Environment containing signing secrets</li>
 </ul>
 <h2>3. Privacy-Safe Bug Reporting</h2>
-<p>The About screen provides <strong>Report a bug</strong>. It opens—not silently submits—a public GitHub issue composer.</p>
-<p>The app may prefill only:</p>
+<p>The About screen provides <strong>Send feedback</strong> with three report types:</p>
+<ul>
+  <li><strong>Bug</strong> — something did not work as expected</li>
+  <li><strong>Feature request</strong> — a new capability or workflow</li>
+  <li><strong>Layout request</strong> — a visual, spacing, hierarchy, or interaction change</li>
+</ul>
+<p>The app submits the reviewed report through a Cloudflare Worker to the public <code>joashdev/lootr</code> GitHub issue tracker. The user does not need GitHub or leave Lootr. Every report is public by design: before submission, Lootr renders the exact user-authored issue title, body, diagnostics, and screenshot that will be published. When a screenshot is present, the preview clearly marks the attachment URL as generated during upload; that unguessable URL is the only server-generated difference. Submission remains disabled until the user confirms both:</p>
+<ul>
+  <li><strong>I reviewed this report and removed private financial and personal information.</strong></li>
+  <li><strong>I understand this public report may remain in caches or notifications after editing or deletion.</strong></li>
+</ul>
+<p>Vulnerabilities never use this flow and instead open GitHub private vulnerability reporting.</p>
+<h3>3.1 Public Issue Payload</h3>
 <table>
 <thead><tr><th>Field</th><th>Allowed value</th><th>Forbidden examples</th></tr></thead>
 <tbody>
-<tr><td><code>version</code></td><td>Public application version</td><td>Database/schema contents</td></tr>
-<tr><td><code>build</code></td><td>Public Android build number</td><td>Device identifier</td></tr>
-<tr><td><code>platform</code></td><td>Operating-system name</td><td>Account or user name</td></tr>
-<tr><td><code>body</code></td><td>Empty reproduction prompts</td><td>Transactions, balances, receipts, logs</td></tr>
+<tr><td><code>type</code></td><td><code>bug</code>, <code>feature</code>, or <code>layout</code></td><td>Security vulnerability details</td></tr>
+<tr><td><code>description</code></td><td>User-authored and explicitly reviewed text</td><td>Unreviewed application content</td></tr>
+<tr><td><code>version</code></td><td>Public application version/build</td><td>Database/schema contents</td></tr>
+<tr><td><code>platform</code></td><td>Operating-system name</td><td>Device identifier or account name</td></tr>
+<tr><td><code>diagnostics</code></td><td>Allowlisted event codes and sanitized stack frames</td><td>Transactions, balances, free-form values, SQL parameters</td></tr>
+<tr><td><code>screenshot</code></td><td>One user-selected, previewed, re-encoded image</td><td>Automatic capture, receipt/database files</td></tr>
 </tbody>
 </table>
-<p>Before leaving Lootr, the user sees a warning that GitHub issues are public. The repository issue form repeats the warning and requires a privacy confirmation. Vulnerabilities use GitHub private vulnerability reporting.</p>
-<p>No GitHub token, analytics SDK, crash reporter, database export, or automatic attachment is included in the APK.</p>
+<p>Bug reports include recent sanitized diagnostics by default. Feature and layout requests default diagnostics off. The user may remove diagnostics before preview or submission. Screenshots default off for every type and require a separate public-attachment confirmation.</p>
+<h3>3.2 Local Diagnostics</h3>
+<p>Lootr maintains a bounded local JSON Lines diagnostic log in the private application-support directory. It retains the current and previous rotating files, capped at 512 KiB total and pruned to seven days. Events use a closed schema:</p>
+<pre class="diagram">timestamp + severity + feature + event_code + outcome + duration_ms</pre>
+<p>Application code must never pass arbitrary domain values to the logger. Error capture stores exception type and sanitized application stack frames, never <code>error.toString()</code>. The logger captures Flutter framework errors and unhandled asynchronous errors without installing an analytics or remote crash-reporting SDK. Diagnostics remain on-device until the user previews and submits a report.</p>
+<h3>3.3 Cloudflare Relay</h3>
+<p>The app sends one <code>multipart/form-data</code> request to the Cloudflare Worker:</p>
+<ul>
+  <li><code>report</code> — UTF-8 JSON, maximum 64 KiB</li>
+  <li><code>screenshot</code> — optional JPEG, maximum 1 MiB</li>
+</ul>
+<p>The Worker rejects unknown fields, invalid consent, oversized input, unsupported media types, forbidden diagnostic keys, duplicate report IDs, and excessive request rates. It performs a second redaction pass, creates a GitHub issue using a repository-scoped secret stored only in Cloudflare, and returns the public issue number and URL. No GitHub credential is included in the APK.</p>
+<p>The issue mapping is:</p>
+<table>
+<thead><tr><th>Report type</th><th>Title prefix</th><th>GitHub label</th></tr></thead>
+<tbody>
+<tr><td><code>bug</code></td><td><code>[Bug]</code></td><td><code>bug</code></td></tr>
+<tr><td><code>feature</code></td><td><code>[Feature]</code></td><td><code>enhancement</code></td></tr>
+<tr><td><code>layout</code></td><td><code>[Layout]</code></td><td><code>enhancement</code></td></tr>
+</tbody>
+</table>
+<p>If submission fails, Lootr keeps the draft in memory, shows a neutral retry action, and does not claim the report was received. The existing browser-based GitHub composer remains a secondary fallback.</p>
+<h3>3.4 Screenshot Handling</h3>
+<p>The user selects an existing screenshot and sees it before consent. Lootr constrains the longest edge to 1280 pixels, re-encodes at bounded quality, removes source metadata, and rejects output over 1 MiB.</p>
+<p>The Worker stores the image under an unguessable key in a private R2 bucket and adds a public time-bounded attachment URL to the GitHub issue only after the separate screenshot consent. The bucket lifecycle deletes screenshots after 30 days. If issue creation fails, the Worker deletes the orphaned object.</p>
+<h3>3.5 Relay Observability</h3>
+<p>Cloudflare Workers Observability records invocation status, duration, GitHub response status, R2 outcome, payload size, report type, and opaque report ID. It must never log descriptions, diagnostics, screenshot keys or URLs, authorization headers, IP addresses, or financial data. PostHog, session replay, autocapture, and client analytics remain excluded.</p>
 <h2>4. Signed Release Pipeline</h2>
 <p>Pushing a matching semantic tag starts the Android release workflow:</p>
 <pre class="diagram">tag on protected main
@@ -89,7 +128,12 @@ GitHub prerelease</pre>
 <ul>
   <li><code>pubspec.yaml</code> declares <code>0.1.0-alpha.2</code></li>
   <li>The About screen displays runtime version/build values</li>
-  <li>Bug reporting warns first and prepopulates only public app context</li>
+  <li>Bug, feature, and layout reports are composed and submitted without leaving Lootr</li>
+  <li>Submission requires a public preview of all user-authored content, marks any server-generated screenshot URL, and requires both disclosure confirmations</li>
+  <li>Bug diagnostics are local, rotating, allowlisted, bounded, removable, and never uploaded before consent</li>
+  <li>Screenshots are optional, separately approved, re-encoded, size-capped, and deleted from R2 after 30 days</li>
+  <li>The Cloudflare relay validates, rate-limits, redacts, creates the public GitHub issue, and exposes no GitHub credential to the APK</li>
+  <li>Cloudflare observability contains operational metadata only; PostHog and client analytics remain absent</li>
   <li>The repository contains README, AGPL license, notice, security policy, issue form, and release guide</li>
   <li>Analysis passes and the full automated test suite passes</li>
   <li>A release APK builds through both unsigned-local and configured-signing paths</li>

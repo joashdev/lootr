@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -10,6 +9,7 @@ import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/typography.dart';
 import '../../../shared/components/buttons/ghost_button.dart';
 import '../../../shared/components/buttons/secondary_button.dart';
+import 'feedback_report_sheet.dart';
 
 class AboutScreen extends ConsumerWidget {
   const AboutScreen({super.key});
@@ -75,10 +75,10 @@ class AboutScreen extends ConsumerWidget {
                 SizedBox(
                   width: double.infinity,
                   child: SecondaryButton(
-                    label: 'Report a bug',
+                    label: 'Send feedback',
                     onPressed: () =>
-                        _reportBug(context, ref, version, buildNumber),
-                    icon: const Icon(LucideIcons.bug, size: 18),
+                        _showFeedback(context, version, buildNumber),
+                    icon: const Icon(LucideIcons.messageSquarePlus, size: 18),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.space3),
@@ -135,45 +135,21 @@ class AboutScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _reportBug(
+  Future<void> _showFeedback(
     BuildContext context,
-    WidgetRef ref,
     String version,
     String buildNumber,
-  ) async {
-    final shouldContinue = await showDialog<bool>(
+  ) {
+    return showModalBottomSheet<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Report a public bug'),
-        content: const Text(
-          'GitHub issues are public. Do not include balances, transactions, '
-          'account details, receipt images, database files, or other private '
-          'financial information.',
-        ),
-        actions: [
-          GhostButton(
-            label: 'Cancel',
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            isExpanded: false,
-          ),
-          GhostButton(
-            label: 'Continue to GitHub',
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            isExpanded: false,
-          ),
-        ],
+      useRootNavigator: true,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => FractionallySizedBox(
+        heightFactor: 0.92,
+        child: FeedbackReportSheet(version: version, buildNumber: buildNumber),
       ),
     );
-    if (shouldContinue != true || !context.mounted) return;
-
-    final uri = buildBugReportUri(
-      BugReportDetails(
-        version: version,
-        buildNumber: buildNumber,
-        platform: bugReportPlatform(defaultTargetPlatform),
-      ),
-    );
-    await _openUrl(context, ref, uri);
   }
 
   Future<void> _showProjectLicense(BuildContext context, WidgetRef ref) async {
