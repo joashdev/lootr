@@ -7,9 +7,7 @@ import 'package:lootr/presentation/screens/more/settings/about_screen.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 void main() {
-  testWidgets('warns about privacy before opening a GitHub bug report', (
-    tester,
-  ) async {
+  testWidgets('opens the in-app public feedback composer', (tester) async {
     Uri? launchedUri;
     final packageInfo = PackageInfo(
       appName: 'Lootr',
@@ -33,20 +31,23 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Version 0.1.0-alpha.1 (Build 42)'), findsOneWidget);
-    await tester.tap(find.text('Report a bug'));
+    await tester.tap(find.text('Send feedback'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Report a public bug'), findsOneWidget);
-    expect(find.textContaining('GitHub issues are public'), findsOneWidget);
+    expect(find.text('Send public feedback'), findsOneWidget);
+    expect(find.text('Bug'), findsOneWidget);
+    expect(find.text('Feature'), findsOneWidget);
+    expect(find.text('Layout'), findsOneWidget);
+    expect(find.textContaining('This report will be public'), findsOneWidget);
+    expect(
+      find.text('Report a security vulnerability privately'),
+      findsOneWidget,
+    );
     expect(launchedUri, isNull);
 
-    await tester.tap(find.text('Continue to GitHub'));
+    await tester.tapAt(const Offset(8, 8));
     await tester.pumpAndSettle();
 
-    expect(launchedUri?.path, '/joashdev/lootr/issues/new');
-    expect(launchedUri?.queryParameters['body'], contains('Build: 42'));
-
-    launchedUri = null;
     await tester.tap(find.text('License & source · AGPL-3.0'));
     await tester.pumpAndSettle();
 
