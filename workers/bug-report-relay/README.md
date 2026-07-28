@@ -19,7 +19,9 @@ optional public screenshot in private R2, and creates an issue in
 6. Store it without printing or committing it:
    `npx wrangler secret put GITHUB_TOKEN`
 7. Run `pnpm test`, `pnpm check`, then `pnpm deploy`. The first deploy creates
-   the `ReportQuota` Durable Object.
+   the `ReportQuota` Durable Object. Keep `REPORTING_ENABLED = "false"` for this
+   bootstrap deployment, use its exact hostname for the Turnstile widget, then
+   set the variable to `"true"` and deploy again only after both secrets exist.
 8. Build Lootr with the deployed Worker origin:
    `flutter build apk --dart-define=LOOTR_REPORT_ENDPOINT=https://<worker>.workers.dev`
 
