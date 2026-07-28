@@ -3,6 +3,9 @@ import 'dart:math';
 import '../data/repositories/ai_processing_log_repo.dart';
 import '../domain/value_objects/field_types.dart';
 
+typedef PayeeCategoryHistoryKey = ({String direction, String payee});
+typedef PayeeCategoryHistory = Map<PayeeCategoryHistoryKey, String>;
+
 class CategorySuggestion {
   final String categoryId;
   final double confidence;
@@ -34,12 +37,14 @@ class CategorySuggestion {
 
 class Categorizer {
   final Map<String, String> payeeCategoryHistory;
+  final PayeeCategoryHistory directionalPayeeCategoryHistory;
   final bool modelEnabled;
   final AiProcessingLogRepo? _logRepo;
   final bool aiEnabled;
 
   const Categorizer({
     this.payeeCategoryHistory = const {},
+    this.directionalPayeeCategoryHistory = const {},
     this.modelEnabled = false,
     AiProcessingLogRepo? logRepo,
     this.aiEnabled = true,
@@ -49,12 +54,16 @@ class Categorizer {
 
   Categorizer copyWith({
     Map<String, String>? payeeCategoryHistory,
+    PayeeCategoryHistory? directionalPayeeCategoryHistory,
     bool? modelEnabled,
     AiProcessingLogRepo? logRepo,
     bool? aiEnabled,
   }) {
     return Categorizer(
       payeeCategoryHistory: payeeCategoryHistory ?? this.payeeCategoryHistory,
+      directionalPayeeCategoryHistory:
+          directionalPayeeCategoryHistory ??
+          this.directionalPayeeCategoryHistory,
       modelEnabled: modelEnabled ?? this.modelEnabled,
       logRepo: logRepo ?? _logRepo,
       aiEnabled: aiEnabled ?? this.aiEnabled,
@@ -64,6 +73,33 @@ class Categorizer {
   String _generateId() {
     final r = Random();
     return List.generate(16, (_) => r.nextInt(16).toRadixString(16)).join();
+  }
+
+  void _logCategorization({
+    double? amount,
+    required String? payee,
+    String? note,
+    String? direction,
+    required String modelUsed,
+    CategorySuggestion? result,
+    String? matchedKeyword,
+  }) {
+    _logRepo?.log(
+      id: _generateId(),
+      sourceType: 'categorization',
+      sourceReferenceId: payee,
+      modelUsed: modelUsed,
+      extractedPayload: {
+        'payee': payee,
+        'amount': amount,
+        'note': note,
+        'direction': direction,
+        'result': result?.categoryId,
+        'source': result?.source,
+        'matched_keyword': ?matchedKeyword,
+      },
+      confidenceScore: result?.confidence ?? 0.0,
+    );
   }
 
   Future<CategorySuggestion?> suggest({
@@ -77,27 +113,27 @@ class Categorizer {
 
     final normalizedPayee = payee?.toLowerCase().trim();
 
-    if (normalizedPayee != null &&
-        payeeCategoryHistory.containsKey(normalizedPayee)) {
+    final historyCategory = normalizedPayee == null
+        ? null
+        : direction == null
+        ? payeeCategoryHistory[normalizedPayee]
+        : directionalPayeeCategoryHistory[(
+            direction: direction,
+            payee: normalizedPayee,
+          )];
+    if (historyCategory != null) {
       final result = CategorySuggestion(
-        categoryId: payeeCategoryHistory[normalizedPayee]!,
+        categoryId: historyCategory,
         confidence: 0.9,
         source: 'history',
       );
-      _logRepo?.log(
-        id: _generateId(),
-        sourceType: 'categorization',
-        sourceReferenceId: payee,
+      _logCategorization(
+        amount: amount,
+        payee: payee,
+        note: note,
+        direction: direction,
         modelUsed: 'history',
-        extractedPayload: {
-          'payee': payee,
-          'amount': amount,
-          'note': note,
-          'direction': direction,
-          'result': result.categoryId,
-          'source': result.source,
-        },
-        confidenceScore: result.confidence,
+        result: result,
       );
       return result;
     }
@@ -108,20 +144,13 @@ class Categorizer {
         confidence: 0.7,
         source: 'heuristic',
       );
-      _logRepo?.log(
-        id: _generateId(),
-        sourceType: 'categorization',
-        sourceReferenceId: payee,
+      _logCategorization(
+        amount: amount,
+        payee: payee,
+        note: note,
+        direction: direction,
         modelUsed: 'heuristic',
-        extractedPayload: {
-          'payee': payee,
-          'amount': amount,
-          'note': note,
-          'direction': direction,
-          'result': 'Income',
-          'source': 'heuristic',
-        },
-        confidenceScore: 0.7,
+        result: result,
       );
       return result;
     }
@@ -146,21 +175,14 @@ class Categorizer {
             confidence: 0.5,
             source: 'heuristic',
           );
-          _logRepo?.log(
-            id: _generateId(),
-            sourceType: 'categorization',
-            sourceReferenceId: payee,
+          _logCategorization(
+            amount: amount,
+            payee: payee,
+            note: note,
+            direction: direction,
             modelUsed: 'heuristic',
-            extractedPayload: {
-              'payee': payee,
-              'amount': amount,
-              'note': note,
-              'direction': direction,
-              'result': entry.value,
-              'source': 'heuristic',
-              'matched_keyword': entry.key,
-            },
-            confidenceScore: 0.5,
+            result: result,
+            matchedKeyword: entry.key,
           );
           return result;
         }
@@ -168,9 +190,21 @@ class Categorizer {
     }
 
     if (modelEnabled) {
-      return await _aiCategorize(amount: amount, payee: payee, note: note);
+      final modelResult = await _aiCategorize(
+        amount: amount,
+        payee: payee,
+        note: note,
+      );
+      if (modelResult != null) return modelResult;
     }
 
+    _logCategorization(
+      amount: amount,
+      payee: payee,
+      note: note,
+      direction: direction,
+      modelUsed: modelEnabled ? 'llama-stub' : 'heuristic',
+    );
     return null;
   }
 

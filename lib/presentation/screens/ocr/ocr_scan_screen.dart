@@ -1,10 +1,13 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/format/money_format.dart';
+import '../../../application/providers/ai_entry_providers.dart';
+import '../../../application/providers/ai_settings_provider.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/radius.dart';
 import '../../../core/theme/typography.dart';
@@ -20,17 +23,17 @@ import '../../shared/components/buttons/primary_button.dart';
 /// picker, and a flash toggle. Captured / picked images are run through the
 /// ML Kit backed [RunOCR] use case and the extracted fields are previewed
 /// before the user continues to the Add Transaction sheet.
-class OcrScanScreen extends StatefulWidget {
+class OcrScanScreen extends ConsumerStatefulWidget {
   const OcrScanScreen({super.key, this.runOcr});
 
   /// Injectable use case for testing. Defaults to a real ML Kit pipeline.
   final RunOCR? runOcr;
 
   @override
-  State<OcrScanScreen> createState() => _OcrScanScreenState();
+  ConsumerState<OcrScanScreen> createState() => _OcrScanScreenState();
 }
 
-class _OcrScanScreenState extends State<OcrScanScreen>
+class _OcrScanScreenState extends ConsumerState<OcrScanScreen>
     with WidgetsBindingObserver {
   final ImagePicker _picker = ImagePicker();
 
@@ -44,7 +47,9 @@ class _OcrScanScreenState extends State<OcrScanScreen>
   String? _selectedImagePath;
   OcrPayload? _payload;
 
-  RunOCR get _runOcr => widget.runOcr ?? RunOCR();
+  RunOCR get _runOcr => widget.runOcr ?? ref.read(runOCRProvider);
+  bool get _assistanceEnabled =>
+      widget.runOcr != null || ref.read(smartEntryAssistanceEnabledProvider);
 
   @override
   void initState() {
@@ -125,6 +130,12 @@ class _OcrScanScreenState extends State<OcrScanScreen>
   }
 
   Future<void> _capture() async {
+    if (!_assistanceEnabled) {
+      _showSnackBar(
+        'Enable Smart Entry Assistance in Settings to scan receipts.',
+      );
+      return;
+    }
     final controller = _cameraController;
     if (controller == null || !controller.value.isInitialized) {
       _showSnackBar('Camera is not ready yet.');
@@ -143,6 +154,12 @@ class _OcrScanScreenState extends State<OcrScanScreen>
   }
 
   Future<void> _pickFromGallery() async {
+    if (!_assistanceEnabled) {
+      _showSnackBar(
+        'Enable Smart Entry Assistance in Settings to scan receipts.',
+      );
+      return;
+    }
     try {
       final file = await _picker.pickImage(source: ImageSource.gallery);
       if (file == null) return;
@@ -193,6 +210,8 @@ class _OcrScanScreenState extends State<OcrScanScreen>
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final assistanceEnabled =
+        widget.runOcr != null || ref.watch(smartEntryAssistanceEnabledProvider);
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -200,6 +219,23 @@ class _OcrScanScreenState extends State<OcrScanScreen>
         child: Stack(
           children: [
             Positioned.fill(child: _buildViewfinder(colorScheme)),
+            if (!assistanceEnabled)
+              const Positioned.fill(
+                child: ColoredBox(
+                  color: Colors.black54,
+                  child: Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(32),
+                      child: Text(
+                        'Smart Entry Assistance is off. Enable it in Settings '
+                        'to scan receipts.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             Positioned(
               top: 8,
               left: 8,
@@ -231,7 +267,7 @@ class _OcrScanScreenState extends State<OcrScanScreen>
               ),
             Align(
               alignment: Alignment.bottomCenter,
-              child: _buildBottomBar(colorScheme),
+              child: _buildBottomBar(colorScheme, assistanceEnabled),
             ),
           ],
         ),
@@ -293,7 +329,7 @@ class _OcrScanScreenState extends State<OcrScanScreen>
     );
   }
 
-  Widget _buildBottomBar(ColorScheme colorScheme) {
+  Widget _buildBottomBar(ColorScheme colorScheme, bool assistanceEnabled) {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
       decoration: const BoxDecoration(
@@ -311,12 +347,14 @@ class _OcrScanScreenState extends State<OcrScanScreen>
             children: [
               IconButton(
                 tooltip: 'Pick from gallery',
-                onPressed: _isProcessing ? null : _pickFromGallery,
+                onPressed: _isProcessing || !assistanceEnabled
+                    ? null
+                    : _pickFromGallery,
                 icon: const Icon(LucideIcons.image, color: Colors.white),
               ),
               const Spacer(),
               GestureDetector(
-                onTap: _isProcessing ? null : _capture,
+                onTap: _isProcessing || !assistanceEnabled ? null : _capture,
                 child: Container(
                   width: 76,
                   height: 76,

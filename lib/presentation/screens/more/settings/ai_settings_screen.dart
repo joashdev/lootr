@@ -7,6 +7,7 @@ import '../../../../application/providers/ai_settings_provider.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/typography.dart';
+
 class AiSettingsScreen extends ConsumerWidget {
   const AiSettingsScreen({super.key});
 
@@ -22,7 +23,7 @@ class AiSettingsScreen extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.space2),
         children: [
           _SettingsSection(
-            header: 'On-Device AI',
+            header: 'Smart Entry',
             children: [
               SwitchListTile(
                 contentPadding: const EdgeInsets.symmetric(
@@ -34,13 +35,14 @@ class AiSettingsScreen extends ConsumerWidget {
                   color: colorScheme.primary,
                 ),
                 title: Text(
-                  'Enable AI Features',
+                  'Smart Entry Assistance',
                   style: AppTypography.bodyMedium.copyWith(
                     color: colorScheme.onSurface,
                   ),
                 ),
                 subtitle: Text(
-                  'Local parsing, categorization, and OCR heuristics on-device',
+                  'Quick Add, voice-derived parsing, receipt OCR, and category '
+                  'suggestions. Manual entry always stays available.',
                   style: AppTypography.caption.copyWith(
                     color: lootrColors.textSecondary,
                   ),
@@ -52,7 +54,7 @@ class AiSettingsScreen extends ConsumerWidget {
             ],
           ),
           _SettingsSection(
-            header: 'Model',
+            header: 'How it works',
             children: [
               ListTile(
                 contentPadding: const EdgeInsets.symmetric(
@@ -64,13 +66,14 @@ class AiSettingsScreen extends ConsumerWidget {
                   color: colorScheme.primary,
                 ),
                 title: Text(
-                  'Model Info',
+                  'On-device processing',
                   style: AppTypography.bodyMedium.copyWith(
                     color: colorScheme.onSurface,
                   ),
                 ),
                 subtitle: Text(
-                  'Current build uses ML Kit OCR plus local parsing heuristics',
+                  'This build uses deterministic local parsing, payee history, '
+                  'keyword rules, and ML Kit text recognition.',
                   style: AppTypography.caption.copyWith(
                     color: lootrColors.textSecondary,
                   ),
@@ -86,13 +89,14 @@ class AiSettingsScreen extends ConsumerWidget {
                   color: colorScheme.primary,
                 ),
                 title: Text(
-                  'Prompt Support',
+                  'No downloadable AI model',
                   style: AppTypography.bodyMedium.copyWith(
                     color: colorScheme.onSurface,
                   ),
                 ),
                 subtitle: Text(
-                  'Custom OCR prompts and model downloads are not supported yet in this build',
+                  'Generative model downloads and custom prompts are not '
+                  'included in this alpha.',
                   style: AppTypography.caption.copyWith(
                     color: lootrColors.textSecondary,
                   ),
@@ -113,7 +117,7 @@ class AiSettingsScreen extends ConsumerWidget {
                   color: colorScheme.primary,
                 ),
                 title: Text(
-                  'AI Processing Logs',
+                  'Smart Entry Processing Logs',
                   style: AppTypography.bodyMedium.copyWith(
                     color: colorScheme.onSurface,
                   ),
@@ -131,7 +135,6 @@ class AiSettingsScreen extends ConsumerWidget {
       ),
     );
   }
-
 }
 
 class _SettingsSection extends StatelessWidget {

@@ -2,12 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'repo_providers.dart';
 
-enum ModelDownloadStatus {
-  notDownloaded,
-  downloading,
-  downloaded,
-  failed,
-}
+enum ModelDownloadStatus { notDownloaded, downloading, downloaded, failed }
 
 class AiSettingsState {
   final bool aiEnabled;
@@ -38,6 +33,8 @@ class AiSettingsState {
 }
 
 class AiSettingsNotifier extends Notifier<AiSettingsState> {
+  var _settingsVersion = 0;
+
   @override
   AiSettingsState build() {
     _loadAiEnabled();
@@ -45,12 +42,15 @@ class AiSettingsNotifier extends Notifier<AiSettingsState> {
   }
 
   Future<void> _loadAiEnabled() async {
+    final loadVersion = _settingsVersion;
     final user = await ref.read(userRepoProvider).getCurrentUser();
+    if (loadVersion != _settingsVersion) return;
     state = state.copyWith(aiEnabled: user?.aiEnabled ?? false);
   }
 
   Future<void> toggleAi() async {
     final newEnabled = !state.aiEnabled;
+    _settingsVersion++;
     final userRepo = ref.read(userRepoProvider);
     await userRepo.updateAiEnabled(newEnabled);
     state = state.copyWith(aiEnabled: newEnabled);
@@ -71,11 +71,20 @@ class AiSettingsNotifier extends Notifier<AiSettingsState> {
 
 final aiSettingsProvider =
     NotifierProvider<AiSettingsNotifier, AiSettingsState>(
-  AiSettingsNotifier.new,
-);
+      AiSettingsNotifier.new,
+    );
 
 final aiEnabledProvider = Provider<bool>((ref) {
   return ref.watch(aiSettingsProvider).aiEnabled;
+});
+
+/// User-facing alias for the persisted `users.ai_enabled` flag.
+///
+/// The current alpha has deterministic parsing, ML Kit OCR, and local
+/// categorization heuristics, but no downloadable generative model. Keeping
+/// this alias makes that boundary explicit without a database migration.
+final smartEntryAssistanceEnabledProvider = Provider<bool>((ref) {
+  return ref.watch(aiEnabledProvider);
 });
 
 final modelDownloadStatusProvider = Provider<ModelDownloadStatus>((ref) {

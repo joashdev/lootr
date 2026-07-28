@@ -176,7 +176,20 @@ class NLParser {
     final isTransfer = _detectTransfer(text);
     final amountMatch = _extractAmount(text);
 
-    if (amountMatch == null) return null;
+    if (amountMatch == null) {
+      _logRepo?.log(
+        id: _generateId(),
+        sourceType: 'nlp',
+        modelUsed: 'regex',
+        extractedPayload: {
+          'raw_text': rawText,
+          'result': null,
+          'error': 'amount_not_found',
+        },
+        confidenceScore: 0.0,
+      );
+      return null;
+    }
 
     String? sourceAccount;
     String? destAccount;

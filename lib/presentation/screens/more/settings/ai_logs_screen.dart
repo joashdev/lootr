@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -5,6 +7,7 @@ import '../../../../application/providers/ai_processing_logs_provider.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/typography.dart';
+import '../../../../data/database/app_database.dart';
 import '../../../shared/components/empty_state.dart';
 
 class AiLogsScreen extends ConsumerStatefulWidget {
@@ -17,6 +20,47 @@ class AiLogsScreen extends ConsumerStatefulWidget {
 class _AiLogsScreenState extends ConsumerState<AiLogsScreen> {
   String _filter = 'all';
 
+  String _prettyPayload(String? payload) {
+    if (payload == null || payload.trim().isEmpty) return 'No payload recorded';
+    try {
+      return const JsonEncoder.withIndent('  ').convert(jsonDecode(payload));
+    } catch (_) {
+      return payload;
+    }
+  }
+
+  Future<void> _showLogDetail(AiProcessingLogData log) {
+    final confidence = log.confidenceScore;
+    return showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('${log.sourceType.toUpperCase()} details'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Method: ${log.modelUsed ?? 'local'}'),
+              Text(
+                'Confidence: ${confidence == null ? 'Not recorded' : '${(confidence * 100).round()}%'}',
+              ),
+              Text('Timestamp: ${log.createdAt.toLocal().toIso8601String()}'),
+              const SizedBox(height: AppSpacing.space3),
+              const Text('Payload'),
+              const SizedBox(height: AppSpacing.space1),
+              SelectableText(_prettyPayload(log.extractedPayload)),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final logsAsync = ref.watch(aiProcessingLogsProvider);
@@ -25,7 +69,7 @@ class _AiLogsScreenState extends ConsumerState<AiLogsScreen> {
     return Scaffold(
       appBar: AppBar(
         centerTitle: false,
-        title: const Text('AI Processing Logs'),
+        title: const Text('Smart Entry Processing Logs'),
       ),
       body: logsAsync.when(
         data: (logs) {
@@ -36,8 +80,8 @@ class _AiLogsScreenState extends ConsumerState<AiLogsScreen> {
             return const EmptyState(
               headline: 'No logs yet',
               subtext:
-                  'AI processing logs will appear here when AI features are used.',
-              ctaLabel: 'Enable AI',
+                  'Local processing logs appear here after Smart Entry is used.',
+              ctaLabel: 'No activity yet',
               onCtaPressed: null,
             );
           }
@@ -79,7 +123,11 @@ class _AiLogsScreenState extends ConsumerState<AiLogsScreen> {
                       ),
                       title: Text(log.sourceType.toUpperCase()),
                       subtitle: Text(
-                        log.sourceReferenceId ?? 'No related record',
+                        [
+                          log.modelUsed ?? 'local',
+                          if (log.confidenceScore != null)
+                            '${(log.confidenceScore! * 100).round()}% confidence',
+                        ].join(' · '),
                         style: AppTypography.caption.copyWith(
                           color: lootrColors.textSecondary,
                         ),
@@ -90,6 +138,7 @@ class _AiLogsScreenState extends ConsumerState<AiLogsScreen> {
                           color: lootrColors.textTertiary,
                         ),
                       ),
+                      onTap: () => _showLogDetail(log),
                     );
                   },
                 ),

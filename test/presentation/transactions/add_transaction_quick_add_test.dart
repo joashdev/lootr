@@ -1,19 +1,27 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lootr/ai/categorizer.dart';
 import 'package:lootr/application/providers/accounts_provider.dart';
+import 'package:lootr/application/providers/ai_entry_providers.dart';
+import 'package:lootr/application/providers/ai_settings_provider.dart';
 import 'package:lootr/application/providers/categories_provider.dart';
+import 'package:lootr/application/providers/database_provider.dart';
 import 'package:lootr/application/providers/debts_provider.dart';
 import 'package:lootr/application/providers/filtered_transactions_provider.dart';
 import 'package:lootr/application/providers/goals_provider.dart';
 import 'package:lootr/application/providers/payees_provider.dart';
 import 'package:lootr/core/theme/theme.dart';
+import 'package:lootr/data/database/app_database.dart';
 import 'package:lootr/domain/entities/account.dart';
 import 'package:lootr/domain/entities/category.dart';
 import 'package:lootr/domain/entities/debt_record.dart';
 import 'package:lootr/domain/entities/goal.dart';
 import 'package:lootr/domain/entities/payee.dart';
 import 'package:lootr/domain/entities/transaction.dart';
+import 'package:lootr/domain/value_objects/parsed_transaction.dart';
 import 'package:lootr/presentation/sheets/add_transaction_sheet.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -22,11 +30,30 @@ Widget _wrap(
   List<Account> accounts = const [],
   List<Category> categories = const [],
   List<Payee> payees = const [],
+  bool assistanceEnabled = true,
+  PayeeCategoryHistory payeeCategoryHistory = const {},
+  Stream<List<Category>>? categoriesStream,
+  Stream<PayeeCategoryHistory>? payeeCategoryHistoryStream,
+  AppDatabase? database,
 }) {
   return ProviderScope(
     overrides: [
+      databaseProvider.overrideWith((ref) {
+        final value = database ?? AppDatabase.inMemory();
+        if (database == null) {
+          ref.onDispose(value.close);
+        }
+        return value;
+      }),
+      aiEnabledProvider.overrideWith((ref) => assistanceEnabled),
+      payeeCategoryHistoryProvider.overrideWith(
+        (ref) =>
+            payeeCategoryHistoryStream ?? Stream.value(payeeCategoryHistory),
+      ),
       accountsProvider.overrideWith((ref) => Stream.value(accounts)),
-      categoriesProvider.overrideWith((ref) => Stream.value(categories)),
+      categoriesProvider.overrideWith(
+        (ref) => categoriesStream ?? Stream.value(categories),
+      ),
       payeesProvider.overrideWith((ref) => Stream.value(payees)),
       debtsProvider.overrideWith((ref) => Stream.value(const <DebtRecord>[])),
       goalsProvider.overrideWith((ref) => Stream.value(const <Goal>[])),
@@ -66,7 +93,8 @@ Category _category(String id, String name, {String group = 'expense'}) =>
 Future<void> _parseQuickInput(WidgetTester tester, String input) async {
   await tester.enterText(find.byType(TextField).first, input);
   await tester.tap(find.byIcon(LucideIcons.arrowRight));
-  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 100));
+  await tester.pumpAndSettle();
 }
 
 void main() {
@@ -92,6 +120,36 @@ void main() {
       expect(find.text('Describe your transaction...'), findsOneWidget);
       // Mic toggle is visible but non-functional in V1.
       expect(find.byIcon(LucideIcons.mic), findsOneWidget);
+    });
+
+    testWidgets('disabled assistance keeps manual entry available', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          const AddTransactionSheet(startInQuickMode: true),
+          accounts: [_gcash()],
+          assistanceEnabled: false,
+        ),
+      );
+      await tester.pump();
+
+      expect(
+        find.text('Smart entry is off. Manual entry remains available.'),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .widget<IconButton>(
+              find.widgetWithIcon(IconButton, LucideIcons.arrowRight),
+            )
+            .onPressed,
+        isNull,
+      );
+
+      await tester.tap(find.text('Manual'));
+      await tester.pumpAndSettle();
+      expect(find.text('Amount'), findsOneWidget);
     });
 
     testWidgets('tapping Manual segment switches to the full manual form', (
@@ -136,7 +194,8 @@ void main() {
 
       await tester.enterText(find.byType(TextField).first, 'mcdo 250 gcash');
       await tester.tap(find.byIcon(LucideIcons.arrowRight));
-      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpAndSettle();
 
       expect(find.text('Preview'), findsOneWidget);
       expect(find.text('₱250.00'), findsOneWidget);
@@ -158,7 +217,8 @@ void main() {
 
       await tester.enterText(find.byType(TextField).first, 'mcdo 250 gcash');
       await tester.tap(find.byIcon(LucideIcons.arrowRight));
-      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('Edit manually'));
       await tester.pumpAndSettle();
@@ -231,6 +291,112 @@ void main() {
         expect(find.text('Dining'), findsNothing);
       },
     );
+
+    testWidgets(
+      'payee history suggestion is previewed without writing a transaction',
+      (tester) async {
+        final database = AppDatabase.inMemory();
+        addTearDown(database.close);
+        await tester.pumpWidget(
+          _wrap(
+            const AddTransactionSheet(startInQuickMode: true),
+            accounts: [_gcash()],
+            categories: [_category('cat-food', 'Food & Dining')],
+            payeeCategoryHistory: const {
+              (direction: 'expense', payee: 'starbucks'): 'cat-food',
+            },
+            database: database,
+          ),
+        );
+        await tester.pump();
+
+        await _parseQuickInput(tester, 'starbucks 180 gcash');
+        await tester.pump();
+
+        expect(find.text('Food & Dining'), findsOneWidget);
+        expect(await database.select(database.transactions).get(), isEmpty);
+      },
+    );
+
+    testWidgets('explicit category takes precedence over payee history', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          const AddTransactionSheet(startInQuickMode: true),
+          accounts: [_gcash()],
+          categories: [
+            _category('cat-groceries', 'Groceries'),
+            _category('cat-dining', 'Dining'),
+          ],
+          payeeCategoryHistory: const {
+            (direction: 'expense', payee: 'starbucks'): 'cat-dining',
+          },
+        ),
+      );
+      await tester.pump();
+
+      await _parseQuickInput(tester, 'starbucks 180 groceries');
+
+      expect(find.text('Groceries'), findsOneWidget);
+      expect(find.text('Dining'), findsNothing);
+    });
+
+    testWidgets(
+      'income heuristic label resolves to a real category in preview',
+      (tester) async {
+        final database = AppDatabase.inMemory();
+        addTearDown(database.close);
+        await tester.pumpWidget(
+          _wrap(
+            const AddTransactionSheet(startInQuickMode: true),
+            accounts: [_gcash()],
+            categories: [_category('cat-income', 'Income', group: 'income')],
+            database: database,
+          ),
+        );
+        await tester.pump();
+
+        await _parseQuickInput(tester, 'received 180 gcash from Acme');
+
+        expect(find.text('Income'), findsWidgets);
+        expect(await database.select(database.transactions).get(), isEmpty);
+      },
+    );
+
+    testWidgets('scan seed uses categories loaded while assistance starts', (
+      tester,
+    ) async {
+      final categories = StreamController<List<Category>>();
+      final history = StreamController<PayeeCategoryHistory>();
+      addTearDown(categories.close);
+      addTearDown(history.close);
+
+      await tester.pumpWidget(
+        _wrap(
+          const AddTransactionSheet(
+            initialParsedTransaction: ParsedTransaction(
+              amount: 180,
+              payee: 'Starbucks',
+              direction: 'expense',
+            ),
+          ),
+          accounts: [_gcash()],
+          categoriesStream: categories.stream,
+          payeeCategoryHistoryStream: history.stream,
+        ),
+      );
+      await tester.pump();
+
+      categories.add([_category('cat-food', 'Food & Dining')]);
+      await tester.pump();
+      history.add(const {
+        (direction: 'expense', payee: 'starbucks'): 'cat-food',
+      });
+      await tester.pumpAndSettle();
+
+      expect(find.text('Food & Dining'), findsOneWidget);
+    });
 
     testWidgets(
       'confidence indicator is shown once overall, not per preview row',
