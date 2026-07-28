@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lootr/core/reporting/bug_report.dart';
@@ -95,5 +97,51 @@ void main() {
     expect(bugReportPlatform(TargetPlatform.android), 'Android');
     expect(bugReportPlatform(TargetPlatform.iOS), 'iOS');
     expect(bugReportPlatform(TargetPlatform.linux), 'Linux');
+  });
+
+  test('trims oldest diagnostics to the relay payload limit', () {
+    final diagnostics = List.generate(
+      100,
+      (index) => DiagnosticEvent(
+        timestamp: DateTime.utc(2026, 7, 27).add(Duration(minutes: index)),
+        severity: DiagnosticSeverity.error,
+        feature: DiagnosticFeature.app,
+        eventCode: DiagnosticCode.flutterError,
+        outcome: DiagnosticOutcome.failed,
+        exceptionType: 'StateError',
+        stack: List.filled(
+          12,
+          'package:lootr/example.dart ${List.filled(210, 'x').join()}',
+        ),
+      ),
+    );
+    final report = PublicFeedbackReport(
+      id: 'report-123',
+      type: FeedbackType.bug,
+      title: 'Repeated failure',
+      description: 'The app repeatedly failed while loading.',
+      app: const BugReportDetails(
+        version: '0.1.0-alpha.2',
+        buildNumber: '42',
+        platform: 'Android',
+      ),
+      diagnostics: diagnostics,
+      publicReportConsent: true,
+      persistenceConsent: true,
+      publicScreenshotConsent: false,
+    );
+
+    final fitted = report.fitDiagnosticsToPayloadLimit();
+
+    expect(
+      utf8.encode(jsonEncode(fitted.toJson())).lengthInBytes,
+      lessThanOrEqualTo(maxPublicReportPayloadBytes),
+    );
+    expect(fitted.diagnostics.length, lessThan(diagnostics.length));
+    expect(fitted.diagnostics.last.timestamp, diagnostics.last.timestamp);
+    expect(
+      fitted.diagnostics.first.timestamp.isAfter(diagnostics.first.timestamp),
+      isTrue,
+    );
   });
 }

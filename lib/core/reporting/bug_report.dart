@@ -8,6 +8,7 @@ import 'diagnostic_logger.dart';
 const lootrRepositoryUrl = 'https://github.com/joashdev/lootr';
 const lootrPrivateVulnerabilityUrl =
     '$lootrRepositoryUrl/security/advisories/new';
+const maxPublicReportPayloadBytes = 64 * 1024;
 
 enum FeedbackType { bug, feature, layout }
 
@@ -132,6 +133,33 @@ class PublicFeedbackReport {
       'publicScreenshot': publicScreenshotConsent,
     },
   };
+
+  PublicFeedbackReport fitDiagnosticsToPayloadLimit({
+    int maxBytes = maxPublicReportPayloadBytes,
+  }) {
+    var retained = diagnostics;
+    var fitted = this;
+    while (retained.isNotEmpty &&
+        utf8.encode(jsonEncode(fitted.toJson())).lengthInBytes > maxBytes) {
+      retained = retained.sublist(1);
+      fitted = _copyWithDiagnostics(retained);
+    }
+    return fitted;
+  }
+
+  PublicFeedbackReport _copyWithDiagnostics(List<DiagnosticEvent> diagnostics) {
+    return PublicFeedbackReport(
+      id: id,
+      type: type,
+      title: title,
+      description: description,
+      app: app,
+      diagnostics: diagnostics,
+      publicReportConsent: publicReportConsent,
+      persistenceConsent: persistenceConsent,
+      publicScreenshotConsent: publicScreenshotConsent,
+    );
+  }
 }
 
 String bugReportPlatform(TargetPlatform platform) => switch (platform) {

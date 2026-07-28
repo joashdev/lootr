@@ -72,6 +72,8 @@ export default {
     let r2Outcome = 'not_attempted'
     let turnstileOutcome = 'not_attempted'
     let quotaOutcome = 'not_attempted'
+    let dedupeOutcome = 'not_attempted'
+    let githubCommitted = false
 
     try {
       const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown'
@@ -84,7 +86,19 @@ export default {
         )
       }
 
-      const declaredLength = Number(request.headers.get('content-length') ?? 0)
+      const contentLength = request.headers.get('content-length')
+      if (
+        contentLength === null ||
+        !/^[1-9][0-9]*$/.test(contentLength) ||
+        !Number.isSafeInteger(Number(contentLength))
+      ) {
+        throw new ReportValidationError(
+          'A valid Content-Length header is required.',
+          411,
+          'content_length_required',
+        )
+      }
+      const declaredLength = Number(contentLength)
       if (declaredLength > maxScreenshotBytes + 128 * 1024) {
         throw new ReportValidationError(
           'Report request is too large.',
@@ -209,6 +223,7 @@ export default {
         )
       }
       dedupeReserved = true
+      dedupeOutcome = 'reserved'
 
       let screenshotUrl: string | undefined
       if (screenshotBytes !== undefined) {
@@ -254,6 +269,7 @@ export default {
         if (dedupeKey !== undefined) {
           await deleteObject(env.SCREENSHOTS, dedupeKey)
           dedupeReserved = false
+          dedupeOutcome = 'released_after_github_failure'
         }
         operationalLog({
           event: 'report.failed',
@@ -270,17 +286,23 @@ export default {
         return json({ error: 'github_unavailable' }, 502)
       }
 
+      githubCommitted = true
       const created = (await githubResponse.json()) as GitHubIssueResponse
-      await env.SCREENSHOTS.put(dedupeKey, 'submitted', {
-        customMetadata: {
-          issueNumber: String(created.number),
-          deleteAfter: new Date(
-            Date.now() +
-              Number(env.ATTACHMENT_RETENTION_DAYS) * 24 * 60 * 60 * 1000,
-          ).toISOString(),
-        },
-      })
-      dedupeReserved = false
+      try {
+        await env.SCREENSHOTS.put(dedupeKey, 'submitted', {
+          customMetadata: {
+            issueNumber: String(created.number),
+            deleteAfter: new Date(
+              Date.now() +
+                Number(env.ATTACHMENT_RETENTION_DAYS) * 24 * 60 * 60 * 1000,
+            ).toISOString(),
+          },
+        })
+        dedupeReserved = false
+        dedupeOutcome = 'submitted'
+      } catch {
+        dedupeOutcome = 'finalization_failed'
+      }
       operationalLog({
         event: 'report.created',
         reportId,
@@ -290,6 +312,7 @@ export default {
         r2Outcome,
         turnstileOutcome,
         quotaOutcome,
+        dedupeOutcome,
         githubStatus: githubResponse.status,
         durationMs: Date.now() - startedAt,
       })
@@ -302,15 +325,18 @@ export default {
         201,
       )
     } catch (error) {
-      if (screenshotKey !== undefined) {
-        r2Outcome = (await deleteObject(env.SCREENSHOTS, screenshotKey))
-          ? 'deleted_after_rejection'
-          : 'delete_failed'
-      } else if (r2Outcome === 'store_started') {
-        r2Outcome = 'store_failed'
-      }
-      if (dedupeReserved && dedupeKey !== undefined) {
-        await deleteObject(env.SCREENSHOTS, dedupeKey)
+      if (!githubCommitted) {
+        if (screenshotKey !== undefined) {
+          r2Outcome = (await deleteObject(env.SCREENSHOTS, screenshotKey))
+            ? 'deleted_after_rejection'
+            : 'delete_failed'
+        } else if (r2Outcome === 'store_started') {
+          r2Outcome = 'store_failed'
+        }
+        if (dedupeReserved && dedupeKey !== undefined) {
+          await deleteObject(env.SCREENSHOTS, dedupeKey)
+          dedupeOutcome = 'released_after_rejection'
+        }
       }
       const validation =
         error instanceof ReportValidationError ? error : undefined
@@ -323,6 +349,7 @@ export default {
         r2Outcome,
         turnstileOutcome,
         quotaOutcome,
+        dedupeOutcome,
         status: validation?.status ?? 500,
         errorType: error instanceof Error ? error.constructor.name : 'Unknown',
         durationMs: Date.now() - startedAt,

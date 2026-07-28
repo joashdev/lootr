@@ -52,6 +52,43 @@ describe('report relay', () => {
     expect(fetch).not.toHaveBeenCalled()
   })
 
+  it('rejects requests without a valid Content-Length', async () => {
+    const response = await submit(reportForm(), bucket, quota, {
+      contentLength: null,
+    })
+
+    expect(response.status).toBe(411)
+    expect(await response.json()).toMatchObject({
+      error: 'content_length_required',
+    })
+    expect(fetch).not.toHaveBeenCalled()
+    expect(bucket.puts).toBe(0)
+  })
+
+  it('rejects malformed Content-Length values', async () => {
+    const response = await submit(reportForm(), bucket, quota, {
+      contentLength: 'not-a-number',
+    })
+
+    expect(response.status).toBe(411)
+    expect(await response.json()).toMatchObject({
+      error: 'content_length_required',
+    })
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('rejects declared request bodies above the hard limit', async () => {
+    const response = await submit(reportForm(), bucket, quota, {
+      contentLength: String(1024 * 1024 + 128 * 1024 + 1),
+    })
+
+    expect(response.status).toBe(413)
+    expect(await response.json()).toMatchObject({
+      error: 'request_too_large',
+    })
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
   it('validates JPEG bytes before creating the issue', async () => {
     const form = reportForm()
     form.set(
@@ -169,6 +206,25 @@ describe('report relay', () => {
     expect(quota.lastBody).toEqual({ hasScreenshot: true })
   })
 
+  it('keeps committed issue state when dedupe finalization fails', async () => {
+    bucket.failSubmittedPut = true
+    const form = reportForm()
+    form.set(
+      'screenshot',
+      new File([new Uint8Array([0xff, 0xd8, 0xff, 0xd9])], 'screen.jpg', {
+        type: 'image/jpeg',
+      }),
+    )
+
+    const response = await submit(form, bucket, quota)
+    const duplicate = await submit(reportForm(), bucket, quota)
+
+    expect(response.status).toBe(201)
+    expect(duplicate.status).toBe(409)
+    expect(bucket.keys().filter((key) => key.startsWith('attachments/'))).toHaveLength(1)
+    expect(fetch).toHaveBeenCalledTimes(3)
+  })
+
   it('serves the managed challenge without caching it', async () => {
     const response = await worker.fetch(
       new Request('https://reports.example.test/challenge'),
@@ -250,12 +306,18 @@ function submit(
   form: FormData,
   bucket: FakeBucket,
   quota: FakeQuotaNamespace,
+  options: { contentLength?: string | null } = {},
 ): Promise<Response> {
+  const contentLength =
+    options.contentLength === undefined ? '1024' : options.contentLength
   return worker.fetch(
     new Request('https://reports.example.test/reports', {
       method: 'POST',
       body: form,
-      headers: { 'CF-Connecting-IP': '127.0.0.1' },
+      headers: {
+        'CF-Connecting-IP': '127.0.0.1',
+        ...(contentLength === null ? {} : { 'Content-Length': contentLength }),
+      },
     }),
     {
       SCREENSHOTS: bucket as unknown as R2Bucket,
@@ -277,6 +339,7 @@ function submit(
 class FakeBucket {
   private readonly values = new Map<string, unknown>()
   puts = 0
+  failSubmittedPut = false
 
   async put(
     key: string,
@@ -284,6 +347,9 @@ class FakeBucket {
     options?: R2PutOptions,
   ): Promise<R2Object | null> {
     this.puts += 1
+    if (this.failSubmittedPut && value === 'submitted') {
+      throw new Error('dedupe finalization failed')
+    }
     if (
       options?.onlyIf !== undefined &&
       this.values.has(key)
@@ -300,6 +366,10 @@ class FakeBucket {
 
   async delete(key: string): Promise<void> {
     this.values.delete(key)
+  }
+
+  keys(): string[] {
+    return [...this.values.keys()]
   }
 }
 

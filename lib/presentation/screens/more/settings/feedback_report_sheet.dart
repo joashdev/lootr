@@ -102,14 +102,17 @@ class _FeedbackReportSheetState extends ConsumerState<FeedbackReportSheet> {
     platform: bugReportPlatform(defaultTargetPlatform),
   );
 
-  PublicFeedbackReport _report({required bool confirmed}) {
+  PublicFeedbackReport _report({
+    required bool confirmed,
+    List<DiagnosticEvent>? diagnostics,
+  }) {
     return PublicFeedbackReport(
       id: _reportId,
       type: _type,
       title: _titleController.text,
       description: _descriptionController.text,
       app: _app,
-      diagnostics: _includeDiagnostics ? _diagnostics : const [],
+      diagnostics: _includeDiagnostics ? diagnostics ?? _diagnostics : const [],
       publicReportConsent: confirmed && _publicConsent,
       persistenceConsent: confirmed && _persistenceConsent,
       publicScreenshotConsent:
@@ -513,8 +516,12 @@ class _FeedbackReportSheetState extends ConsumerState<FeedbackReportSheet> {
         ? await ref.read(diagnosticLoggerProvider).readRecent()
         : const <DiagnosticEvent>[];
     if (!mounted) return;
+    final fittedDiagnostics = _report(
+      confirmed: false,
+      diagnostics: diagnostics,
+    ).fitDiagnosticsToPayloadLimit().diagnostics;
     setState(() {
-      _diagnostics = diagnostics;
+      _diagnostics = fittedDiagnostics;
       _busy = false;
       _stage = _ReportStage.preview;
     });
