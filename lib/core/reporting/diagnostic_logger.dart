@@ -201,6 +201,8 @@ class DiagnosticLogger {
     if (!_initialized) return;
     final encoded = '${jsonEncode(event.toJson())}\n';
     try {
+      await _pruneFile(_previousFile);
+      await _pruneFile(_currentFile);
       if (await _currentFile.exists() &&
           await _currentFile.length() + utf8.encode(encoded).length >
               maxFileBytes) {

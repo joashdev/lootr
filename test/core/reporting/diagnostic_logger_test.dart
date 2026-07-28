@@ -93,4 +93,27 @@ void main() {
 
     expect(await restarted.readRecent(), isEmpty);
   });
+
+  test('physically prunes expired events during ongoing writes', () async {
+    await logger.log(
+      severity: DiagnosticSeverity.info,
+      feature: DiagnosticFeature.app,
+      eventCode: DiagnosticCode.appStarted,
+      outcome: DiagnosticOutcome.succeeded,
+    );
+    now = now.add(const Duration(days: 8));
+
+    await logger.log(
+      severity: DiagnosticSeverity.info,
+      feature: DiagnosticFeature.reporting,
+      eventCode: DiagnosticCode.reportOpened,
+      outcome: DiagnosticOutcome.succeeded,
+    );
+
+    final persisted = await File(
+      '${directory.path}/diagnostics.jsonl',
+    ).readAsString();
+    expect(persisted, isNot(contains('app.started')));
+    expect(persisted, contains('report.opened'));
+  });
 }

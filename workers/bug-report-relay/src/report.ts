@@ -4,6 +4,22 @@ export const maxScreenshotBytes = 1024 * 1024
 const reportTypes = ['bug', 'feature', 'layout'] as const
 const severities = ['debug', 'info', 'warning', 'error'] as const
 const outcomes = ['started', 'succeeded', 'failed', 'cancelled'] as const
+const diagnosticFeatures = [
+  'app',
+  'reporting',
+  'database',
+  'migration',
+  'notifications',
+] as const
+const diagnosticCodes = [
+  'app.started',
+  'flutter.error',
+  'asynchronous.error',
+  'report.opened',
+  'report.submit.started',
+  'report.submit.succeeded',
+  'report.submit.failed',
+] as const
 
 export type ReportType = (typeof reportTypes)[number]
 
@@ -163,8 +179,16 @@ function validateDiagnostic(value: unknown, index: number): DiagnosticEvent {
       severities,
       `diagnostics[${index}].severity`,
     ),
-    feature: token(event.feature, `diagnostics[${index}].feature`),
-    eventCode: token(event.eventCode, `diagnostics[${index}].eventCode`),
+    feature: enumValue(
+      event.feature,
+      diagnosticFeatures,
+      `diagnostics[${index}].feature`,
+    ),
+    eventCode: enumValue(
+      event.eventCode,
+      diagnosticCodes,
+      `diagnostics[${index}].eventCode`,
+    ),
     outcome: enumValue(
       event.outcome,
       outcomes,

@@ -21,11 +21,11 @@ const validReport = {
     {
       timestamp: '2026-07-27T01:00:00.000Z',
       severity: 'error',
-      feature: 'dashboard',
-      eventCode: 'dashboard.load_failed',
+      feature: 'app',
+      eventCode: 'flutter.error',
       outcome: 'failed',
       exceptionType: 'StateError',
-      stack: ['package:lootr/dashboard.dart 10:2'],
+      stack: ['package:lootr/main.dart 10:2'],
     },
   ],
   consent: {
@@ -63,6 +63,26 @@ describe('report validation', () => {
       /64 KiB/,
     )
   })
+
+  it('rejects diagnostic features outside the app allowlist', () => {
+    expect(() =>
+      validateReport({
+        ...validReport,
+        diagnostics: [{ ...validReport.diagnostics[0], feature: 'dashboard' }],
+      }),
+    ).toThrowError(/feature is invalid/)
+  })
+
+  it('rejects diagnostic event codes outside the app allowlist', () => {
+    expect(() =>
+      validateReport({
+        ...validReport,
+        diagnostics: [
+          { ...validReport.diagnostics[0], eventCode: 'dashboard.load_failed' },
+        ],
+      }),
+    ).toThrowError(/eventCode is invalid/)
+  })
 })
 
 describe('GitHub issue rendering', () => {
@@ -71,7 +91,7 @@ describe('GitHub issue rendering', () => {
 
     expect(issue.title).toBe('[Bug] Dashboard stays blank')
     expect(issue.labels).toEqual(['bug'])
-    expect(issue.body).toContain('dashboard.load_failed')
+    expect(issue.body).toContain('flutter.error')
     expect(issue.body).toContain('reviewed this issue')
   })
 
