@@ -51,6 +51,59 @@ jobs:
           fi
           echo "release_version=${release_version}" >> "$GITHUB_OUTPUT"
 
+      - name: Verify published legal pages
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          legal_base_url="$(
+            sed -n "s/^const lootrLegalBaseUrl = '\([^']*\)';/\1/p" \
+              lib/core/legal/legal_links.dart
+          )"
+          if [[ -z "$legal_base_url" ]]; then
+            echo "The legal base URL is missing."
+            exit 1
+          fi
+
+          verify_legal_page() {
+            local title="$1"
+            local path="$2"
+            local source="$3"
+            local expected_date
+            local page
+
+            expected_date="$(
+              sed -n 's/^[[:space:]]*effectiveDate="\([^"]*\)".*/\1/p' \
+                "$source"
+            )"
+            if [[ -z "$expected_date" ]]; then
+              echo "The effective date is missing from ${source}."
+              exit 1
+            fi
+
+            page="$(
+              curl --fail --silent --show-error --location \
+                --retry 3 --max-time 30 "${legal_base_url}${path}"
+            )"
+            if ! grep -Fq "<title>${title} · Lootr</title>" <<< "$page"; then
+              echo "${title} is not available at ${legal_base_url}${path}."
+              exit 1
+            fi
+            if ! grep -Fq "Effective ${expected_date}" <<< "$page"; then
+              echo "${title} does not have effective date ${expected_date}."
+              exit 1
+            fi
+          }
+
+          verify_legal_page \
+            "Privacy Policy" \
+            "/privacy" \
+            "website/src/pages/privacy.astro"
+          verify_legal_page \
+            "Terms of Use" \
+            "/terms" \
+            "website/src/pages/terms.astro"
+
       - name: Install dependencies
         run: flutter pub get
 

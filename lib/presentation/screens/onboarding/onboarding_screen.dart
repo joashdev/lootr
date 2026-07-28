@@ -36,6 +36,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   int _currentStep = 0;
   String _currency = 'PHP';
   bool _loadDemoData = true;
+  bool _isAdultConfirmed = false;
   bool _isSubmitting = false;
   bool _isSubmittingDemoData = false;
 
@@ -147,7 +148,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   bool _canProceed() {
     if (_currentStep == _setupStepIndex) {
-      return _nameController.text.trim().isNotEmpty;
+      return _nameController.text.trim().isNotEmpty && _isAdultConfirmed;
     }
     return true;
   }
@@ -169,7 +170,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 child: Column(
                   children: [
                     _TopBar(
-                      showSkip: !_isSubmitting && _currentStep != _setupStepIndex,
+                      showSkip:
+                          !_isSubmitting && _currentStep != _setupStepIndex,
                       onSkip: _skipToSetup,
                     ),
                     Expanded(
@@ -211,6 +213,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                               nameController: _nameController,
                               currency: _currency,
                               loadDemoData: _loadDemoData,
+                              isAdultConfirmed: _isAdultConfirmed,
                               onNameChanged: (value) {
                                 final normalized = _normalizeDisplayName(value);
                                 if (normalized == value) return;
@@ -225,6 +228,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                                   setState(() => _currency = value),
                               onDemoDataChanged: (value) =>
                                   setState(() => _loadDemoData = value),
+                              onAdultConfirmedChanged: (value) =>
+                                  setState(() => _isAdultConfirmed = value),
                             ),
                           ),
                         ],
@@ -244,8 +249,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                                 ? 'Get Started'
                                 : 'Next',
                             isLoading: _isSubmitting,
-                            onPressed:
-                                _isSubmitting || !_canProceed() ? null : _next,
+                            onPressed: _isSubmitting || !_canProceed()
+                                ? null
+                                : _next,
                           ),
                         ],
                       ),
@@ -343,17 +349,21 @@ class _SetupForm extends StatelessWidget {
     required this.nameController,
     required this.currency,
     required this.loadDemoData,
+    required this.isAdultConfirmed,
     required this.onNameChanged,
     required this.onCurrencyChanged,
     required this.onDemoDataChanged,
+    required this.onAdultConfirmedChanged,
   });
 
   final TextEditingController nameController;
   final String currency;
   final bool loadDemoData;
+  final bool isAdultConfirmed;
   final ValueChanged<String> onNameChanged;
   final ValueChanged<String> onCurrencyChanged;
   final ValueChanged<bool> onDemoDataChanged;
+  final ValueChanged<bool> onAdultConfirmedChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -429,6 +439,37 @@ class _SetupForm extends StatelessWidget {
                 onChanged: onDemoDataChanged,
               ),
             ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.space4),
+        Material(
+          color: colorScheme.surface,
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            side: BorderSide(color: colorScheme.outline),
+          ),
+          child: CheckboxListTile(
+            key: const ValueKey('age-confirmation-checkbox'),
+            value: isAdultConfirmed,
+            onChanged: (value) {
+              if (value != null) onAdultConfirmedChanged(value);
+            },
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.space3,
+              vertical: AppSpacing.space1,
+            ),
+            title: Text(
+              'I confirm that I am at least 18 years old.',
+              style: AppTypography.bodyMedium,
+            ),
+            subtitle: Text(
+              'Lootr is only for adults age 18 or older.',
+              style: AppTypography.caption.copyWith(
+                color: lootrColors.textSecondary,
+              ),
+            ),
           ),
         ),
       ],
