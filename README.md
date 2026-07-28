@@ -28,7 +28,7 @@ future, opt-in capabilities and are not required for the local V1 experience.
 3. Verify the checksum:
 
    ```sh
-   sha256sum -c lootr-v0.1.0-alpha.2-android.apk.sha256
+   sha256sum -c lootr-v0.1.0-alpha.3-android.apk.sha256
    ```
 
 4. Allow installation from the browser or file manager when Android asks.

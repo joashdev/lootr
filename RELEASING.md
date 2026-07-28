@@ -8,7 +8,7 @@ References: `docs/security-model.md` (release integrity), `.github/workflows/flu
 
 Android alpha releases are built by `.github/workflows/android_release.yml`
 when a version tag is pushed. Use semantic prerelease tags such as
-`v0.1.0-alpha.2`.
+`v0.1.0-alpha.3`.
 
 The tag without its leading `v` must match the version in `pubspec.yaml` before
 the `+` build suffix. GitHub's monotonically increasing workflow run number is
@@ -96,14 +96,14 @@ releases to the repository owner; they do not restrict AGPL-compliant forks.
 
 ## 5. Publish a Prerelease
 
-1. Update `pubspec.yaml`, for example `0.1.0-alpha.2+2`.
+1. Update `pubspec.yaml`, for example `0.1.0-alpha.3+3`.
 2. Merge the release-ready commit into `main`.
 3. Confirm Flutter CI passes on `main`.
 4. Create and push the matching tag:
 
    ```sh
-   git tag -s v0.1.0-alpha.2 -m "Lootr v0.1.0-alpha.2"
-   git push origin v0.1.0-alpha.2
+   git tag -s v0.1.0-alpha.3 -m "Lootr v0.1.0-alpha.3"
+   git push origin v0.1.0-alpha.3
    ```
 
 5. Confirm the Android Release workflow succeeds.
@@ -112,8 +112,8 @@ releases to the repository owner; they do not restrict AGPL-compliant forks.
 ## 6. Verify a Download
 
 ```sh
-sha256sum -c lootr-v0.1.0-alpha.2-android.apk.sha256
-gh attestation verify lootr-v0.1.0-alpha.2-android.apk \
+sha256sum -c lootr-v0.1.0-alpha.3-android.apk.sha256
+gh attestation verify lootr-v0.1.0-alpha.3-android.apk \
   --repo joashdev/lootr
 ```
 
