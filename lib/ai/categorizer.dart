@@ -3,6 +3,9 @@ import 'dart:math';
 import '../data/repositories/ai_processing_log_repo.dart';
 import '../domain/value_objects/field_types.dart';
 
+typedef PayeeCategoryHistoryKey = ({String direction, String payee});
+typedef PayeeCategoryHistory = Map<PayeeCategoryHistoryKey, String>;
+
 class CategorySuggestion {
   final String categoryId;
   final double confidence;
@@ -34,12 +37,14 @@ class CategorySuggestion {
 
 class Categorizer {
   final Map<String, String> payeeCategoryHistory;
+  final PayeeCategoryHistory directionalPayeeCategoryHistory;
   final bool modelEnabled;
   final AiProcessingLogRepo? _logRepo;
   final bool aiEnabled;
 
   const Categorizer({
     this.payeeCategoryHistory = const {},
+    this.directionalPayeeCategoryHistory = const {},
     this.modelEnabled = false,
     AiProcessingLogRepo? logRepo,
     this.aiEnabled = true,
@@ -49,12 +54,16 @@ class Categorizer {
 
   Categorizer copyWith({
     Map<String, String>? payeeCategoryHistory,
+    PayeeCategoryHistory? directionalPayeeCategoryHistory,
     bool? modelEnabled,
     AiProcessingLogRepo? logRepo,
     bool? aiEnabled,
   }) {
     return Categorizer(
       payeeCategoryHistory: payeeCategoryHistory ?? this.payeeCategoryHistory,
+      directionalPayeeCategoryHistory:
+          directionalPayeeCategoryHistory ??
+          this.directionalPayeeCategoryHistory,
       modelEnabled: modelEnabled ?? this.modelEnabled,
       logRepo: logRepo ?? _logRepo,
       aiEnabled: aiEnabled ?? this.aiEnabled,
@@ -104,10 +113,17 @@ class Categorizer {
 
     final normalizedPayee = payee?.toLowerCase().trim();
 
-    if (normalizedPayee != null &&
-        payeeCategoryHistory.containsKey(normalizedPayee)) {
+    final historyCategory = normalizedPayee == null
+        ? null
+        : direction == null
+        ? payeeCategoryHistory[normalizedPayee]
+        : directionalPayeeCategoryHistory[(
+            direction: direction,
+            payee: normalizedPayee,
+          )];
+    if (historyCategory != null) {
       final result = CategorySuggestion(
-        categoryId: payeeCategoryHistory[normalizedPayee]!,
+        categoryId: historyCategory,
         confidence: 0.9,
         source: 'history',
       );

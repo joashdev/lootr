@@ -89,6 +89,81 @@ void main() {
     }
   });
 
+  test('payee history keeps income and expense categories separate', () async {
+    await database.users.insertOne(UsersCompanion.insert(id: 'user-1'));
+    await database.accounts.insertOne(
+      AccountsCompanion.insert(
+        id: 'account-1',
+        ownerUserId: 'user-1',
+        name: 'Cash',
+        accountType: 'cash',
+      ),
+    );
+    await database.categories.insertAll([
+      CategoriesCompanion.insert(
+        id: 'category-income',
+        name: 'Salary',
+        categoryGroup: 'income',
+      ),
+      CategoriesCompanion.insert(
+        id: 'category-expense',
+        name: 'Shopping',
+        categoryGroup: 'expense',
+      ),
+    ]);
+    await database.payees.insertOne(
+      PayeesCompanion.insert(id: 'payee-1', normalizedName: 'acme'),
+    );
+    await database.transactions.insertAll([
+      TransactionsCompanion.insert(
+        id: 'income-1',
+        accountId: 'account-1',
+        categoryId: const Value('category-income'),
+        payeeId: const Value('payee-1'),
+        amount: 1000,
+        transactionDirection: 'income',
+        transactionMode: 'one_time',
+        occurredAt: DateTime(2026, 7, 1),
+      ),
+      TransactionsCompanion.insert(
+        id: 'expense-1',
+        accountId: 'account-1',
+        categoryId: const Value('category-expense'),
+        payeeId: const Value('payee-1'),
+        amount: 50,
+        transactionDirection: 'expense',
+        transactionMode: 'one_time',
+        occurredAt: DateTime(2026, 7, 2),
+      ),
+    ]);
+    final container = ProviderContainer(
+      overrides: [
+        databaseProvider.overrideWithValue(database),
+        aiEnabledProvider.overrideWith((ref) => true),
+      ],
+    );
+    addTearDown(container.dispose);
+    final subscription = container.listen(categorizerProvider, (_, _) {});
+    addTearDown(subscription.close);
+
+    final categorizer = await container.read(categorizerProvider.future);
+
+    expect(
+      (await categorizer.suggest(
+        payee: 'Acme',
+        direction: 'income',
+      ))?.categoryId,
+      'category-income',
+    );
+    expect(
+      (await categorizer.suggest(
+        payee: 'Acme',
+        direction: 'expense',
+      ))?.categoryId,
+      'category-expense',
+    );
+  });
+
   test(
     'disabled OCR pipeline and categorizer bypass processing and logs',
     () async {

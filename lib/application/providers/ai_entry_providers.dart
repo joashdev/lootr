@@ -14,18 +14,20 @@ import 'ai_settings_provider.dart';
 import 'payees_provider.dart';
 import 'repo_providers.dart';
 
-/// The latest confirmed category for each normalized payee name.
+/// The latest confirmed category for each direction and normalized payee name.
 ///
 /// This is local ledger history only. It never creates or updates a
 /// transaction; [Categorizer] uses it to prefill a reviewable suggestion.
-final payeeCategoryHistoryProvider = StreamProvider<Map<String, String>>((ref) {
+final payeeCategoryHistoryProvider = StreamProvider<PayeeCategoryHistory>((
+  ref,
+) {
   final transactionRepo = ref.watch(transactionRepoProvider);
   final payeeRepo = ref.watch(payeeRepoProvider);
 
   return Rx.combineLatest2<
     List<TransactionData>,
     List<PayeeData>,
-    Map<String, String>
+    PayeeCategoryHistory
   >(
     transactionRepo.watchFiltered(const TransactionRepoFilters()),
     payeeRepo.watchAll(),
@@ -33,7 +35,7 @@ final payeeCategoryHistoryProvider = StreamProvider<Map<String, String>>((ref) {
       final payeesById = {for (final payee in payees) payee.id: payee};
       final newestFirst = [...transactions]
         ..sort((left, right) => right.occurredAt.compareTo(left.occurredAt));
-      final history = <String, String>{};
+      final history = PayeeCategoryHistory();
 
       for (final transaction in newestFirst) {
         final payeeId = transaction.payeeId;
@@ -41,10 +43,17 @@ final payeeCategoryHistoryProvider = StreamProvider<Map<String, String>>((ref) {
         if (payeeId == null || categoryId == null) continue;
         final payee = payeesById[payeeId];
         if (payee == null) continue;
-        history.putIfAbsent(payee.normalizedName, () => categoryId);
+        final direction = transaction.transactionDirection;
+        history.putIfAbsent((
+          direction: direction,
+          payee: payee.normalizedName,
+        ), () => categoryId);
         final displayName = payee.displayName?.trim().toLowerCase();
         if (displayName != null && displayName.isNotEmpty) {
-          history.putIfAbsent(displayName, () => categoryId);
+          history.putIfAbsent((
+            direction: direction,
+            payee: displayName,
+          ), () => categoryId);
         }
       }
 
@@ -89,7 +98,7 @@ final runOCRProvider = Provider<RunOCR>((ref) {
 final categorizerProvider = FutureProvider<Categorizer>((ref) async {
   final history = await ref.watch(payeeCategoryHistoryProvider.future);
   return Categorizer(
-    payeeCategoryHistory: history,
+    directionalPayeeCategoryHistory: history,
     logRepo: ref.watch(aiProcessingLogRepoProvider),
     aiEnabled: ref.watch(aiEnabledProvider),
   );

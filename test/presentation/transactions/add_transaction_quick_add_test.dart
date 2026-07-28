@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lootr/ai/categorizer.dart';
 import 'package:lootr/application/providers/accounts_provider.dart';
 import 'package:lootr/application/providers/ai_entry_providers.dart';
 import 'package:lootr/application/providers/ai_settings_provider.dart';
@@ -18,6 +21,7 @@ import 'package:lootr/domain/entities/debt_record.dart';
 import 'package:lootr/domain/entities/goal.dart';
 import 'package:lootr/domain/entities/payee.dart';
 import 'package:lootr/domain/entities/transaction.dart';
+import 'package:lootr/domain/value_objects/parsed_transaction.dart';
 import 'package:lootr/presentation/sheets/add_transaction_sheet.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -27,7 +31,9 @@ Widget _wrap(
   List<Category> categories = const [],
   List<Payee> payees = const [],
   bool assistanceEnabled = true,
-  Map<String, String> payeeCategoryHistory = const {},
+  PayeeCategoryHistory payeeCategoryHistory = const {},
+  Stream<List<Category>>? categoriesStream,
+  Stream<PayeeCategoryHistory>? payeeCategoryHistoryStream,
   AppDatabase? database,
 }) {
   return ProviderScope(
@@ -41,10 +47,13 @@ Widget _wrap(
       }),
       aiEnabledProvider.overrideWith((ref) => assistanceEnabled),
       payeeCategoryHistoryProvider.overrideWith(
-        (ref) => Stream.value(payeeCategoryHistory),
+        (ref) =>
+            payeeCategoryHistoryStream ?? Stream.value(payeeCategoryHistory),
       ),
       accountsProvider.overrideWith((ref) => Stream.value(accounts)),
-      categoriesProvider.overrideWith((ref) => Stream.value(categories)),
+      categoriesProvider.overrideWith(
+        (ref) => categoriesStream ?? Stream.value(categories),
+      ),
       payeesProvider.overrideWith((ref) => Stream.value(payees)),
       debtsProvider.overrideWith((ref) => Stream.value(const <DebtRecord>[])),
       goalsProvider.overrideWith((ref) => Stream.value(const <Goal>[])),
@@ -293,7 +302,9 @@ void main() {
             const AddTransactionSheet(startInQuickMode: true),
             accounts: [_gcash()],
             categories: [_category('cat-food', 'Food & Dining')],
-            payeeCategoryHistory: const {'starbucks': 'cat-food'},
+            payeeCategoryHistory: const {
+              (direction: 'expense', payee: 'starbucks'): 'cat-food',
+            },
             database: database,
           ),
         );
@@ -318,7 +329,9 @@ void main() {
             _category('cat-groceries', 'Groceries'),
             _category('cat-dining', 'Dining'),
           ],
-          payeeCategoryHistory: const {'starbucks': 'cat-dining'},
+          payeeCategoryHistory: const {
+            (direction: 'expense', payee: 'starbucks'): 'cat-dining',
+          },
         ),
       );
       await tester.pump();
@@ -350,6 +363,40 @@ void main() {
         expect(await database.select(database.transactions).get(), isEmpty);
       },
     );
+
+    testWidgets('scan seed uses categories loaded while assistance starts', (
+      tester,
+    ) async {
+      final categories = StreamController<List<Category>>();
+      final history = StreamController<PayeeCategoryHistory>();
+      addTearDown(categories.close);
+      addTearDown(history.close);
+
+      await tester.pumpWidget(
+        _wrap(
+          const AddTransactionSheet(
+            initialParsedTransaction: ParsedTransaction(
+              amount: 180,
+              payee: 'Starbucks',
+              direction: 'expense',
+            ),
+          ),
+          accounts: [_gcash()],
+          categoriesStream: categories.stream,
+          payeeCategoryHistoryStream: history.stream,
+        ),
+      );
+      await tester.pump();
+
+      categories.add([_category('cat-food', 'Food & Dining')]);
+      await tester.pump();
+      history.add(const {
+        (direction: 'expense', payee: 'starbucks'): 'cat-food',
+      });
+      await tester.pumpAndSettle();
+
+      expect(find.text('Food & Dining'), findsOneWidget);
+    });
 
     testWidgets(
       'confidence indicator is shown once overall, not per preview row',

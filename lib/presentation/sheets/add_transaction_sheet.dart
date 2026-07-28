@@ -131,6 +131,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   bool _isQuickMode = false;
   bool _isSaving = false;
   bool _seededInitialParsed = false;
+  bool _seedingInitialParsed = false;
   bool _isListening = false;
   bool _addAnother = false;
   bool _categoryWasExplicitlyEdited = false;
@@ -492,24 +493,31 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
 
   void _ensureSeededFromInitialParsed(
     List<Account> accounts,
-    List<Category> categories,
     List<Payee> payees,
   ) {
-    if (_seededInitialParsed || widget.initialParsedTransaction == null) {
+    if (_seededInitialParsed ||
+        _seedingInitialParsed ||
+        widget.initialParsedTransaction == null) {
       return;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted || _seededInitialParsed) return;
-      _seededInitialParsed = true;
-      final assistance = await ref.read(smartEntryAssistanceProvider.future);
-      final parsed = await assistance.enrich(
-        widget.initialParsedTransaction!,
-        categories,
-      );
-      if (!mounted) return;
-      setState(() {
-        _seedFromParsedTransaction(parsed, accounts, categories, payees);
-      });
+      if (!mounted || _seededInitialParsed || _seedingInitialParsed) return;
+      _seedingInitialParsed = true;
+      try {
+        final assistance = await ref.read(smartEntryAssistanceProvider.future);
+        final categories = await ref.read(categoriesProvider.future);
+        final parsed = await assistance.enrich(
+          widget.initialParsedTransaction!,
+          categories,
+        );
+        if (!mounted) return;
+        setState(() {
+          _seedFromParsedTransaction(parsed, accounts, categories, payees);
+          _seededInitialParsed = true;
+        });
+      } finally {
+        _seedingInitialParsed = false;
+      }
     });
   }
 
@@ -962,7 +970,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
         ref.watch(filteredTransactionsProvider).asData?.value ??
         const <Transaction>[];
 
-    _ensureSeededFromInitialParsed(accounts, categories, payees);
+    _ensureSeededFromInitialParsed(accounts, payees);
     _ensureQuickTextParsed(accounts, payees);
     _ensureInitialRuleSuggestion(payees);
 
