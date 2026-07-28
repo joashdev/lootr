@@ -282,4 +282,20 @@ Each spec, when written, should be a standalone markdown doc that is concrete en
 
 ---
 
+## 18. Legal and Privacy Compliance ✅
+
+**Status:** Done.
+**Produces:** `docs/legal-compliance.md` + `docs/mandocs/legal-compliance.html`
+**Purpose:** Define the V1 legal package, real data disclosures, consent surfaces, and V2 compliance gates.
+**Coverage:**
+- Tailored Privacy Policy and Terms of Use publication surfaces
+- Device-only, feedback, screenshot, speech, hosting, and permission data flows
+- Retention, deletion, data-subject rights, children, and incident governance
+- Apple App Privacy and Google Play Data safety release requirements
+- V2 sync, household, cloud AI, analytics, and monetization launch gates
+- Legal publisher identity, privacy owner, and contact release fields
+**Priority:** Critical
+
+---
+
 > **Suggested work order:** Write specs 1–3 → start coding foundation → write 4–6 in parallel → write 7–10 before leaving foundation phase → 11–12 before launch.

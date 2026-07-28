@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Legal and Privacy Compliance — Personal Finance App</title>
+<style>
+  :root { --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; --mono: "SF Mono", "Fira Code", monospace; --bg: #fafafa; --surface: #fff; --border: #e2e4e8; --text: #1b1b1f; --muted: #63666e; --accent: #5c64cc; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.6 var(--font); }
+  main { max-width: 960px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { margin: 0 0 8px; font-size: 28px; line-height: 1.25; }
+  h2 { margin: 40px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); font-size: 21px; }
+  h3 { margin: 28px 0 10px; font-size: 17px; }
+  p { margin: 0 0 12px; }
+  li { margin-bottom: 5px; }
+  a { color: var(--accent); }
+  code { padding: 2px 6px; border-radius: 4px; background: #f2f4f7; font: 13px var(--mono); overflow-wrap: anywhere; }
+  table { display: block; width: 100%; margin: 12px 0 22px; overflow-x: auto; border: 1px solid var(--border); border-collapse: collapse; background: var(--surface); font-size: 14px; }
+  th, td { padding: 9px 12px; border: 1px solid var(--border); text-align: left; vertical-align: top; }
+  th { background: #f2f4f7; }
+  .diagram { padding: 16px 20px; border-left: 3px solid var(--accent); border-radius: 8px; background: #1e1e2e; color: #cdd6f4; font: 13px/1.6 var(--mono); overflow-x: auto; }
+  @media (max-width: 700px) { main { padding: 24px 16px 60px; } h1 { font-size: 25px; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Legal and Privacy Compliance — Personal Finance App</h1>
+<p>Defines Lootr's V1 legal disclosures, privacy controls, publication surfaces, and V2 compliance gates. References: <code>product-strategy.md</code> (privacy and scope), <code>security-model.md</code> (data boundaries and deletion), <code>public-alpha-release.md</code> (feedback processing), <code>legal-compliance-research.md</code> (primary-source legal research).</p>
+<hr>
+<h2>1. Purpose and Boundary</h2>
+<p>This specification converts Lootr's privacy promise into product requirements. It is an engineering and publication baseline. It is not legal advice.</p>
+<p>The policy set covers:</p>
+<ul>
+<li>the official Android and iOS application.</li>
+<li>the static Lootr website and GitHub release flow.</li>
+<li>optional public feedback through Cloudflare and GitHub.</li>
+<li>current device permissions and local processing.</li>
+<li>future account, sync, backup, household, subscription, and server processing.</li>
+</ul>
+<p>V1 and V2 must not share one vague disclosure.</p>
+<p>V1 is a local ledger with narrowly initiated network features.</p>
+<p>V2 makes the operator a controller of account and financial data.</p>
+<p>V2 cannot launch until its separate gates are complete.</p>
+<h2>2. Canonical Legal Package</h2>
+<table><thead><tr>
+<th><strong>Document or notice</strong></th>
+<th><strong>Canonical surface</strong></th>
+<th><strong>Required access</strong></th>
+<th><strong>Status</strong></th>
+</tr></thead><tbody>
+<tr>
+<td>Privacy Policy</td>
+<td><code>website/src/pages/privacy.astro</code></td>
+<td>Public URL, store listing, in-app About</td>
+<td>Implemented</td>
+</tr>
+<tr>
+<td>Terms of Use</td>
+<td><code>website/src/pages/terms.astro</code></td>
+<td>Public URL, store listing, in-app About</td>
+<td>Implemented</td>
+</tr>
+<tr>
+<td>Open-source license</td>
+<td><code>LICENSE</code> + <code>NOTICE</code></td>
+<td>Repository and in-app About</td>
+<td>Implemented</td>
+</tr>
+<tr>
+<td>Third-party notices</td>
+<td>Flutter license page</td>
+<td>In-app About</td>
+<td>Implemented</td>
+</tr>
+<tr>
+<td>Security reporting</td>
+<td><code>SECURITY.md</code></td>
+<td>Repository and feedback warning</td>
+<td>Implemented</td>
+</tr>
+<tr>
+<td>Feedback notice and consent</td>
+<td>Feedback composition and preview flow</td>
+<td>Immediately before submission</td>
+<td>Implemented</td>
+</tr>
+<tr>
+<td>App-store privacy declarations</td>
+<td>Apple App Privacy + Google Play Data safety</td>
+<td>Store consoles before submission</td>
+<td>Launch task</td>
+</tr>
+<tr>
+<td>Operator and privacy contact</td>
+<td>Legal publisher name + private contact</td>
+<td>Public policy and in-app About</td>
+<td>Legal name required</td>
+</tr>
+<tr>
+<td>Incident response plan</td>
+<td>Private operating procedure</td>
+<td>Before V2 server processing</td>
+<td>V2 blocker</td>
+</tr>
+</tbody></table>
+<p>The published policy URLs are:</p>
+<pre class="diagram">https://lootr-bhl.pages.dev/privacy
+https://lootr-bhl.pages.dev/terms</pre>
+<p>The website, store listing, and app must point to the same URLs. A release check must fail if a URL fails or loses its effective date.</p>
+<h2>3. V1 Data Inventory</h2>
+<h3>3.1 Device-only data</h3>
+<p>The official V1 app processes the following locally:</p>
+<table><thead><tr>
+<th><strong>Category</strong></th>
+<th><strong>Examples</strong></th>
+<th><strong>Purpose</strong></th>
+<th><strong>Default retention</strong></th>
+</tr></thead><tbody>
+<tr>
+<td>Financial ledger</td>
+<td>Accounts, balances, transactions, budgets, goals, debts</td>
+<td>User-requested tracking and reports</td>
+<td>Until record or app-data removal</td>
+</tr>
+<tr>
+<td>User content</td>
+<td>Payees, categories, notes, imported Cashew content</td>
+<td>Recordkeeping and migration</td>
+<td>Until record or app-data removal</td>
+</tr>
+<tr>
+<td>Receipt content</td>
+<td>Selected or captured image, extracted text, parsed values</td>
+<td>User-requested OCR</td>
+<td>Until record or app-data removal</td>
+</tr>
+<tr>
+<td>Local assistance</td>
+<td>Parsed text, OCR and AI logs, confidence, processing metadata</td>
+<td>Explain and audit suggestions</td>
+<td>Until app-data removal</td>
+</tr>
+<tr>
+<td>Settings</td>
+<td>Theme, currency, notification and security preferences</td>
+<td>Configure the app</td>
+<td>Until app-data removal</td>
+</tr>
+<tr>
+<td>Diagnostics</td>
+<td>Allowlisted events, sanitized app stack frames</td>
+<td>Local troubleshooting</td>
+<td>Seven days, bounded to 512 KiB</td>
+</tr>
+</tbody></table>
+<p>Exported backups, CSV files, and screenshots leave the app's sandbox at the user's direction. The app must warn that the destination may not be encrypted and that deletion from Lootr does not delete external copies.</p>
+<p>Android excludes Lootr app data from operating-system backup.</p>
+<p>On iOS, encrypted app data can enter an Apple device backup under the user's settings.</p>
+<h3>3.2 Deliberately initiated external processing</h3>
+<table><thead><tr>
+<th><strong>Feature</strong></th>
+<th><strong>Recipient</strong></th>
+<th><strong>Data</strong></th>
+<th><strong>Disclosure and control</strong></th>
+</tr></thead><tbody>
+<tr>
+<td>Public feedback</td>
+<td>Cloudflare, GitHub, public internet</td>
+<td>Approved report fields and optional diagnostics</td>
+<td>Exact preview + two confirmations</td>
+</tr>
+<tr>
+<td>Feedback screenshot</td>
+<td>Cloudflare R2, public link in GitHub</td>
+<td>One re-encoded image</td>
+<td>Separate opt-in. Enable only with a 30-day lifecycle</td>
+</tr>
+<tr>
+<td>Human challenge</td>
+<td>Cloudflare Turnstile</td>
+<td>Network and device challenge signals</td>
+<td>Just-in-time notice in Privacy Policy</td>
+</tr>
+<tr>
+<td>Voice input</td>
+<td>OS-selected speech provider</td>
+<td>Microphone audio and transcription context</td>
+<td>Runtime permission + provider caveat</td>
+</tr>
+<tr>
+<td>Legal and source links</td>
+<td>Cloudflare Pages, GitHub</td>
+<td>Ordinary web request metadata</td>
+<td>User taps external link</td>
+</tr>
+</tbody></table>
+<p>“On-device voice recognition” must not be claimed unless the implementation both requests and verifies offline recognition on every supported platform. The current integration delegates recognition to the operating system and may use a network service.</p>
+<h2>4. Privacy Policy Requirements</h2>
+<p>The Privacy Policy must state in plain language:</p>
+<ul>
+<li>the responsible operator and a working private contact method.</li>
+<li>what stays on-device and what leaves only after a deliberate action.</li>
+<li>categories, purposes, recipients, retention, and security controls.</li>
+<li>that V1 has no Lootr account, cloud ledger, advertising, or automatic analytics.</li>
+<li>the optional feedback, screenshot, Turnstile, speech, hosting, and GitHub flows.</li>
+<li>applicable lawful purposes and the user's ability to withdraw optional consent.</li>
+<li>data-subject choices and rights, including access, correction, erasure, objection, portability, and complaint.</li>
+<li>international processing by service providers.</li>
+<li>age and children boundary.</li>
+<li>material-change notification, especially before V2.</li>
+</ul>
+<p>A privacy notice is not a consent checkbox.</p>
+<p>Lootr must ask separately when consent is the chosen basis for optional processing.</p>
+<p>Refusal of an optional feature must not block manual ledger use.</p>
+<p>Optional features include public feedback, screenshots, voice input, camera access, photo access, and notifications.</p>
+<h2>5. Terms of Use Requirements</h2>
+<p>The Terms must:</p>
+<ul>
+<li>identify the operator and scope while preserving mandatory consumer rights.</li>
+<li>distinguish official releases from independent AGPL forks.</li>
+<li>state that Lootr is a recordkeeping tool, not a bank, payment service, fiduciary, adviser, accountant, or tax service.</li>
+<li>state that calculations, OCR, voice transcription, forecasts, and suggestions require user verification.</li>
+<li>describe alpha instability, local data-loss risk, and the user's backup responsibility.</li>
+<li>set a clear age boundary.</li>
+<li>cover acceptable use, user content, public feedback, third-party services, termination, disclaimers, liability, governing law, and changes.</li>
+<li>keep AGPL rights separate and avoid adding restrictions to licensed code.</li>
+<li>state that the current alpha has no subscription or in-app purchase.</li>
+</ul>
+<p>Paid functionality requires a Terms update before sale.</p>
+<p>The update must include the trader identity, physical address, price, taxes, renewal terms, cancellation terms, and refund terms.</p>
+<p>It must also include complaint, compatibility, continuity, and store billing rules.</p>
+<h2>6. Consent and Permission Design</h2>
+<p>Consent must be specific, informed, freely given, recorded when required, and as easy to withdraw as to provide. Lootr uses contextual choice instead of one bundled legal checkbox:</p>
+<pre class="diagram">Manual ledger ───────────────────────────── no optional consent
+Camera and photo receipt ──────────────── runtime permission
+Voice entry ────────────────────────────── mic + speech permission
+Public issue text and diagnostics ─────── preview + public confirmation
+Public screenshot ──────────────────────── separate screenshot confirmation
+Future cloud sync ──────────────────────── separate V2 enrollment and notice
+Future marketing and analytics ───────── separate opt-in if ever introduced</pre>
+<p>Permission prompts must explain the immediate feature. Platform strings must not claim stronger privacy properties than the code enforces. Denial must have a manual fallback and neutral copy.</p>
+<h2>7. Retention, Deletion, and Rights</h2>
+<p>Users exercise V1 rights through local product controls:</p>
+<ul>
+<li>inspect and edit records in the app.</li>
+<li>export a portable, human-readable copy.</li>
+<li>delete records or remove app data through the device.</li>
+<li>remove optional permissions in system settings.</li>
+<li>request action on information controlled by the feedback and website operator.</li>
+</ul>
+<p>The operator must keep a private request log. The operator must use the legal response period. For Philippine requests, the target is 30 working days. The operator can use one notified 15-working-day extension when permitted.</p>
+<p>Retention rules:</p>
+<table><thead><tr>
+<th><strong>Data</strong></th>
+<th><strong>Retention rule</strong></th>
+<th><strong>Deletion limit</strong></th>
+</tr></thead><tbody>
+<tr>
+<td>Local ledger</td>
+<td>User-controlled</td>
+<td>Record deletion, app uninstall, or device storage removal</td>
+</tr>
+<tr>
+<td>Local diagnostics</td>
+<td>Seven days, 512 KiB rotating cap</td>
+<td>Included in a report only after preview</td>
+</tr>
+<tr>
+<td>R2 screenshots</td>
+<td>Configured storage lifecycle</td>
+<td>Screenshot upload requires a verified 30-day lifecycle</td>
+</tr>
+<tr>
+<td>GitHub issue content</td>
+<td>Indefinite public project history</td>
+<td>Users can request correction or removal</td>
+</tr>
+<tr>
+<td>Relay operational logs</td>
+<td>Cloudflare plan and account settings</td>
+<td>Never include content, IP, tokens, or attachment keys</td>
+</tr>
+</tbody></table>
+<p>V2 must implement authenticated export, correction, objection, and consent withdrawal.</p>
+<p>V2 must also implement account deletion, server-data deletion, backup purge, household ownership, and processor coordination.</p>
+<p>These controls must exist before V2 processes real user data.</p>
+<h2>8. Security and Incident Governance</h2>
+<p>Before public store submission, the operator must:</p>
+<ol>
+<li>Designate Joashdev as the V1 privacy owner.</li>
+<li>Publish a private contact.</li>
+<li>Maintain a data inventory, processing record, retention schedule, and vendor list.</li>
+<li>Complete a privacy impact assessment for feedback.</li>
+<li>Complete a privacy impact assessment for receipt and voice processing.</li>
+<li>Complete a privacy impact assessment for each V2 system.</li>
+<li>Verify SQLCipher and secure key storage in production artifacts.</li>
+<li>Keep logs free of financial and authentication content.</li>
+<li>Document access controls, credential rotation, backup recovery, and secure disposal.</li>
+<li>Maintain a breach plan, escalation path, evidence log, and notification decision record.</li>
+</ol>
+<p>Before V2, processor contracts must define instructions, security, locations, subprocessors, rights support, deletion, audits, and breach reports.</p>
+<p>A qualifying Philippine breach can require notice within 72 hours. The operator must notify the National Privacy Commission and affected people.</p>
+<h2>9. Children and Sensitive Financial Data</h2>
+<p>Lootr is intended for adults aged 18 or older. Store metadata, onboarding, Privacy Policy, and Terms must use the same boundary. The app must not intentionally profile or market to children.</p>
+<p>Personal finance records can reveal economic circumstances.</p>
+<p>Notes or receipts can contain other sensitive details.</p>
+<p>The product must minimize the transmission of free-form text.</p>
+<p>The product must never request government identifiers or bank credentials.</p>
+<p>The product must tell users not to put real financial content in public reports.</p>
+<p>If the product later supports minors or family accounts, launch is blocked on a dedicated parental-consent and child-privacy design review.</p>
+<h2>10. App-Store Declarations</h2>
+<p>The release owner must answer store questionnaires from the shipped binary and enabled services, not from roadmap intent.</p>
+<h3>10.1 Apple</h3>
+<ol>
+<li>Provide the public Privacy Policy URL.</li>
+<li>Complete App Privacy answers for operator and third-party collection.</li>
+<li>Include required privacy manifests and required-reason APIs from all SDKs.</li>
+<li>Verify camera, photo, microphone, speech, and notification purpose strings.</li>
+<li>State that Apple's standard EULA applies to Apple downloads.</li>
+<li>If account creation ships, provide in-app account deletion.</li>
+</ol>
+<h3>10.2 Google Play</h3>
+<ol>
+<li>Provide the public Privacy Policy URL in Play Console and in the app.</li>
+<li>Complete Data safety for the actual feedback, screenshot, speech provider, and future synchronization flows.</li>
+<li>Complete the content rating, target audience, advertising, financial feature, and app access declarations.</li>
+<li>If accounts ship, supply a deletion mechanism and a web deletion URL.</li>
+<li>Keep permission requests limited to visible user-requested features.</li>
+</ol>
+<p>The V1 assertion is not simply “no data collected.”</p>
+<p>Evaluate optional feedback under each store's current definitions.</p>
+<p>Also evaluate third-party speech and Turnstile services.</p>
+<h2>11. V2 and Monetization Launch Gates</h2>
+<table><thead><tr>
+<th><strong>Capability</strong></th>
+<th><strong>Required before enablement</strong></th>
+<th><strong>Initial status</strong></th>
+</tr></thead><tbody>
+<tr>
+<td>Email and one-time-password account</td>
+<td>Updated notice, lawful basis map, account deletion, support contact, processor inventory</td>
+<td>Blocked</td>
+</tr>
+<tr>
+<td>Cloud synchronization and backup</td>
+<td>PIA, retention schedule, processor contracts, transfer review, encrypted transport and storage, rights workflows</td>
+<td>Blocked</td>
+</tr>
+<tr>
+<td>Household sharing</td>
+<td>Member notices, ownership and deletion rules, invitation controls, access audit, child-use decision</td>
+<td>Blocked</td>
+</tr>
+<tr>
+<td>Receipt upload</td>
+<td>Purpose and retention notice, access control, deletion, processor and subprocessor inventory</td>
+<td>Blocked</td>
+</tr>
+<tr>
+<td>Push notifications</td>
+<td>Token inventory, provider disclosure, permission design, deletion</td>
+<td>Blocked</td>
+</tr>
+<tr>
+<td>Cloud AI</td>
+<td>New review, data minimization, provider contract, training prohibition, separate choice</td>
+<td>Blocked</td>
+</tr>
+<tr>
+<td>Subscription and in-app purchase</td>
+<td>Trader identity and address, billing disclosures, renewal, cancellation, refund, store terms, tax and receipt handling</td>
+<td>Blocked</td>
+</tr>
+<tr>
+<td>Analytics and crash SDK</td>
+<td>PIA, minimization, store declarations, retention, required opt-in, no session replay</td>
+<td>Blocked</td>
+</tr>
+</tbody></table>
+<p>No roadmap document may be treated as permission to process V2 data. The release owner must explicitly move each gate to Done with evidence.</p>
+<h2>12. Acceptance Criteria and Open Legal Review</h2>
+<p>The document baseline is complete when:</p>
+<ul>
+<li>Privacy and Terms pages build as static, readable, mobile-friendly pages.</li>
+<li>the website footer and privacy promise link to the real policies.</li>
+<li>the About screen opens both policies and retains license and third-party notices.</li>
+<li>iOS purpose strings accurately describe camera, photos, microphone, and speech.</li>
+<li>feedback disclosures match the implemented Cloudflare and GitHub flow.</li>
+<li>V1 and V2 practices are clearly separated.</li>
+<li>automated tests verify legal links and the website build.</li>
+<li>the release owner completes store forms from a release data-flow audit.</li>
+</ul>
+<p>The following release actions remain:</p>
+<ol>
+<li>Deploy the Privacy Policy and Terms at the public URLs.</li>
+<li>Replace the public project name with the legal publisher name.</li>
+<li>Enter the same legal publisher name in each store.</li>
+<li>Confirm that the private GitHub contact is monitored.</li>
+<li>Verify the 30-day R2 lifecycle before screenshot upload starts.</li>
+<li>Verify the Cloudflare Worker log setting.</li>
+<li>Complete the Apple and Google declarations for the final binary.</li>
+<li>Confirm that the app and store use an 18+ audience.</li>
+<li>Review provider terms before each release.</li>
+<li>Add the required address before paid sales or a custom EULA.</li>
+<li>Assess NPC registration before V2 processes user data.</li>
+</ol>
+<p>These actions must remain visible in release planning. Published text does not prove operational compliance.</p>
+</main>
+</body>
+</html>

@@ -1,0 +1,417 @@
+---
+import LegalLayout from '../layouts/LegalLayout.astro';
+---
+
+<LegalLayout
+  title="Privacy Policy"
+  description="How Lootr handles personal and financial information."
+  effectiveDate="28 July 2026"
+>
+  <aside class="legal-summary">
+    <strong>The short version</strong>
+    <p>
+      Lootr stores your V1 financial records on your device. Lootr does not use
+      ads, behavior analytics, or bank connections.
+    </p>
+    <p>
+      Lootr sends data only when you start an online feature. These features
+      include public feedback and your device's speech service.
+    </p>
+  </aside>
+
+  <section>
+    <h2>1. Operator and contact</h2>
+    <p>
+      Joashdev operates the official Lootr project from the Philippines.
+      Joashdev controls the limited online data that this policy describes.
+    </p>
+    <p>
+      Joashdev also acts as the privacy owner and data protection contact for
+      V1. Independent Lootr forks control their own data practices.
+    </p>
+    <p>
+      To send a private request, use the <a
+        href="https://github.com/joashdev/lootr/security/advisories/new"
+        >private contact form</a
+      >. Start the title with “Privacy request.”
+    </p>
+    <p>
+      Do not attach identity documents, financial records, backups, receipts,
+      or passwords. The operator will reply through the private GitHub thread.
+    </p>
+  </section>
+
+  <section>
+    <h2>2. Scope</h2>
+    <p>
+      This policy covers official Lootr V1 alpha releases, the Lootr website,
+      and the optional feedback service.
+    </p>
+    <p>
+      V1 has no Lootr account or cloud ledger. V1 also has no advertising or
+      automatic analytics.
+    </p>
+    <p>
+      V2 can add accounts, sync, backup, and household sharing. Before V2 starts,
+      Lootr will publish a new policy and an in-app notice.
+    </p>
+  </section>
+
+  <section>
+    <h2>3. Data on your device</h2>
+    <p>Lootr can store these data categories on your device:</p>
+    <ul>
+      <li>Accounts, balances, transactions, transfers, and budgets.</li>
+      <li>Goals, debts, recurring items, payees, categories, and notes.</li>
+      <li>Imported data and migration records.</li>
+      <li>Receipt images and text that Lootr extracts from them.</li>
+      <li>Notification schedules and app settings.</li>
+      <li>Local OCR, parsing, AI, and diagnostic logs.</li>
+    </ul>
+    <p>
+      Lootr uses this data to give you the features that you request. The V1
+      app does not automatically send this ledger data to Joashdev.
+    </p>
+    <p>
+      You can edit or delete individual records in Lootr. You can also export
+      transactions and make an encrypted Lootr backup.
+    </p>
+    <p>
+      To delete all V1 app data, uninstall Lootr or clear its storage in your
+      device settings. This action does not delete your external copies.
+    </p>
+    <p>
+      Android excludes Lootr app data from operating-system backup. On iOS,
+      encrypted app data can enter an iCloud or device backup under your Apple
+      backup settings. Apple controls that backup under its terms.
+    </p>
+  </section>
+
+  <section>
+    <h2>4. Optional online features</h2>
+    <h3>Public feedback</h3>
+    <p>
+      If you select Send feedback, Lootr shows the complete report before it
+      sends the report.
+    </p>
+    <p>
+      The report can contain a title, description, report type, app version,
+      build number, platform, and optional diagnostics.
+    </p>
+    <p>
+      GitHub publishes the approved report as a public issue. Search engines,
+      caches, forks, and notifications can copy the report.
+    </p>
+
+    <h3>Feedback screenshots</h3>
+    <p>
+      Lootr sends a screenshot only when you select it and approve it
+      separately. Lootr removes the source metadata before upload.
+    </p>
+    <p>
+      Cloudflare R2 stores the image and gives it a hard-to-guess public link.
+      Screenshot upload must stay off unless the storage lifecycle deletes the
+      image after 30 days.
+    </p>
+
+    <h3>Human verification</h3>
+    <p>
+      Cloudflare Turnstile checks that a person sent the report. Cloudflare can
+      process an IP address, device data, browser data, and security signals.
+    </p>
+    <p>
+      The Lootr relay does not add this data to the GitHub issue. It does not
+      log report text, screenshots, tokens, attachment keys, or IP addresses.
+    </p>
+
+    <h3>Voice input</h3>
+    <p>
+      Voice input is optional. Lootr sends audio to the speech service that your
+      operating system provides or selects.
+    </p>
+    <p>
+      Your provider can process the audio on your device or on its servers.
+      This behavior depends on your device, language, provider, and settings.
+    </p>
+    <p>
+      Review your provider's privacy settings before you speak sensitive
+      information.
+    </p>
+
+    <h3>Website and downloads</h3>
+    <p>
+      The static Lootr website has no ads or behavior analytics. Cloudflare
+      processes request data to deliver and protect the website.
+    </p>
+    <p>
+      Request data can include an IP address, time, requested path, device data,
+      and security signals. GitHub processes data when you use GitHub pages.
+    </p>
+  </section>
+
+  <section>
+    <h2>5. Permissions</h2>
+    <ul>
+      <li><strong>Camera:</strong> Scan a receipt that you select.</li>
+      <li><strong>Photos:</strong> Select a receipt or feedback screenshot.</li>
+      <li><strong>Microphone:</strong> Record voice input after you tap the microphone.</li>
+      <li><strong>Speech recognition:</strong> Convert your voice input to text.</li>
+      <li><strong>Notifications:</strong> Schedule reminders that you configure.</li>
+      <li><strong>Network:</strong> Open links and send feedback that you approve.</li>
+    </ul>
+    <p>
+      You can deny or remove an optional permission in your device settings.
+      Manual ledger entry remains available.
+    </p>
+  </section>
+
+  <section>
+    <h2>6. Purpose and legal basis</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Activity</th>
+          <th>Purpose</th>
+          <th>Basis</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Local ledger</td>
+          <td>Give the feature that you request</td>
+          <td>Not operator processing. Joashdev does not receive this data.</td>
+        </tr>
+        <tr>
+          <td>Public feedback</td>
+          <td>Publish and review your report</td>
+          <td>Your clear consent</td>
+        </tr>
+        <tr>
+          <td>Feedback screenshot</td>
+          <td>Publish the image with your report</td>
+          <td>Your separate consent</td>
+        </tr>
+        <tr>
+          <td>Turnstile and relay logs</td>
+          <td>Prevent abuse and protect the service</td>
+          <td>Legitimate security interest</td>
+        </tr>
+        <tr>
+          <td>Website and download requests</td>
+          <td>Deliver and protect the service that you request</td>
+          <td>Legitimate service and security interests</td>
+        </tr>
+        <tr>
+          <td>Voice input</td>
+          <td>Convert speech to text</td>
+          <td>Your deliberate request and consent</td>
+        </tr>
+        <tr>
+          <td>Privacy and legal requests</td>
+          <td>Answer your request and keep required records</td>
+          <td>Legal duty and legitimate claim-management interest</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      If consent applies, you can withdraw it before future processing. A
+      withdrawal cannot remove copies that other people made from a public issue.
+    </p>
+  </section>
+
+  <section>
+    <h2>7. Recipients and international processing</h2>
+    <p>
+      Lootr does not sell personal data. Lootr does not share personal data for
+      targeted advertising.
+    </p>
+    <p>
+      Lootr uses Cloudflare for website hosting, Turnstile, the feedback relay,
+      and temporary screenshot storage.
+    </p>
+    <p>
+      Lootr uses GitHub for public issues, source code, and releases. Your
+      operating-system provider controls its speech service.
+    </p>
+    <p>
+      Cloudflare and GitHub use global systems. They can process data in the
+      United States and other countries where they or their providers operate.
+    </p>
+    <p>
+      Cloudflare describes its safeguards in its <a
+        href="https://www.cloudflare.com/cloudflare-customer-dpa/"
+        >Data Processing Addendum</a
+      >. GitHub describes its transfers in its <a
+        href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement"
+        >Privacy Statement</a
+      >.
+    </p>
+    <p>
+      GitHub can control data when you use GitHub directly. Your speech provider
+      controls its own service. Its privacy terms and transfer safeguards apply.
+    </p>
+    <p>
+      Apple can process an encrypted iOS device backup under your Apple settings
+      and its privacy terms.
+    </p>
+    <p>
+      Use the private contact in section 1 to request available information
+      about safeguards for Lootr-controlled processing.
+    </p>
+  </section>
+
+  <section>
+    <h2>8. Retention and deletion</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Retention</th>
+          <th>Control</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Local ledger</td>
+          <td>Until you delete the record or app data</td>
+          <td>You control the device copy</td>
+        </tr>
+        <tr>
+          <td>Local diagnostics</td>
+          <td>Seven days with a 512 KiB limit</td>
+          <td>You choose whether to publish them</td>
+        </tr>
+        <tr>
+          <td>R2 screenshot</td>
+          <td>Until the configured storage lifecycle deletes it</td>
+          <td>Screenshot upload must stay off unless that lifecycle is 30 days</td>
+        </tr>
+        <tr>
+          <td>Worker logs</td>
+          <td>Cloudflare plan and account settings control the period</td>
+          <td>Logs exclude report content and IP addresses</td>
+        </tr>
+        <tr>
+          <td>Cloudflare Pages and Turnstile request data</td>
+          <td>Cloudflare sets the period under its service settings and policy</td>
+          <td>See Cloudflare's Privacy Policy</td>
+        </tr>
+        <tr>
+          <td>GitHub issue</td>
+          <td>Indefinite public project history</td>
+          <td>You can request correction or removal</td>
+        </tr>
+        <tr>
+          <td>GitHub release, page, and account metadata</td>
+          <td>GitHub sets the period under its account and legal rules</td>
+          <td>See GitHub's Privacy Statement</td>
+        </tr>
+        <tr>
+          <td>Private privacy request</td>
+          <td>Until the request closes, then as required for legal records</td>
+          <td>You can request deletion when no legal duty requires retention</td>
+        </tr>
+        <tr>
+          <td>Speech data</td>
+          <td>Your speech provider sets the period</td>
+          <td>Use your device settings and provider controls</td>
+        </tr>
+        <tr>
+          <td>Encrypted iOS device backup</td>
+          <td>Your Apple backup settings and Apple's rules set the period</td>
+          <td>Use your Apple backup controls</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      GitHub notifications, caches, forks, and archives can keep copies after
+      Lootr changes or removes an issue.
+    </p>
+    <p>
+      Read Cloudflare's <a href="https://www.cloudflare.com/privacypolicy/"
+        >Privacy Policy</a
+      > and GitHub's <a
+        href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement"
+        >Privacy Statement</a
+      > for their retention rules.
+    </p>
+  </section>
+
+  <section>
+    <h2>9. Security</h2>
+    <p>
+      Production builds use an encrypted local database and operating-system
+      secure storage. Online requests use transport encryption.
+    </p>
+    <p>
+      Lootr also uses bounded diagnostics, report preview, consent controls,
+      rate limits, and restricted service credentials.
+    </p>
+    <p>
+      No security control removes all risk. Keep a separate backup of important
+      records.
+    </p>
+  </section>
+
+  <section>
+    <h2>10. Your rights</h2>
+    <p>
+      Depending on your location, you can request access, correction, erasure,
+      restriction, objection, or a portable copy of data that Joashdev controls.
+    </p>
+    <p>
+      You can also withdraw consent and file a complaint. Send a private request
+      through the contact in section 1.
+    </p>
+    <p>
+      Joashdev will answer a complete request without undue delay. For Philippine
+      requests, the target response period is 30 working days.
+    </p>
+    <p>
+      If required, Joashdev can extend this period by 15 working days. Joashdev
+      will tell you the reason before the first period ends.
+    </p>
+    <p>
+      You can also file a complaint with the <a
+        href="https://privacy.gov.ph/data-subject-rights/"
+        >Philippine National Privacy Commission</a
+      >.
+    </p>
+  </section>
+
+  <section>
+    <h2>11. Automated decisions</h2>
+    <p>
+      V1 does not make an automated decision that has a legal or similar
+      significant effect.
+    </p>
+    <p>
+      OCR, parsing, and AI features make suggestions only. You control each
+      financial record and decision.
+    </p>
+  </section>
+
+  <section>
+    <h2>12. Children</h2>
+    <p>
+      Lootr is for adults who are at least 18 years old. Lootr does not direct
+      its online features to children.
+    </p>
+    <p>
+      If a child sends personal data, a parent or guardian can contact Joashdev
+      and request deletion.
+    </p>
+  </section>
+
+  <section>
+    <h2>13. Policy changes</h2>
+    <p>
+      Lootr will change this policy when its data practices change. The date
+      above identifies this version.
+    </p>
+    <p>
+      Lootr will announce a material change in the app or release notes before
+      the new processing starts.
+    </p>
+  </section>
+</LegalLayout>

@@ -61,6 +61,12 @@ Use the [bug report template](https://github.com/joashdev/lootr/issues/new?templ
 for ordinary defects. Security vulnerabilities should be reported privately as
 described in [SECURITY.md](SECURITY.md).
 
+The current [Privacy Policy](https://lootr-bhl.pages.dev/privacy) explains the
+device-only V1 boundary and the optional feedback, screenshot, and voice-input
+flows. The [Terms of Use](https://lootr-bhl.pages.dev/terms) cover the alpha
+software and financial-tool limitations. These documents apply to official
+Lootr releases. Forks are responsible for their own disclosures and services.
+
 ## Build and test
 
 The release workflow uses Flutter 3.44.2. With a matching Flutter installation:

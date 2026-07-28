@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lootr/application/providers/app_info_provider.dart';
+import 'package:lootr/core/legal/legal_links.dart';
 import 'package:lootr/core/theme/theme.dart';
 import 'package:lootr/presentation/screens/more/settings/about_screen.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -57,5 +58,15 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(launchedUri?.path, '/joashdev/lootr/blob/main/LICENSE');
+
+    await tester.ensureVisible(find.text('Privacy Policy'));
+    await tester.tap(find.text('Privacy Policy'));
+    await tester.pumpAndSettle();
+    expect(launchedUri, Uri.parse(lootrPrivacyPolicyUrl));
+
+    await tester.ensureVisible(find.text('Terms of Use'));
+    await tester.tap(find.text('Terms of Use'));
+    await tester.pumpAndSettle();
+    expect(launchedUri, Uri.parse(lootrTermsUrl));
   });
 }
