@@ -28,7 +28,7 @@ future, opt-in capabilities and are not required for the local V1 experience.
 3. Verify the checksum:
 
    ```sh
-   sha256sum -c lootr-v0.1.0-alpha.2-android.apk.sha256
+   sha256sum -c lootr-v0.1.0-alpha.3-android.apk.sha256
    ```
 
 4. Allow installation from the browser or file manager when Android asks.
@@ -40,16 +40,22 @@ of the project's release process.
 
 ## Privacy and bug reports
 
-Lootr does not automatically upload crash reports, logs, balances, transactions,
-receipts, or database files. The in-app **Report a bug** action opens a public
-GitHub issue with only the app version, build number, and operating-system name.
+Lootr keeps bounded, sanitized diagnostic events locally. The in-app **Send
+feedback** flow can publish a bug, feature request, or layout request to the
+public GitHub issue tracker without requiring a GitHub account. It shows the
+exact public payload and requires explicit consent before anything is uploaded.
+Diagnostics are included by default only for bugs and can be removed.
 
-Before submitting an issue, remove:
+Screenshots are optional, separately approved, re-encoded, and temporarily
+stored for the public report. Before submitting, remove:
 
 - Names, account numbers, balances, and transaction details
 - Receipt images and merchant information you consider private
 - Export, backup, or database files
 - Authentication tokens, secrets, and personally identifying information
+
+Public reports may remain in caches or notifications after editing or deletion.
+Security vulnerabilities must not use the public in-app flow.
 
 Use the [bug report template](https://github.com/joashdev/lootr/issues/new?template=bug_report.md)
 for ordinary defects. Security vulnerabilities should be reported privately as
@@ -64,7 +70,8 @@ flutter pub get
 dart run build_runner build --delete-conflicting-outputs
 flutter analyze --no-pub
 flutter test --no-pub
-flutter build apk --release
+flutter build apk --release \
+  --dart-define=LOOTR_REPORT_ENDPOINT=https://lootr-report-relay.joashdev.workers.dev
 ```
 
 A signed release additionally requires the private Android signing configuration

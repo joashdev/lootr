@@ -69,7 +69,8 @@ jobs:
         run: |
           flutter build apk --release \
             --build-name "$RELEASE_VERSION" \
-            --build-number "$GITHUB_RUN_NUMBER"
+            --build-number "$GITHUB_RUN_NUMBER" \
+            --dart-define=LOOTR_REPORT_ENDPOINT=https://lootr-report-relay.joashdev.workers.dev
 
       - name: Prepare unsigned artifact
         shell: bash

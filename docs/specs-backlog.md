@@ -270,10 +270,12 @@ Each spec, when written, should be a standalone markdown doc that is concrete en
 
 **Status:** Done.
 **Produces:** `docs/public-alpha-release.md` + `docs/mandocs/public-alpha-release.html`
-**Purpose:** Define an auditable, signed Android alpha release and privacy-safe GitHub feedback path.
+**Purpose:** Define an auditable, signed Android alpha and a consented in-app public GitHub reporting path.
 **Coverage:**
 - AGPL public-audit and official-project governance boundary
-- Privacy-safe in-app and repository bug reporting
+- Public bug, feature, and layout reporting through a Cloudflare Worker
+- Local sanitized diagnostics, optional screenshots, exact preview, and explicit consent
+- Turnstile, exact Durable Object quotas, R2 retention, and privacy-safe Worker observability
 - Protected, signed, tag-driven GitHub APK release
 - Checksums, provenance, signing continuity, and acceptance criteria
 **Priority:** Critical

@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -5,22 +8,60 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
 import 'application/providers/onboarding_provider.dart';
+import 'core/reporting/diagnostic_logger.dart';
 import 'core/theme/spacing.dart';
 import 'core/theme/theme.dart';
 import 'core/theme/typography.dart';
 
-void main() {
-  WidgetsFlutterBinding.ensureInitialized();
+Future<void> main() async {
+  await runZonedGuarded(
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
+      await DiagnosticLogger.instance.initialize();
 
-  // Offline-first: Geist / Geist Mono ship as bundled assets, so never let
-  // google_fonts reach out over HTTP to fetch them at runtime.
-  GoogleFonts.config.allowRuntimeFetching = false;
+      // Offline-first: Geist / Geist Mono ship as bundled assets, so never let
+      // google_fonts reach out over HTTP to fetch them at runtime.
+      GoogleFonts.config.allowRuntimeFetching = false;
 
-  FlutterError.onError = (details) {
-    FlutterError.presentError(details);
-  };
+      FlutterError.onError = (details) {
+        unawaited(
+          DiagnosticLogger.instance.recordError(
+            feature: DiagnosticFeature.app,
+            eventCode: DiagnosticCode.flutterError,
+            error: details.exception,
+            stackTrace: details.stack,
+          ),
+        );
+        FlutterError.presentError(details);
+      };
+      PlatformDispatcher.instance.onError = (error, stackTrace) {
+        _recordUnhandledError(error, stackTrace);
+        return true;
+      };
 
-  runApp(const AppBootstrap());
+      await DiagnosticLogger.instance.log(
+        severity: DiagnosticSeverity.info,
+        feature: DiagnosticFeature.app,
+        eventCode: DiagnosticCode.appStarted,
+        outcome: DiagnosticOutcome.succeeded,
+      );
+      runApp(const AppBootstrap());
+    },
+    (error, stackTrace) {
+      _recordUnhandledError(error, stackTrace);
+    },
+  );
+}
+
+void _recordUnhandledError(Object error, StackTrace stackTrace) {
+  unawaited(
+    DiagnosticLogger.instance.recordError(
+      feature: DiagnosticFeature.app,
+      eventCode: DiagnosticCode.asynchronousError,
+      error: error,
+      stackTrace: stackTrace,
+    ),
+  );
 }
 
 class AppBootstrap extends StatefulWidget {
