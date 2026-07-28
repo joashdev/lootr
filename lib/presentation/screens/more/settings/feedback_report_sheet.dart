@@ -16,8 +16,32 @@ import '../../../../core/theme/typography.dart';
 import '../../../shared/components/buttons/ghost_button.dart';
 import '../../../shared/components/buttons/primary_button.dart';
 import '../../../shared/components/buttons/secondary_button.dart';
+import 'turnstile_challenge_sheet.dart';
 
 enum _ReportStage { compose, preview, submitted }
+
+typedef TurnstileTokenRequester =
+    Future<String?> Function(BuildContext context);
+
+final turnstileTokenRequesterProvider = Provider<TurnstileTokenRequester>((
+  ref,
+) {
+  final challengeUri = ref.watch(feedbackChallengeUriProvider);
+  return (context) {
+    if (challengeUri == null) {
+      throw const FeedbackSubmissionException(
+        'not_configured',
+        'In-app reporting is not configured in this build.',
+      );
+    }
+    return showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => TurnstileChallengeSheet(challengeUri: challengeUri),
+    );
+  };
+});
 
 class FeedbackReportSheet extends ConsumerStatefulWidget {
   const FeedbackReportSheet({
@@ -503,17 +527,28 @@ class _FeedbackReportSheetState extends ConsumerState<FeedbackReportSheet> {
     });
     final logger = ref.read(diagnosticLoggerProvider);
     final stopwatch = Stopwatch()..start();
-    await logger.log(
-      severity: DiagnosticSeverity.info,
-      feature: DiagnosticFeature.reporting,
-      eventCode: DiagnosticCode.reportSubmitStarted,
-      outcome: DiagnosticOutcome.started,
-    );
 
     try {
+      final turnstileToken = await ref.read(turnstileTokenRequesterProvider)(
+        context,
+      );
+      if (turnstileToken == null || !mounted) {
+        if (mounted) setState(() => _busy = false);
+        return;
+      }
+      await logger.log(
+        severity: DiagnosticSeverity.info,
+        feature: DiagnosticFeature.reporting,
+        eventCode: DiagnosticCode.reportSubmitStarted,
+        outcome: DiagnosticOutcome.started,
+      );
       final result = await ref
           .read(feedbackSubmitterProvider)
-          .submit(_report(confirmed: true), screenshot: _screenshot);
+          .submit(
+            _report(confirmed: true),
+            turnstileToken: turnstileToken,
+            screenshot: _screenshot,
+          );
       await logger.log(
         severity: DiagnosticSeverity.info,
         feature: DiagnosticFeature.reporting,

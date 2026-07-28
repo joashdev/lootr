@@ -28,9 +28,13 @@ void main() {
       client: client,
     );
 
-    final result = await submitter.submit(_report());
+    final result = await submitter.submit(
+      _report(),
+      turnstileToken: 'verified-token',
+    );
 
     expect(sent.url.path, '/reports');
+    expect(sent.fields['turnstileToken'], 'verified-token');
     expect(
       jsonDecode(sent.fields['report']!)['type'],
       FeedbackType.feature.name,
@@ -46,12 +50,54 @@ void main() {
     );
 
     expect(
-      () => submitter.submit(_report(publicReportConsent: false)),
+      () => submitter.submit(
+        _report(publicReportConsent: false),
+        turnstileToken: 'verified-token',
+      ),
       throwsA(
         isA<FeedbackSubmissionException>().having(
           (error) => error.code,
           'code',
           'consent_required',
+        ),
+      ),
+    );
+  });
+
+  test('requires a Turnstile token before sending', () async {
+    final submitter = CloudflareFeedbackSubmitter(
+      endpoint: Uri.parse('https://reports.example.test/reports'),
+      client: _Client((_) async => throw StateError('must not send')),
+    );
+
+    expect(
+      () => submitter.submit(_report(), turnstileToken: ''),
+      throwsA(
+        isA<FeedbackSubmissionException>().having(
+          (error) => error.code,
+          'code',
+          'turnstile_required',
+        ),
+      ),
+    );
+  });
+
+  test('limits the Turnstile token by UTF-8 byte size', () async {
+    final submitter = CloudflareFeedbackSubmitter(
+      endpoint: Uri.parse('https://reports.example.test/reports'),
+      client: _Client((_) async => throw StateError('must not send')),
+    );
+
+    expect(
+      () => submitter.submit(
+        _report(),
+        turnstileToken: List.filled(700, '€').join(),
+      ),
+      throwsA(
+        isA<FeedbackSubmissionException>().having(
+          (error) => error.code,
+          'code',
+          'turnstile_required',
         ),
       ),
     );

@@ -30,6 +30,12 @@ final feedbackSubmitterProvider = Provider<FeedbackSubmitter>((ref) {
   );
 });
 
+final feedbackChallengeUriProvider = Provider<Uri?>((ref) {
+  return _feedbackEndpoint.isEmpty
+      ? null
+      : Uri.parse('$_feedbackEndpoint/challenge');
+});
+
 final screenshotSelectorProvider = Provider<ScreenshotSelector>((ref) {
   return () async {
     final selected = await ImagePicker().pickImage(

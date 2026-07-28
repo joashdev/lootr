@@ -22,6 +22,9 @@ void main() {
       ProviderScope(
         overrides: [
           feedbackSubmitterProvider.overrideWithValue(submitter),
+          turnstileTokenRequesterProvider.overrideWithValue(
+            (_) async => 'verified-token',
+          ),
           externalUrlLauncherProvider.overrideWithValue((_) async => true),
         ],
         child: MaterialApp(
@@ -70,19 +73,23 @@ void main() {
     expect(submitter.report?.type, FeedbackType.feature);
     expect(submitter.report?.diagnostics, isEmpty);
     expect(submitter.report?.publicReportConsent, isTrue);
+    expect(submitter.turnstileToken, 'verified-token');
     expect(find.text('Report #17 published'), findsOneWidget);
   });
 }
 
 class _Submitter implements FeedbackSubmitter {
   PublicFeedbackReport? report;
+  String? turnstileToken;
 
   @override
   Future<FeedbackSubmissionResult> submit(
     PublicFeedbackReport report, {
+    required String turnstileToken,
     Uint8List? screenshot,
   }) async {
     this.report = report;
+    this.turnstileToken = turnstileToken;
     return FeedbackSubmissionResult(
       reportId: report.id,
       issueNumber: 17,

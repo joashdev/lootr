@@ -77,9 +77,12 @@
 <p>The app sends one <code>multipart/form-data</code> request to the Cloudflare Worker:</p>
 <ul>
   <li><code>report</code> — UTF-8 JSON, maximum 64 KiB</li>
+  <li><code>turnstileToken</code> — single-use Cloudflare Turnstile token, maximum 2 KiB</li>
   <li><code>screenshot</code> — optional JPEG, maximum 1 MiB</li>
 </ul>
-<p>The Worker rejects unknown fields, invalid consent, oversized input, unsupported media types, forbidden diagnostic keys, duplicate report IDs, and excessive request rates. It performs a second redaction pass, creates a GitHub issue using a repository-scoped secret stored only in Cloudflare, and returns the public issue number and URL. No GitHub credential is included in the APK.</p>
+<p>After the user reviews and consents, Lootr opens a Cloudflare Turnstile Managed challenge inside an in-app WebView. The challenge token is never published, persisted, or logged. The Worker verifies it server-side through Turnstile Siteverify; tokens expire after five minutes and are accepted only once.</p>
+<p>The Worker rejects unknown fields, missing or invalid challenge tokens, invalid consent, oversized input, unsupported media types, forbidden diagnostic keys, duplicate report IDs, and excessive request rates. A Durable Object applies an exact global quota after successful challenge verification and before any R2 write: 25 accepted report attempts per UTC day, including no-screenshot reports, and 10 screenshot attempts per UTC hour. Attempts consume quota even when the downstream GitHub request fails. The existing per-IP Worker rate limit remains an inexpensive first filter, and <code>REPORTING_ENABLED=false</code> is an emergency kill switch.</p>
+<p>After validation, the Worker performs a second redaction pass, creates a GitHub issue using a repository-scoped secret stored only in Cloudflare, and returns the public issue number and URL. No GitHub credential is included in the APK.</p>
 <p>The issue mapping is:</p>
 <table>
 <thead><tr><th>Report type</th><th>Title prefix</th><th>GitHub label</th></tr></thead>
@@ -92,9 +95,9 @@
 <p>If submission fails, Lootr keeps the draft in memory, shows a neutral retry action, and does not claim the report was received. The existing browser-based GitHub composer remains a secondary fallback.</p>
 <h3>3.4 Screenshot Handling</h3>
 <p>The user selects an existing screenshot and sees it before consent. Lootr constrains the longest edge to 1280 pixels, re-encodes at bounded quality, removes source metadata, and rejects output over 1 MiB.</p>
-<p>The Worker stores the image under an unguessable key in a private R2 bucket and adds a public time-bounded attachment URL to the GitHub issue only after the separate screenshot consent. The bucket lifecycle deletes screenshots after 30 days. If issue creation fails, the Worker deletes the orphaned object.</p>
+<p>The Worker stores the image under an unguessable key in a private R2 bucket and adds a public time-bounded attachment URL to the GitHub issue only after the separate screenshot consent. The bucket lifecycle deletes screenshots after 30 days. The attachment route also checks the object's deletion deadline and deletes expired objects before returning <code>404</code>, so lifecycle configuration is not the only enforcement. If issue creation fails, the Worker deletes the orphaned object.</p>
 <h3>3.5 Relay Observability</h3>
-<p>Cloudflare Workers Observability records invocation status, duration, GitHub response status, R2 outcome, payload size, report type, and opaque report ID. It must never log descriptions, diagnostics, screenshot keys or URLs, authorization headers, IP addresses, or financial data. PostHog, session replay, autocapture, and client analytics remain excluded.</p>
+<p>Cloudflare Workers Observability records invocation status, duration, Turnstile outcome category, quota outcome, GitHub response status, R2 outcome, payload size, report type, and opaque report ID. It must never log challenge tokens, descriptions, diagnostics, screenshot keys or URLs, authorization headers, IP addresses, or financial data. PostHog, session replay, autocapture, and client analytics remain excluded.</p>
 <h2>4. Signed Release Pipeline</h2>
 <p>Pushing a matching semantic tag starts the Android release workflow:</p>
 <pre class="diagram">tag on protected main
@@ -132,7 +135,9 @@ GitHub prerelease</pre>
   <li>Submission requires a public preview of all user-authored content, marks any server-generated screenshot URL, and requires both disclosure confirmations</li>
   <li>Bug diagnostics are local, rotating, allowlisted, bounded, removable, and never uploaded before consent</li>
   <li>Screenshots are optional, separately approved, re-encoded, size-capped, and deleted from R2 after 30 days</li>
-  <li>The Cloudflare relay validates, rate-limits, redacts, creates the public GitHub issue, and exposes no GitHub credential to the APK</li>
+  <li>The in-app Managed Turnstile challenge is verified server-side, single-use, short-lived, and neither persisted nor logged</li>
+  <li>A Durable Object enforces exact global limits of 25 report attempts per UTC day and 10 screenshot attempts per UTC hour before any R2 write</li>
+  <li>The Cloudflare relay validates, rate-limits, redacts, supports an emergency kill switch, creates the public GitHub issue, and exposes no GitHub credential to the APK</li>
   <li>Cloudflare observability contains operational metadata only; PostHog and client analytics remain absent</li>
   <li>The repository contains README, AGPL license, notice, security policy, issue form, and release guide</li>
   <li>Analysis passes and the full automated test suite passes</li>

@@ -31,6 +31,7 @@ class FeedbackSubmissionException implements Exception {
 abstract interface class FeedbackSubmitter {
   Future<FeedbackSubmissionResult> submit(
     PublicFeedbackReport report, {
+    required String turnstileToken,
     Uint8List? screenshot,
   });
 }
@@ -47,6 +48,7 @@ class CloudflareFeedbackSubmitter implements FeedbackSubmitter {
   @override
   Future<FeedbackSubmissionResult> submit(
     PublicFeedbackReport report, {
+    required String turnstileToken,
     Uint8List? screenshot,
   }) async {
     final target = endpoint;
@@ -68,9 +70,17 @@ class CloudflareFeedbackSubmitter implements FeedbackSubmitter {
         'Confirm that the screenshot may be published.',
       );
     }
+    if (turnstileToken.isEmpty ||
+        utf8.encode(turnstileToken).lengthInBytes > 2048) {
+      throw const FeedbackSubmissionException(
+        'turnstile_required',
+        'Complete the anti-abuse check before sending.',
+      );
+    }
 
     final request = http.MultipartRequest('POST', target)
-      ..fields['report'] = jsonEncode(report.toJson());
+      ..fields['report'] = jsonEncode(report.toJson())
+      ..fields['turnstileToken'] = turnstileToken;
     if (screenshot != null) {
       request.files.add(
         http.MultipartFile.fromBytes(

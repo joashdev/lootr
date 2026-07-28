@@ -275,7 +275,7 @@ Each spec, when written, should be a standalone markdown doc that is concrete en
 - AGPL public-audit and official-project governance boundary
 - Public bug, feature, and layout reporting through a Cloudflare Worker
 - Local sanitized diagnostics, optional screenshots, exact preview, and explicit consent
-- R2 attachment retention and privacy-safe Worker observability
+- Turnstile, exact Durable Object quotas, R2 retention, and privacy-safe Worker observability
 - Protected, signed, tag-driven GitHub APK release
 - Checksums, provenance, signing continuity, and acceptance criteria
 **Priority:** Critical
