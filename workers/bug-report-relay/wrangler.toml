@@ -11,10 +11,9 @@ head_sampling_rate = 1
 GITHUB_OWNER = "joashdev"
 GITHUB_REPO = "lootr"
 ATTACHMENT_RETENTION_DAYS = "30"
-# Keep the first deployment closed until both secrets and Turnstile are ready.
-REPORTING_ENABLED = "false"
+REPORTING_ENABLED = "true"
 # Replace with the public key from the Turnstile widget before deployment.
-TURNSTILE_SITE_KEY = "replace-with-turnstile-site-key"
+TURNSTILE_SITE_KEY = "0x4AAAAAAD_uRtOhuSiQzoTa"
 
 [[r2_buckets]]
 binding = "SCREENSHOTS"
