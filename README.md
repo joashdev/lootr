@@ -70,7 +70,8 @@ flutter pub get
 dart run build_runner build --delete-conflicting-outputs
 flutter analyze --no-pub
 flutter test --no-pub
-flutter build apk --release
+flutter build apk --release \
+  --dart-define=LOOTR_REPORT_ENDPOINT=https://lootr-report-relay.joashdev.workers.dev
 ```
 
 A signed release additionally requires the private Android signing configuration
