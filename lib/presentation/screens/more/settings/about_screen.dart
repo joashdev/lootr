@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../application/providers/app_info_provider.dart';
+import '../../../../core/legal/legal_links.dart';
 import '../../../../core/reporting/bug_report.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/spacing.dart';
@@ -108,23 +109,22 @@ class AboutScreen extends ConsumerWidget {
                   width: double.infinity,
                   child: SecondaryButton(
                     label: 'Privacy Policy',
-                    onPressed: () => showDialog<void>(
-                      context: context,
-                      builder: (dialogContext) => AlertDialog(
-                        title: const Text('Privacy Policy'),
-                        content: const Text(
-                          'Lootr keeps your data on-device in V1. Sync, backup, and data sharing stay opt-in as future features.',
-                        ),
-                        actions: [
-                          GhostButton(
-                            label: 'Close',
-                            onPressed: () => Navigator.of(dialogContext).pop(),
-                            isExpanded: false,
-                          ),
-                        ],
-                      ),
+                    onPressed: () => _openUrl(
+                      context,
+                      ref,
+                      Uri.parse(lootrPrivacyPolicyUrl),
                     ),
                     icon: const Icon(LucideIcons.shield, size: 18),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.space3),
+                SizedBox(
+                  width: double.infinity,
+                  child: SecondaryButton(
+                    label: 'Terms of Use',
+                    onPressed: () =>
+                        _openUrl(context, ref, Uri.parse(lootrTermsUrl)),
+                    icon: const Icon(LucideIcons.fileText, size: 18),
                   ),
                 ),
               ],
@@ -196,7 +196,7 @@ class AboutScreen extends ConsumerWidget {
     if (!opened && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Could not open GitHub. Try again later.'),
+          content: Text('Could not open that page. Try again later.'),
         ),
       );
     }

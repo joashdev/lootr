@@ -20,7 +20,10 @@ void main() {
   setUp(() async {
     db = AppDatabase.inMemory();
     await db.batch((batch) {
-      batch.insertAllOnConflictUpdate(db.categories, CategorySeeds.toCompanions());
+      batch.insertAllOnConflictUpdate(
+        db.categories,
+        CategorySeeds.toCompanions(),
+      );
     });
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
@@ -62,6 +65,14 @@ void main() {
     }
   }
 
+  Future<void> confirmAdultAge(WidgetTester tester) async {
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('age-confirmation-checkbox')),
+    );
+    await tester.tap(find.byKey(const ValueKey('age-confirmation-checkbox')));
+    await tester.pumpAndSettle();
+  }
+
   testWidgets('shows first step welcome content with step indicator', (
     tester,
   ) async {
@@ -95,6 +106,33 @@ void main() {
     expect(find.text('Set up your profile'), findsOneWidget);
     expect(find.text('Get Started'), findsOneWidget);
     expect(find.byKey(const ValueKey('demo-data-toggle')), findsOneWidget);
+    expect(
+      find.text('I confirm that I am at least 18 years old.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('requires age confirmation before onboarding completion', (
+    tester,
+  ) async {
+    await tester.pumpWidget(buildApp());
+    await tester.pumpAndSettle();
+    await advanceToLastStep(tester);
+
+    await tester.enterText(find.byType(TextField), 'Alice');
+    await tester.pumpAndSettle();
+
+    var button = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Get Started'),
+    );
+    expect(button.onPressed, isNull);
+
+    await confirmAdultAge(tester);
+
+    button = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Get Started'),
+    );
+    expect(button.onPressed, isNotNull);
   });
 
   testWidgets('Get Started saves profile, seeds demo data, navigates home', (
@@ -106,6 +144,7 @@ void main() {
 
     await tester.enterText(find.byType(TextField), 'Alice');
     await tester.pumpAndSettle();
+    await confirmAdultAge(tester);
 
     await tester.tap(find.text('Get Started'));
     await tester.pumpAndSettle();
@@ -135,6 +174,7 @@ void main() {
 
     await tester.enterText(find.byType(TextField), 'Test');
     await tester.pumpAndSettle();
+    await confirmAdultAge(tester);
 
     await tester.tap(find.text('Get Started'));
     await tester.pumpAndSettle();
@@ -179,6 +219,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), 'Test');
     await tester.pumpAndSettle();
+    await confirmAdultAge(tester);
     await tester.tap(find.text('Get Started'));
     await tester.pumpAndSettle();
 
@@ -201,6 +242,7 @@ void main() {
 
     await tester.enterText(find.byType(TextField), 'alice');
     await tester.pumpAndSettle();
+    await confirmAdultAge(tester);
     await tester.tap(find.text('Get Started'));
     await tester.pumpAndSettle();
 

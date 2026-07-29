@@ -27,9 +27,13 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Lootr uses the microphone for on-device voice transaction entry.</string>
+	<string>Lootr uses the microphone when you choose voice transaction entry.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Lootr uses the camera when you choose to scan a receipt.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Lootr accesses a photo only when you choose a receipt or feedback screenshot.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Lootr uses speech recognition to turn your voice into transaction text on-device.</string>
+	<string>Lootr uses your device's speech recognition service to turn voice input into transaction text.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

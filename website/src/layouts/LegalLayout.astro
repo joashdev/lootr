@@ -1,0 +1,47 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description: string;
+  effectiveDate: string;
+}
+
+const { title, description, effectiveDate } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="description" content={description} />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title} · Lootr</title>
+  </head>
+  <body>
+    <header class="legal-header">
+      <a class="brand" href="/">
+        <span class="brand-mark" aria-hidden="true">
+          <img src="/images/lootr-app-icon.png" alt="" width="34" height="34" />
+        </span>
+        <span>Lootr</span>
+      </a>
+      <a class="text-link" href="/">Back to Lootr</a>
+    </header>
+    <main class="legal-shell">
+      <p class="eyebrow">Legal</p>
+      <h1>{title}</h1>
+      <p class="legal-effective">Effective {effectiveDate}</p>
+      <slot />
+    </main>
+    <footer class="legal-footer">
+      <span>Lootr · calm, offline-first personal finance</span>
+      <nav aria-label="Legal">
+        <a href="/privacy">Privacy</a>
+        <a href="/terms">Terms</a>
+        <a href="https://github.com/joashdev/lootr">Source</a>
+      </nav>
+    </footer>
+  </body>
+</html>
