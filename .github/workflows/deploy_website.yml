@@ -7,9 +7,7 @@ concurrency:
   group: website-production
   cancel-in-progress: false
 
-permissions:
-  contents: read
-  deployments: write
+permissions: {}
 
 jobs:
   deploy:
@@ -17,41 +15,14 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: production
-      url: ${{ steps.deploy.outputs.deployment-url }}
+      url: https://lootr-bhl.pages.dev
 
     steps:
-      - name: Check out main
-        uses: actions/checkout@v6
-        with:
-          ref: main
-          persist-credentials: false
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: website/pnpm-lock.yaml
-
-      - name: Install dependencies
-        working-directory: website
-        run: pnpm install --frozen-lockfile
-
-      - name: Build website
-        working-directory: website
-        run: pnpm build
-
-      - name: Deploy to Cloudflare Pages
-        id: deploy
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-          workingDirectory: website
-          command: pages deploy dist --project-name=lootr --branch=main
+      - name: Trigger Cloudflare Pages deployment
+        env:
+          DEPLOY_HOOK_URL: ${{ secrets.CLOUDFLARE_DEPLOY_HOOK_URL }}
+        run: |
+          test -n "$DEPLOY_HOOK_URL"
+          curl --fail --silent --show-error \
+            --request POST \
+            --url "$DEPLOY_HOOK_URL"
