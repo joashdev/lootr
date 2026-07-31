@@ -2,27 +2,53 @@ name: Deploy website
 
 on:
   workflow_dispatch:
+    inputs:
+      target:
+        description: Deployment target
+        required: true
+        default: staging
+        type: choice
+        options:
+          - staging
+          - production
 
 concurrency:
-  group: website-production
+  group: website-${{ inputs.target }}
   cancel-in-progress: false
 
 permissions: {}
 
 jobs:
   deploy:
-    name: Deploy to Cloudflare Pages
+    name: Deploy ${{ inputs.target }} to Cloudflare Pages
     runs-on: ubuntu-latest
     environment:
-      name: production
-      url: https://lootr-bhl.pages.dev
+      name: ${{ inputs.target }}
+      url: ${{ inputs.target == 'production' && 'https://lootr-bhl.pages.dev' || 'https://staging.lootr-bhl.pages.dev' }}
 
     steps:
-      - name: Trigger Cloudflare Pages deployment
+      - name: Trigger staging deployment
+        if: inputs.target == 'staging'
+        env:
+          DEPLOY_HOOK_URL: ${{ secrets.CLOUDFLARE_PREVIEW_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$DEPLOY_HOOK_URL" ]; then
+            echo "::error::The staging deploy hook secret is missing."
+            exit 1
+          fi
+          curl --fail --silent --show-error \
+            --request POST \
+            --url "$DEPLOY_HOOK_URL"
+
+      - name: Trigger production deployment
+        if: inputs.target == 'production'
         env:
           DEPLOY_HOOK_URL: ${{ secrets.CLOUDFLARE_DEPLOY_HOOK_URL }}
         run: |
-          test -n "$DEPLOY_HOOK_URL"
+          if [ -z "$DEPLOY_HOOK_URL" ]; then
+            echo "::error::The production deploy hook secret is missing."
+            exit 1
+          fi
           curl --fail --silent --show-error \
             --request POST \
             --url "$DEPLOY_HOOK_URL"
