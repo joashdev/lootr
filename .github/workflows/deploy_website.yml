@@ -2,56 +2,53 @@ name: Deploy website
 
 on:
   workflow_dispatch:
+    inputs:
+      target:
+        description: Deployment target
+        required: true
+        default: staging
+        type: choice
+        options:
+          - staging
+          - production
 
 concurrency:
-  group: website-production
+  group: website-${{ inputs.target }}
   cancel-in-progress: false
 
-permissions:
-  contents: read
-  deployments: write
+permissions: {}
 
 jobs:
   deploy:
-    name: Deploy to Cloudflare Pages
+    name: Deploy ${{ inputs.target }} to Cloudflare Pages
     runs-on: ubuntu-latest
     environment:
-      name: production
-      url: ${{ steps.deploy.outputs.deployment-url }}
+      name: ${{ inputs.target }}
+      url: ${{ inputs.target == 'production' && 'https://lootr-bhl.pages.dev' || 'https://staging.lootr-bhl.pages.dev' }}
 
     steps:
-      - name: Check out main
-        uses: actions/checkout@v6
-        with:
-          ref: main
-          persist-credentials: false
+      - name: Trigger staging deployment
+        if: inputs.target == 'staging'
+        env:
+          DEPLOY_HOOK_URL: ${{ secrets.CLOUDFLARE_PREVIEW_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$DEPLOY_HOOK_URL" ]; then
+            echo "::error::The staging deploy hook secret is missing."
+            exit 1
+          fi
+          curl --fail --silent --show-error \
+            --request POST \
+            --url "$DEPLOY_HOOK_URL"
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: website/pnpm-lock.yaml
-
-      - name: Install dependencies
-        working-directory: website
-        run: pnpm install --frozen-lockfile
-
-      - name: Build website
-        working-directory: website
-        run: pnpm build
-
-      - name: Deploy to Cloudflare Pages
-        id: deploy
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-          workingDirectory: website
-          command: pages deploy dist --project-name=lootr --branch=main
+      - name: Trigger production deployment
+        if: inputs.target == 'production'
+        env:
+          DEPLOY_HOOK_URL: ${{ secrets.CLOUDFLARE_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$DEPLOY_HOOK_URL" ]; then
+            echo "::error::The production deploy hook secret is missing."
+            exit 1
+          fi
+          curl --fail --silent --show-error \
+            --request POST \
+            --url "$DEPLOY_HOOK_URL"
