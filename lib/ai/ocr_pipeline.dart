@@ -188,7 +188,12 @@ class OCRPipeline {
     for (final line in lines) {
       final lower = line.toLowerCase();
       if (_looksLikeReceiptTotal(lower)) {
-        final result = _nlParser.parse(line);
+        final amounts = RegExp(
+          r'-?(?:\d+(?:,\d{3})*(?:\.\d+)?|\.\d+)\b',
+        ).allMatches(line);
+        final result = amounts.isEmpty
+            ? null
+            : _nlParser.parse(amounts.last.group(0)!);
         if (result != null && result.parsed.amount != null) {
           amount = result.parsed.amount;
         }
