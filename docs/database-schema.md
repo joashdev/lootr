@@ -559,8 +559,10 @@ Budgets store period type (`monthly` or `custom`), start/end/cycle fields, direc
 
 `import_runs`, `import_source_entities`, `import_source_relations`, `import_mappings`, `import_discrepancies`, `import_preserved_payloads`, `import_checkpoints`, and `rollback_checkpoints` are local-only and excluded from sync. Disposition is constrained to `exact_import`, `transformed_import`, `preserved_only`, `review_required`, `ignored_safe`, or `invalid_blocking`.
 
+`demo_records` stores durable, local-only provenance for sample data. Its composite primary key is (`entity_type`, `entity_id`). `seed_version` identifies the exact seed manifest. `created_at` records when provenance was registered. The table is excluded from sync. Existing sample rows are registered automatically only when the complete known manifest is present. Partial legacy sets require user-reviewed cleanup, and only exact known IDs receive provenance.
+
 Backups include every syncable and local-only table required to reproduce the ledger, provenance, preservation archive, and rollback state. Backup manifests record format/schema version, cipher/KDF metadata, created time, and payload hash without private row content.
 
 ### 8.5 Migration strategy
 
-Schema v3 is additive: add exact columns/tables, backfill legacy values deterministically, verify exact reconstructed balances, then switch repositories/providers to exact columns. New databases create only authoritative exact behavior. Migration tests cover v1→v2→v3, foreign keys, wrong-key rejection, rollback, and backup restore.
+Schema v3 is additive: add exact columns/tables, backfill legacy values deterministically, verify exact reconstructed balances, then switch repositories/providers to exact columns. Schema v4 adds the local-only `demo_records` provenance table. New databases create only authoritative exact behavior. Migration tests cover v1→v2→v3→v4, foreign keys, wrong-key rejection, rollback, and backup restore.

@@ -867,7 +867,7 @@ Every primary list screen has an empty state with:
 - 30 days of realistic transactions across common categories
 - 4 budgets (Food, Transport, Entertainment, Rent)
 - 2 recurring items (Salary, Netflix)
-- Demo data is flagged with `is_demo = true` on all records. A "Clear demo data" button appears in Settings → Profile when demo data is present.
+- Sample records are registered in the local-only `demo_records` table. A "Clear sample data" action appears in Settings → Data & Backup when sample records exist.
 
 ---
 

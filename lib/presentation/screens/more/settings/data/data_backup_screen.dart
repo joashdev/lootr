@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../../application/migration/migration_models.dart';
 import '../../../../../application/migration/migration_coordinator.dart';
 import '../../../../../application/providers/migration_providers.dart';
+import '../../../../../application/providers/demo_data_provider.dart';
 import '../../../../../core/theme/colors.dart';
 import '../../../../../core/theme/spacing.dart';
 import '../../../../../core/theme/typography.dart';
@@ -17,6 +18,7 @@ class DataBackupScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final runs = ref.watch(migrationRunsProvider);
+    final demoData = ref.watch(demoDataProvider);
     return Scaffold(
       appBar: AppBar(centerTitle: false, title: const Text('Data & backup')),
       body: MigrationPageBody(
@@ -85,6 +87,26 @@ class DataBackupScreen extends ConsumerWidget {
           const SizedBox(height: AppSpacing.space6),
           Semantics(
             header: true,
+            child: Text('Sample data', style: AppTypography.h2),
+          ),
+          const SizedBox(height: AppSpacing.space3),
+          demoData.when(
+            data: (value) => _sampleDataAction(context, ref, value),
+            loading: () => const _SampleDataStatusCard(
+              message: 'Checking sample data…',
+              showProgress: true,
+            ),
+            error: (_, _) => _DataActionTile(
+              key: const ValueKey('sample-data-retry'),
+              icon: LucideIcons.refreshCw,
+              title: 'Check sample data again',
+              subtitle: 'The sample-data status could not be read.',
+              onTap: () => ref.invalidate(demoDataProvider),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.space6),
+          Semantics(
+            header: true,
             child: Text('Previous imports', style: AppTypography.h2),
           ),
           const SizedBox(height: AppSpacing.space3),
@@ -115,6 +137,161 @@ class DataBackupScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Widget _sampleDataAction(
+    BuildContext context,
+    WidgetRef ref,
+    DemoDataState state,
+  ) {
+    return switch (state.status) {
+      DemoDataStatus.loading => const _SampleDataStatusCard(
+        message: 'Updating sample data…',
+        showProgress: true,
+      ),
+      DemoDataStatus.present => _DataActionTile(
+        key: const ValueKey('sample-data-clear'),
+        icon: LucideIcons.trash2,
+        title: 'Clear sample data',
+        subtitle: 'Remove sample records while keeping your personal data.',
+        onTap: () => _confirmClearSampleData(context, ref),
+      ),
+      DemoDataStatus.unverified when state.recordCount > 0 => _DataActionTile(
+        key: const ValueKey('sample-data-review'),
+        icon: LucideIcons.shieldQuestion,
+        title: 'Review old sample data',
+        subtitle:
+            'Remove only records that match Lootr’s known sample-data set.',
+        onTap: () => _confirmClearLegacySampleData(context, ref, state),
+      ),
+      DemoDataStatus.unverified => const _SampleDataStatusCard(
+        key: ValueKey('sample-data-unverified'),
+        message:
+            'Lootr found an old sample-data flag, but it cannot verify which '
+            'records are samples. No records will be removed automatically.',
+      ),
+      DemoDataStatus.absent when state.canSeed => _DataActionTile(
+        key: const ValueKey('sample-data-load'),
+        icon: LucideIcons.flaskConical,
+        title: 'Load sample data',
+        subtitle: 'Add sample accounts and transactions to this empty ledger.',
+        onTap: () => _loadSampleData(context, ref),
+      ),
+      DemoDataStatus.absent => const _SampleDataStatusCard(
+        key: ValueKey('sample-data-unavailable'),
+        message:
+            'Sample data is available only before you add financial records.',
+      ),
+    };
+  }
+
+  Future<void> _loadSampleData(BuildContext context, WidgetRef ref) async {
+    try {
+      await ref.read(demoDataProvider.notifier).seed();
+      if (!context.mounted) return;
+      showSafeMessage(context, 'Sample data loaded.');
+    } catch (_) {
+      if (!context.mounted) return;
+      showSafeMessage(
+        context,
+        'Sample data could not be loaded. No data was changed.',
+        warning: true,
+      );
+    }
+  }
+
+  Future<void> _confirmClearSampleData(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final analysis = await ref.read(demoDataProvider.notifier).analyzeClear();
+    if (!context.mounted) return;
+    final requiresRecovery = analysis.requiresRecovery;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          requiresRecovery
+              ? 'Keep personal records and clear samples?'
+              : 'Clear sample data?',
+        ),
+        content: Text(
+          requiresRecovery
+              ? '${analysis.personalDependencyCount} personal '
+                    '${analysis.personalDependencyCount == 1 ? 'record uses' : 'records use'} '
+                    'sample data. Lootr will keep the required sample records '
+                    'as personal records and remove the other samples.'
+              : 'This removes sample data only. Your personal data will stay.',
+        ),
+        actions: [
+          TextButton(
+            key: const ValueKey('sample-data-clear-cancel'),
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            key: const ValueKey('sample-data-clear-confirm'),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(requiresRecovery ? 'Keep and clear' : 'Clear samples'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    try {
+      await ref.read(demoDataProvider.notifier).clear();
+      if (!context.mounted) return;
+      showSafeMessage(context, 'Sample data cleared.');
+    } catch (_) {
+      if (!context.mounted) return;
+      showSafeMessage(
+        context,
+        'Sample data could not be cleared. No data was changed.',
+        warning: true,
+      );
+    }
+  }
+
+  Future<void> _confirmClearLegacySampleData(
+    BuildContext context,
+    WidgetRef ref,
+    DemoDataState state,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Clear known sample records?'),
+        content: Text(
+          'Lootr found ${state.recordCount} ${state.recordCount == 1 ? 'record' : 'records'} '
+          'that match its built-in sample set. Only these records and their '
+          'derived data will be removed. Other records will stay.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            key: const ValueKey('sample-data-review-confirm'),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Clear known samples'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    try {
+      await ref.read(demoDataProvider.notifier).clearReviewedLegacy();
+      if (!context.mounted) return;
+      showSafeMessage(context, 'Known sample data cleared.');
+    } catch (_) {
+      if (!context.mounted) return;
+      showSafeMessage(
+        context,
+        'Known sample data could not be cleared. No data was changed.',
+        warning: true,
+      );
+    }
   }
 
   Future<void> _confirmRestore(BuildContext context, WidgetRef ref) async {
@@ -299,6 +476,45 @@ class _DataActionTile extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _SampleDataStatusCard extends StatelessWidget {
+  const _SampleDataStatusCard({
+    super.key,
+    required this.message,
+    this.showProgress = false,
+  });
+
+  final String message;
+  final bool showProgress;
+
+  @override
+  Widget build(BuildContext context) {
+    return MigrationSectionCard(
+      child: Row(
+        children: [
+          if (showProgress) ...[
+            const SizedBox.square(
+              dimension: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            const SizedBox(width: AppSpacing.space3),
+          ] else ...[
+            Icon(LucideIcons.info, color: context.lootrColors.textSecondary),
+            const SizedBox(width: AppSpacing.space3),
+          ],
+          Expanded(
+            child: Text(
+              message,
+              style: AppTypography.body.copyWith(
+                color: context.lootrColors.textSecondary,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

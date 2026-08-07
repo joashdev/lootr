@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lootr/application/migration/migration_coordinator.dart';
 import 'package:lootr/application/migration/migration_models.dart';
 import 'package:lootr/application/providers/migration_providers.dart';
+import 'package:lootr/application/providers/database_provider.dart';
 import 'package:lootr/core/theme/theme.dart';
+import 'package:lootr/data/database/app_database.dart';
 import 'package:lootr/presentation/screens/more/settings/data/cashew_import_prepare_screen.dart';
 import 'package:lootr/presentation/screens/more/settings/data/cashew_migration_run_screen.dart';
 import 'package:lootr/presentation/screens/more/settings/data/data_backup_screen.dart';
@@ -100,6 +103,7 @@ Widget _host({
   DataPortabilityCoordinator portability = const _SyntheticPortability(),
   double textScale = 1,
   bool disableAnimations = false,
+  AppDatabase? database,
 }) {
   return ProviderScope(
     overrides: [
@@ -113,6 +117,7 @@ Widget _host({
         ),
         MigrationTimezoneOption(id: 'UTC', label: 'UTC'),
       ]),
+      if (database != null) databaseProvider.overrideWithValue(database),
     ],
     child: MaterialApp(
       theme: AppTheme.light,
@@ -155,6 +160,129 @@ Future<void> _advanceToReady(
 }
 
 void main() {
+  testWidgets('data screen loads and clears sample data explicitly', (
+    tester,
+  ) async {
+    final coordinator = InMemoryMigrationCoordinator(stepDelay: Duration.zero);
+    final database = AppDatabase.inMemory();
+    addTearDown(coordinator.dispose);
+    addTearDown(database.close);
+    await database
+        .into(database.users)
+        .insert(UsersCompanion.insert(id: 'local-user-1'));
+
+    await tester.pumpWidget(
+      _host(
+        child: const DataBackupScreen(),
+        coordinator: coordinator,
+        database: database,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('sample-data-load')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('sample-data-load')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('sample-data-clear')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('sample-data-clear')));
+    await tester.pumpAndSettle();
+    expect(find.text('Clear sample data?'), findsOneWidget);
+    expect(
+      find.text('This removes sample data only. Your personal data will stay.'),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const ValueKey('sample-data-clear-confirm')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('sample-data-load')), findsOneWidget);
+    expect(await database.select(database.accounts).get(), isEmpty);
+  });
+
+  testWidgets('data screen does not mix samples into a personal ledger', (
+    tester,
+  ) async {
+    final coordinator = InMemoryMigrationCoordinator(stepDelay: Duration.zero);
+    final database = AppDatabase.inMemory();
+    addTearDown(coordinator.dispose);
+    addTearDown(database.close);
+    await database
+        .into(database.users)
+        .insert(UsersCompanion.insert(id: 'local-user-1'));
+    await database
+        .into(database.accounts)
+        .insert(
+          AccountsCompanion.insert(
+            id: 'personal-account',
+            ownerUserId: 'local-user-1',
+            name: 'Personal account',
+            accountType: 'bank',
+          ),
+        );
+
+    await tester.pumpWidget(
+      _host(
+        child: const DataBackupScreen(),
+        coordinator: coordinator,
+        database: database,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('sample-data-load')), findsNothing);
+    expect(
+      find.text(
+        'Sample data is available only before you add financial records.',
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('data screen reviews partial legacy sample data before clear', (
+    tester,
+  ) async {
+    final coordinator = InMemoryMigrationCoordinator(stepDelay: Duration.zero);
+    final database = AppDatabase.inMemory();
+    addTearDown(coordinator.dispose);
+    addTearDown(database.close);
+    await database
+        .into(database.users)
+        .insert(UsersCompanion.insert(id: 'demo-user-1'));
+    await database
+        .into(database.syncMetadata)
+        .insert(
+          const SyncMetadataCompanion(
+            key: Value('demo_data_seeded'),
+            value: Value('true'),
+          ),
+        );
+
+    await tester.pumpWidget(
+      _host(
+        child: const DataBackupScreen(),
+        coordinator: coordinator,
+        database: database,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('sample-data-review')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('sample-data-review')));
+    await tester.pumpAndSettle();
+    expect(find.text('Clear known sample records?'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('sample-data-review-confirm')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('sample-data-load')), findsOneWidget);
+    expect(await database.select(database.users).get(), isEmpty);
+  });
+
   testWidgets('prepare screen selects source and exposes policy controls', (
     tester,
   ) async {

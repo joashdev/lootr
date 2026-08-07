@@ -374,14 +374,14 @@ class DemoDataNotifier extends AsyncNotifier<DemoDataState> {
 
   Future<void> clear() async {
     final db = ref.read(databaseProvider);
-    await db.clearDemoData();  // DELETE WHERE is_demo = true
+    await db.clearDemoData();  // Delete rows registered in demo_records.
   }
 
   bool get hasDemoData => ...;  // check from sync_metadata or flag
 }
 ```
 
-A `settingsProvider` tracks whether demo data is present. The "Clear demo data" button in Settings invalidates `demoDataProvider`, which clears all `is_demo = true` rows and then refreshes all watching providers via the Drift stream triggers.
+`demoDataProvider` reads the local `demo_records` table so its state survives restarts. Settings → Data & Backup shows "Clear sample data" while registered rows exist. Clearing is atomic, preserves personal dependencies through the reviewed recovery path, and refreshes watching providers through Drift stream triggers. An incomplete legacy sample set stays unverified until the user reviews removal of exact known sample IDs. Ambiguous rows remain unchanged.
 
 ---
 

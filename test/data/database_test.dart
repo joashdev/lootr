@@ -21,8 +21,7 @@ void main() {
     });
 
     test('PRAGMA foreign_keys is ON after opening', () async {
-      final result =
-          await db.customSelect('PRAGMA foreign_keys').getSingle();
+      final result = await db.customSelect('PRAGMA foreign_keys').getSingle();
       expect(result.read<int>('foreign_keys'), 1);
     });
 
@@ -43,14 +42,17 @@ void main() {
       expect(db.notifications, isNotNull);
       expect(db.aiProcessingLogs, isNotNull);
       expect(db.syncMetadata, isNotNull);
+      expect(db.demoRecords, isNotNull);
     });
   });
 
   group('Table schemas', () {
     test('all 16 tables exist in the schema', () async {
-      final tables = await db.customSelect(
-        "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name",
-      ).get();
+      final tables = await db
+          .customSelect(
+            "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name",
+          )
+          .get();
 
       final tableNames = tables.map((r) => r.read<String>('name')).toSet();
       expect(tableNames, contains('users'));
@@ -69,15 +71,18 @@ void main() {
       expect(tableNames, contains('notifications'));
       expect(tableNames, contains('ai_processing_logs'));
       expect(tableNames, contains('sync_metadata'));
+      expect(tableNames, contains('demo_records'));
     });
   });
 
   group('Indexes', () {
     test('all required indexes exist', () async {
-      final indexes = await db.customSelect(
-        "SELECT name, tbl_name FROM sqlite_master WHERE type='index' "
-        "AND name NOT LIKE 'sqlite_autoindex_%' ORDER BY name",
-      ).get();
+      final indexes = await db
+          .customSelect(
+            "SELECT name, tbl_name FROM sqlite_master WHERE type='index' "
+            "AND name NOT LIKE 'sqlite_autoindex_%' ORDER BY name",
+          )
+          .get();
 
       final indexNames = indexes.map((r) => r.read<String>('name')).toSet();
 
@@ -119,9 +124,7 @@ void main() {
   group('Foreign keys', () {
     test('accounts references users', () async {
       final userId = 'usr-1';
-      await db.users.insertOne(
-        UsersCompanion.insert(id: userId),
-      );
+      await db.users.insertOne(UsersCompanion.insert(id: userId));
 
       await db.accounts.insertOne(
         AccountsCompanion.insert(
@@ -132,16 +135,13 @@ void main() {
         ),
       );
 
-      final account =
-          await (db.select(db.accounts)..limit(1)).getSingle();
+      final account = await (db.select(db.accounts)..limit(1)).getSingle();
       expect(account.ownerUserId, userId);
     });
 
     test('transactions references accounts, categories, payees', () async {
       final userId = 'usr-txn';
-      await db.users.insertOne(
-        UsersCompanion.insert(id: userId),
-      );
+      await db.users.insertOne(UsersCompanion.insert(id: userId));
 
       await db.accounts.insertOne(
         AccountsCompanion.insert(
@@ -161,10 +161,7 @@ void main() {
       );
 
       await db.payees.insertOne(
-        PayeesCompanion.insert(
-          id: 'pay-txn',
-          normalizedName: 'testmerchant',
-        ),
+        PayeesCompanion.insert(id: 'pay-txn', normalizedName: 'testmerchant'),
       );
 
       await db.transactions.insertOne(
@@ -180,8 +177,7 @@ void main() {
         ),
       );
 
-      final txn =
-          await (db.select(db.transactions)..limit(1)).getSingle();
+      final txn = await (db.select(db.transactions)..limit(1)).getSingle();
       expect(txn.accountId, 'acc-txn');
       expect(txn.categoryId, 'cat-txn');
       expect(txn.payeeId, 'pay-txn');
@@ -189,9 +185,7 @@ void main() {
 
     test('transfers references two accounts', () async {
       final userId = 'usr-xfer';
-      await db.users.insertOne(
-        UsersCompanion.insert(id: userId),
-      );
+      await db.users.insertOne(UsersCompanion.insert(id: userId));
 
       await db.accounts.insertOne(
         AccountsCompanion.insert(
@@ -220,8 +214,7 @@ void main() {
         ),
       );
 
-      final xfer =
-          await (db.select(db.transfers)..limit(1)).getSingle();
+      final xfer = await (db.select(db.transfers)..limit(1)).getSingle();
       expect(xfer.sourceAccountId, 'src');
       expect(xfer.destinationAccountId, 'dst');
     });
@@ -230,9 +223,7 @@ void main() {
   group('CHECK constraints', () {
     test('valid account_type values are accepted', () async {
       final userId = 'usr-chk';
-      await db.users.insertOne(
-        UsersCompanion.insert(id: userId),
-      );
+      await db.users.insertOne(UsersCompanion.insert(id: userId));
 
       final validTypes = [
         'cash',
@@ -260,9 +251,7 @@ void main() {
 
     test('invalid account_type value is rejected', () async {
       final userId = 'usr-bad';
-      await db.users.insertOne(
-        UsersCompanion.insert(id: userId),
-      );
+      await db.users.insertOne(UsersCompanion.insert(id: userId));
 
       expect(
         () async => db.accounts.insertOne(
@@ -279,9 +268,7 @@ void main() {
 
     test('valid transaction_direction values are accepted', () async {
       final userId = 'usr-dir';
-      await db.users.insertOne(
-        UsersCompanion.insert(id: userId),
-      );
+      await db.users.insertOne(UsersCompanion.insert(id: userId));
       await db.accounts.insertOne(
         AccountsCompanion.insert(
           id: 'acc-dir',
@@ -315,9 +302,7 @@ void main() {
 
     test('invalid transaction_direction value is rejected', () async {
       final userId = 'usr-baddir';
-      await db.users.insertOne(
-        UsersCompanion.insert(id: userId),
-      );
+      await db.users.insertOne(UsersCompanion.insert(id: userId));
       await db.accounts.insertOne(
         AccountsCompanion.insert(
           id: 'acc-baddir',
@@ -344,9 +329,7 @@ void main() {
 
     test('valid household_members role values are accepted', () async {
       final userId = 'usr-role';
-      await db.users.insertOne(
-        UsersCompanion.insert(id: userId),
-      );
+      await db.users.insertOne(UsersCompanion.insert(id: userId));
 
       await db.households.insertOne(
         HouseholdsCompanion.insert(
@@ -368,9 +351,7 @@ void main() {
 
     test('valid budgets month CHECK (1-12)', () async {
       final userId = 'usr-bud';
-      await db.users.insertOne(
-        UsersCompanion.insert(id: userId),
-      );
+      await db.users.insertOne(UsersCompanion.insert(id: userId));
       await db.categories.insertOne(
         CategoriesCompanion.insert(
           id: 'cat-bud',
@@ -393,9 +374,7 @@ void main() {
 
     test('invalid month value is rejected', () async {
       final userId = 'usr-badmon';
-      await db.users.insertOne(
-        UsersCompanion.insert(id: userId),
-      );
+      await db.users.insertOne(UsersCompanion.insert(id: userId));
       await db.categories.insertOne(
         CategoriesCompanion.insert(
           id: 'cat-badmon',
@@ -422,25 +401,18 @@ void main() {
     test('valid sync_status values are accepted', () async {
       final userId = 'usr-sync';
       await db.users.insertOne(
-        UsersCompanion.insert(
-          id: userId,
-          syncStatus: const Value('synced'),
-        ),
+        UsersCompanion.insert(id: userId, syncStatus: const Value('synced')),
       );
 
-      final user =
-          await (db.select(db.users)..limit(1)).getSingle();
+      final user = await (db.select(db.users)..limit(1)).getSingle();
       expect(user.syncStatus, 'synced');
     });
 
     test('default sync_status is local_only', () async {
       final userId = 'usr-def';
-      await db.users.insertOne(
-        UsersCompanion.insert(id: userId),
-      );
+      await db.users.insertOne(UsersCompanion.insert(id: userId));
 
-      final user =
-          await (db.select(db.users)..limit(1)).getSingle();
+      final user = await (db.select(db.users)..limit(1)).getSingle();
       expect(user.syncStatus, 'local_only');
     });
   });
@@ -448,9 +420,7 @@ void main() {
   group('UNIQUE constraints', () {
     test('household_members unique (household_id, user_id)', () async {
       final userId = 'usr-uq';
-      await db.users.insertOne(
-        UsersCompanion.insert(id: userId),
-      );
+      await db.users.insertOne(UsersCompanion.insert(id: userId));
 
       await db.households.insertOne(
         HouseholdsCompanion.insert(
@@ -482,12 +452,9 @@ void main() {
       );
     });
 
-    test('budgets unique (owner_user_id, category_id, month, year)',
-        () async {
+    test('budgets unique (owner_user_id, category_id, month, year)', () async {
       final userId = 'usr-buq';
-      await db.users.insertOne(
-        UsersCompanion.insert(id: userId),
-      );
+      await db.users.insertOne(UsersCompanion.insert(id: userId));
       await db.categories.insertOne(
         CategoriesCompanion.insert(
           id: 'cat-uq',
@@ -524,18 +491,12 @@ void main() {
 
     test('payees unique normalized_name', () async {
       await db.payees.insertOne(
-        PayeesCompanion.insert(
-          id: 'pay-uq-1',
-          normalizedName: 'starbucks',
-        ),
+        PayeesCompanion.insert(id: 'pay-uq-1', normalizedName: 'starbucks'),
       );
 
       expect(
         () async => db.payees.insertOne(
-          PayeesCompanion.insert(
-            id: 'pay-uq-2',
-            normalizedName: 'starbucks',
-          ),
+          PayeesCompanion.insert(id: 'pay-uq-2', normalizedName: 'starbucks'),
         ),
         throwsA(isA<Exception>()),
       );
@@ -552,17 +513,14 @@ void main() {
         ),
       );
 
-      final user =
-          await (db.select(db.users)..limit(1)).getSingle();
+      final user = await (db.select(db.users)..limit(1)).getSingle();
       expect(user.syncStatus, 'pending_sync');
       expect(user.lastSyncedAt, isNull);
     });
 
     test('accounts has all sync columns with defaults', () async {
       final userId = 'usr-acsync';
-      await db.users.insertOne(
-        UsersCompanion.insert(id: userId),
-      );
+      await db.users.insertOne(UsersCompanion.insert(id: userId));
 
       await db.accounts.insertOne(
         AccountsCompanion.insert(
@@ -573,8 +531,7 @@ void main() {
         ),
       );
 
-      final acc =
-          await (db.select(db.accounts)..limit(1)).getSingle();
+      final acc = await (db.select(db.accounts)..limit(1)).getSingle();
       expect(acc.syncStatus, 'local_only');
       expect(acc.lastSyncedAt, isNull);
       expect(acc.createdAt, isNotNull);
@@ -592,8 +549,7 @@ void main() {
         ),
       );
 
-      final cat =
-          await (db.select(db.categories)..limit(1)).getSingle();
+      final cat = await (db.select(db.categories)..limit(1)).getSingle();
       expect(cat.syncStatus, 'synced');
     });
   });
@@ -601,9 +557,7 @@ void main() {
   group('Local-only tables have no sync columns', () {
     test('account_balance_snapshots has no sync columns', () async {
       final userId = 'usr-loc';
-      await db.users.insertOne(
-        UsersCompanion.insert(id: userId),
-      );
+      await db.users.insertOne(UsersCompanion.insert(id: userId));
       await db.accounts.insertOne(
         AccountsCompanion.insert(
           id: 'acc-loc',
@@ -622,9 +576,9 @@ void main() {
         ),
       );
 
-      final snap = await (db.select(db.accountBalanceSnapshots)
-            ..limit(1))
-          .getSingle();
+      final snap = await (db.select(
+        db.accountBalanceSnapshots,
+      )..limit(1)).getSingle();
       expect(snap.balance, 1000.0);
     });
 
@@ -637,21 +591,16 @@ void main() {
         ),
       );
 
-      final n =
-          await (db.select(db.notifications)..limit(1)).getSingle();
+      final n = await (db.select(db.notifications)..limit(1)).getSingle();
       expect(n.isCompleted, false);
     });
 
     test('ai_processing_logs has no sync columns', () async {
       await db.aiProcessingLogs.insertOne(
-        AiProcessingLogsCompanion.insert(
-          id: 'ailog-1',
-          sourceType: 'ocr',
-        ),
+        AiProcessingLogsCompanion.insert(id: 'ailog-1', sourceType: 'ocr'),
       );
 
-      final log =
-          await (db.select(db.aiProcessingLogs)..limit(1)).getSingle();
+      final log = await (db.select(db.aiProcessingLogs)..limit(1)).getSingle();
       expect(log.sourceType, 'ocr');
     });
 
@@ -663,8 +612,7 @@ void main() {
         ),
       );
 
-      final meta =
-          await (db.select(db.syncMetadata)..limit(1)).getSingle();
+      final meta = await (db.select(db.syncMetadata)..limit(1)).getSingle();
       expect(meta.key, 'last_synced_at');
       expect(meta.value, '2026-06-19T00:00:00Z');
     });
@@ -673,12 +621,9 @@ void main() {
   group('Soft delete', () {
     test('deleted_at is nullable on syncable tables', () async {
       final userId = 'usr-del';
-      await db.users.insertOne(
-        UsersCompanion.insert(id: userId),
-      );
+      await db.users.insertOne(UsersCompanion.insert(id: userId));
 
-      final user =
-          await (db.select(db.users)..limit(1)).getSingle();
+      final user = await (db.select(db.users)..limit(1)).getSingle();
       expect(user.deletedAt, isNull);
     });
   });
@@ -686,14 +631,10 @@ void main() {
   group('Data class field access', () {
     test('UserData has expected fields', () async {
       await db.users.insertOne(
-        UsersCompanion.insert(
-          id: 'u1',
-          currencyCode: const Value('USD'),
-        ),
+        UsersCompanion.insert(id: 'u1', currencyCode: const Value('USD')),
       );
 
-      final user =
-          await (db.select(db.users)..limit(1)).getSingle();
+      final user = await (db.select(db.users)..limit(1)).getSingle();
       expect(user.id, 'u1');
       expect(user.currencyCode, 'USD');
       expect(user.aiEnabled, false);
@@ -701,9 +642,7 @@ void main() {
 
     test('AccountData has stored balance', () async {
       final userId = 'usr-bal';
-      await db.users.insertOne(
-        UsersCompanion.insert(id: userId),
-      );
+      await db.users.insertOne(UsersCompanion.insert(id: userId));
 
       await db.accounts.insertOne(
         AccountsCompanion.insert(
@@ -715,16 +654,13 @@ void main() {
         ),
       );
 
-      final acc =
-          await (db.select(db.accounts)..limit(1)).getSingle();
+      final acc = await (db.select(db.accounts)..limit(1)).getSingle();
       expect(acc.balance, 5000.0);
     });
 
     test('TransactionData amount is always positive', () async {
       final userId = 'usr-pos';
-      await db.users.insertOne(
-        UsersCompanion.insert(id: userId),
-      );
+      await db.users.insertOne(UsersCompanion.insert(id: userId));
       await db.accounts.insertOne(
         AccountsCompanion.insert(
           id: 'acc-pos',
@@ -745,17 +681,14 @@ void main() {
         ),
       );
 
-      final txn =
-          await (db.select(db.transactions)..limit(1)).getSingle();
+      final txn = await (db.select(db.transactions)..limit(1)).getSingle();
       expect(txn.amount, greaterThan(0));
       expect(txn.transactionDirection, 'expense');
     });
 
     test('GoalData has default current_amount of 0', () async {
       final userId = 'usr-goal';
-      await db.users.insertOne(
-        UsersCompanion.insert(id: userId),
-      );
+      await db.users.insertOne(UsersCompanion.insert(id: userId));
 
       await db.goals.insertOne(
         GoalsCompanion.insert(
@@ -767,8 +700,7 @@ void main() {
         ),
       );
 
-      final goal =
-          await (db.select(db.goals)..limit(1)).getSingle();
+      final goal = await (db.select(db.goals)..limit(1)).getSingle();
       expect(goal.currentAmount, 0.0);
     });
   });

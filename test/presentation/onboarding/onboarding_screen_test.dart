@@ -106,6 +106,10 @@ void main() {
     expect(find.text('Set up your profile'), findsOneWidget);
     expect(find.text('Get Started'), findsOneWidget);
     expect(find.byKey(const ValueKey('demo-data-toggle')), findsOneWidget);
+    final demoToggle = tester.widget<Switch>(
+      find.byKey(const ValueKey('demo-data-toggle')),
+    );
+    expect(demoToggle.value, isFalse);
     expect(
       find.text('I confirm that I am at least 18 years old.'),
       findsOneWidget,
@@ -135,12 +139,17 @@ void main() {
     expect(button.onPressed, isNotNull);
   });
 
-  testWidgets('Get Started saves profile, seeds demo data, navigates home', (
+  testWidgets('explicit demo opt-in seeds data and navigates home', (
     tester,
   ) async {
     await tester.pumpWidget(buildApp());
     await tester.pumpAndSettle();
     await advanceToLastStep(tester);
+
+    final toggle = find.byKey(const ValueKey('demo-data-toggle'));
+    await tester.ensureVisible(toggle);
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField), 'Alice');
     await tester.pumpAndSettle();
@@ -159,18 +168,12 @@ void main() {
     expect(accounts, isNotEmpty);
   });
 
-  testWidgets('demo toggle off skips seeding but still completes', (
+  testWidgets('demo data stays off by default and onboarding completes', (
     tester,
   ) async {
     await tester.pumpWidget(buildApp());
     await tester.pumpAndSettle();
     await advanceToLastStep(tester);
-
-    final toggle = find.byKey(const ValueKey('demo-data-toggle'));
-    await tester.ensureVisible(toggle);
-    await tester.pumpAndSettle();
-    await tester.tap(toggle);
-    await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField), 'Test');
     await tester.pumpAndSettle();
