@@ -25,6 +25,7 @@ import 'tables/financial_events.dart';
 import 'tables/categorization_rules.dart';
 import 'tables/transaction_attachment_links.dart';
 import 'tables/import_storage.dart';
+import 'tables/demo_records.dart';
 
 part 'app_database.g.dart';
 
@@ -65,6 +66,7 @@ part 'app_database.g.dart';
     ImportPreservedPayloads,
     ImportCheckpoints,
     RollbackCheckpoints,
+    DemoRecords,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -95,6 +97,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 3) {
         await _migrateToV3(m);
+      }
+      if (from < 4) {
+        await m.createTable(demoRecords);
       }
     },
     beforeOpen: (details) async {

@@ -3,76 +3,131 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/database/app_database.dart';
 import '../../data/seed/demo_data_loader.dart';
+import '../../data/seed/demo_data_manifest.dart';
+import '../../data/seed/demo_data_service.dart';
 import 'database_provider.dart';
 import 'repo_providers.dart';
 
-enum DemoDataStatus { absent, loading, present }
+enum DemoDataStatus { absent, loading, present, unverified }
 
 class DemoDataState {
   final DemoDataStatus status;
+  final bool canSeed;
+  final int recordCount;
 
-  const DemoDataState({this.status = DemoDataStatus.absent});
+  const DemoDataState({
+    this.status = DemoDataStatus.absent,
+    this.canSeed = true,
+    this.recordCount = 0,
+  });
 }
 
 class DemoDataNotifier extends AsyncNotifier<DemoDataState> {
   @override
   Future<DemoDataState> build() async {
-    return const DemoDataState();
+    return _inspect();
   }
 
   Future<void> seed() async {
     final repo = ref.read(categoryRepoProvider);
     await repo.seedCategories();
 
-    final alreadySeeded = await hasDemoData();
-    if (alreadySeeded) return;
+    final inspection = await _service.inspect();
+    if (inspection.status == DemoInspectionStatus.present) return;
+    if (!inspection.canSeed) {
+      throw StateError('Sample data can only be loaded into an empty ledger.');
+    }
 
     state = const AsyncData(DemoDataState(status: DemoDataStatus.loading));
     final db = ref.read(databaseProvider);
 
     const userId = 'demo-user-1';
-    await db.into(db.users).insertOnConflictUpdate(
-      UsersCompanion.insert(
-        id: userId,
-        email: const Value('demo@lootr.app'),
-      ),
-    );
+    try {
+      await db.transaction(() async {
+        await db
+            .into(db.users)
+            .insertOnConflictUpdate(
+              UsersCompanion.insert(
+                id: userId,
+                email: const Value('demo@lootr.app'),
+              ),
+            );
 
-    final loader = DemoDataLoader();
-    await loader.load(db, userId: userId);
+        await DemoDataLoader().load(db, userId: userId);
+        await db
+            .into(db.demoRecords)
+            .insertOnConflictUpdate(
+              DemoRecordsCompanion.insert(
+                entityType: DemoEntityType.user.tableName,
+                entityId: userId,
+                seedVersion: const Value(DemoDataManifest.seedVersion),
+              ),
+            );
+        await db
+            .into(db.syncMetadata)
+            .insertOnConflictUpdate(
+              const SyncMetadataCompanion(
+                key: Value('demo_data_seeded'),
+                value: Value('true'),
+              ),
+            );
+      });
 
-    final syncRepo = ref.read(syncMetadataRepoProvider);
-    await syncRepo.set('demo_data_seeded', 'true');
-
-    state = const AsyncData(DemoDataState(status: DemoDataStatus.present));
+      state = const AsyncData(
+        DemoDataState(status: DemoDataStatus.present, canSeed: false),
+      );
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+      rethrow;
+    }
   }
 
   Future<void> clear() async {
-    final db = ref.read(databaseProvider);
+    await _runMutation(_service.clear);
+  }
 
-    // Delete child rows before the accounts/payees/users they reference.
-    await (db.delete(db.transactions)..where((t) => t.id.like('demo-%'))).go();
-    await (db.delete(
-      db.recurringTemplates,
-    )..where((t) => t.id.like('demo-%'))).go();
-    await (db.delete(db.debtRecords)..where((t) => t.id.like('demo-%'))).go();
-    await (db.delete(db.accounts)..where((t) => t.id.like('demo-%'))).go();
-    await (db.delete(db.categories)..where((t) => t.id.like('demo-%'))).go();
-    await (db.delete(db.payees)..where((t) => t.id.like('demo-%'))).go();
-    await (db.delete(db.budgets)..where((t) => t.id.like('demo-%'))).go();
-    await (db.delete(db.goals)..where((t) => t.id.like('demo-%'))).go();
-    await (db.delete(db.users)..where((t) => t.id.like('demo-%'))).go();
+  Future<void> clearReviewedLegacy() async {
+    await _runMutation(() => _service.clear(reviewLegacyRecords: true));
+  }
 
-    final syncRepo = ref.read(syncMetadataRepoProvider);
-    await syncRepo.set('demo_data_seeded', 'false');
+  Future<void> dismissLegacyFlag() async {
+    await _runMutation(_service.dismissLegacyFlag);
+  }
 
-    state = const AsyncData(DemoDataState(status: DemoDataStatus.absent));
+  Future<void> _runMutation(Future<void> Function() action) async {
+    state = const AsyncData(
+      DemoDataState(status: DemoDataStatus.loading, canSeed: false),
+    );
+    try {
+      await action();
+      state = AsyncData(await _inspect());
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+      rethrow;
+    }
   }
 
   Future<bool> hasDemoData() async {
-    final syncRepo = ref.read(syncMetadataRepoProvider);
-    final value = await syncRepo.get('demo_data_seeded');
-    return value == 'true';
+    final inspection = await _service.inspect();
+    return inspection.status != DemoInspectionStatus.absent;
+  }
+
+  Future<DemoClearAnalysis> analyzeClear() => _service.analyzeClear();
+
+  DemoDataService get _service => DemoDataService(ref.read(databaseProvider));
+
+  Future<DemoDataState> _inspect() async {
+    final inspection = await _service.inspect();
+    final status = switch (inspection.status) {
+      DemoInspectionStatus.absent => DemoDataStatus.absent,
+      DemoInspectionStatus.present => DemoDataStatus.present,
+      DemoInspectionStatus.unverified => DemoDataStatus.unverified,
+    };
+    return DemoDataState(
+      status: status,
+      canSeed: inspection.canSeed,
+      recordCount: inspection.recordCount,
+    );
   }
 }
 

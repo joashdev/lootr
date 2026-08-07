@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart' hide isNull;
 
 import '../database/app_database.dart';
+import 'demo_data_manifest.dart';
 
 class DemoDataResult {
   final List<String> accountIds;
@@ -30,35 +31,13 @@ class DemoDataLoader {
     final prevMonth = curMonth == 1 ? 12 : curMonth - 1;
     final prevYear = curMonth == 1 ? curYear - 1 : curYear;
 
-    final accountIds = const [
-      'demo-acc-bdo-savings',
-      'demo-acc-gcash',
-      'demo-acc-bpi-checking',
-      'demo-acc-cash',
-    ];
+    final accountIds = DemoDataManifest.accountIds;
     final bdo = accountIds[0];
     final gcash = accountIds[1];
     final bpi = accountIds[2];
     final cash = accountIds[3];
 
-    final payeeIds = const <String>[
-      'demo-pay-jollibee',
-      'demo-pay-mcdonalds',
-      'demo-pay-mercury-drug',
-      'demo-pay-sm-supermarket',
-      'demo-pay-grab',
-      'demo-pay-angkas',
-      'demo-pay-meralco',
-      'demo-pay-pldt',
-      'demo-pay-converge',
-      'demo-pay-landers',
-      'demo-pay-shopee',
-      'demo-pay-lazada',
-      'demo-pay-7-eleven',
-      'demo-pay-starbucks',
-      'demo-pay-puregold',
-      'demo-pay-netflix',
-    ];
+    final payeeIds = DemoDataManifest.payeeIds;
 
     final jollibee = payeeIds[0];
     final mcdonalds = payeeIds[1];
@@ -100,6 +79,10 @@ class DemoDataLoader {
       String? note,
       String? subtype,
     }) {
+      final expectedId = DemoDataManifest.transactionIds[transactionIds.length];
+      if (id != expectedId) {
+        throw StateError('Sample transaction manifest is out of sync.');
+      }
       transactionIds.add(id);
       transactions.add(
         TransactionsCompanion.insert(
@@ -111,8 +94,9 @@ class DemoDataLoader {
           categoryId: Value(categoryId),
           payeeId: payeeId != null ? Value(payeeId) : const Value.absent(),
           note: note != null ? Value(note) : const Value.absent(),
-          transactionSubtype:
-              subtype != null ? Value(subtype) : const Value.absent(),
+          transactionSubtype: subtype != null
+              ? Value(subtype)
+              : const Value.absent(),
           occurredAt: occurredAt ?? DateTime.now(),
           syncStatus: const Value('local_only'),
         ),
@@ -563,30 +547,10 @@ class DemoDataLoader {
       note: 'Quick snack',
     );
 
-    final budgetIds = const [
-      'demo-budget-food',
-      'demo-budget-transport',
-      'demo-budget-shopping',
-      'demo-budget-entertainment',
-    ];
-
-    final goalIds = const [
-      'demo-goal-emergency',
-      'demo-goal-japan',
-    ];
-
-    final debtIds = const [
-      'demo-debt-credit-card',
-      'demo-debt-bnpl-phone',
-      'demo-debt-lent-miguel',
-    ];
-
-    final recurringIds = const [
-      'demo-rec-netflix',
-      'demo-rec-meralco',
-      'demo-rec-salary',
-      'demo-rec-rent',
-    ];
+    final budgetIds = DemoDataManifest.budgetIds;
+    final goalIds = DemoDataManifest.goalIds;
+    final debtIds = DemoDataManifest.debtIds;
+    final recurringIds = DemoDataManifest.recurringIds;
 
     final today = DateTime(now.year, now.month, now.day);
     final firstOfNextMonth = DateTime(
@@ -841,6 +805,51 @@ class DemoDataLoader {
           categoryId: const Value(categoryHousing),
           nextOccurrenceAt: Value(firstOfNextMonth),
         ),
+      ]);
+
+      batch.insertAllOnConflictUpdate(db.demoRecords, [
+        for (final id in accountIds)
+          DemoRecordsCompanion.insert(
+            entityType: DemoEntityType.account.tableName,
+            entityId: id,
+            seedVersion: const Value(DemoDataManifest.seedVersion),
+          ),
+        for (final id in payeeIds)
+          DemoRecordsCompanion.insert(
+            entityType: DemoEntityType.payee.tableName,
+            entityId: id,
+            seedVersion: const Value(DemoDataManifest.seedVersion),
+          ),
+        for (final id in transactionIds)
+          DemoRecordsCompanion.insert(
+            entityType: DemoEntityType.transaction.tableName,
+            entityId: id,
+            seedVersion: const Value(DemoDataManifest.seedVersion),
+          ),
+        for (final id in budgetIds)
+          DemoRecordsCompanion.insert(
+            entityType: DemoEntityType.budget.tableName,
+            entityId: id,
+            seedVersion: const Value(DemoDataManifest.seedVersion),
+          ),
+        for (final id in goalIds)
+          DemoRecordsCompanion.insert(
+            entityType: DemoEntityType.goal.tableName,
+            entityId: id,
+            seedVersion: const Value(DemoDataManifest.seedVersion),
+          ),
+        for (final id in debtIds)
+          DemoRecordsCompanion.insert(
+            entityType: DemoEntityType.debt.tableName,
+            entityId: id,
+            seedVersion: const Value(DemoDataManifest.seedVersion),
+          ),
+        for (final id in recurringIds)
+          DemoRecordsCompanion.insert(
+            entityType: DemoEntityType.recurring.tableName,
+            entityId: id,
+            seedVersion: const Value(DemoDataManifest.seedVersion),
+          ),
       ]);
     });
 

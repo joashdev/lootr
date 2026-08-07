@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lootr/data/database/app_database.dart';
 
 void main() {
-  group('schema v3 target model', () {
+  group('schema v4 target model', () {
     test('fresh database exposes exact and migration storage tables', () async {
       final db = AppDatabase.inMemory();
       addTearDown(db.close);
@@ -38,6 +38,7 @@ void main() {
           'import_preserved_payloads',
           'import_checkpoints',
           'rollback_checkpoints',
+          'demo_records',
         ]),
       );
 
@@ -277,7 +278,7 @@ void main() {
     });
   });
 
-  group('schema v2 to v3 migration', () {
+  group('schema v2 to v4 migration', () {
     test('adds exact columns and creates target-model tables', () async {
       final executor = NativeDatabase.memory(
         setup: (raw) {
@@ -301,7 +302,7 @@ void main() {
       addTearDown(db.close);
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.read<int>('user_version'), 3);
+      expect(version.read<int>('user_version'), 4);
 
       final transactionColumns = await db
           .customSelect('PRAGMA table_info(transactions)')
