@@ -48,6 +48,26 @@ void main() {
       expect(result.payload.extractedFields.amount, 243.00);
     });
 
+    test('ignores metadata after the total amount', () async {
+      for (final totalLine in const [
+        'TOTAL 243.00 (2 items)',
+        'TOTAL 243.00 VAT 12%',
+        'TOTAL Qty 2 Amount 243.00',
+      ]) {
+        final receiptPipeline = OCRPipeline(
+          textExtractor: (_) async => [totalLine],
+        );
+
+        final result = await receiptPipeline.process('/path/to/receipt.jpg');
+
+        expect(
+          result.payload.extractedFields.amount,
+          243.00,
+          reason: totalLine,
+        );
+      }
+    });
+
     test('stub returns empty text lines in V1', () async {
       final result = await pipeline.process('/path/to/any.jpg');
       expect(result.textLines, isEmpty);
