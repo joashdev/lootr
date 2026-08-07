@@ -381,7 +381,7 @@ class DemoDataNotifier extends AsyncNotifier<DemoDataState> {
 }
 ```
 
-`demoDataProvider` reads the local `demo_records` table so its state survives restarts. Settings → Data & Backup shows "Clear sample data" while registered rows exist. Clearing is atomic, preserves personal dependencies through the reviewed recovery path, and refreshes watching providers through Drift stream triggers. An incomplete legacy sample set stays unverified until the user reviews removal of exact known sample IDs. Ambiguous rows remain unchanged.
+`demoDataProvider` reads the local `demo_records` table so its state survives restarts. Settings → Data & Backup shows "Clear sample data" while registered rows exist. Clearing is atomic, preserves personal dependencies through the reviewed recovery path, and refreshes watching providers through Drift stream triggers. An incomplete legacy sample set stays unverified until the user reviews removal of exact known sample IDs. Ambiguous rows remain unchanged. If a legacy flag remains without known sample rows, the user can dismiss only that stale status without deleting records.
 
 ---
 

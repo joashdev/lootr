@@ -283,6 +283,43 @@ void main() {
     expect(await database.select(database.users).get(), isEmpty);
   });
 
+  testWidgets('data screen dismisses an empty stale sample flag', (
+    tester,
+  ) async {
+    final coordinator = InMemoryMigrationCoordinator(stepDelay: Duration.zero);
+    final database = AppDatabase.inMemory();
+    addTearDown(coordinator.dispose);
+    addTearDown(database.close);
+    await database
+        .into(database.syncMetadata)
+        .insert(
+          const SyncMetadataCompanion(
+            key: Value('demo_data_seeded'),
+            value: Value('true'),
+          ),
+        );
+
+    await tester.pumpWidget(
+      _host(
+        child: const DataBackupScreen(),
+        coordinator: coordinator,
+        database: database,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('sample-data-dismiss')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('sample-data-dismiss')));
+    await tester.pumpAndSettle();
+    expect(find.text('Dismiss old sample-data notice?'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('sample-data-dismiss-confirm')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('sample-data-load')), findsOneWidget);
+  });
+
   testWidgets('prepare screen selects source and exposes policy controls', (
     tester,
   ) async {

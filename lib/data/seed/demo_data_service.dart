@@ -93,6 +93,24 @@ class DemoDataService {
     );
   }
 
+  Future<void> dismissLegacyFlag() async {
+    await reconcileLegacyRecords();
+    await _db.transaction(() async {
+      if (await _demoRecordCount() > 0 ||
+          (await _knownLegacyRecords()).isNotEmpty) {
+        throw StateError('Known sample records still exist.');
+      }
+      await _db
+          .into(_db.syncMetadata)
+          .insertOnConflictUpdate(
+            const SyncMetadataCompanion(
+              key: Value('demo_data_seeded'),
+              value: Value('false'),
+            ),
+          );
+    });
+  }
+
   Future<void> clear({
     bool preservePersonalDependencies = true,
     bool reviewLegacyRecords = false,

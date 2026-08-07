@@ -86,6 +86,28 @@ void main() {
       expect(await db.select(db.demoRecords).get(), isEmpty);
     });
 
+    test('dismisses an empty stale legacy flag', () async {
+      final container = createTestContainer();
+      await container
+          .read(syncMetadataRepoProvider)
+          .set('demo_data_seeded', 'true');
+      final notifier = container.read(demoDataProvider.notifier);
+      final initial = await container.read(demoDataProvider.future);
+      expect(initial.status, DemoDataStatus.unverified);
+      expect(initial.recordCount, 0);
+
+      await notifier.dismissLegacyFlag();
+
+      final dismissed = container.read(demoDataProvider).requireValue;
+      expect(dismissed.status, DemoDataStatus.absent);
+      expect(dismissed.canSeed, isTrue);
+      expect(await notifier.hasDemoData(), isFalse);
+      expect(
+        await container.read(syncMetadataRepoProvider).get('demo_data_seeded'),
+        'false',
+      );
+    });
+
     test('reviewed legacy clear removes only known sample records', () async {
       final container = createTestContainer();
       final db = container.read(databaseProvider);

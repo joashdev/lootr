@@ -164,11 +164,13 @@ class DataBackupScreen extends ConsumerWidget {
             'Remove only records that match Lootr’s known sample-data set.',
         onTap: () => _confirmClearLegacySampleData(context, ref, state),
       ),
-      DemoDataStatus.unverified => const _SampleDataStatusCard(
-        key: ValueKey('sample-data-unverified'),
-        message:
-            'Lootr found an old sample-data flag, but it cannot verify which '
-            'records are samples. No records will be removed automatically.',
+      DemoDataStatus.unverified => _DataActionTile(
+        key: const ValueKey('sample-data-dismiss'),
+        icon: LucideIcons.shieldQuestion,
+        title: 'Dismiss old sample-data notice',
+        subtitle:
+            'No known sample records remain. Clear the stale status only.',
+        onTap: () => _confirmDismissLegacyFlag(context, ref),
       ),
       DemoDataStatus.absent when state.canSeed => _DataActionTile(
         key: const ValueKey('sample-data-load'),
@@ -289,6 +291,46 @@ class DataBackupScreen extends ConsumerWidget {
       showSafeMessage(
         context,
         'Known sample data could not be cleared. No data was changed.',
+        warning: true,
+      );
+    }
+  }
+
+  Future<void> _confirmDismissLegacyFlag(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Dismiss old sample-data notice?'),
+        content: const Text(
+          'Lootr found no known sample records. This clears only the stale '
+          'sample-data status. It does not remove any records.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            key: const ValueKey('sample-data-dismiss-confirm'),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Dismiss notice'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    try {
+      await ref.read(demoDataProvider.notifier).dismissLegacyFlag();
+      if (!context.mounted) return;
+      showSafeMessage(context, 'Old sample-data notice dismissed.');
+    } catch (_) {
+      if (!context.mounted) return;
+      showSafeMessage(
+        context,
+        'The notice could not be dismissed. No data was changed.',
         warning: true,
       );
     }

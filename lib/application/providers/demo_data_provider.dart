@@ -83,24 +83,23 @@ class DemoDataNotifier extends AsyncNotifier<DemoDataState> {
   }
 
   Future<void> clear() async {
-    state = const AsyncData(
-      DemoDataState(status: DemoDataStatus.loading, canSeed: false),
-    );
-    try {
-      await _service.clear();
-      state = AsyncData(await _inspect());
-    } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
-      rethrow;
-    }
+    await _runMutation(_service.clear);
   }
 
   Future<void> clearReviewedLegacy() async {
+    await _runMutation(() => _service.clear(reviewLegacyRecords: true));
+  }
+
+  Future<void> dismissLegacyFlag() async {
+    await _runMutation(_service.dismissLegacyFlag);
+  }
+
+  Future<void> _runMutation(Future<void> Function() action) async {
     state = const AsyncData(
       DemoDataState(status: DemoDataStatus.loading, canSeed: false),
     );
     try {
-      await _service.clear(reviewLegacyRecords: true);
+      await action();
       state = AsyncData(await _inspect());
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
