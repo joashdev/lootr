@@ -20,6 +20,16 @@ class OcrResult {
 }
 
 class OCRPipeline {
+  static const _receiptTotalLabels = [
+    'total amount due',
+    'grand total',
+    'total due',
+    'amount due',
+    'balance due',
+    'net amount',
+    'total',
+  ];
+
   final NLParser _nlParser;
   final AiProcessingLogRepo? _logRepo;
   final bool _aiEnabled;
@@ -188,9 +198,25 @@ class OCRPipeline {
     for (final line in lines) {
       final lower = line.toLowerCase();
       if (_looksLikeReceiptTotal(lower)) {
-        final result = _nlParser.parse(line);
-        if (result != null && result.parsed.amount != null) {
-          amount = result.parsed.amount;
+        final totalLabel = _receiptTotalLabels.firstWhere(lower.contains);
+        final labelEnd = lower.indexOf(totalLabel) + totalLabel.length;
+        final totalText = line
+            .substring(labelEnd)
+            .replaceAll(
+              RegExp(r'\(\s*\d+\s*(?:items?)?\s*\)', caseSensitive: false),
+              '',
+            )
+            .replaceAll(
+              RegExp(
+                r'\b(?:qty|quantity|count|items?)\s*[:x]?\s*\d+\b',
+                caseSensitive: false,
+              ),
+              '',
+            );
+        final totalParseResult = _nlParser.parse(totalText);
+        if (totalParseResult != null &&
+            totalParseResult.parsed.amount != null) {
+          amount = totalParseResult.parsed.amount;
         }
       }
 
@@ -211,12 +237,7 @@ class OCRPipeline {
 
   bool _looksLikeReceiptTotal(String lower) {
     if (lower.contains('subtotal')) return false;
-    return lower.contains('total') ||
-        lower.contains('amount due') ||
-        lower.contains('net amount') ||
-        lower.contains('total due') ||
-        lower.contains('grand total') ||
-        lower.contains('balance due');
+    return _receiptTotalLabels.any(lower.contains);
   }
 
   bool _looksLikeDateLine(String lower) {
