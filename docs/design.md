@@ -20,27 +20,27 @@ Token-level spec for the UI. References: `product-strategy.md` (principles), `na
 
 | Token | Hex | Light | Dark |
 |---|---|---|---|
-| `primary-50` | `#eeeffe` | Background highlights | — |
-| `primary-100` | `#dfe2fc` | Hover states | — |
-| `primary-500` | `#6e76d8` | Links, active states | `#8c93eb` |
-| `primary-600` | `#5c64cc` | **Primary accent**, Add island bg, CTAs | `#6e76d8` |
-| `primary-700` | `#4d56b7` | Pressed states | `#5c64cc` |
+| `primary-50` | `#e7f0e9` | Background highlights | — |
+| `primary-100` | `#d3e5d8` | Hover states | — |
+| `primary-500` | `#39775b` | Links, active states | `#a1d5b2` |
+| `primary-600` | `#215843` | **Primary accent**, Add island bg, CTAs | `#81bd98` |
+| `primary-700` | `#194534` | Pressed states | `#244634` |
 
-> **Primary direction:** We borrow Revolut's confidence in indigo-led branding, but soften it into a quieter blue-violet so the app feels premium without becoming loud or salesy.
+> Parchment surfaces and ink text give the screen a warm base. Evergreen marks primary actions. The Safe to spend card uses a deep evergreen surface in both themes.
 
 ### Semantic
 
 | Token | Hex | Use | Dark |
 |---|---|---|---|
-| `success-50` | `#ecfdf5` | Success backgrounds | `#064e3b` |
-| `success-500` | `#10b981` | On-track indicators | `#34d399` |
-| `success-600` | `#059669` | **On-track text**, positive amounts | `#10b981` |
-| `warning-50` | `#fffbeb` | Warning backgrounds | `#78350f` |
-| `warning-500` | `#f59e0b` | Warning indicators | `#fbbf24` |
-| `warning-600` | `#d97706` | **Warning text**, close-to-limit | `#f59e0b` |
-| `danger-50` | `#fff4ef` | Error backgrounds | `#5e2f24` |
-| `danger-500` | `#e98b73` | Error indicators | `#f0a189` |
-| `danger-600` | `#d97757` | **Overspent text**, negative amounts | `#e98b73` |
+| `success-50` | `#e7f3e9` | Success backgrounds | `#20372b` |
+| `success-500` | `#378762` | On-track indicators | `#a0ceaa` |
+| `success-600` | `#236244` | **On-track text**, positive amounts | `#88bd96` |
+| `warning-50` | `#faedd9` | Warning backgrounds | `#423321` |
+| `warning-500` | `#cb873e` | Warning indicators | `#edbe7c` |
+| `warning-600` | `#8d541e` | **Warning text**, close-to-limit | `#e6b570` |
+| `danger-50` | `#faeae3` | Error backgrounds | `#482b24` |
+| `danger-500` | `#bd604b` | Error indicators | `#eca993` |
+| `danger-600` | `#993e2e` | **Overspent text**, negative amounts | `#e49a85` |
 
 > **Soft danger for no-guilt finance:** We deliberately avoid alarm red. Overspending is shown with terracotta/salmon tones that still read as caution without scolding the user.
 
@@ -48,22 +48,22 @@ Token-level spec for the UI. References: `product-strategy.md` (principles), `na
 
 | Token | Hex | Light | Dark |
 |---|---|---|---|
-| `bg` | `#fafafa` | Page background | `#0f0f11` |
-| `surface` | `#ffffff` | Cards, sheets, modals | `#1a1a1e` |
-| `surface-elevated` | `#ffffff` | Elevated cards (shadow) | `#242428` |
-| `border` | `#e2e4e8` | Dividers, input borders | `#2e2e33` |
-| `border-subtle` | `#f2f4f7` | Section dividers | `#1f1f23` |
-| `text-primary` | `#1b1b1f` | Headings, primary text | `#f0f0f5` |
-| `text-secondary` | `#63666e` | Labels, hints, timestamps | `#9ca3af` |
-| `text-tertiary` | `#a1a5ad` | Placeholders, disabled | `#6b7280` |
+| `bg` | `#f6f4ef` | Page background | `#101713` |
+| `surface` | `#fffefa` | Cards, sheets, modals | `#18231d` |
+| `surface-elevated` | `#ffffff` | Elevated cards (shadow) | `#213028` |
+| `border` | `#d9ddd5` | Dividers, input borders | `#35463b` |
+| `border-subtle` | `#e8e9e1` | Section dividers | `#29382e` |
+| `text-primary` | `#182821` | Headings, primary text | `#f1f5ed` |
+| `text-secondary` | `#4e6256` | Labels, hints, timestamps | `#afbdb1` |
+| `text-tertiary` | `#5f6f64` | Placeholders, disabled | `#a3b3a7` |
 
 ### Transaction direction colors
 
 | Direction | Light | Dark |
 |---|---|---|
-| Expense | `danger-600` (`#d97757`) | `danger-500` (`#e98b73`) |
-| Income | `success-600` (`#059669`) | `success-500` (`#10b981`) |
-| Transfer | `primary-600` (`#5c64cc`) | `primary-500` (`#6e76d8`) |
+| Expense | `#182821` | `#f1f5ed` |
+| Income | `#236244` | `#a0ceaa` |
+| Transfer | `#335c83` | `#98b9e0` |
 
 ---
 
@@ -252,7 +252,7 @@ Base unit: **4px**.
 #### Amount input
 - Font: monospace, `h3` size
 - Prefix: currency symbol (`₱`, `$`, etc.)
-- Color: direction color (red/green/blue)
+- Color: the transaction direction token
 
 ### 7.4 Bottom Sheet
 
@@ -266,23 +266,11 @@ Base unit: **4px**.
 
 ### 7.5 Tab Bar
 
-- Background: `surface`
-- Height: `64px` + safe area
-- Border top: 1px `border-subtle`
-- 4 tabs: equal width, icon + label stacked
-- Active tab: `primary-600` icon + label
-- Inactive tab: `text-tertiary` icon + label
-- Label: `micro` size, `caption-medium` weight
+The four floating tabs use stacked icons and labels. The selected tab uses a tinted surface. The separate Add button sits on the right and opens the Add sheet without switching tabs.
 
 #### Add island
-- Position: rightmost, separated from tabs
-- Background: `primary-600`
-- Icon: plus, white, `28px`
-- Size: `56px × 44px` (wider than tall)
-- Radius: `radius-lg` on left side, flush with right edge
-- Shadow: `shadow-island`
-- Margin left: `8px` gap from More tab
-- Margin right: `8px` from screen edge
+
+Manual entry is the primary action when Quick entry is off. Scan and Transfer have their own buttons. When Quick entry is on, the description field and Review transaction are the first actions.
 
 ### 7.6 Progress Bars
 

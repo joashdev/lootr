@@ -181,28 +181,28 @@
 
 <pre>
 ┌─────────────────────────────┐
-│        Add Transaction      │
-│                             │
-│  ┌───────────────────────┐  │
-│  │ mcdo 250 gcash    🎤  │  │  ← NL input with mic toggle
-│  └───────────────────────┘  │
-│                             │
-│  ┌─────────┐ ┌─────────┐   │
-│  │ Manual  │ │  Scan   │   │
-│  └─────────┘ └─────────┘   │
+│ Add transaction           ×│
+│ Description                 │
+│ Coffee ₱180             🎤   │
+│       Review transaction    │
+│  Add manually  Scan receipt │
+│   Transfer │
 └─────────────────────────────┘
 </pre>
 
 <table>
 <thead><tr><th>Action</th><th>Icon</th><th>Behavior</th></tr></thead>
 <tbody>
-<tr><td><strong>Quick Add (NL)</strong></td><td>keyboard</td><td>Primary input field. Type natural language → parse → preview card → confirm → save. Tap 🎤 to toggle voice input mode. Sheet stays open for rapid entry.</td></tr>
+<tr><td><strong>Quick Add (NL)</strong></td><td>keyboard</td><td>Primary input field. Type a description or dictate it, then tap Review transaction to preview and save. Tap 🎤 to toggle voice input mode. Sheet stays open for rapid entry.</td></tr>
 <tr><td><strong>Manual</strong></td><td>pencil</td><td>Opens full transaction form sheet (all fields). Save → close sheet → undo snackbar.</td></tr>
 <tr><td><strong>Scan</strong></td><td>camera</td><td>Opens full-screen camera → capture → OCR processing → autofill form sheet → adjust → save.</td></tr>
+<tr><td><strong>Transfer</strong></td><td>arrows</td><td>Opens the manual form with Transfer selected.</td></tr>
 </tbody>
 </table>
 
-<p><strong>Mic toggle</strong>: Inside the Quick Add input field, a 🎤 microphone icon toggles between text and voice input. In voice mode, tapping the field starts listening → transcribe → parse → preview → confirm → save.</p>
+<p>If Smart Entry Assistance is off, Add manually is the primary action. The Quick entry and Scan receipt actions offer links to Smart Entry settings.</p>
+
+<p><strong>Mic toggle</strong>: Tap the microphone in the Quick entry field to start or stop voice input. The recognized words appear in the field.</p>
 
 <div class="callout">
 <strong>Undo snackbar</strong>: After every save, a bottom snackbar appears: "Transaction saved · UNDO". Tapping undo reverts the save (deletes the record, restores previous balances). Auto-dismisses after 5 seconds.
@@ -219,12 +219,12 @@
 <table>
 <thead><tr><th>#</th><th>Section</th><th>Tap target</th><th>Source</th></tr></thead>
 <tbody>
-<tr><td>1</td><td>Greeting + date</td><td>—</td><td>product-strategy.md</td></tr>
-<tr><td>2</td><td><strong>Safe-to-Spend hero card</strong> — one large number showing available cash after budgets &amp; bills</td><td>—</td><td>Research: PocketGuard "In My Pocket"</td></tr>
+<tr><td>1</td><td>Greeting + date</td><td>Customize opens the dashboard layout</td><td>product-strategy.md</td></tr>
+<tr><td>2</td><td><strong>Safe-to-Spend hero card</strong> — one large number showing available cash after budgets &amp; bills</td><td>View breakdown shows income and commitments</td><td>Research: PocketGuard "In My Pocket"</td></tr>
 <tr><td>3</td><td>Net worth sparkline card (mini line chart, 30 days)</td><td>→ Reports: Net worth detail</td><td>domain-model.md §688</td></tr>
-<tr><td>4</td><td>Account summary cards (horizontal scroll, 3–4 visible)</td><td>→ Account detail</td><td>domain-model.md §689</td></tr>
+<tr><td>4</td><td>Account summary cards (horizontal scroll)</td><td>Tap a card for account detail or See all for Accounts</td><td>domain-model.md §689</td></tr>
 <tr><td>5</td><td>Income vs expense strip (current month, horizontal bar)</td><td>→ Reports: Income vs expense</td><td>domain-model.md §690</td></tr>
-<tr><td>6</td><td>Budget progress rings/cards (top 3–4 overspent or closest to limit)</td><td>→ Budgets tab</td><td>domain-model.md §691</td></tr>
+<tr><td>6</td><td>Budget progress cards</td><td>Tap a card for budget detail or See all for Budgets</td><td>domain-model.md §691</td></tr>
 <tr><td>7</td><td>Spending by category donut chart (current month)</td><td>→ Reports: Spending by category</td><td>Research: Copilot/Monarch</td></tr>
 <tr><td>8</td><td>Recent transactions (last 5, with "See all" link)</td><td>→ Transactions tab</td><td>domain-model.md §692</td></tr>
 <tr><td>9</td><td>Upcoming recurring / bills (next 7 days)</td><td>→ Recurring list</td><td>Research: Monarch bill calendar</td></tr>
@@ -233,7 +233,7 @@
 </table>
 
 <div class="callout callout-orange">
-<strong>Empty state</strong>: If no accounts exist, show a centered illustration (friendly character), text "Let's set up your first account", and a primary CTA "Add Account". Optional secondary link "Try with demo data" that seeds 30 days of sample transactions, accounts, and budgets.
+<strong>Empty state</strong>: If no accounts exist, show a centered illustration (friendly character), text "Let's set up your first account", and a primary action "Add Account" that opens the account form. Optional secondary link "Try with demo data" that seeds 30 days of sample transactions, accounts, and budgets.
 </div>
 
 <h3>Top bar elements</h3>
@@ -260,32 +260,20 @@
 
 <pre>
 ┌─────────────────────────────────┐
-│  🔍 Search...        [🔧]       │
-├─────────────────────────────────┤
-│                                 │
-│  Today                          │
-│  ┌─────────────────────────┐   │
-│  │ 🍔 McDonald's    -₱250  │   │  ← Expense (red)
-│  │    Food · GCash         │   │
-│  └─────────────────────────┘   │
-│  ┌─────────────────────────┐   │
-│  │ 💰 Salary        +₱45k  │   │  ← Income (green)
-│  │    Income · BPI         │   │
-│  └─────────────────────────┘   │
-│  ┌─────────────────────────┐   │
-│  │ ↕️ BPI → GCash   -₱500  │   │  ← Transfer (blue)
-│  │    Transfer · BPI       │   │
-│  └─────────────────────────┘   │
-│                                 │
-│  Yesterday                      │
-│  ┌─────────────────────────┐   │
-│  │ 🚗 Grab           -₱180 │   │
-│  │    Transport · GCash    │   │
-│  └─────────────────────────┘   │
-│                                 │
-│                        ┌────┐  │
-│                        │ +  │  │  ← Add island
-│                        └────┘  │
+│ Transactions        Sort Select │
+│ [ Search              ] Filters │
+│       ‹  November 2026  ›       │
+│ ┌─────────────────────────────┐ │
+│ │ Today ───────────────────── │ │
+│ │ McDonald's         -₱250.00 │ │
+│ │ Food · GCash        9:20 AM │ │
+│ │ ─────────────────────────── │ │
+│ │ Salary          +₱45,000.00 │ │
+│ │ Income · BPI        8:00 AM │ │
+│ │ Yesterday ───────────────── │ │
+│ │ Grab               -₱180.00 │ │
+│ │ Transport · GCash   5:45 PM │ │
+│ └─────────────────────────────┘ │
 └─────────────────────────────────┘
 </pre>
 
@@ -299,11 +287,11 @@
 <li>Note text</li>
 </ul>
 
-<p>Tapping the search bar expands it full-width and shows recent searches.</p>
+<p>Search, Filters, and the current period stay visible while you type. Tap Select to change the category or account of selected transactions or to delete them.</p>
 
 <h3>Filter button (🔧)</h3>
 
-<p>Tapping the filter button (top right, wrench/funnel icon) opens a <strong>Filter Sheet</strong>:</p>
+<p>Tapping Filters next to Search opens a <strong>Filter Sheet</strong>:</p>
 
 <pre>
 ┌─────────────────────────────────┐
@@ -351,25 +339,15 @@
 
 <h3>Transaction row</h3>
 
-<p>Each row shows:</p>
-<ul>
-<li><strong>Left</strong>: Category icon or payee initial (circular avatar)</li>
-<li><strong>Center</strong>: Payee name (bold), category + account (secondary)</li>
-<li><strong>Right</strong>: Amount (bold, color-coded: <strong>red</strong> for expense, <strong>green</strong> for income, <strong>blue</strong> for transfer)</li>
-<li><strong>Direction badge</strong>: Small text label or color indicating direction (expense/income/transfer)</li>
-</ul>
+<p>Each row shows an icon, the payee or title, the category, the account, the amount, and the time. Expenses use the main text color and a minus sign. Income uses green and a plus sign. Transfers use blue.</p>
 
-<p><strong>Swipe actions</strong> (from row):</p>
-<ul>
-<li><strong>Swipe left</strong>: Edit (pencil) → opens edit sheet | Delete (trash) → confirmation dialog</li>
-<li><strong>Swipe right</strong>: Categorize (tag) → opens category picker sheet | Duplicate → creates copy</li>
-</ul>
+<p>Swipe right to open the edit sheet. Swipe left to open the delete confirmation. Tap a row to open its details. Press and hold to select it.</p>
 
-<p>Tapping a row → <strong>Transaction Detail</strong> (pushed page).</p>
+<p>The title, category, and account wrap when they need more room. When the amount would crowd the title, the amount and time move below it.</p>
 
 <h3>Grouping</h3>
 
-<p>Transactions grouped by date (Today, Yesterday, this week, this month, older). Within each group, sorted by <code>occurred_at</code> descending.</p>
+<p>The ledger uses one continuous surface. Rules mark the date groups and separate rows within a group. Sort changes the order of the groups and the transactions within each group.</p>
 
 <h3>Income deduction rows</h3>
 
@@ -405,7 +383,8 @@
 
 <pre>
 ┌─────────────────────────────────┐
-│  ◀ June 2026 ▶     Budgets  [+] │
+│  Budgets          [New budget] │
+│           ◀ June 2026 ▶         │
 ├─────────────────────────────────┤
 │                                 │
 │  Spent ₱12,500 of ₱20,000       │  ← Monthly summary
@@ -435,7 +414,7 @@
 
 <h3>Month navigation</h3>
 
-<p>Swipe left/right or tap arrows to navigate months. State: <code>month</code> + <code>year</code>. Month label format: "June 2026". Current month is highlighted.</p>
+<p>Tap the previous or next arrow to change the period. Tap the period name to choose a date. In an editable period, New budget opens the budget form, which keeps Save visible while you scroll.</p>
 
 <h3>Budget row</h3>
 
@@ -676,6 +655,8 @@
 
 <p>All flows end with: save transaction → update account balance → close sheet → show undo snackbar (5s).</p>
 
+<p>Manual and transfer forms keep Save visible while you scroll. The Quick preview keeps Edit manually and Add Transaction visible.</p>
+
 <h3>7.2 Transaction Edit Flow</h3>
 
 <p>From Transaction Detail → edit button → <strong>Transaction Edit Sheet</strong> (same form as manual entry, pre-filled).</p>
@@ -689,7 +670,7 @@
 
 <h3>7.3 Transfer Creation Flow</h3>
 
-<p>From Add island → Manual → direction = transfer. Or from Account Detail → transfer button.</p>
+<p>From Add, tap Transfer. You can also choose Transfer in the manual form.</p>
 
 <p><strong>Transfer Form Sheet</strong>: source account, destination account, amount, fee (optional), note, date. Save → update both account balances → if fee, create expense transaction → close.</p>
 
@@ -861,9 +842,11 @@ Return to previous screen
 <tbody>
 <tr><td><code>/onboarding</code></td><td>fullScreen</td><td>cannot dismiss (must complete or skip)</td></tr>
 <tr><td><code>/transactions/new</code></td><td>bottomSheet</td><td>swipe down</td></tr>
-<tr><td><code>/scan</code></td><td>fullScreen</td><td>✕ button</td></tr>
+<tr><td><code>/scan</code></td><td>fullScreen</td><td>Close or system Back returns to the open Add sheet and keeps its draft</td></tr>
 </tbody>
 </table>
+
+<p>When the user confirms the scan, close the scanner and open one Add Transaction sheet with the receipt fields filled in. A direct visit to <code>/scan</code> opens Home.</p>
 
 <h3>Query parameters</h3>
 
@@ -982,7 +965,7 @@ Return to previous screen
 <thead><tr><th>Screen</th><th>Left</th><th>Center</th><th>Right</th></tr></thead>
 <tbody>
 <tr><td>Dashboard</td><td>—</td><td>Greeting + date</td><td>Sync icon, Search icon</td></tr>
-<tr><td>Transactions</td><td>—</td><td>"Transactions"</td><td>Filter button (🔧), Search icon</td></tr>
+<tr><td>Transactions</td><td>—</td><td>"Transactions"</td><td>Search, Filters, Select, and sort</td></tr>
 <tr><td>Budgets</td><td>← / → month nav</td><td>"Budgets"</td><td>+ button</td></tr>
 <tr><td>More</td><td>—</td><td>"More"</td><td>—</td></tr>
 <tr><td>Pushed screens</td><td>← back</td><td>Screen title</td><td>Contextual (edit, ⋮)</td></tr>
@@ -992,7 +975,7 @@ Return to previous screen
 
 <h3>Filter button (Transactions screen)</h3>
 
-<p>Tapping the filter button (🔧) opens the <strong>Filter Sheet</strong> (see §4 for full filter options).</p>
+<p>Tapping Filters opens the <strong>Filter Sheet</strong> (see §4 for full filter options).</p>
 
 <h3>⋮ menu (pushed screens)</h3>
 

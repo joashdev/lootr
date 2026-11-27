@@ -22,6 +22,7 @@ import '../../application/providers/repo_providers.dart';
 import '../../application/providers/undo_stack_provider.dart';
 import '../../core/constants/enums.dart' as ui;
 import '../../core/format/money_format.dart';
+import '../../core/router/receipt_scan_route.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/radius.dart';
 import '../../core/theme/typography.dart';
@@ -39,6 +40,7 @@ import '../../domain/use_cases/edit_transaction.dart';
 import '../../domain/use_cases/edit_transfer.dart';
 import '../../domain/value_objects/field_types.dart' as fields;
 import '../../domain/value_objects/exact_money.dart';
+import '../../domain/value_objects/ocr_payload.dart';
 import '../../domain/value_objects/parsed_transaction.dart';
 import '../../domain/value_objects/undo_entry.dart';
 import '../shared/components/buttons/primary_button.dart';
@@ -55,6 +57,7 @@ class AddTransactionSheetArgs {
   const AddTransactionSheetArgs({
     this.initialTransaction,
     this.initialTransfer,
+    this.initialDirection,
     this.startInQuickMode = false,
     this.initialParsedTransaction,
     this.initialQuickText,
@@ -64,8 +67,17 @@ class AddTransactionSheetArgs {
     this.recurringPayment,
   });
 
+  AddTransactionSheetArgs.fromReceipt(OcrPayload payload)
+    : this(
+        initialParsedTransaction: payload.extractedFields,
+        entrySource: 'ocr',
+        sourceConfidence: payload.confidence,
+        sourceSummary: 'On-device receipt scan',
+      );
+
   final Transaction? initialTransaction;
   final Transfer? initialTransfer;
+  final String? initialDirection;
   final bool startInQuickMode;
   final ParsedTransaction? initialParsedTransaction;
   final String? initialQuickText;
@@ -80,6 +92,7 @@ class AddTransactionSheet extends ConsumerStatefulWidget {
     super.key,
     this.initialTransaction,
     this.initialTransfer,
+    this.initialDirection,
     this.startInQuickMode = false,
     this.initialParsedTransaction,
     this.initialQuickText,
@@ -91,6 +104,7 @@ class AddTransactionSheet extends ConsumerStatefulWidget {
 
   final Transaction? initialTransaction;
   final Transfer? initialTransfer;
+  final String? initialDirection;
   final bool startInQuickMode;
   final ParsedTransaction? initialParsedTransaction;
   final String? initialQuickText;
@@ -138,6 +152,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   bool _rememberCategoryCorrection = false;
   bool _initialRuleSuggestionChecked = false;
   int _ruleSuggestionRequest = 0;
+  int _quickParseRequest = 0;
 
   ParsedTransaction? _parsedPreview;
   String? _parseError;
@@ -179,7 +194,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
         recurringPayment?.direction == fields.TransactionDirection.income ||
             initialTransaction?.direction == fields.TransactionDirection.income
         ? fields.TransactionDirection.income
-        : fields.TransactionDirection.expense;
+        : widget.initialDirection ?? fields.TransactionDirection.expense;
     _mode = recurringPayment != null
         ? fields.TransactionMode.recurring
         : initialTransaction?.mode ?? fields.TransactionMode.oneTime;
@@ -232,31 +247,35 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
       return;
     }
 
-    final available = await _speech.initialize(
-      onStatus: (status) {
-        if (!mounted) return;
-        if (status == 'done' || status == 'notListening') {
-          setState(() => _isListening = false);
-        }
-      },
-      onError: (_) {
-        if (!mounted) return;
-        setState(() => _isListening = false);
-        _showSnackBar('Voice input could not start on this device.');
-      },
-    );
-
+    final available = await _speech.initialize();
+    if (!mounted) return;
     if (!available) {
       _showSnackBar('Voice input is unavailable on this device.');
       return;
     }
 
+    _speech.statusListener = (status) {
+      if (mounted &&
+          (status == SpeechToText.doneStatus ||
+              status == SpeechToText.notListeningStatus)) {
+        setState(() => _isListening = false);
+      }
+    };
+    _speech.errorListener = (_) {
+      if (!mounted) return;
+      setState(() => _isListening = false);
+      _showSnackBar('Voice input could not start on this device.');
+    };
     setState(() => _isListening = true);
     await _speech.listen(
       onResult: (result) {
         if (!mounted) return;
         setState(() {
-          _quickAddController.text = result.recognizedWords.trim();
+          final text = result.recognizedWords.trim();
+          if (text != _quickAddController.text) {
+            _quickAddController.text = text;
+            _clearQuickPreview();
+          }
           _quickAddController.selection = TextSelection.collapsed(
             offset: _quickAddController.text.length,
           );
@@ -521,14 +540,16 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     });
   }
 
-  void _ensureQuickTextParsed(List<Account> accounts, List<Payee> payees) {
-    if (_seededInitialParsed || _quickAddController.text.trim().isEmpty) {
+  void _ensureQuickTextParsed() {
+    if (_seededInitialParsed ||
+        widget.initialQuickText == null ||
+        _quickAddController.text.trim().isEmpty) {
       return;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _seededInitialParsed) return;
       _seededInitialParsed = true;
-      _runQuickAdd(accounts, payees);
+      _runQuickAdd();
     });
   }
 
@@ -741,6 +762,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
 
   Future<void> _saveTransfer() async {
     if (_isSaving) return;
+    FocusScope.of(context).unfocus();
     if (_formKey.currentState?.validate() != true) return;
     if (_sourceAccountId == null || _destinationAccountId == null) {
       _showSnackBar('Select both source and destination accounts.');
@@ -842,8 +864,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
         _matchedRuleInput = null;
         _categoryWasExplicitlyEdited = false;
         _rememberCategoryCorrection = false;
-        _parsedPreview = null;
-        _parseError = null;
+        _clearQuickPreview();
         _occurredAt = DateTime.now();
         _isQuickMode = true;
       });
@@ -885,22 +906,26 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     );
   }
 
-  Future<void> _runQuickAdd(List<Account> accounts, List<Payee> payees) async {
+  void _clearQuickPreview() {
+    _quickParseRequest++;
+    _parsedPreview = null;
+    _parseError = null;
+  }
+
+  Future<void> _runQuickAdd() async {
     final input = _quickAddController.text.trim();
     if (input.isEmpty) {
-      setState(() {
-        _parsedPreview = null;
-        _parseError = null;
-      });
+      setState(_clearQuickPreview);
       return;
     }
 
+    final request = ++_quickParseRequest;
     final assistance = await ref.read(smartEntryAssistanceProvider.future);
     final result = await assistance.parse(
       input,
       ref.read(categoriesProvider).asData?.value ?? const <Category>[],
     );
-    if (!mounted) return;
+    if (!mounted || request != _quickParseRequest) return;
     setState(() {
       _parsedPreview = result.valueOrNull;
       _parseError = result.messageOrNull;
@@ -919,10 +944,13 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     });
   }
 
-  void _openScan() {
-    final router = GoRouter.of(context);
-    context.pop();
-    router.push('/scan');
+  Future<void> _openScan() async {
+    final receipt = await ReceiptScanRequest.open(context);
+    if (!mounted || receipt == null) return;
+    context.pushReplacement(
+      '/transactions/new',
+      extra: AddTransactionSheetArgs.fromReceipt(receipt),
+    );
   }
 
   void _handleEntryModeSelected(EntryMode mode) {
@@ -930,7 +958,10 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
       case EntryMode.quick:
         setState(() => _isQuickMode = true);
       case EntryMode.manual:
-        setState(() => _isQuickMode = false);
+        setState(() {
+          _isQuickMode = false;
+          _clearQuickPreview();
+        });
       case EntryMode.scan:
         _openScan();
     }
@@ -971,20 +1002,29 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
         const <Transaction>[];
 
     _ensureSeededFromInitialParsed(accounts, payees);
-    _ensureQuickTextParsed(accounts, payees);
+    _ensureQuickTextParsed();
     _ensureInitialRuleSuggestion(payees);
 
+    final isTransfer =
+        _isTransferEditing ||
+        _direction == fields.TransactionDirection.transfer;
+    final isQuick = _isQuickMode && !_isTransactionEditing;
     final title = _isTransferEditing
         ? 'Edit Transfer'
         : _isTransactionEditing
         ? 'Edit Transaction'
+        : isTransfer && !isQuick
+        ? 'New transfer'
         : 'Add Transaction';
     final colorScheme = Theme.of(context).colorScheme;
+    final preview = isQuick ? _parsedPreview : null;
+    final showFooter = isQuick
+        ? preview != null
+        : (isTransfer ? accounts.length >= 2 : accounts.isNotEmpty);
 
-    return SafeArea(
-      child: Material(
-        color: colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+    return Scaffold(
+      backgroundColor: colorScheme.surface,
+      body: SafeArea(
         child: Column(
           children: [
             Padding(
@@ -998,7 +1038,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                       children: [
                         Text(
                           title,
-                          style: Theme.of(context).textTheme.titleLarge,
+                          style: Theme.of(context).textTheme.headlineMedium,
                         ),
                         if (_isTransactionEditing) ...[
                           const SizedBox(height: 2),
@@ -1011,6 +1051,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                     ),
                   ),
                   IconButton(
+                    tooltip: 'Close',
                     onPressed: () => context.pop(),
                     icon: const Icon(Icons.close),
                   ),
@@ -1021,23 +1062,23 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                 !_isTransferEditing &&
                 !_isOccurrencePayment)
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
                 child: EntryModeTabs(
                   selected: _isQuickMode ? EntryMode.quick : EntryMode.manual,
                   onSelected: _handleEntryModeSelected,
                 ),
               ),
             const Divider(height: 1),
-            Flexible(
+            Expanded(
               child: SingleChildScrollView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: const EdgeInsets.all(24),
                 child: Form(
                   key: _formKey,
-                  child: _isTransferEditing
-                      ? _buildTransferEntryForm(accounts)
-                      : (_isQuickMode && !_isTransactionEditing)
+                  child: isQuick
                       ? _buildQuickAdd(accounts, categories, payees)
-                      : _direction == fields.TransactionDirection.transfer
+                      : isTransfer
                       ? _buildTransferEntryForm(accounts)
                       : _buildTransactionForm(
                           accounts,
@@ -1050,6 +1091,25 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                 ),
               ),
             ),
+            if (showFooter) ...[
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
+                child: preview != null
+                    ? _buildQuickFooter(preview, accounts, categories, payees)
+                    : PrimaryButton(
+                        label: _isTransactionEditing || _isTransferEditing
+                            ? 'Save Changes'
+                            : isTransfer
+                            ? 'Add Transfer'
+                            : 'Add Transaction',
+                        onPressed: isTransfer
+                            ? _saveTransfer
+                            : _saveTransaction,
+                        isLoading: _isSaving,
+                      ),
+              ),
+            ],
           ],
         ),
       ),
@@ -1148,10 +1208,8 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
             initiallyExpanded: _isTransactionEditing,
             tilePadding: EdgeInsets.zero,
             childrenPadding: EdgeInsets.zero,
-            title: const Text('Transaction Mode'),
-            subtitle: const Text(
-              'More details: note, date, goal/debt link, source metadata',
-            ),
+            title: const Text('More details'),
+            subtitle: const Text('Note, date, repeat, and links'),
             children: [
               _noteField(),
               const SizedBox(height: 16),
@@ -1179,15 +1237,6 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
           ),
           if (!_isTransactionEditing && !_isOccurrencePayment)
             _buildAddAnotherToggle(),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            child: PrimaryButton(
-              label: _isTransactionEditing ? 'Save Changes' : 'Add Transaction',
-              onPressed: _isSaving ? null : _saveTransaction,
-              isLoading: _isSaving,
-            ),
-          ),
         ],
       ],
     );
@@ -1267,6 +1316,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
         TextField(
           controller: _quickAddController,
           focusNode: _quickFocusNode,
+          onChanged: (_) => setState(_clearQuickPreview),
           decoration: InputDecoration(
             hintText: 'Describe your transaction...',
             filled: true,
@@ -1292,17 +1342,13 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                 ),
                 IconButton(
                   tooltip: 'Parse',
-                  onPressed: assistanceEnabled
-                      ? () => _runQuickAdd(accounts, payees)
-                      : null,
+                  onPressed: assistanceEnabled ? _runQuickAdd : null,
                   icon: const Icon(LucideIcons.arrowRight, size: 18),
                 ),
               ],
             ),
           ),
-          onSubmitted: assistanceEnabled
-              ? (_) => _runQuickAdd(accounts, payees)
-              : null,
+          onSubmitted: assistanceEnabled ? (_) => _runQuickAdd() : null,
         ),
         const SizedBox(height: 8),
         Text(
@@ -1332,40 +1378,46 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
           _buildPreviewCard(_parsedPreview!, accounts, categories, payees),
           if (_matchedCategoryRule != null)
             _buildCategorySuggestion(categories),
-          const SizedBox(height: 16),
-          PrimaryButton(
-            label: 'Add Transaction',
-            onPressed: _isSaving
-                ? null
-                : () async {
-                    _applyPreviewToManual(
-                      _parsedPreview!,
-                      accounts,
-                      categories,
-                      payees,
-                    );
-                    await _refreshCategoryRuleSuggestion(
-                      payee: _parsedPreview!.payee,
-                      title: widget.initialTransaction?.title,
-                    );
-                    await _saveTransaction();
-                  },
-            isLoading: _isSaving,
-          ),
-          const SizedBox(height: 8),
-          Center(
-            child: TextButton(
-              onPressed: () => _applyPreviewToManual(
-                _parsedPreview!,
-                accounts,
-                categories,
-                payees,
-              ),
-              child: const Text('Edit manually'),
-            ),
-          ),
           _buildAddAnotherToggle(),
         ],
+      ],
+    );
+  }
+
+  Widget _buildQuickFooter(
+    ParsedTransaction preview,
+    List<Account> accounts,
+    List<Category> categories,
+    List<Payee> payees,
+  ) {
+    final edit = TextButton(
+      onPressed: _isSaving
+          ? null
+          : () => _applyPreviewToManual(preview, accounts, categories, payees),
+      child: const Text('Edit manually'),
+    );
+    final save = PrimaryButton(
+      label: 'Add Transaction',
+      onPressed: () async {
+        _applyPreviewToManual(preview, accounts, categories, payees);
+        await _refreshCategoryRuleSuggestion(
+          payee: preview.payee,
+          title: widget.initialTransaction?.title,
+        );
+        if (mounted) await _saveTransaction();
+      },
+      isLoading: _isSaving,
+    );
+
+    if (MediaQuery.sizeOf(context).width < 420 &&
+        MediaQuery.textScalerOf(context).scale(15) > 19) {
+      return Column(mainAxisSize: MainAxisSize.min, children: [save, edit]);
+    }
+    return Row(
+      children: [
+        edit,
+        const SizedBox(width: 12),
+        Expanded(child: save),
       ],
     );
   }
@@ -1476,14 +1528,16 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
             children: [
               _ConfidenceDot(confidence: confidence),
               const SizedBox(width: 8),
-              Text(
-                widget.entrySource == 'ocr'
-                    ? '${confidencePrefix}Read from your receipt; review before saving'
-                    : confidence >= 0.7
-                    ? '${confidencePrefix}Matched from your wording'
-                    : '${confidencePrefix}Needs review before saving',
-                style: AppTypography.caption.copyWith(
-                  color: lootrColors.textSecondary,
+              Expanded(
+                child: Text(
+                  widget.entrySource == 'ocr'
+                      ? '${confidencePrefix}Read from your receipt; review before saving'
+                      : confidence >= 0.7
+                      ? '${confidencePrefix}Matched from your wording'
+                      : '${confidencePrefix}Needs review before saving',
+                  style: AppTypography.caption.copyWith(
+                    color: lootrColors.textSecondary,
+                  ),
                 ),
               ),
             ],
@@ -1559,7 +1613,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   }
 
   Widget _buildTransactionTypeTabs() {
-    return Row(
+    return _EntrySegments(
       children: [
         Expanded(
           child: _TransactionTypeTab(
@@ -1836,15 +1890,6 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
           _noteField(hintText: 'Optional transfer note'),
           const SizedBox(height: 16),
           _dateTimeSection(),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            child: PrimaryButton(
-              label: _isTransferEditing ? 'Save Changes' : 'Add Transfer',
-              onPressed: _isSaving ? null : _saveTransfer,
-              isLoading: _isSaving,
-            ),
-          ),
         ],
       ],
     );
@@ -1938,11 +1983,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
 /// Entry modes offered at the top of the add-transaction surfaces.
 enum EntryMode { quick, manual, scan }
 
-/// Quick | Manual | Scan segmented control shown at the top of the
-/// add-transaction sheet (and reused by the quick-actions sheet). Mirrors the
-/// Expense/Income/Transfer tab styling so the two segmented rows read as one
-/// design language. The highlighted segment always reflects the ACTIVE mode —
-/// selection is fully controlled by [selected], never by internal state.
+/// Selects the entry method in the transaction form.
 class EntryModeTabs extends StatelessWidget {
   const EntryModeTabs({
     super.key,
@@ -1966,7 +2007,7 @@ class EntryModeTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return _EntrySegments(
       children: [
         for (final mode in EntryMode.values)
           Expanded(
@@ -1977,6 +2018,26 @@ class EntryModeTabs extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+class _EntrySegments extends StatelessWidget {
+  const _EntrySegments({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: colors.outlineVariant),
+      ),
+      child: Row(children: children),
     );
   }
 }
@@ -1996,43 +2057,31 @@ class _TransactionTypeTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return InkWell(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            decoration: isSelected
-                ? BoxDecoration(
-                    color: colorScheme.primary.withValues(alpha: 0.08),
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(AppRadius.sm),
-                    ),
-                  )
-                : null,
+    final radius = BorderRadius.circular(AppRadius.md);
+    return Semantics(
+      selected: isSelected,
+      button: true,
+      child: Material(
+        color: isSelected ? colorScheme.primaryContainer : Colors.transparent,
+        borderRadius: radius,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: radius,
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 44),
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 8),
             child: Text(
               label,
               textAlign: TextAlign.center,
-              style: AppTypography.bodyMedium.copyWith(
+              style: AppTypography.captionMedium.copyWith(
                 color: isSelected
-                    ? colorScheme.onSurface
+                    ? colorScheme.onPrimaryContainer
                     : context.lootrColors.textSecondary,
               ),
             ),
           ),
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            height: 2,
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? colorScheme.primary
-                  : colorScheme.outlineVariant,
-              borderRadius: BorderRadius.circular(1),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

@@ -6,6 +6,7 @@ import '../../application/providers/onboarding_provider.dart';
 import '../../core/theme/theme.dart';
 import '../../domain/entities/transaction.dart';
 import '../../domain/entities/transfer.dart';
+import '../../domain/value_objects/ocr_payload.dart';
 import '../../presentation/screens/budgets/budget_detail_screen.dart';
 import '../../presentation/screens/budgets/budgets_screen.dart';
 import '../../presentation/screens/budgets/imported_budget_detail_screen.dart';
@@ -48,9 +49,10 @@ import '../../presentation/screens/transactions/transaction_detail_screen.dart';
 import '../../presentation/screens/transactions/transactions_screen.dart';
 import '../../presentation/sheets/add_transaction_sheet.dart';
 import '../../presentation/shared/layouts/tab_shell.dart';
+import 'receipt_scan_route.dart';
 
-Page<void> _pushPage(Widget child, {LocalKey? key}) {
-  return CustomTransitionPage<void>(
+Page<T> _pushPage<T>(Widget child, {LocalKey? key}) {
+  return CustomTransitionPage<T>(
     key: key,
     child: child,
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -146,6 +148,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             AddTransactionSheet(
               initialTransaction: tx,
               initialTransfer: transfer,
+              initialDirection: args?.initialDirection,
               startInQuickMode: args?.startInQuickMode ?? false,
               initialParsedTransaction: args?.initialParsedTransaction,
               initialQuickText: args?.initialQuickText,
@@ -159,9 +162,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
-        path: '/scan',
-        pageBuilder: (context, state) =>
-            _pushPage(const OcrScanScreen(), key: state.pageKey),
+        path: ReceiptScanRequest.path,
+        redirect: (context, state) =>
+            state.extra is ReceiptScanRequest ? null : '/',
+        pageBuilder: (context, state) => _pushPage<OcrPayload>(
+          OcrScanScreen(onConfirmed: (payload) => context.pop(payload)),
+          key: state.pageKey,
+        ),
       ),
       GoRoute(
         path: '/onboarding',

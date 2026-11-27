@@ -170,7 +170,7 @@ void main() {
       final tabs = tester.widget<EntryModeTabs>(find.byType(EntryModeTabs));
       expect(tabs.selected, EntryMode.manual);
       expect(find.text('Amount'), findsOneWidget);
-      expect(find.text('Transaction Mode'), findsOneWidget);
+      expect(find.text('More details'), findsOneWidget);
       expect(find.text('Describe your transaction...'), findsNothing);
 
       // And back: tapping Quick returns to quick mode, selection follows.
@@ -204,6 +204,55 @@ void main() {
       expect(find.text('Edit manually'), findsOneWidget);
     });
 
+    testWidgets('editing the description clears the old amount and actions', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          const AddTransactionSheet(startInQuickMode: true),
+          accounts: [_gcash()],
+        ),
+      );
+      await tester.pumpAndSettle();
+      await _parseQuickInput(tester, 'mcdo 250 gcash');
+      expect(find.text('₱250.00'), findsOneWidget);
+      expect(find.text('Edit manually'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField).first, 'mcdo 450 gcash');
+      await tester.pumpAndSettle();
+
+      expect(find.text('₱250.00'), findsNothing);
+      expect(find.text('Edit manually'), findsNothing);
+      await _parseQuickInput(tester, 'mcdo 450 gcash');
+      expect(find.text('₱450.00'), findsOneWidget);
+    });
+
+    testWidgets('a slow parse cannot restore the preview for an old draft', (
+      tester,
+    ) async {
+      final history = StreamController<PayeeCategoryHistory>();
+      addTearDown(history.close);
+      await tester.pumpWidget(
+        _wrap(
+          const AddTransactionSheet(startInQuickMode: true),
+          accounts: [_gcash()],
+          payeeCategoryHistoryStream: history.stream,
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).first, 'mcdo 250 gcash');
+      await tester.tap(find.byTooltip('Parse'));
+      await tester.pump();
+
+      await tester.enterText(find.byType(TextField).first, 'mcdo 450 gcash');
+      history.add(const {});
+      await tester.pumpAndSettle();
+
+      expect(find.text('Preview'), findsNothing);
+      await _parseQuickInput(tester, 'mcdo 450 gcash');
+      expect(find.text('₱450.00'), findsOneWidget);
+    });
+
     testWidgets('"Edit manually" switches to prefilled manual form', (
       tester,
     ) async {
@@ -227,7 +276,7 @@ void main() {
       // control reflects the switch to manual mode.
       expect(find.text('Add Transaction'), findsWidgets);
       expect(find.text('250.00'), findsOneWidget);
-      expect(find.text('Transaction Mode'), findsOneWidget);
+      expect(find.text('More details'), findsOneWidget);
       final tabs = tester.widget<EntryModeTabs>(find.byType(EntryModeTabs));
       expect(tabs.selected, EntryMode.manual);
     });

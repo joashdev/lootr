@@ -3,18 +3,16 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/radius.dart';
-import '../../../../core/theme/shadows.dart';
 import '../../../../core/theme/typography.dart';
 
-/// Pill-shaped search bar with a leading magnifying glass, a clear button when
-/// text is present, and a debounced [onChanged] callback (Task 16.3).
+/// Search field with a clear button and a debounced [onChanged] callback.
 class SearchInput extends StatefulWidget {
   const SearchInput({
     super.key,
     this.controller,
     this.focusNode,
     this.onChanged,
-    this.hintText = 'Search transactions...',
+    this.hintText = 'Search',
     this.autofocus = false,
     this.debounceDuration = const Duration(milliseconds: 300),
   });
@@ -32,10 +30,7 @@ class SearchInput extends StatefulWidget {
 
 class _SearchInputState extends State<SearchInput> {
   late TextEditingController _controller;
-  late FocusNode _focusNode;
   late bool _ownsController;
-  late bool _ownsFocusNode;
-  bool _isFocused = false;
   Timer? _debounce;
 
   @override
@@ -43,11 +38,7 @@ class _SearchInputState extends State<SearchInput> {
     super.initState();
     _ownsController = widget.controller == null;
     _controller = widget.controller ?? TextEditingController();
-    _ownsFocusNode = widget.focusNode == null;
-    _focusNode = widget.focusNode ?? FocusNode();
-    _isFocused = _focusNode.hasFocus;
     _controller.addListener(_handleControllerChanged);
-    _focusNode.addListener(_handleFocusChanged);
   }
 
   @override
@@ -55,6 +46,7 @@ class _SearchInputState extends State<SearchInput> {
     super.didUpdateWidget(oldWidget);
 
     if (oldWidget.controller != widget.controller) {
+      _debounce?.cancel();
       _controller.removeListener(_handleControllerChanged);
       if (_ownsController) {
         _controller.dispose();
@@ -62,17 +54,6 @@ class _SearchInputState extends State<SearchInput> {
       _ownsController = widget.controller == null;
       _controller = widget.controller ?? TextEditingController();
       _controller.addListener(_handleControllerChanged);
-    }
-
-    if (oldWidget.focusNode != widget.focusNode) {
-      _focusNode.removeListener(_handleFocusChanged);
-      if (_ownsFocusNode) {
-        _focusNode.dispose();
-      }
-      _ownsFocusNode = widget.focusNode == null;
-      _focusNode = widget.focusNode ?? FocusNode();
-      _isFocused = _focusNode.hasFocus;
-      _focusNode.addListener(_handleFocusChanged);
     }
   }
 
@@ -82,16 +63,10 @@ class _SearchInputState extends State<SearchInput> {
     }
   }
 
-  void _handleFocusChanged() {
-    if (mounted) {
-      setState(() => _isFocused = _focusNode.hasFocus);
-    }
-  }
-
   void _onTextChanged(String value) {
     _debounce?.cancel();
     _debounce = Timer(widget.debounceDuration, () {
-      widget.onChanged?.call(value);
+      if (_controller.text == value) widget.onChanged?.call(value);
     });
   }
 
@@ -105,12 +80,8 @@ class _SearchInputState extends State<SearchInput> {
   void dispose() {
     _debounce?.cancel();
     _controller.removeListener(_handleControllerChanged);
-    _focusNode.removeListener(_handleFocusChanged);
     if (_ownsController) {
       _controller.dispose();
-    }
-    if (_ownsFocusNode) {
-      _focusNode.dispose();
     }
     super.dispose();
   }
@@ -119,51 +90,50 @@ class _SearchInputState extends State<SearchInput> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final lootrColors = context.lootrColors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final hasText = _controller.text.isNotEmpty;
+    final border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      borderSide: BorderSide(color: colorScheme.outline),
+    );
 
-    return Container(
-      decoration: BoxDecoration(
-        color: _isFocused
-            ? colorScheme.surface
-            : colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(AppRadius.full),
-        boxShadow: _isFocused && !isDark ? AppShadows.sm : AppShadows.none,
-        border: _isFocused ? Border.all(color: colorScheme.primary) : null,
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Row(
-        children: [
-          Icon(Icons.search, size: 20, color: lootrColors.textTertiary),
-          const SizedBox(width: 8),
-          Expanded(
-            child: TextField(
-              controller: _controller,
-              focusNode: _focusNode,
-              onChanged: _onTextChanged,
-              autofocus: widget.autofocus,
-              style: AppTypography.body.copyWith(color: colorScheme.onSurface),
-              decoration: InputDecoration(
-                hintText: widget.hintText,
-                hintStyle: AppTypography.body.copyWith(
-                  color: lootrColors.textTertiary,
-                ),
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-          ),
-          if (hasText)
-            GestureDetector(
-              onTap: _clear,
-              child: Icon(
-                Icons.close,
-                size: 18,
-                color: lootrColors.textTertiary,
-              ),
-            ),
-        ],
+    return TextField(
+      controller: _controller,
+      focusNode: widget.focusNode,
+      onChanged: _onTextChanged,
+      onSubmitted: (value) {
+        if (_debounce?.isActive != true) return;
+        _debounce?.cancel();
+        widget.onChanged?.call(value);
+      },
+      autofocus: widget.autofocus,
+      textInputAction: TextInputAction.search,
+      style: AppTypography.body.copyWith(color: colorScheme.onSurface),
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: colorScheme.surface,
+        hintText: widget.hintText,
+        hintStyle: AppTypography.body.copyWith(
+          color: lootrColors.textSecondary,
+        ),
+        prefixIcon: Icon(
+          Icons.search,
+          size: 20,
+          color: lootrColors.textSecondary,
+        ),
+        suffixIcon: hasText
+            ? IconButton(
+                tooltip: 'Clear search',
+                onPressed: _clear,
+                icon: const Icon(Icons.close, size: 18),
+              )
+            : null,
+        enabledBorder: border,
+        focusedBorder: border.copyWith(
+          borderSide: BorderSide(color: colorScheme.primary),
+        ),
+        constraints: const BoxConstraints(minHeight: 48),
+        isDense: true,
+        contentPadding: const EdgeInsetsDirectional.fromSTEB(12, 8, 16, 8),
       ),
     );
   }

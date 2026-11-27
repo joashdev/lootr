@@ -44,7 +44,6 @@ class PrimaryScreenHeader extends StatelessWidget
       surfaceTintColor: Colors.transparent,
       titleSpacing: AppSpacing.pagePaddingMobile,
       toolbarHeight: _height,
-      shape: Border(bottom: BorderSide(color: colorScheme.outlineVariant)),
       title: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.start,

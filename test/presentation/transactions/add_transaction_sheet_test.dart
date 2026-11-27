@@ -164,7 +164,7 @@ void main() {
       );
       await tester.pump();
 
-      final moreDetails = find.textContaining('More details:');
+      final moreDetails = find.text('More details');
       await tester.ensureVisible(moreDetails);
       await tester.pumpAndSettle();
       await tester.tap(moreDetails);

@@ -8,12 +8,14 @@ class BudgetProgressBar extends StatefulWidget {
     super.key,
     required this.progress,
     this.color,
+    this.trackColor,
     this.height = 8,
     this.semanticLabel,
   });
 
   final double progress;
   final Color? color;
+  final Color? trackColor;
   final double height;
   final String? semanticLabel;
 
@@ -82,7 +84,9 @@ class _BudgetProgressBarState extends State<BudgetProgressBar>
               height: widget.height,
               child: Stack(
                 children: [
-                  Container(color: colorScheme.surfaceContainerLow),
+                  Container(
+                    color: widget.trackColor ?? colorScheme.surfaceContainerLow,
+                  ),
                   FractionallySizedBox(
                     widthFactor:
                         (reduceMotion ? widget.progress : _animation.value)

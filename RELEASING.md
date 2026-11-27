@@ -16,9 +16,8 @@ used as Android's `versionCode`.
 
 Each prerelease contains:
 
-- A signed universal Android APK
-- A SHA-256 checksum
-- GitHub artifact provenance
+- A signed universal APK and a smaller APK for each supported ABI
+- A SHA-256 checksum and GitHub artifact provenance for each APK
 - Generated release notes
 
 ## 2. Create the Android Upload Key
@@ -119,3 +118,61 @@ gh attestation verify lootr-v0.1.0-alpha.3-android.apk \
 
 The checksum detects file corruption or replacement. The attestation connects
 the binary to the public GitHub Actions build that produced it.
+
+## 7. Android Package Size
+
+The universal APK keeps the `-android.apk` filename. Single-ABI APKs
+add `-arm64-v8a`, `-armeabi-v7a`, or `-x86_64` before `.apk`.
+All four APKs use the same app ID, version code, and signing certificate.
+Each single-ABI build uses one Flutter target and a matching native library filter.
+Flutter's split-per-ABI flag assigns a higher version code to the smaller
+APKs, which would block a return to the universal APK.
+
+The GitHub workflow reports each unsigned APK's size and verifies its
+version, ABIs, and required native libraries before signing. The size limits
+in `tool/check_android_apks.py` allow small changes above the alpha.3
+baseline. If an APK exceeds its limit, measure the change before increasing
+the limit. The workflow saves each APK's native symbols as a separate
+workflow artifact for crash analysis.
+
+### Alpha.3 baseline
+
+The published, checksum-verified universal alpha.3 APK is **122,539,448 bytes**.
+A separate local universal release APK measured **117,865,060 bytes**. Both
+numbers are APK download sizes.
+
+| ZIP payload | Bytes in published APK |
+| --- | ---: |
+| All Dart AOT libraries | 38,963,564 |
+| All Flutter engine libraries | 32,888,708 |
+| All ML Kit OCR libraries | 29,472,612 |
+| All SQLCipher libraries | 15,064,712 |
+| Flutter assets | 1,905,969 |
+| Android bytecode | 1,809,759 |
+| ML Kit models | 1,272,325 |
+| Android resources | 396,129 |
+
+These counts use compressed ZIP entry sizes and exclude archive overhead.
+Native libraries are stored without ZIP compression. Each arm64 library in
+this artifact was already stripped. The Android build already uses release
+code and resource shrinking.
+
+| ABI | Native payload bytes in the universal APK | Release APK limit |
+| --- | ---: | ---: |
+| arm64-v8a | 40,328,528 | 49,000,000 |
+| armeabi-v7a | 33,152,132 | 41,500,000 |
+| x86_64 | 43,356,160 | 52,000,000 |
+| Universal | 116,836,820 | 126,000,000 |
+
+An arm64 build from current source measured **45,909,841 bytes** before
+signing. That is 62.5% smaller than the published universal APK. It uses
+Flutter 3.44.2 and the release version, build number, and reporting endpoint
+used for alpha.3. Flutter size analysis reports Dart AOT at about 12 MiB,
+including about 4 MiB of Flutter framework code, 2 MiB of Lootr code,
+and 805 KiB of image processing code.
+
+GitHub distributes APKs. Bundle download estimates and installed sizes use
+different measurements. When measuring a bundle, record the tool and
+device specification. When measuring installed size, record the device and
+Android version. Keep the future AI runtime, model downloads, and installed
+model storage in separate budgets.

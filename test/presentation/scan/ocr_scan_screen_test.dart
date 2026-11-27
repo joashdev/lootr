@@ -25,7 +25,7 @@ void main() {
           overrides: [aiEnabledProvider.overrideWith((ref) => true)],
           child: MaterialApp(
             theme: AppTheme.light,
-            home: OcrScanScreen(runOcr: runOcr),
+            home: OcrScanScreen(runOcr: runOcr, onConfirmed: (_) {}),
           ),
         ),
       );
@@ -46,7 +46,7 @@ void main() {
           overrides: [aiEnabledProvider.overrideWith((ref) => true)],
           child: MaterialApp(
             theme: AppTheme.light,
-            home: const OcrScanScreen(),
+            home: OcrScanScreen(onConfirmed: (_) {}),
           ),
         ),
       );
@@ -64,16 +64,17 @@ void main() {
           overrides: [aiEnabledProvider.overrideWith((ref) => false)],
           child: MaterialApp(
             theme: AppTheme.light,
-            home: const OcrScanScreen(),
+            home: OcrScanScreen(onConfirmed: (_) {}),
           ),
         ),
       );
       await tester.pump();
 
       expect(
-        find.textContaining('Smart Entry Assistance is off'),
+        find.text('Turn on Smart Entry Assistance to scan receipts.'),
         findsOneWidget,
       );
+      expect(find.text('Smart Entry settings').hitTestable(), findsOneWidget);
       expect(
         tester
             .widget<IconButton>(

@@ -30,22 +30,22 @@ class DashboardShimmer extends StatelessWidget {
               child: CircularProgressIndicator(strokeWidth: 2),
             ),
             const SizedBox(width: AppSpacing.space3),
-            Text(
-              'Loading your dashboard...',
-              style: AppTypography.bodyMedium.copyWith(
-                color: lootrColors.textSecondary,
+            Expanded(
+              child: Text(
+                'Loading your dashboard...',
+                style: AppTypography.bodyMedium.copyWith(
+                  color: lootrColors.textSecondary,
+                ),
               ),
             ),
           ],
         ),
         const SizedBox(height: AppSpacing.space4),
-        _ShimmerBlock(height: 60, color: baseColor),
+        _ShimmerBlock(height: 184, color: baseColor),
         const SizedBox(height: AppSpacing.space4),
-        _ShimmerBlock(height: 180, color: baseColor),
-        const SizedBox(height: AppSpacing.space4),
-        _ShimmerBlock(height: 140, color: baseColor),
+        _ShimmerBlock(height: 116, color: baseColor),
         const SizedBox(height: AppSpacing.space5),
-        _HorizontalSkeleton(height: 120, color: baseColor),
+        _HorizontalSkeleton(height: 108, color: baseColor),
         const SizedBox(height: AppSpacing.space5),
         _ShimmerBlock(height: 100, color: baseColor),
         const SizedBox(height: AppSpacing.space5),

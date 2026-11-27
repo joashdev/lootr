@@ -10,16 +10,12 @@ import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/typography.dart';
 import '../../../shared/category_visuals.dart';
 import '../../../shared/components/cards/standard_card.dart';
+import 'dashboard_section_header.dart';
 
 class RecentTransactionsList extends StatelessWidget {
-  const RecentTransactionsList({
-    super.key,
-    required this.transactions,
-    required this.currencyCode,
-  });
+  const RecentTransactionsList({super.key, required this.transactions});
 
   final List<DashboardTransactionItem> transactions;
-  final String currencyCode;
 
   @override
   Widget build(BuildContext context) {
@@ -29,28 +25,23 @@ class RecentTransactionsList extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text('Recent transactions', style: AppTypography.h2),
-              ),
-              TextButton(
-                onPressed: () => context.go('/transactions'),
-                child: const Text('See all'),
-              ),
-            ],
+          DashboardSectionHeader(
+            title: 'Recent transactions',
+            actionLabel: 'See all transactions',
+            onPressed: () => context.go('/transactions'),
           ),
           const SizedBox(height: AppSpacing.space2),
-          for (var index = 0; index < transactions.length; index++) ...[
-            _TransactionRow(
-              txn: transactions[index],
-              currencyCode: currencyCode,
-            ),
-            if (index != transactions.length - 1)
-              Divider(
-                color: colorScheme.outlineVariant,
-                height: AppSpacing.space4,
+          if (transactions.isEmpty)
+            Text(
+              'No transactions yet.',
+              style: AppTypography.body.copyWith(
+                color: context.lootrColors.textSecondary,
               ),
+            ),
+          for (var index = 0; index < transactions.length; index++) ...[
+            _TransactionRow(txn: transactions[index]),
+            if (index != transactions.length - 1)
+              Divider(color: colorScheme.outlineVariant, height: 1),
           ],
         ],
       ),
@@ -59,14 +50,13 @@ class RecentTransactionsList extends StatelessWidget {
 }
 
 class _TransactionRow extends StatelessWidget {
-  const _TransactionRow({required this.txn, required this.currencyCode});
+  const _TransactionRow({required this.txn});
 
   final DashboardTransactionItem txn;
-  final String currencyCode;
 
   @override
   Widget build(BuildContext context) {
-    final lotrColors = context.lootrColors;
+    final lootrColors = context.lootrColors;
     final direction = txn.direction == 'income'
         ? TransactionDirection.income
         : txn.direction == 'transfer'
@@ -74,10 +64,10 @@ class _TransactionRow extends StatelessWidget {
         : TransactionDirection.expense;
 
     final directionColor = direction == TransactionDirection.income
-        ? lotrColors.income
+        ? lootrColors.income
         : direction == TransactionDirection.transfer
-        ? lotrColors.transfer
-        : lotrColors.expense;
+        ? lootrColors.transfer
+        : lootrColors.expense;
     final prefix = direction == TransactionDirection.income
         ? '+'
         : direction == TransactionDirection.transfer
@@ -112,6 +102,7 @@ class _TransactionRow extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
+                flex: 5,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -125,7 +116,7 @@ class _TransactionRow extends StatelessWidget {
                     Text(
                       '${txn.categoryName} \u00b7 ${txn.accountName}',
                       style: AppTypography.caption.copyWith(
-                        color: lotrColors.textSecondary,
+                        color: lootrColors.textSecondary,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -134,25 +125,30 @@ class _TransactionRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '$prefix${MoneyFormat.exact(txn.amount, txn.currencyCode)}',
-                    style: AppTypography.mono.copyWith(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: directionColor,
+              Expanded(
+                flex: 4,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '$prefix${MoneyFormat.exact(txn.amount, txn.currencyCode)}',
+                      textAlign: TextAlign.end,
+                      style: AppTypography.mono.copyWith(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: directionColor,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    time,
-                    style: AppTypography.captionMedium.copyWith(
-                      color: lotrColors.textTertiary,
+                    const SizedBox(height: 2),
+                    Text(
+                      time,
+                      textAlign: TextAlign.end,
+                      style: AppTypography.captionMedium.copyWith(
+                        color: lootrColors.textSecondary,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),

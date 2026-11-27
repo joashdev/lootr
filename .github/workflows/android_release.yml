@@ -116,29 +116,57 @@ jobs:
       - name: Test
         run: flutter test --no-pub
 
-      - name: Build unsigned release APK
+      - name: Build unsigned release APKs
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.release_version }}
-        run: |
-          flutter build apk --release \
-            --build-name "$RELEASE_VERSION" \
-            --build-number "$GITHUB_RUN_NUMBER" \
-            --dart-define=LOOTR_REPORT_ENDPOINT=https://lootr-report-relay.joashdev.workers.dev
-
-      - name: Prepare unsigned artifact
         shell: bash
         run: |
-          unsigned_asset="lootr-${GITHUB_REF_NAME}-android-unsigned.apk"
-          mv build/app/outputs/flutter-apk/app-release.apk "$unsigned_asset"
-          echo "unsigned_asset=$unsigned_asset" >> "$GITHUB_ENV"
+          mkdir unsigned-apks native-symbols
+          build_apk() {
+            local suffix="$1"
+            shift
+            flutter build apk --release \
+              --build-name "$RELEASE_VERSION" \
+              --build-number "$GITHUB_RUN_NUMBER" \
+              --dart-define=LOOTR_REPORT_ENDPOINT=https://lootr-report-relay.joashdev.workers.dev \
+              "$@"
+            mv build/app/outputs/flutter-apk/app-release.apk \
+              "unsigned-apks/lootr-${GITHUB_REF_NAME}-android${suffix}.apk"
+            cp build/app/outputs/native-debug-symbols/release/native-debug-symbols.zip \
+              "native-symbols/lootr-${GITHUB_REF_NAME}-android${suffix}-symbols.zip"
+          }
 
-      - name: Upload unsigned artifact
+          build_apk ""
+          # Single-target builds keep the universal APK's versionCode.
+          ORG_GRADLE_PROJECT_lootrReleaseAbi=arm64-v8a build_apk -arm64-v8a --target-platform android-arm64
+          ORG_GRADLE_PROJECT_lootrReleaseAbi=armeabi-v7a build_apk -armeabi-v7a --target-platform android-arm
+          ORG_GRADLE_PROJECT_lootrReleaseAbi=x86_64 build_apk -x86_64 --target-platform android-x64
+
+      - name: Check release size and compatibility
+        shell: bash
+        run: |
+          aapt="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -1)"
+          zipalign="${aapt%/*}/zipalign"
+          for apk in unsigned-apks/*.apk; do
+            "$zipalign" -c -P 16 4 "$apk"
+          done
+          python3 tool/check_android_apks.py unsigned-apks "$GITHUB_REF_NAME" "$GITHUB_RUN_NUMBER" "$aapt" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload unsigned APKs
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: lootr-${{ github.ref_name }}-android-unsigned
-          path: ${{ env.unsigned_asset }}
+          path: unsigned-apks/*.apk
           if-no-files-found: error
           retention-days: 1
+
+      - name: Preserve native symbols
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: lootr-${{ github.ref_name }}-android-native-symbols
+          path: native-symbols/*.zip
+          if-no-files-found: error
 
   release:
     needs: validate
@@ -149,10 +177,11 @@ jobs:
       id-token: write
       attestations: write
     steps:
-      - name: Download validated unsigned APK
+      - name: Download validated unsigned APKs
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: lootr-${{ github.ref_name }}-android-unsigned
+          path: unsigned-apks
 
       - name: Locate Android signer
         shell: bash
@@ -189,7 +218,7 @@ jobs:
             fi
           done
 
-      - name: Sign validated APK
+      - name: Sign validated APKs
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -197,64 +226,66 @@ jobs:
           ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
         shell: bash
         run: |
-          unsigned_asset="lootr-${GITHUB_REF_NAME}-android-unsigned.apk"
-          asset="lootr-${GITHUB_REF_NAME}-android.apk"
           printf '%s' "$ANDROID_KEYSTORE_BASE64" \
             | base64 --decode > android-upload.jks
-          "$apksigner_path" sign \
-            --ks android-upload.jks \
-            --ks-key-alias "$ANDROID_KEY_ALIAS" \
-            --ks-pass env:ANDROID_STORE_PASSWORD \
-            --key-pass env:ANDROID_KEY_PASSWORD \
-            --out "$asset" \
-            "$unsigned_asset"
-          rm -f "$unsigned_asset"
-          echo "asset=$asset" >> "$GITHUB_ENV"
+          mkdir signed-apks
+          for unsigned_asset in unsigned-apks/*.apk; do
+            "$apksigner_path" sign \
+              --ks android-upload.jks \
+              --ks-key-alias "$ANDROID_KEY_ALIAS" \
+              --ks-pass env:ANDROID_STORE_PASSWORD \
+              --key-pass env:ANDROID_KEY_PASSWORD \
+              --out "signed-apks/${unsigned_asset##*/}" \
+              "$unsigned_asset"
+          done
 
       - name: Verify signing identity
         env:
           ANDROID_SIGNING_CERT_SHA256: ${{ vars.ANDROID_SIGNING_CERT_SHA256 }}
         shell: bash
         run: |
-          certificate_output="$(
-            "$apksigner_path" verify --verbose --print-certs "$asset"
-          )"
-          printf '%s\n' "$certificate_output"
-          actual_fingerprint="$(
-            printf '%s\n' "$certificate_output" \
-              | awk -F': ' '/certificate SHA-256 digest:/{print $NF; exit}' \
-              | tr '[:upper:]' '[:lower:]' \
-              | tr -d ':'
-          )"
           expected_fingerprint="$(
             printf '%s' "$ANDROID_SIGNING_CERT_SHA256" \
               | tr '[:upper:]' '[:lower:]' \
               | tr -d ':'
           )"
-          if [[ -z "$actual_fingerprint" ]]; then
-            echo "Could not extract the APK signing certificate fingerprint."
-            exit 1
-          fi
-          if [[ "$actual_fingerprint" != "$expected_fingerprint" ]]; then
-            echo "APK signer does not match the pinned Lootr release certificate."
-            exit 1
-          fi
+          for asset in signed-apks/*.apk; do
+            certificate_output="$(
+              "$apksigner_path" verify --verbose --print-certs "$asset"
+            )"
+            printf '%s\n' "$certificate_output"
+            actual_fingerprint="$(
+              printf '%s\n' "$certificate_output" \
+                | awk -F': ' '/certificate SHA-256 digest:/{print $NF; exit}' \
+                | tr '[:upper:]' '[:lower:]' \
+                | tr -d ':'
+            )"
+            if [[ -z "$actual_fingerprint" || "$actual_fingerprint" != "$expected_fingerprint" ]]; then
+              echo "APK signer does not match the pinned Lootr release certificate: $asset"
+              exit 1
+            fi
+          done
 
-      - name: Create checksum
-        run: sha256sum "$asset" > "${asset}.sha256"
+      - name: Create checksums
+        shell: bash
+        working-directory: signed-apks
+        run: |
+          for asset in *.apk; do
+            sha256sum "$asset" > "${asset}.sha256"
+          done
 
       - name: Attest APK provenance
         uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4
         with:
-          subject-path: ${{ env.asset }}
+          subject-path: signed-apks/*.apk
 
       - name: Preserve signed workflow artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: lootr-${{ github.ref_name }}-android
           path: |
-            ${{ env.asset }}
-            ${{ env.asset }}.sha256
+            signed-apks/*.apk
+            signed-apks/*.apk.sha256
           if-no-files-found: error
 
       - name: Publish GitHub prerelease
@@ -263,8 +294,8 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           gh release create "$GITHUB_REF_NAME" \
-            "$asset" \
-            "${asset}.sha256" \
+            signed-apks/*.apk \
+            signed-apks/*.apk.sha256 \
             --verify-tag \
             --prerelease \
             --generate-notes \

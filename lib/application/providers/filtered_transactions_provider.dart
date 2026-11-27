@@ -23,7 +23,9 @@ final filteredTransactionsProvider = StreamProvider<List<Transaction>>((ref) {
   final ledgerFilters = ledgerQuery?.filters;
   final period = ref.watch(periodContextProvider);
   final searchQuery = ref.watch(transactionSearchQueryProvider);
-  final listIntent = ref.watch(transactionListIntentProvider);
+  final sort = ref.watch(
+    transactionListIntentProvider.select((intent) => intent.sort),
+  );
   final payees = ref.watch(payeesProvider).asData?.value ?? const <Payee>[];
   final payeesById = {for (final payee in payees) payee.id: payee};
   final search = TransactionSearch.parse(searchQuery);
@@ -135,7 +137,7 @@ final filteredTransactionsProvider = StreamProvider<List<Transaction>>((ref) {
     }
 
     txns.sort(
-      listIntent.sort == TransactionSort.newestFirst
+      sort == TransactionSort.newestFirst
           ? (a, b) => b.occurredAt.compareTo(a.occurredAt)
           : (a, b) => a.occurredAt.compareTo(b.occurredAt),
     );

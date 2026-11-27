@@ -5,12 +5,126 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../application/providers/more_tab_provider.dart';
 import '../../../core/theme/colors.dart';
+import '../../../core/theme/radius.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
 import '../../shared/components/primary_screen_header.dart';
 
 class MoreScreen extends ConsumerWidget {
   const MoreScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sections = ref.watch(moreTabProvider);
+
+    return Scaffold(
+      appBar: const PrimaryScreenHeader(title: 'More'),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: AppSpacing.pageMaxWidth),
+          child: ListView.separated(
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.pagePaddingMobile,
+              AppSpacing.space4,
+              AppSpacing.pagePaddingMobile,
+              AppSpacing.bottomNavOverlayClearance +
+                  MediaQuery.paddingOf(context).bottom,
+            ),
+            itemCount: sections.length,
+            separatorBuilder: (_, _) =>
+                const SizedBox(height: AppSpacing.space5),
+            itemBuilder: (context, index) =>
+                _MoreSection(group: sections[index], featured: index == 0),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MoreSection extends StatelessWidget {
+  const _MoreSection({required this.group, required this.featured});
+
+  final MoreSectionGroup group;
+  final bool featured;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Semantics(
+          header: true,
+          child: Padding(
+            padding: const EdgeInsets.only(
+              left: AppSpacing.space1,
+              bottom: AppSpacing.space2,
+            ),
+            child: Text(group.header, style: AppTypography.h3),
+          ),
+        ),
+        if (featured)
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const gap = AppSpacing.space2;
+              final tileWidth = (constraints.maxWidth - gap) / 2;
+              final labelSize = MediaQuery.textScalerOf(context).scale(15);
+              if (tileWidth < labelSize * 9) {
+                return _MoreList(items: group.items);
+              }
+              return Wrap(
+                spacing: gap,
+                runSpacing: gap,
+                children: [
+                  for (final item in group.items)
+                    SizedBox(
+                      width: tileWidth,
+                      child: _MoreListTile(item: item, featured: true),
+                    ),
+                ],
+              );
+            },
+          )
+        else
+          _MoreList(items: group.items),
+      ],
+    );
+  }
+}
+
+class _MoreList extends StatelessWidget {
+  const _MoreList({required this.items});
+
+  final List<MoreItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Material(
+      color: colors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        side: BorderSide(color: colors.outlineVariant),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          for (final (index, item) in items.indexed) ...[
+            if (index > 0)
+              const Divider(indent: 48, endIndent: AppSpacing.space3),
+            _MoreListTile(item: item),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _MoreListTile extends StatelessWidget {
+  const _MoreListTile({required this.item, this.featured = false});
+
+  final MoreItem item;
+  final bool featured;
 
   static const _iconMap = <String, IconData>{
     'wallet': LucideIcons.wallet,
@@ -20,6 +134,7 @@ class MoreScreen extends ConsumerWidget {
     'chart-bar': LucideIcons.chartBarBig,
     'sparkles': LucideIcons.sparkles,
     'tag': LucideIcons.tag,
+    'list-filter': LucideIcons.listFilter,
     'address-book': LucideIcons.contact,
     'users': LucideIcons.users,
     'user-circle': LucideIcons.userCircle,
@@ -33,134 +148,82 @@ class MoreScreen extends ConsumerWidget {
   };
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final sections = ref.watch(moreTabProvider);
-    final colorScheme = Theme.of(context).colorScheme;
-    final lootrColors = context.lootrColors;
-
-    return Scaffold(
-      appBar: const PrimaryScreenHeader(title: 'More'),
-      body: ListView.separated(
-        padding: EdgeInsets.only(
-          bottom:
-              AppSpacing.bottomNavOverlayClearance +
-              MediaQuery.paddingOf(context).bottom,
-        ),
-        itemCount: sections.fold<int>(0, (sum, g) => sum + 1 + g.items.length),
-        separatorBuilder: (_, _) => Divider(
-          height: 1,
-          indent: AppSpacing.pagePaddingMobile + 24 + AppSpacing.space3,
-          color: lootrColors.borderSubtle,
-        ),
-        itemBuilder: (context, index) {
-          var offset = 0;
-          for (final group in sections) {
-            if (index == offset) {
-              return _SectionHeader(title: group.header);
-            }
-            offset++;
-            final itemIndex = index - offset;
-            if (itemIndex < group.items.length) {
-              final item = group.items[itemIndex];
-              return _MoreListTile(
-                leading: Icon(
-                  _iconMap[item.icon] ?? LucideIcons.dot,
-                  size: 20,
-                  color: item.enabled
-                      ? colorScheme.primary
-                      : lootrColors.textTertiary,
-                ),
-                title: item.label,
-                trailing: Icon(
-                  LucideIcons.chevronRight,
-                  size: 18,
-                  color: lootrColors.textTertiary,
-                ),
-                onTap: item.enabled ? () => context.push(item.route) : null,
-                enabled: item.enabled,
-              );
-            }
-            offset += group.items.length;
-          }
-          return const SizedBox.shrink();
-        },
-      ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.title});
-
-  final String title;
-
-  @override
   Widget build(BuildContext context) {
-    final lootrColors = context.lootrColors;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.pagePaddingMobile,
-        AppSpacing.space5,
-        AppSpacing.pagePaddingMobile,
-        AppSpacing.space2,
-      ),
-      color: Theme.of(context).colorScheme.surfaceContainerLow,
-      child: Text(
-        title,
-        style: AppTypography.captionMedium.copyWith(
-          color: lootrColors.textSecondary,
-        ),
-      ),
-    );
-  }
-}
+    final colors = Theme.of(context).colorScheme;
+    final muted = context.lootrColors.textSecondary;
+    final icon = _iconMap[item.icon] ?? LucideIcons.dot;
+    final VoidCallback? open = item.enabled
+        ? () => context.push(item.route)
+        : null;
 
-class _MoreListTile extends StatelessWidget {
-  const _MoreListTile({
-    required this.leading,
-    required this.title,
-    required this.trailing,
-    required this.onTap,
-    this.enabled = true,
-  });
-
-  final Widget leading;
-  final String title;
-  final Widget trailing;
-  final VoidCallback? onTap;
-  final bool enabled;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Theme.of(context).colorScheme.surface,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.pagePaddingMobile,
-            vertical: AppSpacing.space3,
+    if (featured) {
+      return Material(
+        color: colors.primaryContainer,
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
+          enabled: item.enabled,
+          minTileHeight: 84,
+          minVerticalPadding: AppSpacing.space3,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.space3,
           ),
-          child: Row(
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(width: 24, child: leading),
-              const SizedBox(width: AppSpacing.space3),
-              Expanded(
-                child: Text(
-                  title,
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: enabled
-                        ? Theme.of(context).colorScheme.onSurface
-                        : context.lootrColors.textTertiary,
-                  ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Icon(icon, size: 22, color: colors.onPrimaryContainer),
+                  if (item.enabled)
+                    Icon(
+                      LucideIcons.chevronRight,
+                      size: 16,
+                      color: colors.onPrimaryContainer,
+                    ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.space2),
+              Text(
+                item.label,
+                style: AppTypography.bodyMedium.copyWith(
+                  color: colors.onPrimaryContainer,
                 ),
               ),
-              trailing,
             ],
           ),
+          onTap: open,
+        ),
+      );
+    }
+
+    return ListTile(
+      enabled: item.enabled,
+      minTileHeight: 48,
+      minLeadingWidth: 24,
+      horizontalTitleGap: AppSpacing.space3,
+      contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.space3),
+      leading: Icon(
+        icon,
+        size: 20,
+        color: item.enabled ? colors.primary : muted,
+      ),
+      title: Text(
+        item.label,
+        style: AppTypography.bodyMedium.copyWith(
+          color: item.enabled ? colors.onSurface : muted,
         ),
       ),
+      subtitle: item.enabled
+          ? null
+          : Text(
+              'Enable in AI & Data',
+              style: AppTypography.caption.copyWith(color: muted),
+            ),
+      trailing: item.enabled
+          ? Icon(LucideIcons.chevronRight, size: 16, color: muted)
+          : null,
+      onTap: open,
     );
   }
 }
