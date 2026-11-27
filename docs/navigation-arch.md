@@ -450,7 +450,7 @@ Hub for all secondary features. Grouped into sections for scannability.
 ### Section: Settings
 
 #### Profile & Preferences
-- **Profile screen** (pushed): Display name, email (read-only), currency code, locale, timezone. Edit fields → save.
+- **Profile screen** (pushed): Edit the local display name and dashboard currency. Save changes to the local profile. Dashboard currency selects which account totals to show. Email, locale, and the reminder time zone are read-only in V1.
 - Logout button at bottom.
 - "Delete account & reset data" button (destructive, confirmation dialog).
 

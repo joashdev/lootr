@@ -11,6 +11,7 @@ import 'package:lootr/application/providers/database_provider.dart';
 import 'package:lootr/application/providers/demo_data_provider.dart';
 import 'package:lootr/application/providers/notification_provider.dart';
 import 'package:lootr/data/database/app_database.dart';
+import 'package:lootr/data/repositories/user_repo.dart';
 
 class _FakeLocalNotificationsClient implements LocalNotificationsClient {
   final List<_ScheduledCall> scheduled = [];
@@ -484,28 +485,46 @@ void main() {
     expect(rows, hasLength(64));
   });
 
-  test('uses the stored user timezone when scheduling notifications', () async {
-    final scheduledAt = DateTime.now().add(const Duration(days: 1));
+  test(
+    'uses the personal reminder time zone and keeps the due instant',
+    () async {
+      final now = DateTime.now();
+      final scheduledAt = DateTime(now.year, now.month, now.day + 1, 9);
 
-    await (db.update(db.users)..where((row) => row.id.equals('usr-1'))).write(
-      const UsersCompanion(timezone: Value('America/New_York')),
-    );
-    await db.recurringTemplates.insertOne(
-      RecurringTemplatesCompanion.insert(
-        id: 'rec-timezone',
-        accountId: 'acc-1',
-        amount: 125,
-        recurrenceRule: 'monthly',
-        nextOccurrenceAt: Value(scheduledAt),
-      ),
-    );
+      await (db.update(db.users)..where((row) => row.id.equals('usr-1'))).write(
+        const UsersCompanion(timezone: Value('America/New_York')),
+      );
+      await db.users.insertOne(
+        UsersCompanion.insert(
+          id: 'demo-user-1',
+          timezone: const Value('Asia/Manila'),
+        ),
+      );
+      await db.users.insertOne(
+        UsersCompanion.insert(
+          id: UserRepo.localProfileId,
+          timezone: const Value('America/Denver'),
+        ),
+      );
+      await UserRepo(db).saveProfile(displayName: null, currencyCode: 'PHP');
+      await db.recurringTemplates.insertOne(
+        RecurringTemplatesCompanion.insert(
+          id: 'rec-timezone',
+          accountId: 'acc-1',
+          amount: 125,
+          recurrenceRule: 'monthly',
+          nextOccurrenceAt: Value(scheduledAt),
+        ),
+      );
 
-    final scheduler = makeScheduler();
-    await scheduler.initialize();
-    await scheduler.rebuildSchedule();
+      final scheduler = makeScheduler();
+      await scheduler.initialize();
+      await scheduler.rebuildSchedule();
 
-    expect(client.configuredTimeZoneName, 'America/New_York');
-  });
+      expect(client.configuredTimeZoneName, 'America/Denver');
+      expect(client.scheduled.single.scheduledAt, scheduledAt);
+    },
+  );
 }
 
 Selectable<NotificationData> _dbPending(AppDatabase db) {

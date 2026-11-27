@@ -1,3 +1,5 @@
+import 'demo_user_id.dart';
+
 enum DemoEntityType {
   user('users'),
   account('accounts'),
@@ -26,7 +28,7 @@ class DemoRecordRef {
 /// `demo-` prefix as proof that a record belongs to Lootr.
 class DemoDataManifest {
   static const seedVersion = 1;
-  static const userId = 'demo-user-1';
+  static const userId = demoUserId;
 
   static const accountIds = [
     'demo-acc-bdo-savings',

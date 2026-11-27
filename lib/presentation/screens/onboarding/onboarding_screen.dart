@@ -7,11 +7,13 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../application/providers/demo_data_provider.dart';
 import '../../../application/providers/onboarding_provider.dart';
 import '../../../application/providers/repo_providers.dart';
+import '../../../core/format/money_format.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/radius.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
 import '../../../data/database/app_database.dart';
+import '../../../data/repositories/user_repo.dart';
 import '../../shared/components/buttons/ghost_button.dart';
 import '../../shared/components/buttons/primary_button.dart';
 import '../../shared/components/inputs/app_text_field.dart';
@@ -20,8 +22,6 @@ import 'widgets/step_indicator.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
-
-  static const supportedCurrencies = ['PHP', 'USD', 'EUR', 'GBP', 'JPY', 'SGD'];
 
   @override
   ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -124,7 +124,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     if (existing == null) {
       await repo.create(
         UsersCompanion.insert(
-          id: 'local-user-1',
+          id: UserRepo.localProfileId,
           displayName: Value(name.isEmpty ? null : name),
           currencyCode: Value(_currency),
         ),
@@ -398,7 +398,7 @@ class _SetupForm extends StatelessWidget {
               isExpanded: true,
               borderRadius: BorderRadius.circular(AppRadius.md),
               items: [
-                for (final code in OnboardingScreen.supportedCurrencies)
+                for (final code in MoneyFormat.supportedCurrencies)
                   DropdownMenuItem(value: code, child: Text(code)),
               ],
               onChanged: (value) {

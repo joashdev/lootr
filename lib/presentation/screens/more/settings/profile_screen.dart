@@ -2,183 +2,175 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../../application/providers/accounts_provider.dart';
 import '../../../../application/providers/current_user_provider.dart';
-import '../../../../core/theme/colors.dart';
+import '../../../../application/providers/repo_providers.dart';
+import '../../../../core/format/money_format.dart';
 import '../../../../core/theme/spacing.dart';
-import '../../../../core/theme/typography.dart';
+import '../../../../data/database/app_database.dart';
+import '../../../../data/repositories/user_repo.dart';
+import '../../../shared/components/buttons/primary_button.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(currentUserProvider).asData?.value;
-    final lootrColors = context.lootrColors;
-    final colorScheme = Theme.of(context).colorScheme;
-
+    final profile = ref.watch(currentUserProvider);
     return Scaffold(
       appBar: AppBar(
         centerTitle: false,
         title: const Text('Profile & Preferences'),
       ),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.space2),
-        children: [
-          _SettingsSection(
-            header: 'Profile',
-            children: [
-              _SettingsTile(
-                leading: Icon(
-                  LucideIcons.user,
-                  size: 20,
-                  color: colorScheme.primary,
-                ),
-                title: 'Display Name',
-                subtitle: 'Your local profile name',
-                trailing: Text(
-                  user?.displayName ?? 'Local User',
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: colorScheme.onSurface,
-                  ),
-                ),
-              ),
-              _SettingsTile(
-                leading: Icon(
-                  LucideIcons.mail,
-                  size: 20,
-                  color: colorScheme.primary,
-                ),
-                title: 'Email',
-                subtitle: 'Read-only in V1',
-                trailing: Text(
-                  user?.email ?? '—',
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: lootrColors.textTertiary,
-                  ),
-                ),
-              ),
-            ],
+      body: profile.when(
+        data: (user) => _ProfileForm(
+          key: ValueKey(user?.id ?? UserRepo.localProfileId),
+          user: user,
+        ),
+        error: (_, _) => Center(
+          child: TextButton(
+            onPressed: () => ref.invalidate(currentUserProvider),
+            child: const Text('Could not load your profile. Retry'),
           ),
-          _SettingsSection(
-            header: 'Preferences',
-            children: [
-              _SettingsTile(
-                leading: Icon(
-                  LucideIcons.coins,
-                  size: 20,
-                  color: colorScheme.primary,
-                ),
-                title: 'Currency',
-                subtitle: user?.currencyCode ?? 'PHP',
-                trailing: Icon(
-                  LucideIcons.chevronRight,
-                  size: 18,
-                  color: lootrColors.textTertiary,
-                ),
-              ),
-              _SettingsTile(
-                leading: Icon(
-                  LucideIcons.globe,
-                  size: 20,
-                  color: colorScheme.primary,
-                ),
-                title: 'Locale',
-                subtitle: user?.locale ?? 'en-PH',
-                trailing: Icon(
-                  LucideIcons.chevronRight,
-                  size: 18,
-                  color: lootrColors.textTertiary,
-                ),
-              ),
-              _SettingsTile(
-                leading: Icon(
-                  LucideIcons.clock,
-                  size: 20,
-                  color: colorScheme.primary,
-                ),
-                title: 'Timezone',
-                subtitle: user?.timezone ?? 'Asia/Manila (GMT+8)',
-                trailing: Icon(
-                  LucideIcons.chevronRight,
-                  size: 18,
-                  color: lootrColors.textTertiary,
-                ),
-              ),
+        ),
+        loading: () => const Center(child: CircularProgressIndicator()),
+      ),
+    );
+  }
+}
+
+class _ProfileForm extends ConsumerStatefulWidget {
+  const _ProfileForm({super.key, required this.user});
+
+  final UserData? user;
+
+  @override
+  ConsumerState<_ProfileForm> createState() => _ProfileFormState();
+}
+
+class _ProfileFormState extends ConsumerState<_ProfileForm> {
+  late final _name = TextEditingController(text: widget.user?.displayName);
+  late String _currency = widget.user?.currencyCode ?? 'PHP';
+
+  bool _saving = false;
+
+  bool get _hasChanges =>
+      _name.text != (widget.user?.displayName ?? '') ||
+      _currency != (widget.user?.currencyCode ?? 'PHP');
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (_saving || !_hasChanges) return;
+    FocusScope.of(context).unfocus();
+    setState(() => _saving = true);
+    final existing = widget.user?.displayName;
+    final edited = _name.text.trim();
+    final displayName = _name.text == (existing ?? '')
+        ? existing
+        : (edited.isEmpty ? null : edited);
+
+    try {
+      await ref
+          .read(userRepoProvider)
+          .saveProfile(displayName: displayName, currencyCode: _currency);
+      if (!mounted) return;
+      _name.text = displayName ?? '';
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Profile saved.')));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not save your profile. Try again.'),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final accounts = ref.watch(accountsProvider).value ?? const [];
+    final currencies = {
+      ...MoneyFormat.supportedCurrencies,
+      for (final account in accounts)
+        if (!account.isHidden) account.currencyCode,
+      _currency,
+    };
+    return SafeArea(
+      top: false,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.pagePaddingMobile,
+          AppSpacing.pagePaddingMobile,
+          AppSpacing.pagePaddingMobile,
+          AppSpacing.bottomNavOverlayClearance,
+        ),
+        children: [
+          TextFormField(
+            controller: _name,
+            enabled: !_saving,
+            onChanged: (_) => setState(() {}),
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(
+              labelText: 'Display name',
+              hintText: 'Local User',
+            ),
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Email'),
+            subtitle: Text(widget.user?.email ?? 'No account connected'),
+            trailing: const Icon(LucideIcons.lock, semanticLabel: 'Read only'),
+          ),
+          const SizedBox(height: AppSpacing.space4),
+          DropdownButtonFormField<String>(
+            key: const ValueKey('profile-currency'),
+            initialValue: _currency,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: 'Dashboard currency',
+              helperText: 'Shows totals for accounts in this currency.',
+              helperMaxLines: 2,
+            ),
+            items: [
+              for (final code in currencies)
+                DropdownMenuItem(value: code, child: Text(code)),
             ],
+            onChanged: _saving
+                ? null
+                : (code) {
+                    if (code != null) setState(() => _currency = code);
+                  },
+          ),
+          const SizedBox(height: AppSpacing.space4),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Reminder time zone'),
+            subtitle: Text(widget.user?.timezone ?? 'Automatic'),
+            trailing: const Icon(LucideIcons.lock, semanticLabel: 'Read only'),
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Locale'),
+            subtitle: Text(widget.user?.locale ?? 'App default'),
+            trailing: const Icon(LucideIcons.lock, semanticLabel: 'Read only'),
+          ),
+          const SizedBox(height: AppSpacing.space4),
+          PrimaryButton(
+            label: 'Save changes',
+            isLoading: _saving,
+            onPressed: _hasChanges ? _save : null,
           ),
         ],
       ),
-    );
-  }
-}
-
-class _SettingsSection extends StatelessWidget {
-  const _SettingsSection({required this.header, required this.children});
-
-  final String header;
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    final lootrColors = context.lootrColors;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.pagePaddingMobile,
-            AppSpacing.space3,
-            AppSpacing.pagePaddingMobile,
-            AppSpacing.space1,
-          ),
-          color: Theme.of(context).colorScheme.surfaceContainerLow,
-          child: Text(
-            header,
-            style: AppTypography.captionMedium.copyWith(
-              color: lootrColors.textSecondary,
-            ),
-          ),
-        ),
-        ...children,
-        const SizedBox(height: AppSpacing.space3),
-      ],
-    );
-  }
-}
-
-class _SettingsTile extends StatelessWidget {
-  const _SettingsTile({
-    required this.leading,
-    required this.title,
-    required this.subtitle,
-    this.trailing,
-  });
-
-  final Widget leading;
-  final String title;
-  final String subtitle;
-  final Widget? trailing;
-
-  @override
-  Widget build(BuildContext context) {
-    final lootrColors = context.lootrColors;
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.pagePaddingMobile,
-      ),
-      leading: leading,
-      title: Text(
-        title,
-        style: AppTypography.bodyMedium.copyWith(color: colorScheme.onSurface),
-      ),
-      subtitle: Text(
-        subtitle,
-        style: AppTypography.caption.copyWith(color: lootrColors.textSecondary),
-      ),
-      trailing: trailing,
     );
   }
 }
