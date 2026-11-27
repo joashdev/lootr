@@ -39,12 +39,9 @@ class DemoDataService {
   Future<DemoInspection> inspect() async {
     await reconcileLegacyRecords();
     var recordCount = await _demoRecordCount();
-    final metadata = await (_db.select(
-      _db.syncMetadata,
-    )..where((row) => row.key.equals('demo_data_seeded'))).getSingleOrNull();
     final status = recordCount > 0
         ? DemoInspectionStatus.present
-        : metadata?.value == 'true'
+        : await _legacyFlagSet()
         ? DemoInspectionStatus.unverified
         : DemoInspectionStatus.absent;
     if (status == DemoInspectionStatus.unverified) {
@@ -57,7 +54,7 @@ class DemoDataService {
     );
   }
 
-  Future<void> reconcileLegacyRecords() async {
+  Future<void> reconcileLegacyRecords() => _db.transaction(() async {
     final reconciliationKey =
         'demo_manifest_reconciled_v${DemoDataManifest.seedVersion}';
     final reconciliation = await (_db.select(
@@ -65,15 +62,14 @@ class DemoDataService {
     )..where((row) => row.key.equals(reconciliationKey))).getSingleOrNull();
     if (reconciliation?.value == 'true') return;
 
-    final legacyFlag = await (_db.select(
-      _db.syncMetadata,
-    )..where((row) => row.key.equals('demo_data_seeded'))).getSingleOrNull();
-
-    final existing = legacyFlag?.value == 'true'
-        ? await _knownLegacyRecords()
-        : <DemoRecordRef>[];
-    if (existing.length == DemoDataManifest.knownRecords.length) {
-      await _register(existing);
+    // Legacy loading committed its data before writing the flag.
+    if (await _demoRecordCount() == 0) {
+      final existing = await _knownLegacyRecords();
+      if (existing.length == DemoDataManifest.knownRecords.length) {
+        await _register(existing);
+      } else if (existing.isNotEmpty) {
+        await _setLegacyFlag(true);
+      }
     }
     await _db
         .into(_db.syncMetadata)
@@ -83,7 +79,7 @@ class DemoDataService {
             value: const Value('true'),
           ),
         );
-  }
+  });
 
   Future<DemoClearAnalysis> analyzeClear() async {
     await reconcileLegacyRecords();
@@ -101,14 +97,7 @@ class DemoDataService {
           (await _knownLegacyRecords()).isNotEmpty) {
         throw StateError('Known sample records still exist.');
       }
-      await _db
-          .into(_db.syncMetadata)
-          .insertOnConflictUpdate(
-            const SyncMetadataCompanion(
-              key: Value('demo_data_seeded'),
-              value: Value('false'),
-            ),
-          );
+      await _setLegacyFlag(false);
     });
   }
 
@@ -116,15 +105,14 @@ class DemoDataService {
     bool preservePersonalDependencies = true,
     bool reviewLegacyRecords = false,
   }) async {
-    await reconcileLegacyRecords();
-    final reviewedRecords = reviewLegacyRecords
-        ? await _knownLegacyRecords()
-        : <DemoRecordRef>[];
-    if (reviewLegacyRecords && reviewedRecords.isEmpty) {
-      throw StateError('No known sample records were found.');
-    }
     await _db.transaction(() async {
-      await _register(reviewedRecords);
+      await reconcileLegacyRecords();
+      if (reviewLegacyRecords) {
+        if (!await _legacyFlagSet() || await _demoRecordCount() > 0) return;
+        final reviewedRecords = await _knownLegacyRecords();
+        if (reviewedRecords.isEmpty) return;
+        await _register(reviewedRecords);
+      }
       final protected = await _protectedDemoRecords();
       if (protected.personalDependencyCount > 0 &&
           !preservePersonalDependencies) {
@@ -174,14 +162,7 @@ class DemoDataService {
       }
 
       await _db.delete(_db.demoRecords).go();
-      await _db
-          .into(_db.syncMetadata)
-          .insertOnConflictUpdate(
-            const SyncMetadataCompanion(
-              key: Value('demo_data_seeded'),
-              value: Value('false'),
-            ),
-          );
+      await _setLegacyFlag(false);
     });
   }
 
@@ -580,12 +561,29 @@ class DemoDataService {
       _db.select(_db.transactions).get().then((rows) => rows.length),
       _db.select(_db.transfers).get().then((rows) => rows.length),
       _db.select(_db.budgets).get().then((rows) => rows.length),
+      _db.select(_db.budgetDefinitions).get().then((rows) => rows.length),
       _db.select(_db.goals).get().then((rows) => rows.length),
       _db.select(_db.debtRecords).get().then((rows) => rows.length),
       _db.select(_db.recurringTemplates).get().then((rows) => rows.length),
     ]);
     return counts.every((count) => count == 0);
   }
+
+  Future<bool> _legacyFlagSet() async {
+    final metadata = await (_db.select(
+      _db.syncMetadata,
+    )..where((row) => row.key.equals('demo_data_seeded'))).getSingleOrNull();
+    return metadata?.value == 'true';
+  }
+
+  Future<void> _setLegacyFlag(bool value) => _db
+      .into(_db.syncMetadata)
+      .insertOnConflictUpdate(
+        SyncMetadataCompanion(
+          key: const Value('demo_data_seeded'),
+          value: Value(value.toString()),
+        ),
+      );
 
   Future<int> _demoRecordCount() async {
     final count = _db.demoRecords.entityId.count();

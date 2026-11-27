@@ -25,26 +25,25 @@ class DemoDataState {
 
 class DemoDataNotifier extends AsyncNotifier<DemoDataState> {
   @override
-  Future<DemoDataState> build() async {
-    return _inspect();
-  }
+  Future<DemoDataState> build() =>
+      _inspect(DemoDataService(ref.watch(databaseProvider)));
 
   Future<void> seed() async {
-    final repo = ref.read(categoryRepoProvider);
-    await repo.seedCategories();
-
-    final inspection = await _service.inspect();
-    if (inspection.status == DemoInspectionStatus.present) return;
-    if (!inspection.canSeed) {
-      throw StateError('Sample data can only be loaded into an empty ledger.');
-    }
-
-    state = const AsyncData(DemoDataState(status: DemoDataStatus.loading));
     final db = ref.read(databaseProvider);
-
-    const userId = 'demo-user-1';
+    final service = DemoDataService(db);
+    final categoryRepo = ref.read(categoryRepoProvider);
+    state = const AsyncData(DemoDataState(status: DemoDataStatus.loading));
+    const userId = DemoDataManifest.userId;
     try {
       await db.transaction(() async {
+        final inspection = await service.inspect();
+        if (inspection.status == DemoInspectionStatus.present) return;
+        if (!inspection.canSeed) {
+          throw StateError(
+            'Sample data can only be loaded into an empty ledger.',
+          );
+        }
+        await categoryRepo.seedCategories(includeMissing: true);
         await db
             .into(db.users)
             .insertOnConflictUpdate(
@@ -74,9 +73,7 @@ class DemoDataNotifier extends AsyncNotifier<DemoDataState> {
             );
       });
 
-      state = const AsyncData(
-        DemoDataState(status: DemoDataStatus.present, canSeed: false),
-      );
+      state = AsyncData(await _inspect(_service));
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
       rethrow;
@@ -110,7 +107,7 @@ class DemoDataNotifier extends AsyncNotifier<DemoDataState> {
     );
     try {
       await action();
-      state = AsyncData(await _inspect());
+      state = AsyncData(await _inspect(_service));
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
       rethrow;
@@ -126,8 +123,8 @@ class DemoDataNotifier extends AsyncNotifier<DemoDataState> {
 
   DemoDataService get _service => DemoDataService(ref.read(databaseProvider));
 
-  Future<DemoDataState> _inspect() async {
-    final inspection = await _service.inspect();
+  Future<DemoDataState> _inspect(DemoDataService service) async {
+    final inspection = await service.inspect();
     final status = switch (inspection.status) {
       DemoInspectionStatus.absent => DemoDataStatus.absent,
       DemoInspectionStatus.present => DemoDataStatus.present,

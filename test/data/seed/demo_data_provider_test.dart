@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -6,8 +8,11 @@ import 'package:lootr/application/providers/database_provider.dart';
 import 'package:lootr/application/providers/demo_data_provider.dart';
 import 'package:lootr/application/providers/repo_providers.dart';
 import 'package:lootr/data/database/app_database.dart';
+import 'package:lootr/data/repositories/composite_budget_repo.dart';
 import 'package:lootr/data/repositories/transaction_repo.dart';
+import 'package:lootr/data/seed/demo_data_loader.dart';
 import 'package:lootr/data/seed/demo_data_service.dart';
+import 'package:lootr/domain/value_objects/exact_money.dart';
 
 import '../../test_helpers/provider_container.dart';
 
@@ -57,6 +62,44 @@ void main() {
     );
 
     test(
+      'sample data status follows the database reopened after restore',
+      () async {
+        final initial = AppDatabase.inMemory();
+        final restored = AppDatabase.inMemory();
+        final seedContainer = createTestContainer(db: restored);
+        await seedContainer.read(demoDataProvider.notifier).seed();
+        final databases = [initial, restored].iterator;
+        final container = ProviderContainer(
+          overrides: [
+            databaseSessionProvider.overrideWith(
+              () => DatabaseSessionNotifier(
+                databaseFactory: () {
+                  databases.moveNext();
+                  return databases.current;
+                },
+                liveFile: () async => File('/synthetic/live.sqlite'),
+              ),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+        expect(
+          (await container.read(demoDataProvider.future)).status,
+          DemoDataStatus.absent,
+        );
+
+        await container
+            .read(databaseSessionProvider.notifier)
+            .whileDatabaseClosed<void>((_) async {});
+
+        expect(
+          (await container.read(demoDataProvider.future)).status,
+          DemoDataStatus.present,
+        );
+      },
+    );
+
+    test(
       'database records remain authoritative when metadata is stale',
       () async {
         final container = createTestContainer();
@@ -70,6 +113,76 @@ void main() {
         expect(await notifier.hasDemoData(), true);
       },
     );
+
+    test(
+      'recovers a complete legacy seed that stopped before setting its flag',
+      () async {
+        final container = createTestContainer();
+        final db = container.read(databaseProvider);
+        await container.read(categoryRepoProvider).seedCategories();
+        const userId = 'demo-user-1';
+        await db.users.insertOne(UsersCompanion.insert(id: userId));
+        await DemoDataLoader().load(db, userId: userId);
+        await db.delete(db.demoRecords).go();
+
+        final state = await container.read(demoDataProvider.future);
+        expect(state.status, DemoDataStatus.present);
+        expect(state.recordCount, greaterThan(0));
+        await container.read(demoDataProvider.notifier).clear();
+        expect(await db.select(db.transactions).get(), isEmpty);
+      },
+    );
+
+    test(
+      'loading samples preserves edited defaults and adds missing categories',
+      () async {
+        final container = createTestContainer();
+        final db = container.read(databaseProvider);
+        const editedId = 'default-cat-food-dining';
+        await db.categories.insertOne(
+          CategoriesCompanion.insert(
+            id: editedId,
+            name: 'My restaurant category',
+            categoryGroup: 'expense',
+          ),
+        );
+        final notifier = container.read(demoDataProvider.notifier);
+
+        await notifier.seed();
+        await notifier.clear();
+
+        final category = await (db.select(
+          db.categories,
+        )..where((row) => row.id.equals(editedId))).getSingle();
+        expect(category.name, 'My restaurant category');
+        expect(await db.select(db.transactions).get(), isEmpty);
+      },
+    );
+
+    test('a personal composite budget prevents loading samples', () async {
+      final container = createTestContainer();
+      final db = container.read(databaseProvider);
+      const userId = 'local-user-1';
+      await db.users.insertOne(UsersCompanion.insert(id: userId));
+      await CompositeBudgetRepo(db).create(
+        CompositeBudgetDraft(
+          id: 'personal-budget',
+          ownerUserId: userId,
+          name: 'Groceries',
+          limit: ExactMoney.parse('100', 'PHP'),
+          periodType: 'monthly',
+          directionFilter: 'expense',
+          membershipMode: 'all_matching',
+        ),
+      );
+      final state = await container.read(demoDataProvider.future);
+      expect(state.canSeed, isFalse);
+      await expectLater(
+        container.read(demoDataProvider.notifier).seed(),
+        throwsStateError,
+      );
+      expect(await db.select(db.demoRecords).get(), isEmpty);
+    });
 
     test('partial legacy data stays unverified', () async {
       final container = createTestContainer();
