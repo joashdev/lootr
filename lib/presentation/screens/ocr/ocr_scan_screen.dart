@@ -13,7 +13,6 @@ import '../../../core/theme/radius.dart';
 import '../../../core/theme/typography.dart';
 import '../../../domain/use_cases/run_ocr.dart';
 import '../../../domain/value_objects/ocr_payload.dart';
-import '../../sheets/add_transaction_sheet.dart';
 import '../../shared/components/app_snackbar.dart';
 import '../../shared/components/buttons/primary_button.dart';
 
@@ -24,10 +23,11 @@ import '../../shared/components/buttons/primary_button.dart';
 /// ML Kit backed [RunOCR] use case and the extracted fields are previewed
 /// before the user continues to the Add Transaction sheet.
 class OcrScanScreen extends ConsumerStatefulWidget {
-  const OcrScanScreen({super.key, this.runOcr});
+  const OcrScanScreen({super.key, this.runOcr, required this.onConfirmed});
 
   /// Injectable use case for testing. Defaults to a real ML Kit pipeline.
   final RunOCR? runOcr;
+  final ValueChanged<OcrPayload> onConfirmed;
 
   @override
   ConsumerState<OcrScanScreen> createState() => _OcrScanScreenState();
@@ -79,8 +79,8 @@ class _OcrScanScreenState extends ConsumerState<OcrScanScreen>
   Future<void> _initCamera() async {
     try {
       final cameras = await availableCameras();
+      if (!mounted) return;
       if (cameras.isEmpty) {
-        if (!mounted) return;
         setState(() {
           _cameraAvailable = false;
           _cameraError = 'No camera available on this device.';
@@ -94,11 +94,6 @@ class _OcrScanScreenState extends ConsumerState<OcrScanScreen>
         enableAudio: false,
       );
       final initFuture = controller.initialize();
-      if (!mounted) {
-        await initFuture;
-        await controller.dispose();
-        return;
-      }
       setState(() {
         _cameraController = controller;
         _cameraInitFuture = initFuture;
@@ -143,13 +138,14 @@ class _OcrScanScreenState extends ConsumerState<OcrScanScreen>
     }
     try {
       final file = await controller.takePicture();
+      if (!mounted) return;
       setState(() {
         _selectedImagePath = file.path;
         _payload = null;
       });
       await _processImage(file.path);
     } catch (error) {
-      _showSnackBar('Could not capture photo: $error');
+      if (mounted) _showSnackBar('Could not capture photo: $error');
     }
   }
 
@@ -162,14 +158,14 @@ class _OcrScanScreenState extends ConsumerState<OcrScanScreen>
     }
     try {
       final file = await _picker.pickImage(source: ImageSource.gallery);
-      if (file == null) return;
+      if (!mounted || file == null) return;
       setState(() {
         _selectedImagePath = file.path;
         _payload = null;
       });
       await _processImage(file.path);
     } catch (error) {
-      _showSnackBar('Could not open gallery: $error');
+      if (mounted) _showSnackBar('Could not open gallery: $error');
     }
   }
 
@@ -191,20 +187,6 @@ class _OcrScanScreenState extends ConsumerState<OcrScanScreen>
 
   void _showSnackBar(String message) {
     AppSnackBar.show(context, message, variant: AppSnackBarVariant.warning);
-  }
-
-  void _continueToSave() {
-    final payload = _payload;
-    if (payload == null) return;
-    context.push(
-      '/transactions/new',
-      extra: AddTransactionSheetArgs(
-        initialParsedTransaction: payload.extractedFields,
-        entrySource: 'ocr',
-        sourceConfidence: payload.confidence,
-        sourceSummary: 'On-device receipt scan',
-      ),
-    );
   }
 
   @override
@@ -238,14 +220,6 @@ class _OcrScanScreenState extends ConsumerState<OcrScanScreen>
               ),
             Positioned(
               top: 8,
-              left: 8,
-              child: IconButton(
-                onPressed: () => context.pop(),
-                icon: const Icon(LucideIcons.x, color: Colors.white),
-              ),
-            ),
-            Positioned(
-              top: 8,
               right: 8,
               child: IconButton(
                 tooltip: 'Toggle flash',
@@ -265,6 +239,21 @@ class _OcrScanScreenState extends ConsumerState<OcrScanScreen>
                   ),
                 ),
               ),
+            Positioned(
+              top: 8,
+              left: 8,
+              child: IconButton(
+                tooltip: 'Close receipt scanner',
+                onPressed: () {
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go('/');
+                  }
+                },
+                icon: const Icon(LucideIcons.x, color: Colors.white),
+              ),
+            ),
             Align(
               alignment: Alignment.bottomCenter,
               child: _buildBottomBar(colorScheme, assistanceEnabled),
@@ -370,11 +359,11 @@ class _OcrScanScreenState extends ConsumerState<OcrScanScreen>
               const SizedBox(width: 48),
             ],
           ),
-          if (_payload != null) ...[
+          if (_payload case final payload?) ...[
             const SizedBox(height: 16),
             PrimaryButton(
               label: 'Continue to Save',
-              onPressed: _continueToSave,
+              onPressed: () => widget.onConfirmed(payload),
             ),
           ],
         ],

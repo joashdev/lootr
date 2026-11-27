@@ -39,6 +39,7 @@ import '../../domain/use_cases/edit_transaction.dart';
 import '../../domain/use_cases/edit_transfer.dart';
 import '../../domain/value_objects/field_types.dart' as fields;
 import '../../domain/value_objects/exact_money.dart';
+import '../../domain/value_objects/ocr_payload.dart';
 import '../../domain/value_objects/parsed_transaction.dart';
 import '../../domain/value_objects/undo_entry.dart';
 import '../shared/components/buttons/primary_button.dart';
@@ -63,6 +64,14 @@ class AddTransactionSheetArgs {
     this.sourceSummary,
     this.recurringPayment,
   });
+
+  AddTransactionSheetArgs.fromReceipt(OcrPayload payload)
+    : this(
+        initialParsedTransaction: payload.extractedFields,
+        entrySource: 'ocr',
+        sourceConfidence: payload.confidence,
+        sourceSummary: 'On-device receipt scan',
+      );
 
   final Transaction? initialTransaction;
   final Transfer? initialTransfer;
@@ -919,10 +928,13 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     });
   }
 
-  void _openScan() {
-    final router = GoRouter.of(context);
-    context.pop();
-    router.push('/scan');
+  Future<void> _openScan() async {
+    final receipt = await context.push<OcrPayload>('/scan');
+    if (!mounted || receipt == null) return;
+    context.pushReplacement(
+      '/transactions/new',
+      extra: AddTransactionSheetArgs.fromReceipt(receipt),
+    );
   }
 
   void _handleEntryModeSelected(EntryMode mode) {

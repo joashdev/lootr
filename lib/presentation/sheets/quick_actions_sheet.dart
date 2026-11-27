@@ -6,37 +6,19 @@ import 'package:speech_to_text/speech_to_text.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/radius.dart';
 import '../../core/theme/typography.dart';
+import '../../domain/value_objects/ocr_payload.dart';
 import '../shared/components/sheet_handle.dart';
 import '../shared/components/app_snackbar.dart';
 import 'add_transaction_sheet.dart';
 
-class QuickActionsSheet extends StatelessWidget {
+class QuickActionsSheet extends StatefulWidget {
   const QuickActionsSheet({super.key});
 
-  void _navigate(BuildContext context, String location, {Object? extra}) {
-    Navigator.of(context).pop();
-    context.push(location, extra: extra);
-  }
-
   @override
-  Widget build(BuildContext context) {
-    return _QuickActionsSheetBody(
-      onNavigate: (location, {extra}) =>
-          _navigate(context, location, extra: extra),
-    );
-  }
+  State<QuickActionsSheet> createState() => _QuickActionsSheetState();
 }
 
-class _QuickActionsSheetBody extends StatefulWidget {
-  const _QuickActionsSheetBody({required this.onNavigate});
-
-  final void Function(String location, {Object? extra}) onNavigate;
-
-  @override
-  State<_QuickActionsSheetBody> createState() => _QuickActionsSheetBodyState();
-}
-
-class _QuickActionsSheetBodyState extends State<_QuickActionsSheetBody> {
+class _QuickActionsSheetState extends State<QuickActionsSheet> {
   final TextEditingController _quickInputController = TextEditingController();
   final SpeechToText _speech = SpeechToText();
   bool _isListening = false;
@@ -48,9 +30,24 @@ class _QuickActionsSheetBodyState extends State<_QuickActionsSheetBody> {
     super.dispose();
   }
 
+  void _navigate(String location, {Object? extra}) {
+    final router = GoRouter.of(context);
+    Navigator.of(context).pop();
+    router.push(location, extra: extra);
+  }
+
+  Future<void> _openScan() async {
+    final receipt = await context.push<OcrPayload>('/scan');
+    if (!mounted || receipt == null) return;
+    _navigate(
+      '/transactions/new',
+      extra: AddTransactionSheetArgs.fromReceipt(receipt),
+    );
+  }
+
   void _openQuickAdd() {
     final initialQuickText = _quickInputController.text.trim();
-    widget.onNavigate(
+    _navigate(
       '/transactions/new',
       extra: AddTransactionSheetArgs(
         startInQuickMode: true,
@@ -156,9 +153,9 @@ class _QuickActionsSheetBodyState extends State<_QuickActionsSheetBody> {
                   case EntryMode.quick:
                     break; // Already in quick mode.
                   case EntryMode.manual:
-                    widget.onNavigate('/transactions/new');
+                    _navigate('/transactions/new');
                   case EntryMode.scan:
-                    widget.onNavigate('/scan');
+                    _openScan();
                 }
               },
             ),
