@@ -33,6 +33,17 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // Flutter's default ABI filters include all supported native libraries.
+        // Match its requested AOT targets without split APK versionCode offsets.
+        val releaseAbi = providers.gradleProperty("lootrReleaseAbi").orNull
+        if (releaseAbi != null) {
+            require(releaseAbi in setOf("arm64-v8a", "armeabi-v7a", "x86_64")) {
+                "Unsupported Android release ABI: $releaseAbi"
+            }
+            ndk.abiFilters.clear()
+            ndk.abiFilters.add(releaseAbi)
+        }
     }
 
     signingConfigs {

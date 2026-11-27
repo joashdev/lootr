@@ -108,10 +108,13 @@ tag on protected main
 version + tests + analysis
         |
         v
+build + check APKs
+        |
+        v
 restore ephemeral signing key
         |
         v
-build + verify APK signature
+sign + verify each APK
         |
         v
 checksum + provenance attestation
@@ -124,9 +127,12 @@ The workflow rejects a tag that does not match `pubspec.yaml` or does not point 
 
 The published assets are:
 
-- `lootr-vX.Y.Z-prerelease-android.apk`
-- `lootr-vX.Y.Z-prerelease-android.apk.sha256`
-- GitHub artifact provenance linked to the APK
+- `lootr-vX.Y.Z-prerelease-android.apk` for all supported ABIs
+- Single-ABI APKs with an `-arm64-v8a`, `-armeabi-v7a`, or `-x86_64` suffix
+- A SHA-256 checksum file and GitHub artifact provenance for each APK
+
+All APKs for one release use the same app ID and version code. The workflow
+checks their ABIs and size limits before signing.
 
 ## 5. Signing and Update Continuity
 
@@ -153,4 +159,4 @@ Local release builds without `android/key.properties` must never fall back to th
 - A release APK builds through both unsigned-local and configured-signing paths
 - `apksigner` verifies the signed artifact
 - The GitHub workflow publishes only matching tags reachable from protected `main`
-- The release exposes an APK, checksum, generated notes, and provenance
+- The release exposes universal and single-ABI APKs, checksums, generated notes, and provenance

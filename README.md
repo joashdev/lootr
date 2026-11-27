@@ -24,7 +24,9 @@ future, opt-in capabilities and are not required for the local V1 experience.
 ## Install the Android alpha
 
 1. Open the repository's [Releases](https://github.com/joashdev/lootr/releases).
-2. Download the APK and its `.sha256` file from the desired prerelease.
+2. Download the APK for your device and its matching `.sha256` file. If your
+   device supports `arm64-v8a`, choose that smaller APK when it is available.
+   If you do not know your device's ABI, choose the universal `-android.apk`.
 3. Verify the checksum:
 
    ```sh
