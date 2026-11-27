@@ -1,2 +1,2 @@
 /// Latest Lootr schema this application build can open or migrate to.
-const int lootrSchemaVersion = 3;
+const int lootrSchemaVersion = 4;

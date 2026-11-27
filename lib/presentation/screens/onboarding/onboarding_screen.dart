@@ -35,7 +35,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   int _currentStep = 0;
   String _currency = 'PHP';
-  bool _loadDemoData = true;
+  bool _loadDemoData = false;
   bool _isAdultConfirmed = false;
   bool _isSubmitting = false;
   bool _isSubmittingDemoData = false;

@@ -64,7 +64,7 @@ void main() {
 
   test('future Lootr schema backup is rejected before replacement', () async {
     final backup = File('${temporary.path}/future.lootr');
-    _createBackupPackage(backup, key, schemaVersion: 4);
+    _createBackupPackage(backup, key, schemaVersion: 5);
     final service = LootrBackupService(keyStore: InMemoryDatabaseKeyStore(key));
 
     await expectLater(

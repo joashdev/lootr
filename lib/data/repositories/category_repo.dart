@@ -40,13 +40,16 @@ class CategoryRepo {
     ));
   }
 
-  Future<void> seedCategories() async {
-    final existing = await _db.select(_db.categories).get();
-    if (existing.isNotEmpty) return;
+  Future<void> seedCategories({bool includeMissing = false}) async {
+    if (!includeMissing) {
+      final existing = await (_db.select(_db.categories)..limit(1)).get();
+      if (existing.isNotEmpty) return;
+    }
     await _db.batch((batch) {
-      batch.insertAllOnConflictUpdate(
+      batch.insertAll(
         _db.categories,
         CategorySeeds.toCompanions(),
+        mode: InsertMode.insertOrIgnore,
       );
     });
   }
