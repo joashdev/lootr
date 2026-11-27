@@ -7,6 +7,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../../core/recurring/subscription_template_classifier.dart';
 import '../../data/database/app_database.dart';
+import '../../data/repositories/user_repo.dart';
 import 'local_notifications_client.dart';
 import 'notification_deep_link.dart';
 
@@ -555,7 +556,7 @@ class NotificationScheduler {
   }
 
   Future<String?> _resolveSchedulingTimeZone() async {
-    final user = await (_db.select(_db.users)..limit(1)).getSingleOrNull();
+    final user = await UserRepo(_db).getCurrentUser();
     final timezone = user?.timezone?.trim();
     if (timezone == null || timezone.isEmpty) {
       return null;

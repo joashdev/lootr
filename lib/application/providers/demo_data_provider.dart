@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/database/app_database.dart';
 import '../../data/seed/demo_data_loader.dart';
+import '../../data/seed/demo_user_id.dart';
 import 'database_provider.dart';
 import 'repo_providers.dart';
 
@@ -30,16 +31,17 @@ class DemoDataNotifier extends AsyncNotifier<DemoDataState> {
     state = const AsyncData(DemoDataState(status: DemoDataStatus.loading));
     final db = ref.read(databaseProvider);
 
-    const userId = 'demo-user-1';
-    await db.into(db.users).insertOnConflictUpdate(
-      UsersCompanion.insert(
-        id: userId,
-        email: const Value('demo@lootr.app'),
-      ),
-    );
+    await db
+        .into(db.users)
+        .insertOnConflictUpdate(
+          UsersCompanion.insert(
+            id: demoUserId,
+            email: const Value('demo@lootr.app'),
+          ),
+        );
 
     final loader = DemoDataLoader();
-    await loader.load(db, userId: userId);
+    await loader.load(db, userId: demoUserId);
 
     final syncRepo = ref.read(syncMetadataRepoProvider);
     await syncRepo.set('demo_data_seeded', 'true');

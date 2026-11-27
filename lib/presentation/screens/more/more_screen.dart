@@ -41,7 +41,11 @@ class MoreScreen extends ConsumerWidget {
     return Scaffold(
       appBar: const PrimaryScreenHeader(title: 'More'),
       body: ListView.separated(
-        padding: const EdgeInsets.only(bottom: AppSpacing.space8),
+        padding: EdgeInsets.only(
+          bottom:
+              AppSpacing.bottomNavOverlayClearance +
+              MediaQuery.paddingOf(context).bottom,
+        ),
         itemCount: sections.fold<int>(0, (sum, g) => sum + 1 + g.items.length),
         separatorBuilder: (_, _) => Divider(
           height: 1,
@@ -58,7 +62,6 @@ class MoreScreen extends ConsumerWidget {
             final itemIndex = index - offset;
             if (itemIndex < group.items.length) {
               final item = group.items[itemIndex];
-              final isLastInGroup = itemIndex == group.items.length - 1;
               return _MoreListTile(
                 leading: Icon(
                   _iconMap[item.icon] ?? LucideIcons.dot,
@@ -74,7 +77,6 @@ class MoreScreen extends ConsumerWidget {
                   color: lootrColors.textTertiary,
                 ),
                 onTap: item.enabled ? () => context.push(item.route) : null,
-                isLastInGroup: isLastInGroup,
                 enabled: item.enabled,
               );
             }
@@ -120,7 +122,6 @@ class _MoreListTile extends StatelessWidget {
     required this.title,
     required this.trailing,
     required this.onTap,
-    this.isLastInGroup = false,
     this.enabled = true,
   });
 
@@ -128,7 +129,6 @@ class _MoreListTile extends StatelessWidget {
   final String title;
   final Widget trailing;
   final VoidCallback? onTap;
-  final bool isLastInGroup;
   final bool enabled;
 
   @override

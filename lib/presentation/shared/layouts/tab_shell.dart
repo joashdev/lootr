@@ -5,26 +5,28 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/theme/colors.dart';
+import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
 import '../../sheets/quick_actions_sheet.dart';
 
 class TabShell extends StatelessWidget {
   const TabShell({super.key, required this.navigationShell});
 
-  static const _pillHeight = 56.0;
-  static const _addButtonSize = 56.0;
-  static const _navBottomGap = 16.0;
   static const _navHorizontalInset = 16.0;
 
   final StatefulNavigationShell navigationShell;
 
   @override
   Widget build(BuildContext context) {
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final bottomPadding = MediaQuery.paddingOf(context).bottom;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surface = Theme.of(context).colorScheme.surface;
 
-    final navOverlayHeight = _navBottomGap + _pillHeight + bottomPadding + 48;
+    final navOverlayHeight =
+        AppSpacing.bottomNavGap +
+        AppSpacing.bottomNavButtonSize +
+        AppSpacing.bottomNavFadeHeight +
+        bottomPadding;
 
     return Scaffold(
       body: Stack(
@@ -57,7 +59,7 @@ class TabShell extends StatelessWidget {
           Positioned(
             left: _navHorizontalInset,
             right: _navHorizontalInset,
-            bottom: _navBottomGap + bottomPadding,
+            bottom: AppSpacing.bottomNavGap + bottomPadding,
             child: _buildFloatingNav(context, isDark),
           ),
         ],
@@ -78,7 +80,7 @@ class TabShell extends StatelessWidget {
 
   Widget _buildNavPill(BuildContext context, bool isDark) {
     return SizedBox(
-      height: _pillHeight,
+      height: AppSpacing.bottomNavButtonSize,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
         child: BackdropFilter(
@@ -155,8 +157,8 @@ class TabShell extends StatelessWidget {
           onTap: () => _showQuickActions(context),
           borderRadius: BorderRadius.circular(20),
           child: Container(
-            width: _addButtonSize,
-            height: _addButtonSize,
+            width: AppSpacing.bottomNavButtonSize,
+            height: AppSpacing.bottomNavButtonSize,
             decoration: BoxDecoration(
               color: isDark ? AppColors.darkPrimary600 : AppColors.primary600,
               borderRadius: BorderRadius.circular(20),
