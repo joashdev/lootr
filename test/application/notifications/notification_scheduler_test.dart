@@ -1,9 +1,15 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' hide isNull, isNotNull;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:lootr/application/notifications/local_notifications_client.dart';
 import 'package:lootr/application/notifications/notification_deep_link.dart';
 import 'package:lootr/application/notifications/notification_scheduler.dart';
+import 'package:lootr/application/providers/database_provider.dart';
+import 'package:lootr/application/providers/demo_data_provider.dart';
+import 'package:lootr/application/providers/notification_provider.dart';
 import 'package:lootr/data/database/app_database.dart';
 
 class _FakeLocalNotificationsClient implements LocalNotificationsClient {
@@ -15,6 +21,7 @@ class _FakeLocalNotificationsClient implements LocalNotificationsClient {
   bool iosPermission = true;
   String? launchPayload;
   String? configuredTimeZoneName;
+  Future<void> Function()? onConfigureTimeZone;
 
   @override
   Future<void> cancel(int id) async {
@@ -34,6 +41,7 @@ class _FakeLocalNotificationsClient implements LocalNotificationsClient {
   @override
   Future<void> configureLocalTimeZone(String? timeZoneName) async {
     configuredTimeZoneName = timeZoneName;
+    await onConfigureTimeZone?.call();
   }
 
   @override
@@ -142,6 +150,77 @@ void main() {
       client: client,
       isEnabled: (type) => enabled[type] ?? false,
       onDeepLink: openedPaths.add,
+    );
+  }
+
+  for (final legacy in [false, true]) {
+    test(
+      'clearing ${legacy ? 'legacy' : 'registered'} samples cancels only their reminders',
+      () async {
+        await db.delete(db.accounts).go();
+        await db.delete(db.payees).go();
+        await db.delete(db.categories).go();
+        final container = ProviderContainer(
+          overrides: [
+            databaseProvider.overrideWithValue(db),
+            localNotificationsClientProvider.overrideWithValue(client),
+          ],
+        );
+        addTearDown(container.dispose);
+        final demoData = container.read(demoDataProvider.notifier);
+        await demoData.seed();
+        if (legacy) {
+          await db.delete(db.demoRecords).go();
+          await (db.delete(
+            db.transactions,
+          )..where((row) => row.id.equals('demo-txn-m043'))).go();
+        }
+        await db.debtRecords.insertOne(
+          DebtRecordsCompanion.insert(
+            id: 'personal-debt',
+            ownerUserId: 'usr-1',
+            counterpartyName: 'Pat',
+            debtDirection: 'borrowed',
+            amount: 100,
+            remainingBalance: 100,
+            dueDate: Value(DateTime.now().add(const Duration(days: 2))),
+            status: 'active',
+          ),
+        );
+        final scheduler = container.read(notificationSchedulerProvider);
+        await scheduler.rebuildSchedule();
+        final before = await db.select(db.notifications).get();
+        final personal = before.singleWhere(
+          (row) => row.relatedEntityId == 'personal-debt',
+        );
+        final personalId = stableNotificationIntId(personal.id);
+        expect(client.pending, hasLength(greaterThan(1)));
+        expect(client.pending, contains(personalId));
+
+        if (legacy) {
+          await demoData.clearReviewedLegacy();
+        } else {
+          final ready = Completer<void>();
+          final resume = Completer<void>();
+          client.onConfigureTimeZone = () async {
+            client.onConfigureTimeZone = null;
+            ready.complete();
+            await resume.future;
+          };
+          final rebuilding = scheduler.rebuildSchedule();
+          await ready.future;
+          final clearing = demoData.clear();
+          await db
+              .select(db.demoRecords)
+              .watch()
+              .firstWhere((rows) => rows.isEmpty);
+          resume.complete();
+          await Future.wait([rebuilding, clearing]);
+        }
+
+        expect(client.pending, [personalId]);
+        expect(await db.select(db.notifications).get(), [personal]);
+      },
     );
   }
 

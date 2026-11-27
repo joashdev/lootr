@@ -2,6 +2,7 @@ import 'package:drift/drift.dart' hide isNull;
 
 import '../database/app_database.dart';
 import '../repositories/account_repo.dart';
+import '../repositories/transaction_repo.dart';
 import 'demo_data_manifest.dart';
 
 enum DemoInspectionStatus { absent, present, unverified }
@@ -229,6 +230,18 @@ class DemoDataService {
       protected.transactionIds,
     );
     if (transactionIds.isNotEmpty) {
+      final transactionsOnPersonalAccounts =
+          await (_db.select(_db.transactions)..where(
+                (row) =>
+                    row.id.isIn(transactionIds) &
+                    row.accountId.isNotIn(allAccountIds) &
+                    row.deletedAt.isNull(),
+              ))
+              .get();
+      final transactionRepo = TransactionRepo(_db);
+      for (final transaction in transactionsOnPersonalAccounts) {
+        await transactionRepo.softDelete(transaction.id);
+      }
       await (_db.delete(
         _db.transactions,
       )..where((row) => row.id.isIn(transactionIds))).go();
@@ -503,10 +516,22 @@ class DemoDataService {
         byType[DemoEntityType.recurring.tableName] ?? const {};
 
     if (protected.transactionIds.isNotEmpty) {
+      final demoTransactionIds =
+          byType[DemoEntityType.transaction.tableName] ?? const {};
       final transactions = await (_db.select(
         _db.transactions,
-      )..where((row) => row.id.isIn(protected.transactionIds))).get();
-      for (final transaction in transactions) {
+      )..where((row) => row.id.isIn(demoTransactionIds))).get();
+      final transactionsById = {for (final row in transactions) row.id: row};
+      final pending = protected.transactionIds.toList();
+      while (pending.isNotEmpty) {
+        final transaction = transactionsById[pending.removeLast()];
+        if (transaction == null) continue;
+        final parentId = transaction.parentTransactionId;
+        if (parentId != null &&
+            demoTransactionIds.contains(parentId) &&
+            protected.transactionIds.add(parentId)) {
+          pending.add(parentId);
+        }
         if (demoAccountIds.contains(transaction.accountId)) {
           protected.accountIds.add(transaction.accountId);
         }

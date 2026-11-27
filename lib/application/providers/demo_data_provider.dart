@@ -6,6 +6,7 @@ import '../../data/seed/demo_data_loader.dart';
 import '../../data/seed/demo_data_manifest.dart';
 import '../../data/seed/demo_data_service.dart';
 import 'database_provider.dart';
+import 'notification_provider.dart';
 import 'repo_providers.dart';
 
 enum DemoDataStatus { absent, loading, present, unverified }
@@ -82,12 +83,21 @@ class DemoDataNotifier extends AsyncNotifier<DemoDataState> {
     }
   }
 
-  Future<void> clear() async {
-    await _runMutation(_service.clear);
-  }
+  Future<void> clear() => _clear();
 
-  Future<void> clearReviewedLegacy() async {
-    await _runMutation(() => _service.clear(reviewLegacyRecords: true));
+  Future<void> clearReviewedLegacy() => _clear(reviewLegacyRecords: true);
+
+  Future<void> _clear({bool reviewLegacyRecords = false}) async {
+    await _runMutation(
+      () => _service.clear(reviewLegacyRecords: reviewLegacyRecords),
+    );
+    try {
+      await ref
+          .read(notificationSchedulerProvider)
+          .rebuildSchedule(afterCurrent: true);
+    } catch (_) {
+      // The ledger is already updated. App startup retries reminder cleanup.
+    }
   }
 
   Future<void> dismissLegacyFlag() async {

@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/drift.dart';
@@ -85,19 +84,23 @@ class NotificationScheduler {
     _initialized = true;
   }
 
-  Future<void> rebuildSchedule() async {
+  Future<void> rebuildSchedule({bool afterCurrent = false}) async {
     await initializeIfNeeded();
-    if (_activeRebuild != null) return _activeRebuild!;
+    final active = _activeRebuild;
+    if (active != null) {
+      if (!afterCurrent) return active;
+      try {
+        await active;
+      } finally {
+        await rebuildSchedule();
+      }
+      return;
+    }
 
-    final completer = Completer<void>();
-    _activeRebuild = completer.future;
-
+    final rebuild = _rebuildScheduleInternal();
+    _activeRebuild = rebuild;
     try {
-      await _rebuildScheduleInternal();
-      completer.complete();
-    } catch (error, stackTrace) {
-      completer.completeError(error, stackTrace);
-      rethrow;
+      await rebuild;
     } finally {
       _activeRebuild = null;
     }
@@ -117,7 +120,7 @@ class NotificationScheduler {
     await _purgeCompletedNotifications(now);
 
     if (!_androidPermissionGranted) {
-      await _cancelAndForgetAllPending();
+      await _cancelAndForgetAllPending(pendingIds);
       return;
     }
 
@@ -131,10 +134,16 @@ class NotificationScheduler {
     )..where((row) => row.isCompleted.equals(false))).get();
     final activeById = {for (final row in activeRows) row.id: row};
     final desiredIds = limitedNotifications.map((item) => item.id).toSet();
+    final obsoletePlatformIds = {
+      ...pendingIds,
+      ...activeById.keys.map(stableNotificationIntId),
+    }.difference(desiredIds.map(stableNotificationIntId).toSet());
 
+    for (final id in obsoletePlatformIds) {
+      await _client.cancel(id);
+    }
     for (final row in activeRows) {
       if (desiredIds.contains(row.id)) continue;
-      await _client.cancel(stableNotificationIntId(row.id));
       await (_db.delete(
         _db.notifications,
       )..where((tbl) => tbl.id.equals(row.id))).go();
@@ -143,7 +152,7 @@ class NotificationScheduler {
     if (limitedNotifications.isEmpty) return;
 
     if (!await _ensureSchedulingPermissions()) {
-      await _cancelAndForgetAllPending();
+      await _cancelAndForgetAllPending(pendingIds);
       return;
     }
 
@@ -192,12 +201,15 @@ class NotificationScheduler {
     }
   }
 
-  Future<void> _cancelAndForgetAllPending() async {
+  Future<void> _cancelAndForgetAllPending(Set<int> pendingIds) async {
     final rows = await (_db.select(
       _db.notifications,
     )..where((row) => row.isCompleted.equals(false))).get();
-    for (final row in rows) {
-      await _client.cancel(stableNotificationIntId(row.id));
+    for (final id in {
+      ...pendingIds,
+      ...rows.map((row) => stableNotificationIntId(row.id)),
+    }) {
+      await _client.cancel(id);
     }
     await (_db.delete(
       _db.notifications,

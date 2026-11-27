@@ -282,6 +282,89 @@ void main() {
       expect(await notifier.hasDemoData(), false);
     });
 
+    test(
+      'clear restores a personal balance after moving a sample transaction',
+      () async {
+        final container = createTestContainer();
+        final db = container.read(databaseProvider);
+        final notifier = container.read(demoDataProvider.notifier);
+        await notifier.seed();
+        await db
+            .into(db.users)
+            .insert(UsersCompanion.insert(id: 'local-user-1'));
+        final accountRepo = container.read(accountRepoProvider);
+        await accountRepo.create(
+          AccountsCompanion.insert(
+            id: 'personal-account',
+            ownerUserId: 'local-user-1',
+            name: 'Personal account',
+            accountType: 'cash',
+            balance: const Value(5000),
+          ),
+        );
+        const sampleTransactionId = 'demo-txn-m001';
+        await TransactionRepo(db).update(
+          const TransactionsCompanion(
+            id: Value(sampleTransactionId),
+            accountId: Value('personal-account'),
+          ),
+        );
+        expect(await accountRepo.getBalance('personal-account'), 1500);
+
+        await notifier.clear();
+
+        expect(await accountRepo.getBalance('personal-account'), 5000);
+        expect(
+          await TransactionRepo(db).watchById(sampleTransactionId).first,
+          isNull,
+        );
+      },
+    );
+
+    test(
+      'clear preserves the sample ancestors of a personal transaction',
+      () async {
+        final container = createTestContainer();
+        final db = container.read(databaseProvider);
+        final notifier = container.read(demoDataProvider.notifier);
+        await notifier.seed();
+        final repo = TransactionRepo(db);
+        const parentId = 'demo-txn-m001';
+        const childId = 'demo-txn-m002';
+        await repo.update(
+          const TransactionsCompanion(
+            id: Value(childId),
+            parentTransactionId: Value(parentId),
+            transactionMode: Value('installment'),
+          ),
+        );
+        await repo.create(
+          TransactionsCompanion.insert(
+            id: 'personal-child',
+            accountId: 'demo-acc-bpi-checking',
+            amount: 100,
+            parentTransactionId: const Value(childId),
+            transactionDirection: 'expense',
+            transactionMode: 'installment',
+            occurredAt: DateTime(2026, 8, 7),
+          ),
+        );
+
+        await notifier.clear();
+
+        final remaining = await db.select(db.transactions).get();
+        final parentById = {
+          for (final row in remaining) row.id: row.parentTransactionId,
+        };
+        expect(parentById, {
+          parentId: null,
+          childId: parentId,
+          'personal-child': childId,
+        });
+        expect(await notifier.hasDemoData(), isFalse);
+      },
+    );
+
     test('clear rolls back when dependency recovery is not approved', () async {
       final container = createTestContainer();
       final db = container.read(databaseProvider);
