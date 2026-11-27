@@ -85,6 +85,39 @@ void main() {
       expect(result.payload.extractedFields.amount, 243.00);
     });
 
+    test('uses the payable total before tax and item summaries', () async {
+      final receiptPipeline = OCRPipeline(
+        textExtractor: (_) async => const [
+          'AMOUNT DUE 243.00',
+          'TOTAL 300.00',
+          'TOTAL VAT 26.04',
+          'ITEM TOTAL 2',
+          'CASH 1000.00',
+        ],
+      );
+
+      final result = await receiptPipeline.process('/path/to/receipt.jpg');
+
+      expect(result.payload.extractedFields.amount, 243.00);
+    });
+
+    test(
+      'uses the amount on the line below a standalone total label',
+      () async {
+        final receiptPipeline = OCRPipeline(
+          textExtractor: (_) async => const [
+            'TOTAL',
+            '₱243.00',
+            'CASH 1000.00',
+          ],
+        );
+
+        final result = await receiptPipeline.process('/path/to/receipt.jpg');
+
+        expect(result.payload.extractedFields.amount, 243.00);
+      },
+    );
+
     test('stub returns empty text lines in V1', () async {
       final result = await pipeline.process('/path/to/any.jpg');
       expect(result.textLines, isEmpty);
