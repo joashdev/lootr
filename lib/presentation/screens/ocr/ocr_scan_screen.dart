@@ -50,6 +50,8 @@ class _OcrScanScreenState extends ConsumerState<OcrScanScreen>
   RunOCR get _runOcr => widget.runOcr ?? ref.read(runOCRProvider);
   bool get _assistanceEnabled =>
       widget.runOcr != null || ref.read(smartEntryAssistanceEnabledProvider);
+  bool get _isCurrentRoute =>
+      mounted && ModalRoute.isCurrentOf(context) == true;
 
   @override
   void initState() {
@@ -125,64 +127,59 @@ class _OcrScanScreenState extends ConsumerState<OcrScanScreen>
   }
 
   Future<void> _capture() async {
-    if (!_assistanceEnabled) {
-      _showSnackBar(
-        'Enable Smart Entry Assistance in Settings to scan receipts.',
-      );
-      return;
-    }
     final controller = _cameraController;
     if (controller == null || !controller.value.isInitialized) {
       _showSnackBar('Camera is not ready yet.');
       return;
     }
-    try {
-      final file = await controller.takePicture();
-      if (!mounted) return;
-      setState(() {
-        _selectedImagePath = file.path;
-        _payload = null;
-      });
-      await _processImage(file.path);
-    } catch (error) {
-      if (mounted) _showSnackBar('Could not capture photo: $error');
-    }
+    await _readImage(controller.takePicture, 'Could not capture photo');
   }
 
-  Future<void> _pickFromGallery() async {
-    if (!_assistanceEnabled) {
-      _showSnackBar(
-        'Enable Smart Entry Assistance in Settings to scan receipts.',
-      );
-      return;
-    }
-    try {
-      final file = await _picker.pickImage(source: ImageSource.gallery);
-      if (!mounted || file == null) return;
-      setState(() {
-        _selectedImagePath = file.path;
-        _payload = null;
-      });
-      await _processImage(file.path);
-    } catch (error) {
-      if (mounted) _showSnackBar('Could not open gallery: $error');
-    }
-  }
+  Future<void> _pickFromGallery() => _readImage(
+    () => _picker.pickImage(source: ImageSource.gallery),
+    'Could not open gallery',
+  );
 
-  Future<void> _processImage(String imagePath) async {
+  Future<void> _readImage(
+    Future<XFile?> Function() acquire,
+    String failureMessage,
+  ) async {
+    if (_isProcessing || !_assistanceEnabled) return;
     setState(() => _isProcessing = true);
-    final result = await _runOcr(imagePath);
-    if (!mounted) return;
-    setState(() => _isProcessing = false);
-    result.fold(
-      onSuccess: (payload) {
-        setState(() => _payload = payload);
-        if (payload.rawText.trim().isEmpty) {
-          _showSnackBar('No text found. Try again with a clearer photo.');
-        }
-      },
-      onFailure: (message, _) => _showSnackBar(message),
-    );
+    try {
+      final file = await acquire();
+      if (file == null || !_isCurrentRoute) return;
+      setState(() {
+        _selectedImagePath = file.path;
+        _payload = null;
+      });
+
+      final result = await _runOcr(file.path);
+      if (!_isCurrentRoute) return;
+      result.fold(
+        onSuccess: (payload) {
+          setState(() => _payload = payload);
+          if (payload.rawText.trim().isEmpty) {
+            _showSnackBar('No text found. Try again with a clearer photo.');
+          }
+        },
+        onFailure: (message, _) => _showSnackBar(message),
+      );
+    } catch (error) {
+      if (_isCurrentRoute) _showSnackBar('$failureMessage: $error');
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
+
+  void _close() {
+    if (_isCurrentRoute) context.pop();
+  }
+
+  void _confirm(OcrPayload payload) {
+    if (!_isProcessing && _assistanceEnabled && _isCurrentRoute) {
+      widget.onConfirmed(payload);
+    }
   }
 
   void _showSnackBar(String message) {
@@ -244,7 +241,7 @@ class _OcrScanScreenState extends ConsumerState<OcrScanScreen>
               left: 8,
               child: IconButton(
                 tooltip: 'Close receipt scanner',
-                onPressed: () => context.pop(),
+                onPressed: _close,
                 icon: const Icon(LucideIcons.x, color: Colors.white),
               ),
             ),
@@ -357,7 +354,9 @@ class _OcrScanScreenState extends ConsumerState<OcrScanScreen>
             const SizedBox(height: 16),
             PrimaryButton(
               label: 'Continue to Save',
-              onPressed: () => widget.onConfirmed(payload),
+              onPressed: _isProcessing || !assistanceEnabled
+                  ? null
+                  : () => _confirm(payload),
             ),
           ],
         ],

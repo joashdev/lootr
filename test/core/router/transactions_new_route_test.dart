@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -93,7 +95,11 @@ void main() {
     expect(find.byType(OcrScanScreen), findsNothing);
   });
 
-  Future<void> openScan(WidgetTester tester, {required bool manual}) async {
+  Future<void> openScan(
+    WidgetTester tester, {
+    required bool manual,
+    bool twice = false,
+  }) async {
     await mountRouter(tester);
     await tester.tap(
       find.bySemanticsLabel('Add transaction, transfer, or scan receipt'),
@@ -106,6 +112,7 @@ void main() {
 
     await tester.enterText(find.byType(TextField).first, draftFor(manual));
     await tester.tap(find.text('Scan'));
+    if (twice) await tester.tap(find.text('Scan'));
     await tester.pumpAndSettle();
     expect(find.byType(OcrScanScreen), findsOneWidget);
   }
@@ -135,6 +142,18 @@ void main() {
       });
     }
 
+    testWidgets('a repeated Scan tap still opens one scanner from $sheet', (
+      tester,
+    ) async {
+      await openScan(tester, manual: manual, twice: true);
+
+      await tester.tap(find.byTooltip('Close receipt scanner'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(OcrScanScreen, skipOffstage: false), findsNothing);
+      expect(find.text(draftFor(manual)), findsOneWidget);
+    });
+
     testWidgets('confirming a scan opens one prefilled editor from $sheet', (
       tester,
     ) async {
@@ -149,7 +168,11 @@ void main() {
       await openScan(tester, manual: manual);
       await tester.tap(find.byTooltip('Pick from gallery'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Continue to Save'));
+      final confirm = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, 'Continue to Save'),
+      );
+      confirm.onPressed!();
+      confirm.onPressed!();
       await tester.pumpAndSettle();
 
       expect(find.byType(OcrScanScreen, skipOffstage: false), findsNothing);
@@ -161,6 +184,37 @@ void main() {
       expect(find.text('250.00'), findsOneWidget);
     });
   }
+
+  testWidgets('cannot confirm an old receipt during a new image pick', (
+    tester,
+  ) async {
+    const picker = MethodChannel('plugins.flutter.io/image_picker');
+    final messenger = tester.binding.defaultBinaryMessenger;
+    final nextPick = Completer<String?>();
+    var picks = 0;
+    messenger.setMockMethodCallHandler(picker, (_) async {
+      picks++;
+      if (picks == 1) return '/tmp/test-receipt.jpg';
+      return await nextPick.future;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(picker, null));
+
+    await openScan(tester, manual: false);
+    await tester.tap(find.byTooltip('Pick from gallery'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Pick from gallery'));
+    await tester.pump();
+
+    expect(picks, 2);
+    expect(find.textContaining('Could not open gallery'), findsNothing);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    final confirm = find.widgetWithText(FilledButton, 'Continue to Save');
+    expect(tester.widget<FilledButton>(confirm).onPressed, isNull);
+
+    nextPick.complete(null);
+    await tester.pumpAndSettle();
+    expect(tester.widget<FilledButton>(confirm).onPressed, isNotNull);
+  });
 }
 
 String draftFor(bool manual) => manual ? '14.87' : 'Bus fare 25';

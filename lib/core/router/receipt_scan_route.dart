@@ -8,6 +8,10 @@ class ReceiptScanRequest {
 
   static const path = '/scan';
 
-  static Future<OcrPayload?> open(BuildContext context) =>
-      context.push<OcrPayload>(path, extra: const ReceiptScanRequest._());
+  static Future<OcrPayload?> open(BuildContext context) async {
+    final router = GoRouter.of(context);
+    if (router.routeInformationProvider.value.uri.path == path) return null;
+
+    return router.push<OcrPayload>(path, extra: const ReceiptScanRequest._());
+  }
 }
