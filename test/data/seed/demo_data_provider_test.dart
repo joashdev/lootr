@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:drift/drift.dart' hide isNull, isNotNull;
+import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -64,20 +65,27 @@ void main() {
     test(
       'sample data status follows the database reopened after restore',
       () async {
-        final initial = AppDatabase.inMemory();
-        final restored = AppDatabase.inMemory();
-        final seedContainer = createTestContainer(db: restored);
-        await seedContainer.read(demoDataProvider.notifier).seed();
-        final databases = [initial, restored].iterator;
+        final directory = await Directory.systemTemp.createTemp('demo-restore');
+        addTearDown(() => directory.delete(recursive: true));
+        final liveFile = File.fromUri(directory.uri.resolve('live.sqlite'));
+        final backupFile = File.fromUri(directory.uri.resolve('backup.sqlite'));
+        final backup = AppDatabase(NativeDatabase(backupFile));
+        final seedContainer = ProviderContainer(
+          overrides: [databaseProvider.overrideWithValue(backup)],
+        );
+        try {
+          await seedContainer.read(demoDataProvider.notifier).seed();
+        } finally {
+          seedContainer.dispose();
+          await backup.close();
+        }
+
         final container = ProviderContainer(
           overrides: [
             databaseSessionProvider.overrideWith(
               () => DatabaseSessionNotifier(
-                databaseFactory: () {
-                  databases.moveNext();
-                  return databases.current;
-                },
-                liveFile: () async => File('/synthetic/live.sqlite'),
+                databaseFactory: () => AppDatabase(NativeDatabase(liveFile)),
+                liveFile: () async => liveFile,
               ),
             ),
           ],
@@ -90,7 +98,9 @@ void main() {
 
         await container
             .read(databaseSessionProvider.notifier)
-            .whileDatabaseClosed<void>((_) async {});
+            .whileDatabaseClosed<void>((file) async {
+              await backupFile.rename(file.path);
+            });
 
         expect(
           (await container.read(demoDataProvider.future)).status,
