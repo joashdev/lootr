@@ -13,141 +13,137 @@ import '../../../../core/theme/typography.dart';
 import '../../../../domain/use_cases/calculate_safe_to_spend.dart';
 import '../../../../domain/value_objects/ledger_query.dart';
 import '../../../../domain/value_objects/period_context.dart';
-import '../../../shared/components/cards/cards.dart';
 
 class SafeToSpendHero extends ConsumerWidget {
   const SafeToSpendHero({super.key, required this.data});
 
   final DashboardData data;
 
+  static const _ink = Color(0xFFFFFDF5);
+  static const _quietInk = Color(0xFFC2D5C7);
+  static const _mint = Color(0xFFA1D5B2);
+  static const _amber = Color(0xFFF5D098);
+  static const _coral = Color(0xFFFFB8A7);
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final result = data.safeToSpend;
-    final lootrColors = context.lootrColors;
-    final colorScheme = Theme.of(context).colorScheme;
-
-    final baseline = result.basis == SafeToSpendBasis.monthlyIncome
-        ? result.monthlyIncome
-        : result.liquidBalance;
+    final fromIncome = result.basis == SafeToSpendBasis.monthlyIncome;
+    final baseline = fromIncome ? result.monthlyIncome : result.liquidBalance;
     final remainingShare = baseline <= 0 ? 0.0 : result.amount / baseline;
     final clampedShare = remainingShare.clamp(0.0, 1.0).toDouble();
-    final semanticColor = result.isOverCommitted
-        ? lootrColors.danger
-        : remainingShare > 0.5
-        ? lootrColors.success
-        : remainingShare > 0.2
-        ? lootrColors.warning
-        : lootrColors.danger;
+    final statusColor = result.isOverCommitted || remainingShare <= 0.2
+        ? _coral
+        : remainingShare <= 0.5
+        ? _amber
+        : _mint;
+    final borderRadius = BorderRadius.circular(AppRadius.lg);
+    final enlargedText = MediaQuery.textScalerOf(context).scale(14) > 18;
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(AppRadius.lg),
-      onTap: () => _showBreakdown(context, ref, result),
-      child: HeroCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: borderRadius,
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF123327), Color(0xFF244936)],
+        ),
+        border: Border.all(color: _mint.withValues(alpha: 0.22)),
+      ),
+      child: Material(
+        type: MaterialType.transparency,
+        borderRadius: borderRadius,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => _showBreakdown(context, ref, result),
+          hoverColor: _mint.withValues(alpha: 0.08),
+          highlightColor: _mint.withValues(alpha: 0.10),
+          splashColor: _mint.withValues(alpha: 0.18),
+          focusColor: _mint.withValues(alpha: 0.15),
+          child: Padding(
+            padding: EdgeInsets.all(
+              enlargedText ? AppSpacing.space4 : AppSpacing.space5,
+            ),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                _SpotlightStatus(
+                  label: _statusLabel(result, remainingShare),
+                  color: statusColor,
+                ),
+                const SizedBox(height: AppSpacing.space2),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    MoneyFormat.display(result.amount, data.currencyCode),
+                    style: AppTypography.displayMono.copyWith(
+                      fontSize: 46,
+                      color: result.isOverCommitted ? _coral : _ink,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.space1),
+                Text(
+                  fromIncome
+                      ? 'After spending and commitments'
+                      : 'Liquid balances after commitments',
+                  style: AppTypography.caption.copyWith(color: _quietInk),
+                ),
+                const SizedBox(height: AppSpacing.space4),
+                LinearProgressIndicator(
+                  minHeight: 4,
+                  value: clampedShare,
+                  color: statusColor,
+                  backgroundColor: _mint.withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(AppRadius.full),
+                  stopIndicatorColor: Colors.transparent,
+                  trackGap: 0,
+                  semanticsLabel: 'Remaining this month',
+                ),
+                const SizedBox(height: AppSpacing.space2),
+                SizedBox(
+                  width: double.infinity,
+                  child: Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: AppSpacing.space2,
+                    runSpacing: AppSpacing.space1,
                     children: [
                       Text(
-                        'SAFE TO SPEND',
-                        style: AppTypography.micro.copyWith(
-                          color: lootrColors.textSecondary,
+                        '${(clampedShare * 100).round()}% left this month',
+                        style: AppTypography.captionMedium.copyWith(
+                          color: _quietInk,
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.space2),
-                      Text(
-                        MoneyFormat.display(result.amount, data.currencyCode),
-                        style: AppTypography.displayMono.copyWith(
-                          color: result.isOverCommitted
-                              ? lootrColors.danger
-                              : colorScheme.onSurface,
-                        ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              'View breakdown',
+                              style: AppTypography.captionMedium.copyWith(
+                                color: _ink,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.space2),
+                          const Icon(
+                            LucideIcons.arrowRight,
+                            size: 16,
+                            color: _mint,
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ),
-                _HeroStatusPill(
-                  label: _statusLabel(result, remainingShare),
-                  color: semanticColor,
                 ),
               ],
             ),
-            const SizedBox(height: AppSpacing.space1),
-            Text(
-              _subtitle(result),
-              style: AppTypography.body.copyWith(
-                color: lootrColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.space4),
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.space3),
-              decoration: BoxDecoration(
-                color: colorScheme.surface.withValues(alpha: 0.78),
-                borderRadius: BorderRadius.circular(AppRadius.md),
-                border: Border.all(color: colorScheme.outlineVariant),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        'Remaining this month',
-                        style: AppTypography.captionMedium.copyWith(
-                          color: lootrColors.textSecondary,
-                        ),
-                      ),
-                      const Spacer(),
-                      Text(
-                        '${(clampedShare * 100).round()}%',
-                        style: AppTypography.mono.copyWith(
-                          fontSize: 13,
-                          color: semanticColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.space2),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(AppRadius.full),
-                    child: LinearProgressIndicator(
-                      minHeight: 8,
-                      value: clampedShare,
-                      backgroundColor: colorScheme.surfaceContainerLow,
-                      valueColor: AlwaysStoppedAnimation<Color>(semanticColor),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
-  }
-
-  /// Explains the figure using the basis that actually produced it, so the
-  /// copy never contradicts the number (e.g. never "from ₱0 monthly income"
-  /// next to a balance-derived amount).
-  String _subtitle(SafeToSpendResult result) {
-    final currency = data.currencyCode;
-    if (result.basis == SafeToSpendBasis.monthlyIncome) {
-      return 'From ${MoneyFormat.display(result.monthlyIncome, currency)} '
-          'income this month, minus '
-          '${MoneyFormat.display(result.spentThisMonth, currency)} spent and '
-          '${MoneyFormat.display(result.committedOutflows, currency)} still '
-          'committed.';
-    }
-    return 'No income recorded this month — based on '
-        '${MoneyFormat.display(result.liquidBalance, currency)} across liquid '
-        'accounts minus '
-        '${MoneyFormat.display(result.committedOutflows, currency)} in '
-        'upcoming commitments.';
   }
 
   void _showBreakdown(
@@ -159,64 +155,70 @@ class SafeToSpendHero extends ConsumerWidget {
     showModalBottomSheet<void>(
       context: context,
       useRootNavigator: true,
-      builder: (_) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Safe-to-spend breakdown', style: AppTypography.h2),
-              const SizedBox(height: AppSpacing.space4),
-              _BreakdownRow(
-                label: 'Safe to spend now',
-                value: MoneyFormat.exact(result.amount, currency),
-              ),
-              if (result.basis == SafeToSpendBasis.monthlyIncome) ...[
+      useSafeArea: true,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          top: false,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Safe-to-spend breakdown', style: AppTypography.h2),
+                const SizedBox(height: AppSpacing.space4),
                 _BreakdownRow(
-                  label: 'Income this month',
-                  value: MoneyFormat.exact(result.monthlyIncome, currency),
-                  onTap: () async {
-                    Navigator.of(context, rootNavigator: true).pop();
-                    await _openLedger(
-                      context,
-                      ref,
-                      directions: const ['income'],
-                      explanation: 'Income this month · $currency',
-                    );
-                  },
+                  label: 'Safe to spend now',
+                  value: MoneyFormat.exact(result.amount, currency),
                 ),
+                if (result.basis == SafeToSpendBasis.monthlyIncome) ...[
+                  _BreakdownRow(
+                    label: 'Income this month',
+                    value: MoneyFormat.exact(result.monthlyIncome, currency),
+                    onTap: () async {
+                      Navigator.of(sheetContext).pop();
+                      await _openLedger(
+                        context,
+                        ref,
+                        directions: const ['income'],
+                        explanation: 'Income this month · $currency',
+                      );
+                    },
+                  ),
+                  _BreakdownRow(
+                    label: 'Spent this month',
+                    value: MoneyFormat.exact(result.spentThisMonth, currency),
+                    onTap: () async {
+                      Navigator.of(sheetContext).pop();
+                      await _openLedger(
+                        context,
+                        ref,
+                        directions: const ['expense'],
+                        explanation: 'Expenses this month · $currency',
+                      );
+                    },
+                  ),
+                ] else
+                  _BreakdownRow(
+                    label: 'Liquid account balances',
+                    value: MoneyFormat.exact(result.liquidBalance, currency),
+                    onTap: () {
+                      Navigator.of(sheetContext).pop();
+                      context.push('/more/accounts');
+                    },
+                  ),
                 _BreakdownRow(
-                  label: 'Spent this month',
-                  value: MoneyFormat.exact(result.spentThisMonth, currency),
-                  onTap: () async {
-                    Navigator.of(context, rootNavigator: true).pop();
-                    await _openLedger(
-                      context,
-                      ref,
-                      directions: const ['expense'],
-                      explanation: 'Expenses this month · $currency',
-                    );
-                  },
-                ),
-              ] else
-                _BreakdownRow(
-                  label: 'Liquid account balances',
-                  value: MoneyFormat.exact(result.liquidBalance, currency),
+                  label: 'Committed before month end',
+                  value: MoneyFormat.exact(result.committedOutflows, currency),
                   onTap: () {
-                    Navigator.of(context, rootNavigator: true).pop();
-                    context.push('/more/accounts');
+                    Navigator.of(sheetContext).pop();
+                    context.push('/more/recurring');
                   },
                 ),
-              _BreakdownRow(
-                label: 'Committed before month end',
-                value: MoneyFormat.exact(result.committedOutflows, currency),
-                onTap: () {
-                  Navigator.of(context, rootNavigator: true).pop();
-                  context.push('/recurring');
-                },
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
@@ -256,26 +258,43 @@ class SafeToSpendHero extends ConsumerWidget {
   }
 }
 
-class _HeroStatusPill extends StatelessWidget {
-  const _HeroStatusPill({required this.label, required this.color});
+class _SpotlightStatus extends StatelessWidget {
+  const _SpotlightStatus({required this.label, required this.color});
 
   final String label;
   final Color color;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space3,
-        vertical: AppSpacing.space2,
-      ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(AppRadius.full),
-      ),
-      child: Text(
-        label,
-        style: AppTypography.captionMedium.copyWith(color: color),
+    return SizedBox(
+      width: double.infinity,
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: AppSpacing.space3,
+        runSpacing: AppSpacing.space1,
+        children: [
+          Text(
+            'SAFE TO SPEND',
+            style: AppTypography.micro.copyWith(
+              color: SafeToSpendHero._ink,
+              letterSpacing: 1.1,
+            ),
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.circle, size: 6, color: color),
+              const SizedBox(width: AppSpacing.space2),
+              Flexible(
+                child: Text(
+                  label,
+                  style: AppTypography.captionMedium.copyWith(color: color),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -291,28 +310,38 @@ class _BreakdownRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lootrColors = context.lootrColors;
-    final row = Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.space3),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: AppTypography.body.copyWith(
-                color: lootrColors.textSecondary,
+    final row = ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 48),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.space2),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: AppTypography.body.copyWith(
+                  color: lootrColors.textSecondary,
+                ),
               ),
             ),
-          ),
-          Text(value, style: AppTypography.bodyMedium),
-          if (onTap != null) ...[
-            const SizedBox(width: AppSpacing.space1),
-            Icon(
-              LucideIcons.chevronRight,
-              size: 16,
-              color: lootrColors.textSecondary,
+            const SizedBox(width: AppSpacing.space3),
+            Expanded(
+              child: Text(
+                value,
+                style: AppTypography.bodyMedium,
+                textAlign: TextAlign.end,
+              ),
             ),
+            if (onTap != null) ...[
+              const SizedBox(width: AppSpacing.space1),
+              Icon(
+                LucideIcons.chevronRight,
+                size: 16,
+                color: lootrColors.textSecondary,
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
     if (onTap == null) return row;

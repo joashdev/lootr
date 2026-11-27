@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../application/providers/dashboard_provider.dart';
 import '../../../../core/format/money_format.dart';
@@ -7,6 +8,7 @@ import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/typography.dart';
 import '../../../shared/components/cards/cards.dart';
+import 'dashboard_section_header.dart';
 
 class UpcomingRecurringList extends StatelessWidget {
   const UpcomingRecurringList({
@@ -26,16 +28,10 @@ class UpcomingRecurringList extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text('Upcoming recurring', style: AppTypography.h2),
-              ),
-              TextButton(
-                onPressed: () => context.push('/more/recurring'),
-                child: const Text('See all'),
-              ),
-            ],
+          DashboardSectionHeader(
+            title: 'Upcoming recurring',
+            actionLabel: 'See all recurring items',
+            onPressed: () => context.push('/more/recurring'),
           ),
           const SizedBox(height: AppSpacing.space2),
           if (items.isEmpty)
@@ -91,12 +87,21 @@ class _RecurringRow extends StatelessWidget {
                   ],
                 ),
               ),
-              Text(
-                MoneyFormat.exact(item.amount, currencyCode),
-                style: AppTypography.mono.copyWith(
-                  fontSize: 15,
-                  color: Theme.of(context).colorScheme.onSurface,
+              const SizedBox(width: AppSpacing.space2),
+              Expanded(
+                child: Text(
+                  MoneyFormat.exact(item.amount, currencyCode),
+                  textAlign: TextAlign.end,
+                  style: AppTypography.mono.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
                 ),
+              ),
+              const SizedBox(width: AppSpacing.space1),
+              Icon(
+                LucideIcons.chevronRight,
+                size: 16,
+                color: context.lootrColors.textSecondary,
               ),
             ],
           ),

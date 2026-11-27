@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../application/providers/accounts_provider.dart';
 import '../../../application/providers/categories_provider.dart';
@@ -18,6 +17,7 @@ import '../../../application/providers/transaction_list_intent_provider.dart';
 import '../../../application/providers/transactions_tab_provider.dart';
 import '../../../application/providers/undo_stack_provider.dart';
 import '../../../core/theme/colors.dart';
+import '../../../core/theme/radius.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
 import '../../../domain/entities/account.dart';
@@ -54,15 +54,12 @@ class TransactionsScreen extends ConsumerStatefulWidget {
 
 class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   final TextEditingController _searchController = TextEditingController();
-  bool _isSearching = false;
   String? _lastAppliedRouteModeFilter;
 
   @override
   void initState() {
     super.initState();
-    final persistedQuery = ref.read(transactionSearchQueryProvider);
-    _searchController.text = persistedQuery;
-    _isSearching = persistedQuery.isNotEmpty;
+    _searchController.text = ref.read(transactionSearchQueryProvider);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _applyRouteModeFilterIfNeeded();
     });
@@ -116,21 +113,15 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     ref.read(transactionSearchQueryProvider.notifier).setQuery(query);
   }
 
-  void _stopSearching() {
-    setState(() => _isSearching = false);
+  void _clearSearch() {
     _searchController.clear();
     ref.read(transactionSearchQueryProvider.notifier).clear();
   }
 
-  Map<String, String> _accountNameMap(AsyncValue<List<Account>> accounts) =>
-      accounts is AsyncData<List<Account>>
-      ? {for (final account in accounts.value) account.id: account.name}
-      : const <String, String>{};
-
-  Map<String, String> _categoryNameMap(AsyncValue<List<Category>> categories) =>
-      categories is AsyncData<List<Category>>
-      ? {for (final category in categories.value) category.id: category.name}
-      : const <String, String>{};
+  void _startSelection([String? id]) {
+    FocusScope.of(context).unfocus();
+    ref.read(transactionListIntentProvider.notifier).startSelection(id);
+  }
 
   Map<String, String> _payeeNameMap(AsyncValue<List<Payee>> payees) =>
       payees is AsyncData<List<Payee>>
@@ -152,13 +143,14 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       ? {for (final category in categories.value) category.id: category}
       : const <String, Category>{};
 
-  Map<String, List<Transaction>> _groupByDate(List<Transaction> transactions) {
-    final grouped = <String, List<Transaction>>{};
+  Map<DateTime, List<Transaction>> _groupByDate(
+    List<Transaction> transactions,
+  ) {
+    final grouped = <DateTime, List<Transaction>>{};
 
     for (final txn in transactions) {
-      final dateKey = DateFormat('dd/MM/yyyy').format(txn.occurredAt);
-      grouped.putIfAbsent(dateKey, () => []);
-      grouped[dateKey]!.add(txn);
+      final day = DateUtils.dateOnly(txn.occurredAt);
+      grouped.putIfAbsent(day, () => []).add(txn);
     }
 
     // Dart maps preserve insertion order, so date groups follow the already
@@ -448,6 +440,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }
 
   void _openFilterSheet() {
+    FocusScope.of(context).unfocus();
     showModalBottomSheet(
       context: context,
       useRootNavigator: true,
@@ -471,6 +464,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final payees = ref.watch(payeesProvider);
     final listIntent = ref.watch(transactionListIntentProvider);
     final ledgerQuery = ref.watch(activeLedgerQueryProvider);
+    final size = MediaQuery.sizeOf(context);
+    final labelScale = MediaQuery.textScalerOf(context).scale(14) / 14;
+    final compactControls = size.width < 56 + 250 * labelScale;
+    final stackControls =
+        compactControls &&
+        size.height - MediaQuery.viewInsetsOf(context).bottom > 360;
 
     return PopScope(
       onPopInvokedWithResult: (didPop, _) {
@@ -481,48 +480,95 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       child: Scaffold(
         appBar: listIntent.isSelecting
             ? _buildSelectionAppBar(listIntent)
-            : _isSearching
-            ? _buildSearchAppBar()
-            : _buildNormalAppBar(filters, listIntent),
+            : _buildNormalAppBar(
+                listIntent,
+                compact: compactControls,
+                stackControls: stackControls,
+              ),
         body: Column(
           children: [
-            if (!listIntent.isSelecting && !_isSearching)
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.pagePaddingMobile,
+            Offstage(
+              offstage: listIntent.isSelecting,
+              child: ExcludeFocus(
+                excluding: listIntent.isSelecting,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.pagePaddingMobile,
+                    AppSpacing.space2,
+                    AppSpacing.pagePaddingMobile,
+                    AppSpacing.space1,
+                  ),
+                  child: Column(
+                    children: [
+                      if (stackControls)
+                        Wrap(
+                          spacing: AppSpacing.space1,
+                          alignment: WrapAlignment.center,
+                          children: [
+                            _buildSortButton(listIntent, showLabel: true),
+                            _buildFilterButton(filters, textOnly: true),
+                            _buildSelectButton(),
+                          ],
+                        ),
+                      if (stackControls)
+                        const SizedBox(height: AppSpacing.space2),
+                      Row(
+                        key: const ValueKey('transaction-search'),
+                        children: [
+                          Expanded(
+                            child: Tooltip(
+                              message: 'Search transactions',
+                              child: SearchInput(
+                                controller: _searchController,
+                                onChanged: _onSearchChanged,
+                              ),
+                            ),
+                          ),
+                          if (!stackControls) ...[
+                            const SizedBox(width: AppSpacing.space2),
+                            _buildFilterButton(
+                              filters,
+                              iconOnly: compactControls,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-                child: Row(
-                  children: [
-                    const Expanded(child: PeriodSelector(compact: true)),
-                    if (ledgerQuery != null)
+              ),
+            ),
+            if (listIntent.isSelecting)
+              _buildSelectionActions(listIntent.selectedIds.isNotEmpty)
+            else ...[
+              const Center(child: PeriodSelector(compact: true)),
+              if (ledgerQuery != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.pagePaddingMobile,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          ledgerQuery.explanation,
+                          style: AppTypography.captionMedium.copyWith(
+                            color: context.lootrColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.space2),
                       TextButton(
                         onPressed: () => ref
                             .read(activeLedgerQueryProvider.notifier)
                             .clear(),
                         child: const Text('Clear drill-down'),
                       ),
-                  ],
-                ),
-              ),
-            if (ledgerQuery != null && !listIntent.isSelecting && !_isSearching)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.pagePaddingMobile,
-                  0,
-                  AppSpacing.pagePaddingMobile,
-                  AppSpacing.space2,
-                ),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    ledgerQuery.explanation,
-                    style: AppTypography.caption.copyWith(
-                      color: context.lootrColors.textSecondary,
-                    ),
+                    ],
                   ),
                 ),
-              ),
-            if (!listIntent.isSelecting && !_isSearching) const FilterChipBar(),
+              const FilterChipBar(),
+            ],
             Expanded(
               child: _buildBody(
                 state,
@@ -541,51 +587,155 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }
 
   PreferredSizeWidget _buildNormalAppBar(
-    TransactionFilters filters,
-    TransactionListIntent listIntent,
-  ) {
-    final theme = Theme.of(context);
+    TransactionListIntent listIntent, {
+    required bool compact,
+    required bool stackControls,
+  }) {
+    if (compact) {
+      return AppBar(
+        automaticallyImplyLeading: false,
+        title: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text('Transactions', style: AppTypography.h2),
+        ),
+        actions: stackControls
+            ? null
+            : [
+                _buildSortButton(listIntent),
+                IconButton(
+                  tooltip: 'Select transactions',
+                  onPressed: _startSelection,
+                  icon: const Icon(LucideIcons.listChecks),
+                ),
+              ],
+      );
+    }
     return PrimaryScreenHeader(
       title: 'Transactions',
       actions: [
-        PopupMenuButton<TransactionSort>(
-          tooltip: 'Sort transactions',
-          initialValue: listIntent.sort,
-          onSelected: ref.read(transactionListIntentProvider.notifier).setSort,
-          itemBuilder: (_) => const [
-            PopupMenuItem(
-              value: TransactionSort.newestFirst,
-              child: Text('Newest first'),
-            ),
-            PopupMenuItem(
-              value: TransactionSort.oldestFirst,
-              child: Text('Oldest first'),
-            ),
-          ],
-          icon: const Icon(LucideIcons.arrowUpDown),
+        _buildSortButton(listIntent, showLabel: true),
+        _buildSelectButton(),
+      ],
+    );
+  }
+
+  Widget _buildSelectButton() {
+    return Tooltip(
+      message: 'Select transactions',
+      child: TextButton(
+        onPressed: _startSelection,
+        child: const Text('Select'),
+      ),
+    );
+  }
+
+  Widget _buildSortButton(
+    TransactionListIntent listIntent, {
+    bool showLabel = false,
+  }) {
+    return PopupMenuButton<TransactionSort>(
+      tooltip: 'Sort transactions',
+      initialValue: listIntent.sort,
+      onSelected: ref.read(transactionListIntentProvider.notifier).setSort,
+      itemBuilder: (_) => [
+        CheckedPopupMenuItem(
+          value: TransactionSort.newestFirst,
+          checked: listIntent.sort == TransactionSort.newestFirst,
+          child: const Text('Newest first'),
         ),
-        IconButton(
-          tooltip: 'Select transactions',
-          onPressed: () =>
-              ref.read(transactionListIntentProvider.notifier).startSelection(),
-          icon: const Icon(LucideIcons.listChecks),
-        ),
-        IconButton(
-          tooltip: 'Filter transactions',
-          icon: Icon(
-            LucideIcons.slidersHorizontal,
-            color: filters.isEmpty
-                ? theme.colorScheme.onSurface
-                : theme.colorScheme.primary,
-          ),
-          onPressed: _openFilterSheet,
-        ),
-        IconButton(
-          tooltip: 'Search transactions',
-          icon: Icon(LucideIcons.search, color: theme.colorScheme.onSurface),
-          onPressed: () => setState(() => _isSearching = true),
+        CheckedPopupMenuItem(
+          value: TransactionSort.oldestFirst,
+          checked: listIntent.sort == TransactionSort.oldestFirst,
+          child: const Text('Oldest first'),
         ),
       ],
+      icon: showLabel ? null : const Icon(LucideIcons.arrowUpDown, size: 20),
+      child: showLabel
+          ? Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.space2,
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 48),
+                child: Align(
+                  widthFactor: 1,
+                  heightFactor: 1,
+                  child: Text(
+                    'Sort',
+                    style: AppTypography.captionMedium.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                ),
+              ),
+            )
+          : null,
+    );
+  }
+
+  Widget _buildFilterButton(
+    TransactionFilters filters, {
+    bool iconOnly = false,
+    bool textOnly = false,
+  }) {
+    final colors = Theme.of(context).colorScheme;
+    final foreground = filters.isEmpty
+        ? colors.onSurface
+        : colors.onPrimaryContainer;
+    final background = filters.isEmpty
+        ? colors.surface
+        : colors.primaryContainer;
+    const icon = Icon(LucideIcons.slidersHorizontal, size: 18);
+    if (iconOnly) {
+      return IconButton.outlined(
+        tooltip: filters.isEmpty
+            ? 'Filter transactions'
+            : 'Filter transactions (${filters.activeCount} active)',
+        onPressed: _openFilterSheet,
+        style: IconButton.styleFrom(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+          side: BorderSide(color: colors.outline),
+          foregroundColor: foreground,
+          backgroundColor: background,
+        ),
+        icon: Badge(
+          isLabelVisible: !filters.isEmpty,
+          backgroundColor: colors.onPrimaryContainer,
+          child: icon,
+        ),
+      );
+    }
+    return Tooltip(
+      message: 'Filter transactions',
+      child: OutlinedButton(
+        onPressed: _openFilterSheet,
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(48, 48),
+          padding: EdgeInsets.symmetric(
+            horizontal: textOnly ? AppSpacing.space2 : AppSpacing.space3,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+          side: BorderSide(color: colors.outline),
+          foregroundColor: foreground,
+          backgroundColor: background,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!textOnly) ...[icon, const SizedBox(width: AppSpacing.space2)],
+            Text(
+              filters.isEmpty || textOnly
+                  ? 'Filters'
+                  : 'Filters (${filters.activeCount})',
+              style: AppTypography.captionMedium,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -596,50 +746,63 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         tooltip: 'Exit selection mode',
         onPressed: () =>
             ref.read(transactionListIntentProvider.notifier).clearSelection(),
-        icon: const Icon(Icons.close),
+        icon: const Icon(LucideIcons.x),
       ),
       title: Text(
         hasSelection
             ? '${intent.selectedIds.length} selected'
             : 'Select transactions',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
       ),
-      actions: [
-        IconButton(
-          tooltip: 'Recategorize selected',
-          onPressed: hasSelection ? _bulkRecategorize : null,
-          icon: const Icon(LucideIcons.tags),
-        ),
-        IconButton(
-          tooltip: 'Move selected to account',
-          onPressed: hasSelection ? _bulkMoveAccount : null,
-          icon: const Icon(LucideIcons.walletCards),
-        ),
-        IconButton(
-          tooltip: 'Delete selected',
-          onPressed: hasSelection
-              ? () => _runBulkOperation(TransactionBulkOperation.delete)
-              : null,
-          icon: const Icon(LucideIcons.trash2),
-        ),
-      ],
     );
   }
 
-  PreferredSizeWidget _buildSearchAppBar() {
-    return AppBar(
-      titleSpacing: 0,
-      title: Padding(
-        padding: const EdgeInsets.only(right: AppSpacing.space4),
-        child: SearchInput(
-          controller: _searchController,
-          autofocus: true,
-          onChanged: _onSearchChanged,
-        ),
+  Widget _buildSelectionActions(bool hasSelection) {
+    final colors = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space4),
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: AppSpacing.space1,
+        children: [
+          Tooltip(
+            message: 'Recategorize selected',
+            child: TextButton.icon(
+              onPressed: hasSelection ? _bulkRecategorize : null,
+              icon: const Icon(LucideIcons.tags, size: 18),
+              label: const Text('Category'),
+            ),
+          ),
+          Tooltip(
+            message: 'Move selected to account',
+            child: TextButton.icon(
+              onPressed: hasSelection ? _bulkMoveAccount : null,
+              icon: const Icon(LucideIcons.walletCards, size: 18),
+              label: const Text('Account'),
+            ),
+          ),
+          Tooltip(
+            message: 'Delete selected',
+            child: TextButton.icon(
+              onPressed: hasSelection
+                  ? () => _runBulkOperation(TransactionBulkOperation.delete)
+                  : null,
+              style: TextButton.styleFrom(foregroundColor: colors.error),
+              icon: const Icon(LucideIcons.trash2, size: 18),
+              label: const Text('Delete'),
+            ),
+          ),
+        ],
       ),
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back),
-        onPressed: _stopSearching,
-      ),
+    );
+  }
+
+  Widget _scrollableMessage({required Widget child}) {
+    return CustomScrollView(
+      slivers: [
+        SliverFillRemaining(hasScrollBody: false, child: Center(child: child)),
+      ],
     );
   }
 
@@ -657,7 +820,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     }
 
     if (state.error != null) {
-      return Center(
+      return _scrollableMessage(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.space4),
           child: Column(
@@ -688,11 +851,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       );
     }
 
-    final accountNames = _accountNameMap(accounts);
-    final categoryNames = _categoryNameMap(categories);
-    final payeeNames = _payeeNameMap(payees);
-    final accountMap = _accountMap(accounts);
-    final categoryMap = _categoryMap(categories);
     final filtered = state.transactions;
     final activeAccounts =
         accounts.asData?.value
@@ -706,20 +864,16 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final isFilterActive = !filters.isEmpty;
 
     if (filtered.isEmpty && (isFilterActive || hasSearch)) {
-      return Center(
+      return _scrollableMessage(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.space4),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              SizedBox(
-                width: 120,
-                height: 120,
-                child: Icon(
-                  Icons.search_off,
-                  size: 64,
-                  color: context.lootrColors.textTertiary,
-                ),
+              Icon(
+                Icons.search_off,
+                size: 44,
+                color: context.lootrColors.textSecondary,
               ),
               const SizedBox(height: AppSpacing.space4),
               Text(
@@ -727,6 +881,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 style: AppTypography.h2.copyWith(
                   color: Theme.of(context).colorScheme.onSurface,
                 ),
+                textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppSpacing.space2),
               Text(
@@ -736,6 +891,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 style: AppTypography.body.copyWith(
                   color: context.lootrColors.textSecondary,
                 ),
+                textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppSpacing.space4),
               Wrap(
@@ -748,12 +904,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                       constraints: const BoxConstraints(minWidth: 220),
                       child: PrimaryButton(
                         label: 'Clear Search',
-                        onPressed: () {
-                          _searchController.clear();
-                          ref
-                              .read(transactionSearchQueryProvider.notifier)
-                              .clear();
-                        },
+                        onPressed: _clearSearch,
                         isExpanded: false,
                       ),
                     ),
@@ -779,38 +930,36 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     if (filtered.isEmpty) {
       final needsAccount =
           accounts is AsyncData<List<Account>> && activeAccounts.isEmpty;
-      return Center(
+      return _scrollableMessage(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.space4),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              SizedBox(
-                width: 120,
-                height: 120,
-                child: Icon(
-                  Icons.receipt_long_outlined,
-                  size: 64,
-                  color: context.lootrColors.textTertiary,
-                ),
+              Icon(
+                Icons.receipt_long_outlined,
+                size: 44,
+                color: context.lootrColors.textSecondary,
               ),
               const SizedBox(height: AppSpacing.space4),
               Text(
-                'No transactions yet',
+                needsAccount
+                    ? 'No transactions yet'
+                    : 'No transactions this period',
                 style: AppTypography.h2.copyWith(
                   color: Theme.of(context).colorScheme.onSurface,
                 ),
-              ),
-              const SizedBox(height: AppSpacing.space2),
-              Text(
-                needsAccount
-                    ? 'Add an account first, then track transactions.'
-                    : 'Add your first transaction to start tracking',
-                style: AppTypography.body.copyWith(
-                  color: context.lootrColors.textSecondary,
-                ),
                 textAlign: TextAlign.center,
               ),
+              const SizedBox(height: AppSpacing.space2),
+              if (needsAccount)
+                Text(
+                  'Add an account first, then track transactions.',
+                  style: AppTypography.body.copyWith(
+                    color: context.lootrColors.textSecondary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               const SizedBox(height: AppSpacing.space4),
               ConstrainedBox(
                 constraints: const BoxConstraints(minWidth: 220),
@@ -823,7 +972,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                       context.push('/transactions/new');
                     }
                   },
-                  icon: const Icon(Icons.add, size: 18),
                   isExpanded: false,
                 ),
               ),
@@ -834,117 +982,151 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     }
 
     final groups = _groupByDate(filtered);
+    final accountMap = _accountMap(accounts);
+    final categoryMap = _categoryMap(categories);
+    final payeeNames = _payeeNameMap(payees);
+    final colors = Theme.of(context).colorScheme;
+
+    Widget buildRow(BuildContext context, Transaction txn) {
+      final account = accountMap[txn.accountId];
+      final category = categoryMap[txn.categoryId];
+      final transfer = isTransferEntry(txn);
+      return Dismissible(
+        key: ValueKey(txn.id),
+        direction: listIntent.isSelecting
+            ? DismissDirection.none
+            : DismissDirection.horizontal,
+        confirmDismiss: (direction) async {
+          if (direction == DismissDirection.startToEnd) {
+            context.push(
+              '/transactions/new',
+              extra: transferFromTransaction(txn) ?? txn,
+            );
+            return false;
+          }
+          await _onDelete(txn.id);
+          return false;
+        },
+        background: _swipeBackground(
+          isLeading: true,
+          label: 'Edit',
+          icon: LucideIcons.pencil,
+          backgroundColor: colors.primary,
+          foregroundColor: colors.onPrimary,
+        ),
+        secondaryBackground: _swipeBackground(
+          isLeading: false,
+          label: 'Delete',
+          icon: LucideIcons.trash2,
+          backgroundColor: colors.errorContainer,
+          foregroundColor: colors.onErrorContainer,
+        ),
+        child: TransactionRowWidget(
+          transaction: txn,
+          accountName: account?.name ?? txn.accountId,
+          categoryName: transfer ? null : category?.name ?? txn.categoryId,
+          payeeName: transfer
+              ? (txn.metadata?['destination_account_name']?.toString() ??
+                    accountMap[txn.metadata?['destination_account_id']
+                            ?.toString()]
+                        ?.name)
+              : payeeNames[txn.payeeId] ?? txn.payeeId,
+          leading: _buildRowLeading(txn, account: account, category: category),
+          showSelectionIndicator: listIntent.isSelecting,
+          isSelected: listIntent.selectedIds.contains(txn.id),
+          grouped: true,
+          onLongPress: () => _startSelection(txn.id),
+          onTap: listIntent.isSelecting
+              ? () => ref
+                    .read(transactionListIntentProvider.notifier)
+                    .toggleSelection(txn.id)
+              : () => context.push('/transactions/${txn.id}'),
+        ),
+      );
+    }
 
     return RefreshIndicator(
       onRefresh: _onRefresh,
       child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
-          for (final entry in groups.entries) ...[
-            SliverToBoxAdapter(
-              child: DateGroupHeader(
-                title: formatDateGroupTitle(
-                  DateFormat('dd/MM/yyyy').parse(entry.key),
-                ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.pagePaddingMobile,
+              AppSpacing.space2,
+              AppSpacing.pagePaddingMobile,
+              0,
+            ),
+            sliver: DecoratedSliver(
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                border: Border.all(color: colors.outline),
               ),
-            ),
-            SliverList(
-              delegate: SliverChildBuilderDelegate((context, index) {
-                final txn = entry.value[index];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 4,
-                  ),
-                  child: Dismissible(
-                    key: Key(txn.id),
-                    direction: listIntent.isSelecting
-                        ? DismissDirection.none
-                        : DismissDirection.horizontal,
-                    confirmDismiss: (direction) async {
-                      if (direction == DismissDirection.startToEnd) {
-                        final transfer = transferFromTransaction(txn);
-                        context.push(
-                          '/transactions/new',
-                          extra: transfer ?? txn,
-                        );
-                        return false;
-                      }
-                      await _onDelete(txn.id);
-                      return false;
-                    },
-                    background: Container(
-                      alignment: Alignment.centerLeft,
-                      padding: const EdgeInsets.only(left: 20),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary600,
-                        borderRadius: BorderRadius.circular(10),
+              sliver: SliverPadding(
+                padding: const EdgeInsets.fromLTRB(1, 1, 1, AppSpacing.space3),
+                sliver: SliverMainAxisGroup(
+                  slivers: [
+                    for (final entry in groups.entries) ...[
+                      SliverToBoxAdapter(
+                        child: DateGroupHeader(
+                          title: formatDateGroupTitle(entry.key),
+                        ),
                       ),
-                      child: const Icon(Icons.edit, color: Colors.white),
-                    ),
-                    secondaryBackground: Container(
-                      alignment: Alignment.centerRight,
-                      padding: const EdgeInsets.only(right: 20),
-                      decoration: BoxDecoration(
-                        color: AppColors.danger600,
-                        borderRadius: BorderRadius.circular(10),
+                      SliverList.separated(
+                        itemCount: entry.value.length,
+                        itemBuilder: (context, index) =>
+                            buildRow(context, entry.value[index]),
+                        separatorBuilder: (context, _) => Divider(
+                          height: 1,
+                          indent: AppSpacing.space4 + 36 + AppSpacing.space3,
+                          endIndent: AppSpacing.space4,
+                          color: colors.outlineVariant,
+                        ),
                       ),
-                      child: const Icon(Icons.delete, color: Colors.white),
-                    ),
-                    child: TransactionRowWidget(
-                      transaction: txn,
-                      accountName: accountNames[txn.accountId] ?? txn.accountId,
-                      categoryName: isTransferEntry(txn)
-                          ? null
-                          : txn.categoryId == null
-                          ? null
-                          : categoryNames[txn.categoryId] ?? txn.categoryId,
-                      payeeName: isTransferEntry(txn)
-                          ? (txn.metadata?['destination_account_name']
-                                    ?.toString() ??
-                                accountNames[txn
-                                    .metadata?['destination_account_id']
-                                    ?.toString()])
-                          : txn.payeeId == null
-                          ? null
-                          : payeeNames[txn.payeeId] ?? txn.payeeId,
-                      leading: _buildRowLeading(
-                        txn,
-                        account: accountMap[txn.accountId],
-                        category: txn.categoryId == null
-                            ? null
-                            : categoryMap[txn.categoryId],
-                      ),
-                      showSelectionIndicator: listIntent.isSelecting,
-                      isSelected: listIntent.selectedIds.contains(txn.id),
-                      onLongPress: () => ref
-                          .read(transactionListIntentProvider.notifier)
-                          .startSelection(txn.id),
-                      onTap: listIntent.isSelecting
-                          ? () => ref
-                                .read(transactionListIntentProvider.notifier)
-                                .toggleSelection(txn.id)
-                          : () => context.push('/transactions/${txn.id}'),
-                    ),
-                  ),
-                );
-              }, childCount: entry.value.length),
-            ),
-          ],
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 148),
-              child: Center(
-                child: Text(
-                  'No more transactions',
-                  style: AppTypography.caption.copyWith(
-                    color: context.lootrColors.textTertiary,
-                  ),
+                    ],
+                  ],
                 ),
               ),
             ),
           ),
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height:
+                  AppSpacing.bottomNavClearance +
+                  MediaQuery.paddingOf(context).bottom,
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _swipeBackground({
+    required bool isLeading,
+    required String label,
+    required IconData icon,
+    required Color backgroundColor,
+    required Color foregroundColor,
+  }) {
+    return Container(
+      color: backgroundColor,
+      alignment: isLeading
+          ? AlignmentDirectional.centerStart
+          : AlignmentDirectional.centerEnd,
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space4),
+      child: ExcludeSemantics(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18, color: foregroundColor),
+            const SizedBox(width: AppSpacing.space2),
+            Text(
+              label,
+              style: AppTypography.bodyMedium.copyWith(color: foregroundColor),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -983,8 +1165,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     }
 
     return Container(
-      width: 40,
-      height: 40,
+      width: 36,
+      height: 36,
       alignment: Alignment.center,
       decoration: BoxDecoration(color: backgroundColor, shape: BoxShape.circle),
       child: child,

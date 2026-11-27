@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 
+import '../../../../core/theme/radius.dart';
 import '../../../../core/theme/spacing.dart';
 
 class BudgetShimmer extends StatelessWidget {
@@ -8,89 +9,65 @@ class BudgetShimmer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final baseColor = isDark
-        ? const Color(0xFF2E2E33)
-        : const Color(0xFFE2E4E8);
-    final highlightColor = isDark
-        ? const Color(0xFF3E3E44)
-        : const Color(0xFFF2F4F7);
+    final colors = Theme.of(context).colorScheme;
 
-    return Shimmer.fromColors(
-      baseColor: baseColor,
-      highlightColor: highlightColor,
-      child: Column(
-        children: [
-          _BudgetShimmerCard(),
-          _BudgetShimmerCard(),
-          _BudgetShimmerCard(),
-          _BudgetShimmerCard(),
-          _BudgetShimmerCard(),
-        ],
-      ),
-    );
-  }
-}
+    Widget block({
+      double? width,
+      required double height,
+      required double radius,
+    }) {
+      return Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          color: colors.outlineVariant,
+          borderRadius: BorderRadius.circular(radius),
+        ),
+      );
+    }
 
-class _BudgetShimmerCard extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.cardPaddingStandard),
-      margin: const EdgeInsets.only(bottom: AppSpacing.space2),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Theme.of(context).brightness == Brightness.dark
-            ? Border.all(color: colorScheme.outline)
-            : null,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.space3),
-              Expanded(
-                child: Container(
-                  height: 16,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(6),
+    final placeholder = Column(
+      children: [
+        block(width: double.infinity, height: 144, radius: AppRadius.xl),
+        const SizedBox(height: AppSpacing.space3),
+        for (var index = 0; index < 4; index++)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.space3),
+            child: Row(
+              children: [
+                block(width: 36, height: 36, radius: AppRadius.md),
+                const SizedBox(width: AppSpacing.space3),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      block(width: 144, height: 16, radius: AppRadius.sm),
+                      const SizedBox(height: AppSpacing.space2),
+                      block(
+                        width: double.infinity,
+                        height: 4,
+                        radius: AppRadius.full,
+                      ),
+                      const SizedBox(height: AppSpacing.space2),
+                      block(width: 104, height: 12, radius: AppRadius.sm),
+                    ],
                   ),
                 ),
-              ),
-              const SizedBox(width: AppSpacing.space3),
-              Container(
-                width: 60,
-                height: 16,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.space3),
-          Container(
-            height: 8,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(4),
+              ],
             ),
           ),
-        ],
-      ),
+      ],
+    );
+
+    return Semantics(
+      label: 'Loading budgets',
+      child: MediaQuery.disableAnimationsOf(context)
+          ? placeholder
+          : Shimmer.fromColors(
+              baseColor: colors.outlineVariant,
+              highlightColor: colors.surfaceContainerHighest,
+              child: placeholder,
+            ),
     );
   }
 }

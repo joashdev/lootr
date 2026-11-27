@@ -232,7 +232,7 @@ class _CompositeBudgetSheetState extends ConsumerState<CompositeBudgetSheet> {
             ),
             if (_loading)
               const Expanded(child: Center(child: CircularProgressIndicator()))
-            else
+            else ...[
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.all(
@@ -380,14 +380,24 @@ class _CompositeBudgetSheetState extends ConsumerState<CompositeBudgetSheet> {
                       values: _categories,
                     ),
                     _transactionMembershipSection(transactions),
-                    const SizedBox(height: AppSpacing.space4),
-                    FilledButton(
-                      onPressed: _saving ? null : _save,
-                      child: Text(_saving ? 'Saving…' : 'Save budget'),
-                    ),
                   ],
                 ),
               ),
+              const Divider(),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sheetPaddingHorizontal,
+                  vertical: AppSpacing.space2,
+                ),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: _saving ? null : _save,
+                    child: Text(_saving ? 'Saving…' : 'Save budget'),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -402,6 +412,9 @@ class _CompositeBudgetSheetState extends ConsumerState<CompositeBudgetSheet> {
   }) {
     return DropdownButtonFormField<String>(
       initialValue: value,
+      isExpanded: true,
+      isDense: false,
+      itemHeight: null,
       decoration: InputDecoration(labelText: label),
       items: [
         for (final entry in values.entries)

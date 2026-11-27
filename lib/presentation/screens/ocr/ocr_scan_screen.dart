@@ -55,7 +55,7 @@ class _OcrScanScreenState extends ConsumerState<OcrScanScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _initCamera();
+    if (_assistanceEnabled) _initCamera();
   }
 
   @override
@@ -210,6 +210,13 @@ class _OcrScanScreenState extends ConsumerState<OcrScanScreen>
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    ref.listen(smartEntryAssistanceEnabledProvider, (previous, enabled) {
+      if (enabled &&
+          _cameraController == null &&
+          ModalRoute.of(context)?.isCurrent == true) {
+        _initCamera();
+      }
+    });
     final assistanceEnabled =
         widget.runOcr != null || ref.watch(smartEntryAssistanceEnabledProvider);
 
@@ -220,17 +227,31 @@ class _OcrScanScreenState extends ConsumerState<OcrScanScreen>
           children: [
             Positioned.fill(child: _buildViewfinder(colorScheme)),
             if (!assistanceEnabled)
-              const Positioned.fill(
+              Positioned.fill(
                 child: ColoredBox(
                   color: Colors.black54,
                   child: Center(
                     child: Padding(
-                      padding: EdgeInsets.all(32),
-                      child: Text(
-                        'Smart Entry Assistance is off. Enable it in Settings '
-                        'to scan receipts.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white),
+                      padding: const EdgeInsets.all(32),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'Turn on Smart Entry Assistance to scan receipts.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.white),
+                          ),
+                          const SizedBox(height: 16),
+                          PrimaryButton(
+                            label: 'Smart Entry settings',
+                            isExpanded: false,
+                            onPressed: () {
+                              final router = GoRouter.of(context);
+                              router.pop();
+                              router.push('/more/settings/ai');
+                            },
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -240,6 +261,7 @@ class _OcrScanScreenState extends ConsumerState<OcrScanScreen>
               top: 8,
               left: 8,
               child: IconButton(
+                tooltip: 'Close',
                 onPressed: () => context.pop(),
                 icon: const Icon(LucideIcons.x, color: Colors.white),
               ),

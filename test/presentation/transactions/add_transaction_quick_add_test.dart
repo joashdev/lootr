@@ -170,7 +170,7 @@ void main() {
       final tabs = tester.widget<EntryModeTabs>(find.byType(EntryModeTabs));
       expect(tabs.selected, EntryMode.manual);
       expect(find.text('Amount'), findsOneWidget);
-      expect(find.text('Transaction Mode'), findsOneWidget);
+      expect(find.text('More details'), findsOneWidget);
       expect(find.text('Describe your transaction...'), findsNothing);
 
       // And back: tapping Quick returns to quick mode, selection follows.
@@ -227,7 +227,7 @@ void main() {
       // control reflects the switch to manual mode.
       expect(find.text('Add Transaction'), findsWidgets);
       expect(find.text('250.00'), findsOneWidget);
-      expect(find.text('Transaction Mode'), findsOneWidget);
+      expect(find.text('More details'), findsOneWidget);
       final tabs = tester.widget<EntryModeTabs>(find.byType(EntryModeTabs));
       expect(tabs.selected, EntryMode.manual);
     });

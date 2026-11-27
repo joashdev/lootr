@@ -203,9 +203,9 @@ void main() {
       }
     });
 
-    // 02 Full Add Transaction sheet (Manual mode from Quick Actions header).
+    // 02 Full Add Transaction sheet (Add manually from the Add sheet).
     await step('add/02-add-transaction', () async {
-      final manual = find.text('Manual');
+      final manual = find.text('Add manually');
       if (manual.evaluate().isNotEmpty) {
         await tester.tap(manual.first, warnIfMissed: false);
         await settle(tester);

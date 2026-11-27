@@ -26,15 +26,22 @@ class PrimaryButton extends StatelessWidget {
 
     Widget child;
     if (isLoading) {
-      child = const SizedBox(
+      child = SizedBox(
         height: 20,
         width: 20,
-        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: colorScheme.primary,
+        ),
       );
     } else if (icon != null) {
       child = Row(
         mainAxisSize: MainAxisSize.min,
-        children: [icon!, const SizedBox(width: 8), Text(label)],
+        children: [
+          icon!,
+          const SizedBox(width: 8),
+          Flexible(child: Text(label, textAlign: TextAlign.center)),
+        ],
       );
     } else {
       child = Text(label);
