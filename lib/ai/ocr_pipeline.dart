@@ -20,6 +20,30 @@ class OcrResult {
 }
 
 class OCRPipeline {
+  static const _receiptTotalLabels = [
+    'total amount due',
+    'amount due',
+    'balance due',
+    'total due',
+    'grand total',
+    'net amount',
+    'total amount',
+    'total',
+  ];
+  static final _receiptTotalLabel = RegExp(
+    r'\b(?:' + _receiptTotalLabels.join('|') + r')\b',
+    caseSensitive: false,
+  );
+  static final _totalSummary = RegExp(
+    r'^\s*[:=]?\s*(?:vat|tax|items?|discounts?|savings)\b',
+    caseSensitive: false,
+  );
+  static final _amountOnly = RegExp(
+    r'^\s*(?:[₱$€£¥]|PHP)?\s*-?\d+(?:,\d{3})*(?:\.\d+)?\s*$',
+    caseSensitive: false,
+  );
+  static final _emptyTotal = RegExp(r'^\s*[:=]?\s*$');
+
   final NLParser _nlParser;
   final AiProcessingLogRepo? _logRepo;
   final bool _aiEnabled;
@@ -167,6 +191,7 @@ class OCRPipeline {
   _ReceiptFields _parseReceiptFields(String text) {
     String? storeName;
     double? amount;
+    var totalPriority = _receiptTotalLabels.length;
     String? date;
 
     final lines = text
@@ -185,12 +210,21 @@ class OCRPipeline {
       }, orElse: () => lines.first);
     }
 
-    for (final line in lines) {
+    for (var i = 0; i < lines.length; i++) {
+      final line = lines[i];
       final lower = line.toLowerCase();
-      if (_looksLikeReceiptTotal(lower)) {
-        final result = _nlParser.parse(line);
-        if (result != null && result.parsed.amount != null) {
-          amount = result.parsed.amount;
+      final totalLabel = _receiptTotalLabel.firstMatch(line);
+      if (totalLabel != null) {
+        final priority = _receiptTotalLabels.indexOf(
+          totalLabel.group(0)!.toLowerCase(),
+        );
+        if (priority <= totalPriority) {
+          final nextLine = i + 1 < lines.length ? lines[i + 1] : null;
+          final totalAmount = _amountFromTotal(line, totalLabel, nextLine);
+          if (totalAmount != null) {
+            amount = totalAmount;
+            totalPriority = priority;
+          }
         }
       }
 
@@ -209,14 +243,41 @@ class OCRPipeline {
     );
   }
 
-  bool _looksLikeReceiptTotal(String lower) {
-    if (lower.contains('subtotal')) return false;
-    return lower.contains('total') ||
-        lower.contains('amount due') ||
-        lower.contains('net amount') ||
-        lower.contains('total due') ||
-        lower.contains('grand total') ||
-        lower.contains('balance due');
+  double? _amountFromTotal(String line, RegExpMatch label, String? nextLine) {
+    final prefix = line.substring(0, label.start).trim();
+    final suffix = line.substring(label.end);
+    if ((prefix.isNotEmpty && !_amountOnly.hasMatch(prefix)) ||
+        _totalSummary.hasMatch(suffix)) {
+      return null;
+    }
+
+    final totalText = suffix
+        .replaceAll(
+          RegExp(r'\(\s*\d+\s*(?:items?)?\s*\)', caseSensitive: false),
+          '',
+        )
+        .replaceAll(
+          RegExp(
+            r'\b(?:qty|quantity|count|items?)\s*[:x]?\s*\d+\b(?![.,]\d)',
+            caseSensitive: false,
+          ),
+          '',
+        )
+        .replaceFirst(
+          RegExp(r'^\s*[:=]?\s*\d+\s+items?\b', caseSensitive: false),
+          '',
+        );
+    final amount =
+        _nlParser.parse(totalText)?.parsed.amount ??
+        _nlParser.parse(prefix)?.parsed.amount;
+    if (amount != null) return amount;
+
+    if (_emptyTotal.hasMatch(totalText) &&
+        nextLine != null &&
+        _amountOnly.hasMatch(nextLine)) {
+      return _nlParser.parse(nextLine)?.parsed.amount;
+    }
+    return null;
   }
 
   bool _looksLikeDateLine(String lower) {
