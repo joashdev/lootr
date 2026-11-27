@@ -22,6 +22,7 @@ import '../../application/providers/repo_providers.dart';
 import '../../application/providers/undo_stack_provider.dart';
 import '../../core/constants/enums.dart' as ui;
 import '../../core/format/money_format.dart';
+import '../../core/router/receipt_scan_route.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/radius.dart';
 import '../../core/theme/typography.dart';
@@ -929,7 +930,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   }
 
   Future<void> _openScan() async {
-    final receipt = await context.push<OcrPayload>('/scan');
+    final receipt = await ReceiptScanRequest.open(context);
     if (!mounted || receipt == null) return;
     context.pushReplacement(
       '/transactions/new',

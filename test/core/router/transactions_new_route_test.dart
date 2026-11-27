@@ -73,7 +73,7 @@ void main() {
     expect(match.last.route.path, ':id');
   });
 
-  Future<void> openScan(WidgetTester tester, {required bool manual}) async {
+  Future<void> mountRouter(WidgetTester tester) async {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
@@ -81,6 +81,20 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+  }
+
+  testWidgets('a direct scan link returns Home without opening the camera', (
+    tester,
+  ) async {
+    router.go('/scan');
+    await mountRouter(tester);
+
+    expect(router.routeInformationProvider.value.uri.path, '/');
+    expect(find.byType(OcrScanScreen), findsNothing);
+  });
+
+  Future<void> openScan(WidgetTester tester, {required bool manual}) async {
+    await mountRouter(tester);
     await tester.tap(
       find.bySemanticsLabel('Add transaction, transfer, or scan receipt'),
     );

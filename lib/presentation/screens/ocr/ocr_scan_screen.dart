@@ -244,13 +244,7 @@ class _OcrScanScreenState extends ConsumerState<OcrScanScreen>
               left: 8,
               child: IconButton(
                 tooltip: 'Close receipt scanner',
-                onPressed: () {
-                  if (context.canPop()) {
-                    context.pop();
-                  } else {
-                    context.go('/');
-                  }
-                },
+                onPressed: () => context.pop(),
                 icon: const Icon(LucideIcons.x, color: Colors.white),
               ),
             ),

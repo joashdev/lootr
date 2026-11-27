@@ -49,6 +49,7 @@ import '../../presentation/screens/transactions/transaction_detail_screen.dart';
 import '../../presentation/screens/transactions/transactions_screen.dart';
 import '../../presentation/sheets/add_transaction_sheet.dart';
 import '../../presentation/shared/layouts/tab_shell.dart';
+import 'receipt_scan_route.dart';
 
 Page<T> _pushPage<T>(Widget child, {LocalKey? key}) {
   return CustomTransitionPage<T>(
@@ -160,20 +161,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
-        path: '/scan',
+        path: ReceiptScanRequest.path,
+        redirect: (context, state) =>
+            state.extra is ReceiptScanRequest ? null : '/',
         pageBuilder: (context, state) => _pushPage<OcrPayload>(
-          OcrScanScreen(
-            onConfirmed: (payload) {
-              if (context.canPop()) {
-                context.pop(payload);
-                return;
-              }
-              context.push(
-                '/transactions/new',
-                extra: AddTransactionSheetArgs.fromReceipt(payload),
-              );
-            },
-          ),
+          OcrScanScreen(onConfirmed: (payload) => context.pop(payload)),
           key: state.pageKey,
         ),
       ),

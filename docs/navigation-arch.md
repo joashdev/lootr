@@ -664,6 +664,7 @@ Uses `go_router` with `ShellRoute` for the bottom tab bar.
 | `/scan` | fullScreen | Close or system Back returns to the open Add sheet and keeps its draft |
 
 When the user confirms the scan, close the scanner and open one Add Transaction sheet with the receipt fields filled in.
+A direct visit to `/scan` opens Home.
 
 ### Query parameters
 

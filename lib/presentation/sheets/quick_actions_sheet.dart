@@ -3,10 +3,10 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
+import '../../core/router/receipt_scan_route.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/radius.dart';
 import '../../core/theme/typography.dart';
-import '../../domain/value_objects/ocr_payload.dart';
 import '../shared/components/sheet_handle.dart';
 import '../shared/components/app_snackbar.dart';
 import 'add_transaction_sheet.dart';
@@ -37,7 +37,7 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
   }
 
   Future<void> _openScan() async {
-    final receipt = await context.push<OcrPayload>('/scan');
+    final receipt = await ReceiptScanRequest.open(context);
     if (!mounted || receipt == null) return;
     _navigate(
       '/transactions/new',
