@@ -2,25 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
 import '../../sheets/quick_actions_sheet.dart';
 
 class TabShell extends StatelessWidget {
   const TabShell({super.key, required this.navigationShell});
 
-  static const _pillHeight = 58.0;
-  static const _addButtonSize = 58.0;
-  static const _navBottomGap = 16.0;
   static const _navHorizontalInset = 16.0;
 
   final StatefulNavigationShell navigationShell;
 
   @override
   Widget build(BuildContext context) {
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final bottomPadding = MediaQuery.paddingOf(context).bottom;
     final background = Theme.of(context).scaffoldBackgroundColor;
 
-    final navOverlayHeight = _navBottomGap + _pillHeight + bottomPadding + 12;
+    final navOverlayHeight =
+        AppSpacing.bottomNavGap +
+        AppSpacing.bottomNavButtonSize +
+        AppSpacing.bottomNavFadeHeight +
+        bottomPadding;
 
     return Scaffold(
       body: Stack(
@@ -53,7 +55,7 @@ class TabShell extends StatelessWidget {
           Positioned(
             left: _navHorizontalInset,
             right: _navHorizontalInset,
-            bottom: _navBottomGap + bottomPadding,
+            bottom: AppSpacing.bottomNavGap + bottomPadding,
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 536),
@@ -84,7 +86,7 @@ class TabShell extends StatelessWidget {
       side: BorderSide(color: colorScheme.outline),
     );
     return SizedBox(
-      height: _pillHeight,
+      height: AppSpacing.bottomNavButtonSize,
       child: Material(
         color: colorScheme.surface,
         surfaceTintColor: Colors.transparent,
@@ -92,38 +94,43 @@ class TabShell extends StatelessWidget {
         shape: shape,
         child: Padding(
           padding: const EdgeInsets.all(4),
-          child: Row(
-            children: [
-              _NavTab(
-                icon: LucideIcons.home,
-                label: 'Home',
-                isActive: navigationShell.currentIndex == 0,
-                onTap: () => navigationShell.goBranch(0),
-              ),
-              _NavTab(
-                icon: LucideIcons.receiptText,
-                label: 'Transactions',
-                isActive: navigationShell.currentIndex == 1,
-                onTap: () => navigationShell.goBranch(1),
-                flex:
-                    navigationShell.currentIndex == 1 &&
-                        MediaQuery.textScalerOf(context).scale(11) >= 16
-                    ? 2
-                    : 1,
-              ),
-              _NavTab(
-                icon: LucideIcons.pieChart,
-                label: 'Budgets',
-                isActive: navigationShell.currentIndex == 2,
-                onTap: () => navigationShell.goBranch(2),
-              ),
-              _NavTab(
-                icon: LucideIcons.grid2X2,
-                label: 'More',
-                isActive: navigationShell.currentIndex == 3,
-                onTap: () => navigationShell.goBranch(3, initialLocation: true),
-              ),
-            ],
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final wideTransactionTab =
+                  constraints.maxWidth >= 5 * kMinInteractiveDimension &&
+                  navigationShell.currentIndex == 1 &&
+                  MediaQuery.textScalerOf(context).scale(11) >= 16;
+              return Row(
+                children: [
+                  _NavTab(
+                    icon: LucideIcons.home,
+                    label: 'Home',
+                    isActive: navigationShell.currentIndex == 0,
+                    onTap: () => navigationShell.goBranch(0),
+                  ),
+                  _NavTab(
+                    icon: LucideIcons.receiptText,
+                    label: 'Transactions',
+                    isActive: navigationShell.currentIndex == 1,
+                    onTap: () => navigationShell.goBranch(1),
+                    flex: wideTransactionTab ? 2 : 1,
+                  ),
+                  _NavTab(
+                    icon: LucideIcons.pieChart,
+                    label: 'Budgets',
+                    isActive: navigationShell.currentIndex == 2,
+                    onTap: () => navigationShell.goBranch(2),
+                  ),
+                  _NavTab(
+                    icon: LucideIcons.grid2X2,
+                    label: 'More',
+                    isActive: navigationShell.currentIndex == 3,
+                    onTap: () =>
+                        navigationShell.goBranch(3, initialLocation: true),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),
@@ -134,7 +141,7 @@ class TabShell extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final borderRadius = BorderRadius.circular(22);
     return SizedBox.square(
-      dimension: _addButtonSize,
+      dimension: AppSpacing.bottomNavButtonSize,
       child: Semantics(
         button: true,
         label: 'Add transaction, transfer, or scan receipt',
@@ -208,6 +215,8 @@ class _NavTab extends StatelessWidget {
         button: true,
         selected: isActive,
         label: '$label tab',
+        onTap: onTap,
+        excludeSemantics: true,
         child: Material(
           color: Colors.transparent,
           child: InkWell(

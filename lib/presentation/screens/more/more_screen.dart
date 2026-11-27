@@ -27,7 +27,7 @@ class MoreScreen extends ConsumerWidget {
               AppSpacing.pagePaddingMobile,
               AppSpacing.space4,
               AppSpacing.pagePaddingMobile,
-              AppSpacing.bottomNavClearance +
+              AppSpacing.bottomNavOverlayClearance +
                   MediaQuery.paddingOf(context).bottom,
             ),
             itemCount: sections.length,

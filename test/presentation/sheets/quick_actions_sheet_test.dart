@@ -76,6 +76,30 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  GoRouter shellRouter({String location = '/'}) {
+    final router = GoRouter(
+      initialLocation: location,
+      routes: [
+        StatefulShellRoute.indexedStack(
+          builder: (context, state, shell) => TabShell(navigationShell: shell),
+          branches: [
+            for (final path in ['/', '/transactions', '/budgets', '/more'])
+              StatefulShellBranch(
+                routes: [
+                  GoRoute(
+                    path: path,
+                    builder: (context, state) => const SizedBox.shrink(),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    return router;
+  }
+
   testWidgets('Quick entry exposes every add method', (tester) async {
     await openSheet(tester);
 
@@ -108,28 +132,13 @@ void main() {
     tester,
   ) async {
     final settings = _TestAiSettings();
-    final router = GoRouter(
-      routes: [
-        StatefulShellRoute.indexedStack(
-          builder: (context, state, shell) => TabShell(navigationShell: shell),
-          branches: [
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/',
-                  builder: (context, state) => const SizedBox.shrink(),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ],
-    );
-    addTearDown(router.dispose);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [aiSettingsProvider.overrideWith(() => settings)],
-        child: MaterialApp.router(routerConfig: router, theme: AppTheme.light),
+        child: MaterialApp.router(
+          routerConfig: shellRouter(),
+          theme: AppTheme.light,
+        ),
       ),
     );
     await tester.tap(
@@ -144,6 +153,32 @@ void main() {
     expect(find.byType(TextField), findsOneWidget);
     expect(find.byTooltip('Start voice input'), findsOneWidget);
     expect(find.text('Turn on Quick entry'), findsNothing);
+  });
+
+  testWidgets('every tab keeps a 48 dp target on a 320 dp phone', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 640);
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+    await tester.pumpWidget(
+      MaterialApp.router(
+        routerConfig: shellRouter(location: '/transactions'),
+        theme: AppTheme.light,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    for (final label in ['Home', 'Transactions', 'Budgets', 'More']) {
+      final tab = find.bySemanticsLabel('$label tab');
+      final size = tester.getSize(tab);
+      expect(size.width, greaterThanOrEqualTo(kMinInteractiveDimension));
+      expect(size.height, greaterThanOrEqualTo(kMinInteractiveDimension));
+    }
   });
 
   testWidgets('tapping Manual opens the full add-transaction flow in one tap', (

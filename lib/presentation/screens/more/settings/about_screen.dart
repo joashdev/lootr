@@ -34,25 +34,24 @@ class AboutScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(centerTitle: false, title: const Text('About')),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.space8),
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.space8,
+          AppSpacing.space8,
+          AppSpacing.space8,
+          AppSpacing.bottomNavOverlayClearance +
+              MediaQuery.paddingOf(context).bottom,
+        ),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 560),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
+                Image.asset(
+                  'android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png',
                   width: 80,
                   height: 80,
-                  decoration: BoxDecoration(
-                    color: colorScheme.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Icon(
-                    LucideIcons.coins,
-                    size: 40,
-                    color: colorScheme.primary,
-                  ),
+                  excludeFromSemantics: true,
                 ),
                 const SizedBox(height: AppSpacing.space6),
                 Text(
