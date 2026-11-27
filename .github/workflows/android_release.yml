@@ -146,6 +146,10 @@ jobs:
         shell: bash
         run: |
           aapt="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -1)"
+          zipalign="${aapt%/*}/zipalign"
+          for apk in unsigned-apks/*.apk; do
+            "$zipalign" -c -P 16 4 "$apk"
+          done
           python3 tool/check_android_apks.py unsigned-apks "$GITHUB_REF_NAME" "$GITHUB_RUN_NUMBER" "$aapt" \
             | tee -a "$GITHUB_STEP_SUMMARY"
 
