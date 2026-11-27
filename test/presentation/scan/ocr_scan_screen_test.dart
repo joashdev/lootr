@@ -25,7 +25,7 @@ void main() {
           overrides: [aiEnabledProvider.overrideWith((ref) => true)],
           child: MaterialApp(
             theme: AppTheme.light,
-            home: OcrScanScreen(runOcr: runOcr),
+            home: OcrScanScreen(runOcr: runOcr, onConfirmed: (_) {}),
           ),
         ),
       );
@@ -46,7 +46,7 @@ void main() {
           overrides: [aiEnabledProvider.overrideWith((ref) => true)],
           child: MaterialApp(
             theme: AppTheme.light,
-            home: const OcrScanScreen(),
+            home: OcrScanScreen(onConfirmed: (_) {}),
           ),
         ),
       );
@@ -64,7 +64,7 @@ void main() {
           overrides: [aiEnabledProvider.overrideWith((ref) => false)],
           child: MaterialApp(
             theme: AppTheme.light,
-            home: const OcrScanScreen(),
+            home: OcrScanScreen(onConfirmed: (_) {}),
           ),
         ),
       );

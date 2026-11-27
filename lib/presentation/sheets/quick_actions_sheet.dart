@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
 import '../../application/providers/ai_settings_provider.dart';
+import '../../core/router/receipt_scan_route.dart';
 import '../../core/theme/radius.dart';
 import '../../core/theme/typography.dart';
 import '../../domain/value_objects/field_types.dart';
@@ -37,6 +38,16 @@ class _QuickActionsSheetState extends ConsumerState<QuickActionsSheet> {
     FocusScope.of(context).unfocus();
     Navigator.of(context).pop();
     router.push(location, extra: extra);
+  }
+
+  Future<void> _openScan() async {
+    FocusScope.of(context).unfocus();
+    final receipt = await ReceiptScanRequest.open(context);
+    if (!mounted || receipt == null) return;
+    _navigate(
+      '/transactions/new',
+      extra: AddTransactionSheetArgs.fromReceipt(receipt),
+    );
   }
 
   void _openQuickAdd() {
@@ -208,7 +219,7 @@ class _QuickActionsSheetState extends ConsumerState<QuickActionsSheet> {
                         child: _AddShortcut(
                           icon: LucideIcons.scanLine,
                           label: 'Scan receipt',
-                          onTap: () => _navigate('/scan'),
+                          onTap: _openScan,
                         ),
                       ),
                       SizedBox(

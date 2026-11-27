@@ -842,9 +842,11 @@ Return to previous screen
 <tbody>
 <tr><td><code>/onboarding</code></td><td>fullScreen</td><td>cannot dismiss (must complete or skip)</td></tr>
 <tr><td><code>/transactions/new</code></td><td>bottomSheet</td><td>swipe down</td></tr>
-<tr><td><code>/scan</code></td><td>fullScreen</td><td>✕ button</td></tr>
+<tr><td><code>/scan</code></td><td>fullScreen</td><td>Close or system Back returns to the open Add sheet and keeps its draft</td></tr>
 </tbody>
 </table>
+
+<p>When the user confirms the scan, close the scanner and open one Add Transaction sheet with the receipt fields filled in. A direct visit to <code>/scan</code> opens Home.</p>
 
 <h3>Query parameters</h3>
 
