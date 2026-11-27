@@ -48,11 +48,14 @@ void main() {
       expect(result.payload.extractedFields.amount, 243.00);
     });
 
-    test('ignores metadata after the total amount', () async {
+    test('ignores metadata around the total amount', () async {
       for (final totalLine in const [
         'TOTAL 243.00 (2 items)',
         'TOTAL 243.00 VAT 12%',
         'TOTAL Qty 2 Amount 243.00',
+        'TOTAL: 2 ITEMS 243.00',
+        'TOTAL 243.00 ITEMS 2',
+        'TOTAL 243 ITEMS 2',
       ]) {
         final receiptPipeline = OCRPipeline(
           textExtractor: (_) async => [totalLine],
@@ -66,6 +69,20 @@ void main() {
           reason: totalLine,
         );
       }
+    });
+
+    test('uses the amount before the total label over cash tendered', () async {
+      final receiptPipeline = OCRPipeline(
+        textExtractor: (_) async => const [
+          '243.00 TOTAL',
+          'CASH 1000.00',
+          'CHANGE 757.00',
+        ],
+      );
+
+      final result = await receiptPipeline.process('/path/to/receipt.jpg');
+
+      expect(result.payload.extractedFields.amount, 243.00);
     });
 
     test('stub returns empty text lines in V1', () async {

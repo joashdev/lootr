@@ -199,25 +199,28 @@ class OCRPipeline {
       final lower = line.toLowerCase();
       if (_looksLikeReceiptTotal(lower)) {
         final totalLabel = _receiptTotalLabels.firstWhere(lower.contains);
-        final labelEnd = lower.indexOf(totalLabel) + totalLabel.length;
+        final labelStart = lower.indexOf(totalLabel);
         final totalText = line
-            .substring(labelEnd)
+            .substring(labelStart + totalLabel.length)
             .replaceAll(
               RegExp(r'\(\s*\d+\s*(?:items?)?\s*\)', caseSensitive: false),
               '',
             )
             .replaceAll(
               RegExp(
-                r'\b(?:qty|quantity|count|items?)\s*[:x]?\s*\d+\b',
+                r'\b(?:qty|quantity|count|items?)\s*[:x]?\s*\d+\b(?![.,]\d)',
                 caseSensitive: false,
               ),
               '',
+            )
+            .replaceFirst(
+              RegExp(r'^\s*[:=]?\s*\d+\s+items?\b', caseSensitive: false),
+              '',
             );
-        final totalParseResult = _nlParser.parse(totalText);
-        if (totalParseResult != null &&
-            totalParseResult.parsed.amount != null) {
-          amount = totalParseResult.parsed.amount;
-        }
+        final totalAmount =
+            _nlParser.parse(totalText)?.parsed.amount ??
+            _nlParser.parse(line.substring(0, labelStart))?.parsed.amount;
+        amount = totalAmount ?? amount;
       }
 
       if (_looksLikeDateLine(lower)) {
