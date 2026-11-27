@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
+import '../../application/providers/ai_settings_provider.dart';
 import '../../core/theme/radius.dart';
 import '../../core/theme/typography.dart';
 import '../../domain/value_objects/field_types.dart';
@@ -10,16 +12,14 @@ import '../shared/components/buttons/primary_button.dart';
 import '../shared/components/sheet_handle.dart';
 import 'add_transaction_sheet.dart';
 
-class QuickActionsSheet extends StatefulWidget {
-  const QuickActionsSheet({super.key, required this.assistanceEnabled});
-
-  final bool assistanceEnabled;
+class QuickActionsSheet extends ConsumerStatefulWidget {
+  const QuickActionsSheet({super.key});
 
   @override
-  State<QuickActionsSheet> createState() => _QuickActionsSheetState();
+  ConsumerState<QuickActionsSheet> createState() => _QuickActionsSheetState();
 }
 
-class _QuickActionsSheetState extends State<QuickActionsSheet> {
+class _QuickActionsSheetState extends ConsumerState<QuickActionsSheet> {
   final TextEditingController _quickInputController = TextEditingController();
   final SpeechToText _speech = SpeechToText();
   bool _isListening = false;
@@ -103,7 +103,7 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final assistanceEnabled = widget.assistanceEnabled;
+    final assistanceEnabled = ref.watch(smartEntryAssistanceEnabledProvider);
     final inputBorder = OutlineInputBorder(
       borderRadius: BorderRadius.circular(AppRadius.lg),
     );

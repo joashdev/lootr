@@ -1,13 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:lootr/application/providers/ai_settings_provider.dart';
 import 'package:lootr/core/theme/theme.dart';
 import 'package:lootr/presentation/shared/components/buttons/primary_button.dart';
+import 'package:lootr/presentation/shared/layouts/tab_shell.dart';
 import 'package:lootr/domain/value_objects/field_types.dart';
 import 'package:lootr/presentation/sheets/add_transaction_sheet.dart';
 import 'package:lootr/presentation/sheets/quick_actions_sheet.dart';
+
+class _TestAiSettings extends AiSettingsNotifier {
+  @override
+  AiSettingsState build() => const AiSettingsState();
+
+  void finishLoading() => state = const AiSettingsState(aiEnabled: true);
+}
 
 void main() {
   AddTransactionSheetArgs? openedArgs;
@@ -25,8 +35,7 @@ void main() {
                   onPressed: () => showModalBottomSheet<void>(
                     context: context,
                     isScrollControlled: true,
-                    builder: (_) =>
-                        QuickActionsSheet(assistanceEnabled: assistanceEnabled),
+                    builder: (_) => const QuickActionsSheet(),
                   ),
                   child: const Text('open-sheet'),
                 ),
@@ -52,7 +61,10 @@ void main() {
       ],
     );
     addTearDown(router.dispose);
-    return MaterialApp.router(theme: AppTheme.light, routerConfig: router);
+    return ProviderScope(
+      overrides: [aiEnabledProvider.overrideWith((ref) => assistanceEnabled)],
+      child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+    );
   }
 
   Future<void> openSheet(
@@ -90,6 +102,48 @@ void main() {
     await tester.tap(find.text('Turn on Quick entry'));
     await tester.pumpAndSettle();
     expect(find.text('ai-route'), findsOneWidget);
+  });
+
+  testWidgets('open Add sheet updates when Smart Entry settings load', (
+    tester,
+  ) async {
+    final settings = _TestAiSettings();
+    final router = GoRouter(
+      routes: [
+        StatefulShellRoute.indexedStack(
+          builder: (context, state, shell) => TabShell(navigationShell: shell),
+          branches: [
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/',
+                  builder: (context, state) => const SizedBox.shrink(),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [aiSettingsProvider.overrideWith(() => settings)],
+        child: MaterialApp.router(routerConfig: router, theme: AppTheme.light),
+      ),
+    );
+    await tester.tap(
+      find.bySemanticsLabel('Add transaction, transfer, or scan receipt'),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Turn on Quick entry'), findsOneWidget);
+
+    settings.finishLoading();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TextField), findsOneWidget);
+    expect(find.byTooltip('Start voice input'), findsOneWidget);
+    expect(find.text('Turn on Quick entry'), findsNothing);
   });
 
   testWidgets('tapping Manual opens the full add-transaction flow in one tap', (

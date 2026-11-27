@@ -142,6 +142,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
   bool _rememberCategoryCorrection = false;
   bool _initialRuleSuggestionChecked = false;
   int _ruleSuggestionRequest = 0;
+  int _quickParseRequest = 0;
 
   ParsedTransaction? _parsedPreview;
   String? _parseError;
@@ -260,7 +261,11 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
       onResult: (result) {
         if (!mounted) return;
         setState(() {
-          _quickAddController.text = result.recognizedWords.trim();
+          final text = result.recognizedWords.trim();
+          if (text != _quickAddController.text) {
+            _quickAddController.text = text;
+            _clearQuickPreview();
+          }
           _quickAddController.selection = TextSelection.collapsed(
             offset: _quickAddController.text.length,
           );
@@ -525,14 +530,16 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     });
   }
 
-  void _ensureQuickTextParsed(List<Account> accounts, List<Payee> payees) {
-    if (_seededInitialParsed || _quickAddController.text.trim().isEmpty) {
+  void _ensureQuickTextParsed() {
+    if (_seededInitialParsed ||
+        widget.initialQuickText == null ||
+        _quickAddController.text.trim().isEmpty) {
       return;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _seededInitialParsed) return;
       _seededInitialParsed = true;
-      _runQuickAdd(accounts, payees);
+      _runQuickAdd();
     });
   }
 
@@ -847,8 +854,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
         _matchedRuleInput = null;
         _categoryWasExplicitlyEdited = false;
         _rememberCategoryCorrection = false;
-        _parsedPreview = null;
-        _parseError = null;
+        _clearQuickPreview();
         _occurredAt = DateTime.now();
         _isQuickMode = true;
       });
@@ -890,22 +896,26 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
     );
   }
 
-  Future<void> _runQuickAdd(List<Account> accounts, List<Payee> payees) async {
+  void _clearQuickPreview() {
+    _quickParseRequest++;
+    _parsedPreview = null;
+    _parseError = null;
+  }
+
+  Future<void> _runQuickAdd() async {
     final input = _quickAddController.text.trim();
     if (input.isEmpty) {
-      setState(() {
-        _parsedPreview = null;
-        _parseError = null;
-      });
+      setState(_clearQuickPreview);
       return;
     }
 
+    final request = ++_quickParseRequest;
     final assistance = await ref.read(smartEntryAssistanceProvider.future);
     final result = await assistance.parse(
       input,
       ref.read(categoriesProvider).asData?.value ?? const <Category>[],
     );
-    if (!mounted) return;
+    if (!mounted || request != _quickParseRequest) return;
     setState(() {
       _parsedPreview = result.valueOrNull;
       _parseError = result.messageOrNull;
@@ -935,7 +945,10 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
       case EntryMode.quick:
         setState(() => _isQuickMode = true);
       case EntryMode.manual:
-        setState(() => _isQuickMode = false);
+        setState(() {
+          _isQuickMode = false;
+          _clearQuickPreview();
+        });
       case EntryMode.scan:
         _openScan();
     }
@@ -976,7 +989,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
         const <Transaction>[];
 
     _ensureSeededFromInitialParsed(accounts, payees);
-    _ensureQuickTextParsed(accounts, payees);
+    _ensureQuickTextParsed();
     _ensureInitialRuleSuggestion(payees);
 
     final isTransfer =
@@ -1290,6 +1303,7 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
         TextField(
           controller: _quickAddController,
           focusNode: _quickFocusNode,
+          onChanged: (_) => setState(_clearQuickPreview),
           decoration: InputDecoration(
             hintText: 'Describe your transaction...',
             filled: true,
@@ -1315,17 +1329,13 @@ class _AddTransactionSheetState extends ConsumerState<AddTransactionSheet> {
                 ),
                 IconButton(
                   tooltip: 'Parse',
-                  onPressed: assistanceEnabled
-                      ? () => _runQuickAdd(accounts, payees)
-                      : null,
+                  onPressed: assistanceEnabled ? _runQuickAdd : null,
                   icon: const Icon(LucideIcons.arrowRight, size: 18),
                 ),
               ],
             ),
           ),
-          onSubmitted: assistanceEnabled
-              ? (_) => _runQuickAdd(accounts, payees)
-              : null,
+          onSubmitted: assistanceEnabled ? (_) => _runQuickAdd() : null,
         ),
         const SizedBox(height: 8),
         Text(

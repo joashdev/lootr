@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import '../../../application/providers/ai_settings_provider.dart';
 import '../../../core/theme/typography.dart';
 import '../../sheets/quick_actions_sheet.dart';
 
@@ -174,15 +172,11 @@ class TabShell extends StatelessWidget {
   }
 
   void _showQuickActions(BuildContext context) {
-    final assistanceEnabled = ProviderScope.containerOf(
-      context,
-      listen: false,
-    ).read(smartEntryAssistanceEnabledProvider);
     showModalBottomSheet(
       context: context,
       useRootNavigator: true,
       isScrollControlled: true,
-      builder: (_) => QuickActionsSheet(assistanceEnabled: assistanceEnabled),
+      builder: (_) => const QuickActionsSheet(),
     );
   }
 }
