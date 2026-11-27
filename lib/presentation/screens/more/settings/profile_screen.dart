@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../../application/providers/accounts_provider.dart';
 import '../../../../application/providers/current_user_provider.dart';
 import '../../../../application/providers/repo_providers.dart';
 import '../../../../core/format/money_format.dart';
@@ -96,7 +97,13 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
 
   @override
   Widget build(BuildContext context) {
-    final currencies = {...MoneyFormat.supportedCurrencies, _currency};
+    final accounts = ref.watch(accountsProvider).value ?? const [];
+    final currencies = {
+      ...MoneyFormat.supportedCurrencies,
+      for (final account in accounts)
+        if (!account.isHidden) account.currencyCode,
+      _currency,
+    };
     return SafeArea(
       top: false,
       child: ListView(

@@ -45,6 +45,19 @@ void main() {
           ),
         );
 
+    await db
+        .into(db.accounts)
+        .insert(
+          AccountsCompanion.insert(
+            id: 'personal-cad',
+            ownerUserId: 'local-user-1',
+            name: 'Canadian bank',
+            accountType: 'bank',
+            currencyCode: const Value('CAD'),
+            balance: const Value(45),
+          ),
+        );
+
     Widget buildApp() => ProviderScope(
       overrides: [databaseProvider.overrideWithValue(db)],
       child: MaterialApp(theme: AppTheme.light, home: const ProfileScreen()),
@@ -58,7 +71,7 @@ void main() {
     await tester.enterText(nameField, '  Updated Name  ');
     await tester.tap(find.byKey(const ValueKey('profile-currency')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('USD').last);
+    await tester.tap(find.text('CAD').last);
     await tester.pumpAndSettle();
 
     await tester.ensureVisible(find.text('Save changes'));
@@ -69,7 +82,7 @@ void main() {
     final people = await db.select(db.users).get();
     final personal = people.singleWhere((row) => row.id == 'local-user-1');
     expect(personal.displayName, 'Updated Name');
-    expect(personal.currencyCode, 'USD');
+    expect(personal.currencyCode, 'CAD');
     expect(personal.timezone, 'Asia/Manila');
     expect(personal.locale, 'en-PH');
     expect(personal.email, 'user@example.test');
@@ -77,15 +90,19 @@ void main() {
       people.singleWhere((row) => row.id == 'demo-user-1').displayName,
       'Sample User',
     );
-    final account = await db.select(db.accounts).getSingle();
-    expect(account.currencyCode, 'PHP');
-    expect(account.balance, 125.50);
+    final accounts = await db.select(db.accounts).get();
+    final original = accounts.singleWhere((row) => row.id == 'personal-cash');
+    final imported = accounts.singleWhere((row) => row.id == 'personal-cad');
+    expect(original.currencyCode, 'PHP');
+    expect(original.balance, 125.50);
+    expect(imported.currencyCode, 'CAD');
+    expect(imported.balance, 45);
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpWidget(buildApp());
     await tester.pumpAndSettle();
     expect(find.text('Updated Name'), findsOneWidget);
-    expect(find.text('USD'), findsOneWidget);
+    expect(find.text('CAD'), findsOneWidget);
     expect(find.text('Asia/Manila'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());
