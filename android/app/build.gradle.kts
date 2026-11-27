@@ -59,6 +59,9 @@ android {
 
     buildTypes {
         release {
+            // The release workflow archives this separate native symbol table.
+            ndk.debugSymbolLevel = "SYMBOL_TABLE"
+
             // Never publish a debug-signed APK. Without key.properties this
             // produces an unsigned local release; CI always supplies the key.
             signingConfig = if (hasReleaseSigning) {
