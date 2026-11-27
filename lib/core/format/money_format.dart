@@ -19,6 +19,8 @@ import '../../domain/value_objects/exact_money.dart';
 abstract class MoneyFormat {
   MoneyFormat._();
 
+  static const supportedCurrencies = ['PHP', 'USD', 'EUR', 'GBP', 'JPY', 'SGD'];
+
   /// Threshold above which [display] abbreviates instead of grouping in full.
   /// Below ₱1,000,000 a grouped integer (`₱999,999`) still reads cleanly; at or
   /// above it we switch to compact (`₱1.2M`) to keep headlines from truncating.

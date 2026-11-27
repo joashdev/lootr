@@ -19,9 +19,7 @@ void main() {
 
   group('UserRepo', () {
     test('create inserts and returns id', () async {
-      final id = await repo.create(UsersCompanion.insert(
-        id: 'usr-1',
-      ));
+      final id = await repo.create(UsersCompanion.insert(id: 'usr-1'));
       expect(id, 'usr-1');
     });
 
@@ -39,15 +37,34 @@ void main() {
     test('update modifies user fields', () async {
       await repo.create(UsersCompanion.insert(id: 'usr-1'));
 
-      await repo.update(UsersCompanion(
-        id: const Value('usr-1'),
-        displayName: const Value('Test User'),
-        currencyCode: const Value('USD'),
-      ));
+      await repo.update(
+        UsersCompanion(
+          id: const Value('usr-1'),
+          displayName: const Value('Test User'),
+          currencyCode: const Value('USD'),
+        ),
+      );
 
       final user = await (db.select(db.users)..limit(1)).getSingle();
       expect(user.displayName, 'Test User');
       expect(user.currencyCode, 'USD');
+    });
+
+    test('creates a personal profile when only a sample user exists', () async {
+      await repo.create(UsersCompanion.insert(id: 'demo-user-1'));
+
+      expect(await repo.getCurrentUser(), isNull);
+      await repo.saveProfile(displayName: 'Personal User', currencyCode: 'USD');
+
+      final profile = await repo.watchCurrentUser().first;
+      expect(profile?.id, UserRepo.localProfileId);
+      expect(profile?.displayName, 'Personal User');
+      expect(profile?.currencyCode, 'USD');
+      final sample = await (db.select(
+        db.users,
+      )..where((row) => row.id.equals('demo-user-1'))).getSingle();
+      expect(sample.displayName, isNull);
+      expect(sample.currencyCode, 'PHP');
     });
 
     test('updateAiEnabled toggles aiEnabled flag', () async {

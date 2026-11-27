@@ -7,43 +7,70 @@ class UserRepo {
 
   UserRepo(this._db);
 
-  Stream<UserData?> watchCurrentUser() {
-    return (_db.select(_db.users)..limit(1)).watch().map((rows) {
-      return rows.isNotEmpty ? rows.first : null;
+  static const localProfileId = 'local-user-1';
+
+  SimpleSelectStatement<$UsersTable, UserData> _currentUserQuery() =>
+      _db.select(_db.users)
+        ..where(
+          (row) => row.deletedAt.isNull() & row.id.equals('demo-user-1').not(),
+        )
+        ..orderBy([
+          (row) => OrderingTerm.desc(row.id.equals(localProfileId)),
+          (row) => OrderingTerm.asc(row.createdAt),
+          (row) => OrderingTerm.asc(row.id),
+        ])
+        ..limit(1);
+
+  Stream<UserData?> watchCurrentUser() =>
+      _currentUserQuery().watchSingleOrNull();
+
+  Future<String> create(UsersCompanion user) async {
+    if (!user.id.present) throw ArgumentError('id is required for create');
+    await _db.into(_db.users).insert(user);
+    return user.id.value;
+  }
+
+  Future<void> update(UsersCompanion user) async {
+    if (!user.id.present) throw ArgumentError('id is required for update');
+    await (_db.update(
+      _db.users,
+    )..where((row) => row.id.equals(user.id.value))).write(
+      user.copyWith(
+        syncStatus: const Value('pending_sync'),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  Future<UserData?> getCurrentUser() => _currentUserQuery().getSingleOrNull();
+
+  Future<void> saveProfile({
+    required String? displayName,
+    required String currencyCode,
+  }) async {
+    await _db.transaction(() async {
+      final current = await getCurrentUser();
+      final profile = UsersCompanion(
+        id: Value(current?.id ?? localProfileId),
+        displayName: Value(displayName),
+        currencyCode: Value(currencyCode),
+      );
+      if (current != null) {
+        await update(profile);
+      } else {
+        await _db
+            .into(_db.users)
+            .insertOnConflictUpdate(
+              profile.copyWith(deletedAt: const Value(null)),
+            );
+      }
     });
   }
 
-  Future<String> create(UsersCompanion u) async {
-    if (!u.id.present) throw ArgumentError('id is required for create');
-    await _db.into(_db.users).insert(u);
-    return u.id.value;
-  }
-
-  Future<void> update(UsersCompanion u) async {
-    if (!u.id.present) throw ArgumentError('id is required for update');
-    final id = u.id.value;
-    await (_db.update(_db.users)..where((row) => row.id.equals(id))).write(u);
-    await (_db.update(_db.users)..where((row) => row.id.equals(id)))
-        .write(UsersCompanion(
-      syncStatus: const Value('pending_sync'),
-      updatedAt: Value(DateTime.now()),
-    ));
-  }
-
-  Future<UserData?> getCurrentUser() async {
-    final rows = await (_db.select(_db.users)..limit(1)).get();
-    return rows.isNotEmpty ? rows.first : null;
-  }
-
   Future<void> updateAiEnabled(bool enabled) async {
-    final user = await (_db.select(_db.users)..limit(1)).getSingleOrNull();
+    final user = await getCurrentUser();
     if (user == null) return;
 
-    await (_db.update(_db.users)..where((u) => u.id.equals(user.id)))
-        .write(UsersCompanion(
-      aiEnabled: Value(enabled),
-      syncStatus: const Value('pending_sync'),
-      updatedAt: Value(DateTime.now()),
-    ));
+    await update(UsersCompanion(id: Value(user.id), aiEnabled: Value(enabled)));
   }
 }
