@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart' hide isNull;
 
 import '../database/app_database.dart';
+import '../seed/demo_user_id.dart';
 
 class UserRepo {
   final AppDatabase _db;
@@ -12,7 +13,7 @@ class UserRepo {
   SimpleSelectStatement<$UsersTable, UserData> _currentUserQuery() =>
       _db.select(_db.users)
         ..where(
-          (row) => row.deletedAt.isNull() & row.id.equals('demo-user-1').not(),
+          (row) => row.deletedAt.isNull() & row.id.equals(demoUserId).not(),
         )
         ..orderBy([
           (row) => OrderingTerm.desc(row.id.equals(localProfileId)),
