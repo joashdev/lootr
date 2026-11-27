@@ -21,9 +21,9 @@ abstract class AppSpacing {
   static const double sheetPaddingHorizontal = 20;
   static const double sheetPaddingVertical = 16;
 
-  static const double bottomNavButtonSize = 56;
+  static const double bottomNavButtonSize = 58;
   static const double bottomNavGap = space4;
-  static const double bottomNavFadeHeight = space12;
+  static const double bottomNavFadeHeight = space3;
 
   /// Clearance for content beneath the floating nav, excluding the safe area.
   static const double bottomNavClearance =

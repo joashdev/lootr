@@ -3,8 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../application/providers/accounts_provider.dart';
 import '../../../../application/providers/categories_provider.dart';
 import '../../../../application/providers/transaction_filters_provider.dart';
-import '../../../../core/theme/colors.dart';
-import '../../../../core/theme/radius.dart';
 import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/typography.dart';
 import '../../../../domain/entities/account.dart';
@@ -21,31 +19,41 @@ class FilterChipBar extends ConsumerWidget {
     final accounts = ref.watch(accountsProvider);
     final categories = ref.watch(categoriesProvider);
     final chips = _buildChips(filters, accounts, categories, ref);
-    if (chips.isEmpty) return const SizedBox.shrink();
+    if (filters.isEmpty) return const SizedBox.shrink();
 
-    return SizedBox(
-      height: 40,
-      child: Row(
-        children: [
-          Expanded(
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.pagePaddingMobile,
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.pagePaddingMobile,
+      ),
+      child: SizedBox(
+        height: 48,
+        child: Row(
+          children: [
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) => ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: chips.length,
+                  separatorBuilder: (_, _) =>
+                      const SizedBox(width: AppSpacing.space2),
+                  itemBuilder: (context, index) => Center(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: constraints.maxWidth,
+                      ),
+                      child: chips[index],
+                    ),
+                  ),
+                ),
               ),
-              itemCount: chips.length + 1,
-              separatorBuilder: (_, _) =>
-                  const SizedBox(width: AppSpacing.space2),
-              itemBuilder: (context, index) {
-                if (index < chips.length) return chips[index];
-                return _ClearAllChip(
-                  onTap: () =>
-                      ref.read(transactionFiltersProvider.notifier).reset(),
-                );
-              },
             ),
-          ),
-        ],
+            TextButton(
+              onPressed: () =>
+                  ref.read(transactionFiltersProvider.notifier).reset(),
+              child: const Text('Clear all'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -90,11 +98,12 @@ class FilterChipBar extends ConsumerWidget {
                 .toList()
               ..sort();
         for (final accountId in filters.accountIds) {
-          final name = value
-              .where((a) => a.id == accountId)
-              .map((a) => a.name)
-              .firstOrNull;
-          if (name == null) continue;
+          final name =
+              value
+                  .where((a) => a.id == accountId)
+                  .map((a) => a.name)
+                  .firstOrNull ??
+              'Account';
           chips.add(
             _FilterChip(
               label: name,
@@ -121,11 +130,12 @@ class FilterChipBar extends ConsumerWidget {
       final value = categories.value;
       if (value != null) {
         for (final categoryId in filters.categoryIds) {
-          final name = value
-              .where((c) => c.id == categoryId)
-              .map((c) => c.name)
-              .firstOrNull;
-          if (name == null) continue;
+          final name =
+              value
+                  .where((c) => c.id == categoryId)
+                  .map((c) => c.name)
+                  .firstOrNull ??
+              'Category';
           chips.add(
             _FilterChip(
               label: name,
@@ -248,59 +258,24 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space3,
-        vertical: AppSpacing.space1,
+    final colors = Theme.of(context).colorScheme;
+    return ActionChip(
+      tooltip: 'Remove $label filter',
+      onPressed: onRemove,
+      materialTapTargetSize: MaterialTapTargetSize.padded,
+      shape: const StadiumBorder(),
+      side: BorderSide.none,
+      backgroundColor: colors.primaryContainer,
+      labelStyle: AppTypography.captionMedium.copyWith(
+        color: colors.onPrimaryContainer,
       ),
-      decoration: BoxDecoration(
-        color: AppColors.primary50,
-        border: Border.all(color: AppColors.primary200),
-        borderRadius: BorderRadius.circular(AppRadius.full),
-      ),
-      child: Row(
+      label: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            label,
-            style: AppTypography.captionMedium.copyWith(
-              color: AppColors.primary700,
-            ),
-          ),
+          Flexible(child: Text(label, overflow: TextOverflow.ellipsis)),
           const SizedBox(width: AppSpacing.space1),
-          GestureDetector(
-            onTap: onRemove,
-            child: const Icon(
-              Icons.close,
-              size: 14,
-              color: AppColors.primary700,
-            ),
-          ),
+          Icon(Icons.close, size: 16, color: colors.onPrimaryContainer),
         ],
-      ),
-    );
-  }
-}
-
-class _ClearAllChip extends StatelessWidget {
-  const _ClearAllChip({required this.onTap});
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space2,
-          vertical: AppSpacing.space1,
-        ),
-        child: Text(
-          'Clear all',
-          style: AppTypography.captionMedium.copyWith(
-            color: Theme.of(context).colorScheme.primary,
-          ),
-        ),
       ),
     );
   }

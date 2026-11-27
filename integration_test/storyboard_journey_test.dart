@@ -175,12 +175,10 @@ void main() {
     return true;
   }
 
-  /// Open the FULL Add Transaction sheet like a user: + island -> "Manual"
-  /// segment (the Quick | Manual | Scan segmented control navigates to
-  /// /transactions/new in one tap).
+  /// Open the manual transaction form from the Add sheet.
   Future<bool> openManualAddSheet(WidgetTester tester) async {
     if (!await tapPlusIsland(tester)) return false;
-    if (!await tapText(tester, 'Manual')) return false;
+    if (!await tapText(tester, 'Add manually')) return false;
     return find.text('Amount').evaluate().isNotEmpty;
   }
 
@@ -265,11 +263,16 @@ void main() {
     // Quick Actions island: sheet, typed input, parsed preview.
     await step('quick-actions', () async {
       if (await tapPlusIsland(tester)) {
+        if (await tapText(tester, 'Turn on Quick entry')) {
+          await tapText(tester, 'Smart Entry Assistance');
+          await popIfPossible(tester);
+          await tapPlusIsland(tester);
+        }
         await shot(tester, '11-quick-actions-sheet');
         final input = find.byType(TextField).last;
         await tester.enterText(input, 'Coffee at Starbucks 180');
         await shot(tester, '12-quick-actions-typed');
-        await tester.testTextInput.receiveAction(TextInputAction.done);
+        await tester.testTextInput.receiveAction(TextInputAction.go);
         await settle(tester);
         await tester.pump(const Duration(seconds: 1));
         await shot(tester, '13-quick-add-parsed-preview');

@@ -20,6 +20,7 @@ class TransactionRowWidget extends StatelessWidget {
     this.isSelected = false,
     this.showSelectionIndicator = false,
     this.showDate = false,
+    this.grouped = false,
   });
 
   final Transaction transaction;
@@ -36,18 +37,19 @@ class TransactionRowWidget extends StatelessWidget {
   /// (e.g. "05/26 · 4:42 PM"). Defaults to false so date-grouped lists stay
   /// unchanged.
   final bool showDate;
+  final bool grouped;
 
   Color _directionColor(BuildContext context) {
-    final lotrColors = context.lootrColors;
+    final lootrColors = context.lootrColors;
     switch (transaction.direction) {
       case 'expense':
-        return lotrColors.expense;
+        return lootrColors.expense;
       case 'income':
-        return lotrColors.income;
+        return lootrColors.income;
       case 'transfer':
-        return lotrColors.transfer;
+        return lootrColors.transfer;
       default:
-        return lotrColors.expense;
+        return lootrColors.expense;
     }
   }
 
@@ -67,7 +69,7 @@ class TransactionRowWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final lotrColors = context.lootrColors;
+    final lootrColors = context.lootrColors;
     final directionColor = _directionColor(context);
     final initials = accountName.isNotEmpty
         ? accountName[0].toUpperCase()
@@ -90,102 +92,158 @@ class TransactionRowWidget extends StatelessWidget {
               (preservedTitle?.isNotEmpty == true ? preservedTitle : null) ??
               transaction.note ??
               accountName;
-
-    final row = Semantics(
-      selected: isSelected,
-      button: onTap != null,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? colorScheme.primaryContainer.withValues(alpha: 0.45)
-              : colorScheme.surface,
-          borderRadius: BorderRadius.circular(AppRadius.md),
+    final amount =
+        '${_amountPrefix()}${MoneyFormat.exactMoney(transaction.exactAmount)}';
+    final titleBlock = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: AppTypography.h3.copyWith(
+            color: colorScheme.onSurface,
+            height: 1.25,
+          ),
         ),
-        child: Row(
-          children: [
-            if (showSelectionIndicator) ...[
-              IgnorePointer(
-                child: Checkbox(value: isSelected, onChanged: (_) {}),
-              ),
-              const SizedBox(width: AppSpacing.space1),
-            ],
-            leading ??
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainerHighest,
-                    shape: BoxShape.circle,
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    initials,
-                    style: AppTypography.captionMedium.copyWith(
-                      color: lotrColors.textSecondary,
-                    ),
-                  ),
-                ),
-            const SizedBox(width: AppSpacing.space3),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: AppTypography.h3.copyWith(
-                      color: colorScheme.onSurface,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    categoryLabel,
-                    style: AppTypography.caption.copyWith(
-                      color: lotrColors.textSecondary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: AppSpacing.space2),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '${_amountPrefix()}${MoneyFormat.exactMoney(transaction.exactAmount)}',
-                  style: AppTypography.h3Mono.copyWith(color: directionColor),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  time,
-                  style: AppTypography.caption.copyWith(
-                    color: lotrColors.textTertiary,
-                  ),
-                ),
-              ],
-            ),
-          ],
+        const SizedBox(height: 2),
+        Text(
+          categoryLabel,
+          style: AppTypography.caption.copyWith(
+            color: lootrColors.textSecondary,
+            height: 1.35,
+          ),
         ),
-      ),
+      ],
     );
 
-    if (onTap != null || onLongPress != null) {
-      return Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(AppRadius.md),
+    final amountStyle = AppTypography.h3Mono.copyWith(
+      color: directionColor,
+      fontSize: grouped ? 15 : null,
+      height: 1.25,
+    );
+    final amountLabel = Text(amount, style: amountStyle);
+    final timeLabel = Text(
+      time,
+      style: AppTypography.caption.copyWith(
+        color: lootrColors.textSecondary,
+        height: 1.35,
+      ),
+    );
+    final shape = grouped
+        ? BorderRadius.zero
+        : BorderRadius.circular(AppRadius.md);
+
+    return Semantics(
+      selected: isSelected,
+      button: onTap != null,
+      child: Material(
+        color: isSelected ? colorScheme.primaryContainer : colorScheme.surface,
+        borderRadius: shape,
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
           onLongPress: onLongPress,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          child: row,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.space4,
+              vertical: AppSpacing.space3,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (showSelectionIndicator)
+                  SizedBox.square(
+                    dimension: 36,
+                    child: Icon(
+                      isSelected
+                          ? Icons.check_box_rounded
+                          : Icons.check_box_outline_blank_rounded,
+                      color: isSelected
+                          ? colorScheme.primary
+                          : lootrColors.textSecondary,
+                      size: 22,
+                    ),
+                  )
+                else
+                  leading ??
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: colorScheme.surfaceContainerHighest,
+                          shape: BoxShape.circle,
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          initials,
+                          style: AppTypography.captionMedium.copyWith(
+                            color: lootrColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                const SizedBox(width: AppSpacing.space3),
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final textScaler = MediaQuery.textScalerOf(context);
+                      final amountPainter = TextPainter(
+                        text: TextSpan(text: amount, style: amountStyle),
+                        textDirection: Directionality.of(context),
+                        textScaler: textScaler,
+                        maxLines: 1,
+                      )..layout();
+                      // Leave enough room for a name before splitting the row.
+                      final titleMinWidth = textScaler.scale(17) * 7.5;
+                      final amountMaxWidth =
+                          constraints.maxWidth -
+                          titleMinWidth -
+                          AppSpacing.space3;
+                      final stackAmount = amountPainter.width > amountMaxWidth;
+                      amountPainter.dispose();
+
+                      if (stackAmount) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            titleBlock,
+                            const SizedBox(height: AppSpacing.space2),
+                            Wrap(
+                              spacing: AppSpacing.space3,
+                              runSpacing: 2,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [amountLabel, timeLabel],
+                            ),
+                          ],
+                        );
+                      }
+
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: titleBlock),
+                          const SizedBox(width: AppSpacing.space3),
+                          ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxWidth: amountMaxWidth,
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                amountLabel,
+                                const SizedBox(height: 2),
+                                timeLabel,
+                              ],
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-      );
-    }
-    return row;
+      ),
+    );
   }
 }

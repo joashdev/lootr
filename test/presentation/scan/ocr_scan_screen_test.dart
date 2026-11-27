@@ -71,9 +71,10 @@ void main() {
       await tester.pump();
 
       expect(
-        find.textContaining('Smart Entry Assistance is off'),
+        find.text('Turn on Smart Entry Assistance to scan receipts.'),
         findsOneWidget,
       );
+      expect(find.text('Smart Entry settings').hitTestable(), findsOneWidget);
       expect(
         tester
             .widget<IconButton>(

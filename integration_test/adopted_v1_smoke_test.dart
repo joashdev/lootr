@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' hide isNotNull;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -144,12 +144,15 @@ void main() {
     await tester.pageBack();
     await settle(tester);
     await tester.tap(find.text('More').last);
+    await settle(tester);
+    final recurringTile = find.widgetWithText(ListTile, 'Recurring');
     await tester.scrollUntilVisible(
-      find.text('Recurring'),
+      recurringTile.hitTestable(),
       -220,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.tap(find.text('Recurring'));
+    await settle(tester);
+    await tester.tap(recurringTile.hitTestable());
     await settle(tester);
     await tester.tap(find.text('Netflix'));
     await shot(tester, '06-recurring-lifecycle');
@@ -202,15 +205,14 @@ void main() {
     await tester.tap(addIsland);
     await shot(tester, '07-unified-add-quick');
 
-    await tester.tap(find.text('Manual').last);
+    await tester.tap(find.text('Add manually'));
     await shot(tester, '08-unified-add-manual');
 
     final activeBefore = (await db.select(db.transactions).get())
         .where((row) => row.deletedAt == null)
         .length;
     final amountField = find.byWidgetPredicate(
-      (widget) =>
-          widget is TextField && widget.decoration?.hintText == '0.00',
+      (widget) => widget is TextField && widget.decoration?.hintText == '0.00',
     );
     expect(amountField, findsOneWidget);
     await tester.enterText(amountField, '123.45');
@@ -246,13 +248,112 @@ void main() {
       activeBefore,
     );
 
+    await tester.tap(addIsland);
     await settle(tester);
+    await tester.tap(find.text('Transfer'));
+    await shot(tester, '11-transfer-shortcut');
+    expect(find.text('Transfer Amount'), findsOneWidget);
+    await tester.enterText(amountField.first, '42.50');
+    FocusManager.instance.primaryFocus?.unfocus();
+    await settle(tester);
+    Future<void> chooseTransferAccount(int index, String name) async {
+      final dropdown = find.byType(DropdownButton<String>).at(index);
+      await tester.ensureVisible(dropdown);
+      await settle(tester);
+      await tester.tap(dropdown);
+      await settle(tester);
+      await tester.tap(find.text(name).last);
+      await settle(tester);
+    }
+
+    final existingTransfers = (await db.select(db.transfers).get()).length;
+    await chooseTransferAccount(0, 'BDO Savings');
+    await chooseTransferAccount(1, 'GCash');
+    final saveTransfer = find.text('Add Transfer');
+    expect(saveTransfer.hitTestable(), findsOneWidget);
+    await tester.tap(saveTransfer);
+    await settle(tester);
+    final transfers = await db.select(db.transfers).get();
+    expect(transfers, hasLength(existingTransfers + 1));
+    expect(
+      transfers.where(
+        (row) =>
+            row.sourceAccountId == 'demo-acc-bdo-savings' &&
+            row.destinationAccountId == 'demo-acc-gcash' &&
+            row.amount == 42.50,
+      ),
+      hasLength(1),
+    );
+
+    await tester.tap(addIsland);
+    await settle(tester);
+    await tester.tap(find.text('Scan receipt'));
+    await settle(tester);
+    await tester.tap(find.text('Smart Entry settings'));
+    await settle(tester);
+    expect(find.text('AI & Data'), findsOneWidget);
+    await tester.pageBack();
+    await settle(tester);
+
+    await tester.tap(addIsland);
+    await settle(tester);
+    await tester.tap(find.text('Turn on Quick entry'));
+    await settle(tester);
+    await tester.tap(find.text('Smart Entry Assistance'));
+    await settle(tester);
+    expect(
+      tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+      isTrue,
+    );
+    await tester.pageBack();
+    await settle(tester);
+
+    await tester.tap(addIsland);
+    await shot(tester, '13-add-quick-entry');
+    await tester.enterText(find.byType(TextField).last, 'Coffee 25 gcash');
+    await settle(tester);
+    final review = find.text('Review transaction');
+    await tester.ensureVisible(review);
+    await tester.tap(review);
+    await settle(tester);
+    for (
+      var frame = 0;
+      frame < 10 && tester.view.viewInsets.bottom > 0;
+      frame++
+    ) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(tester.view.viewInsets.bottom, 0);
+    await shot(tester, '12-quick-review');
+    expect(find.text('Preview'), findsOneWidget);
+    expect(find.text('₱25.00'), findsOneWidget);
+    final existingIds = (await db.select(db.transactions).get())
+        .map((row) => row.id)
+        .toSet();
+    await tester.tap(find.text('Add Transaction').last);
+    await settle(tester);
+    expect(find.text('Transaction saved'), findsOneWidget);
+    final quickSave = (await db.select(db.transactions).get()).singleWhere(
+      (row) => !existingIds.contains(row.id),
+    );
+    expect(quickSave.amount, 25);
+    expect(quickSave.accountId, 'demo-acc-gcash');
+    await tester.tap(find.text('UNDO'));
+    await settle(tester);
+    expect(
+      (await (db.select(
+        db.transactions,
+      )..where((row) => row.id.equals(quickSave.id))).getSingle()).deletedAt,
+      isNotNull,
+    );
+
+    await tester.pump(const Duration(milliseconds: 400));
     await container.read(themeModeProvider.notifier).setMode(ThemeMode.dark);
     expect(prefs.getString('theme_mode'), 'dark');
     await tester.tap(find.text('Home').last);
     await shot(tester, '09-dashboard-dark');
 
-    tester.platformDispatcher.textScaleFactorTestValue = 1.5;
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     await tester.tap(find.text('Transactions').last);
     await shot(tester, '10-transactions-dark-large-text');

@@ -27,39 +27,44 @@ class PeriodSelector extends ConsumerWidget {
             onPressed: notifier.previous,
             icon: const Icon(LucideIcons.chevronLeft, size: 18),
           ),
-          InkWell(
-            borderRadius: BorderRadius.circular(8),
-            onTap: () => _showPicker(context, ref, period),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minWidth: compact ? 144 : 168,
-                minHeight: 44,
-              ),
-              child: Center(
-                child: isMonth
-                    ? Text(
-                        period.label,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.labelLarge,
-                      )
-                    : Column(
+          Flexible(
+            child: Tooltip(
+              message: isMonth ? 'Choose month' : 'Choose cycle start',
+              child: Semantics(
+                button: true,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () => _showPicker(context, ref, period),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minWidth: compact ? 144 : 168,
+                      minHeight: 44,
+                    ),
+                    child: Center(
+                      widthFactor: 1,
+                      heightFactor: 1,
+                      child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
                             period.label,
                             textAlign: TextAlign.center,
-                            maxLines: 1,
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: Theme.of(context).textTheme.labelLarge,
                           ),
-                          Text(
-                            period.dateRangeLabel,
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
+                          if (!isMonth)
+                            Text(
+                              period.dateRangeLabel,
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
                         ],
                       ),
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
@@ -88,7 +93,7 @@ class PeriodSelector extends ConsumerWidget {
           ? 'Select month'
           : 'Select cycle start',
     );
-    if (selected != null) {
+    if (selected != null && context.mounted) {
       ref.read(periodContextProvider.notifier).moveTo(selected);
     }
   }

@@ -53,6 +53,32 @@ void main() {
     test('dark color scheme uses correct primary', () {
       expect(AppTheme.dark.colorScheme.primary, AppColors.darkPrimary500);
     });
+
+    test('text and action colors have at least 4.5:1 contrast', () {
+      for (final theme in [AppTheme.light, AppTheme.dark]) {
+        final colors = theme.colorScheme;
+        final status = theme.extension<LootrColorScheme>()!;
+        for (final (foreground, background) in [
+          (colors.onPrimary, colors.primary),
+          (colors.onPrimaryContainer, colors.primaryContainer),
+          (colors.onSurface, colors.surface),
+          (colors.secondary, theme.scaffoldBackgroundColor),
+          (status.success, status.successBg),
+          (status.warning, status.warningBg),
+          (status.danger, status.dangerBg),
+        ]) {
+          final foregroundLight = foreground.computeLuminance() + 0.05;
+          final backgroundLight = background.computeLuminance() + 0.05;
+          final ratio = foregroundLight / backgroundLight;
+          expect(
+            ratio >= 1 ? ratio : 1 / ratio,
+            greaterThanOrEqualTo(4.5),
+            reason:
+                '${theme.brightness} ${foreground.toARGB32()} on ${background.toARGB32()}',
+          );
+        }
+      }
+    });
   });
 
   group('AppTypography', () {

@@ -106,13 +106,14 @@ void main() {
     );
     await tester.pumpAndSettle();
     if (manual) {
-      await tester.tap(find.text('Manual'));
+      await tester.tap(find.text('Add manually'));
       await tester.pumpAndSettle();
     }
 
     await tester.enterText(find.byType(TextField).first, draftFor(manual));
-    await tester.tap(find.text('Scan'));
-    if (twice) await tester.tap(find.text('Scan'));
+    final scan = find.text(manual ? 'Scan' : 'Scan receipt');
+    await tester.tap(scan);
+    if (twice) await tester.tap(scan);
     await tester.pumpAndSettle();
     expect(find.byType(OcrScanScreen), findsOneWidget);
   }

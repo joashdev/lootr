@@ -148,6 +148,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             AddTransactionSheet(
               initialTransaction: tx,
               initialTransfer: transfer,
+              initialDirection: args?.initialDirection,
               startInQuickMode: args?.startInQuickMode ?? false,
               initialParsedTransaction: args?.initialParsedTransaction,
               initialQuickText: args?.initialQuickText,

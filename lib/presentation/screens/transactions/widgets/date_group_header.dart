@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/colors.dart';
+import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/typography.dart';
 
 /// Formats a transactions-list date group heading for display.
@@ -13,7 +14,11 @@ String formatDateGroupTitle(DateTime date, {DateTime? now}) {
   final reference = now ?? DateTime.now();
   final day = DateTime(date.year, date.month, date.day);
   final today = DateTime(reference.year, reference.month, reference.day);
-  final yesterday = DateTime(reference.year, reference.month, reference.day - 1);
+  final yesterday = DateTime(
+    reference.year,
+    reference.month,
+    reference.day - 1,
+  );
 
   if (day == today) return 'Today';
   if (day == yesterday) return 'Yesterday';
@@ -28,15 +33,38 @@ class DateGroupHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-      color: colorScheme.surfaceContainerLow,
-      alignment: Alignment.centerLeft,
-      child: Text(
-        title,
-        style: AppTypography.captionMedium.copyWith(
-          color: context.lootrColors.textSecondary,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.space4,
+        AppSpacing.space3,
+        AppSpacing.space4,
+        AppSpacing.space1,
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) => Row(
+          children: [
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: constraints.maxWidth * 0.75,
+              ),
+              child: Semantics(
+                header: true,
+                child: Text(
+                  title,
+                  style: AppTypography.captionMedium.copyWith(
+                    color: context.lootrColors.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.space3),
+            Expanded(
+              child: Divider(
+                height: 1,
+                color: Theme.of(context).colorScheme.outline,
+              ),
+            ),
+          ],
         ),
       ),
     );

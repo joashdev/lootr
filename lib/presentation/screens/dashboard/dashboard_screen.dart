@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../application/providers/dashboard_provider.dart';
 import '../../../application/providers/dashboard_layout_provider.dart';
 import '../../../application/providers/sync_providers.dart';
+import '../../../core/theme/colors.dart';
 import '../../../core/theme/spacing.dart';
+import '../../../core/theme/typography.dart';
 import '../../shared/components/empty_state.dart';
 import '../../shared/components/primary_screen_header.dart';
+import '../more/more_form_sheets.dart';
 import 'widgets/account_summary_cards.dart';
 import 'widgets/budget_progress_rings.dart';
 import 'widgets/dashboard_shimmer.dart';
@@ -26,11 +29,13 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dashboard = ref.watch(dashboardProvider);
+    final textScaler = MediaQuery.textScalerOf(context);
 
     return Scaffold(
       appBar: dashboard.maybeWhen(
         data: (data) => _DashboardHeader(
           data: data,
+          height: 86.0 + (textScaler.scale(28) - 28).clamp(0, 28),
           onCustomize: () => _showDashboardCustomization(context),
         ),
         orElse: () => const PrimaryScreenHeader(title: 'Dashboard'),
@@ -41,7 +46,7 @@ class DashboardScreen extends ConsumerWidget {
         data: (data) {
           if (data.isEmpty) {
             return _EmptyDashboard(
-              onAddAccount: () => context.push('/more/accounts'),
+              onAddAccount: () => showAccountSheet(context, ref),
             );
           }
 
@@ -51,7 +56,7 @@ class DashboardScreen extends ConsumerWidget {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.pagePaddingMobile,
-                AppSpacing.space3,
+                AppSpacing.space2,
                 AppSpacing.pagePaddingMobile,
                 120,
               ),
@@ -81,45 +86,86 @@ class DashboardScreen extends ConsumerWidget {
       isScrollControlled: true,
       useSafeArea: true,
       showDragHandle: true,
+      enableDrag: false,
       builder: (_) => const _DashboardCustomizationSheet(),
     );
   }
 }
 
-class _DashboardHeader extends ConsumerWidget implements PreferredSizeWidget {
-  const _DashboardHeader({required this.data, required this.onCustomize});
+class _DashboardHeader extends StatelessWidget implements PreferredSizeWidget {
+  const _DashboardHeader({
+    required this.data,
+    required this.height,
+    required this.onCustomize,
+  });
 
   final DashboardData data;
+  final double height;
   final VoidCallback onCustomize;
 
   @override
-  Size get preferredSize => Size.fromHeight(
-    _hasName
-        ? PrimaryScreenHeader.heightWithEyebrow
-        : PrimaryScreenHeader.height,
-  );
-
-  bool get _hasName => data.displayName?.trim().isNotEmpty == true;
+  Size get preferredSize => Size.fromHeight(height);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final name = data.displayName?.trim() ?? '';
-
-    // Sync status and global search header actions are hidden until those
-    // features ship; the sync engine and sheet remain available in code.
-    return PrimaryScreenHeader(
-      // Greeting sits in the eyebrow so a long name (the title) is never
-      // truncated by the time-of-day prefix.
-      eyebrow: _hasName ? data.greeting : null,
-      title: _hasName ? name : data.greeting,
-      subtitle: DateFormat('EEEE, MMMM d').format(data.currentDate),
-      actions: [
-        IconButton(
-          tooltip: 'Customize dashboard',
-          onPressed: onCustomize,
-          icon: const Icon(Icons.tune),
-        ),
-      ],
+    final greeting = name.isEmpty ? data.greeting : '${data.greeting}, $name';
+    final enlargedText = MediaQuery.textScalerOf(context).scale(14) > 18;
+    final showActionLabel =
+        MediaQuery.sizeOf(context).width >= 360 && !enlargedText;
+    return AppBar(
+      automaticallyImplyLeading: false,
+      toolbarHeight: height,
+      titleSpacing: AppSpacing.pagePaddingMobile,
+      centerTitle: false,
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  DateFormat(
+                    'EEEE, MMM d',
+                  ).format(data.currentDate).toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.micro.copyWith(
+                    color: context.lootrColors.textSecondary,
+                    letterSpacing: 1,
+                  ),
+                ),
+              ),
+              if (showActionLabel)
+                TextButton.icon(
+                  onPressed: onCustomize,
+                  icon: const Icon(LucideIcons.slidersHorizontal, size: 16),
+                  label: const Text(
+                    'Customize',
+                    semanticsLabel: 'Customize dashboard',
+                  ),
+                )
+              else
+                IconButton(
+                  tooltip: 'Customize dashboard',
+                  onPressed: onCustomize,
+                  icon: const Icon(LucideIcons.slidersHorizontal),
+                ),
+            ],
+          ),
+          Text(
+            enlargedText && name.isNotEmpty ? name : greeting,
+            semanticsLabel: greeting,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTypography.h1.copyWith(
+              color: Theme.of(context).colorScheme.onSurface,
+              height: 1.1,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -138,7 +184,6 @@ class _DashboardModule extends StatelessWidget {
         DashboardModule.netWorth => NetWorthSparkline(data: data),
         DashboardModule.accounts => AccountSummaryCards(
           accounts: data.accounts,
-          currencyCode: data.currencyCode,
         ),
         DashboardModule.cashFlow => IncomeExpenseStrip(data: data),
         DashboardModule.budgets => BudgetProgressRings(
@@ -148,10 +193,7 @@ class _DashboardModule extends StatelessWidget {
         DashboardModule.spending => SpendingDonut(data: data),
         DashboardModule.activity => Column(
           children: [
-            RecentTransactionsList(
-              transactions: data.recentTransactions,
-              currencyCode: data.currencyCode,
-            ),
+            RecentTransactionsList(transactions: data.recentTransactions),
             const SizedBox(height: AppSpacing.space4),
             UpcomingRecurringList(
               items: data.upcomingRecurring,
@@ -223,7 +265,10 @@ class _DashboardCustomizationSheet extends ConsumerWidget {
                   child: ListTile(
                     leading: ReorderableDragStartListener(
                       index: index,
-                      child: const Icon(Icons.drag_handle),
+                      child: const SizedBox.square(
+                        dimension: 44,
+                        child: Icon(Icons.drag_handle),
+                      ),
                     ),
                     title: Text(module.label),
                     trailing: Switch(

@@ -11,6 +11,7 @@ import '../../../../core/theme/theme.dart';
 import '../../../../core/theme/typography.dart';
 import '../../../shared/category_visuals.dart';
 import '../../../shared/components/cards/cards.dart';
+import 'dashboard_section_header.dart';
 
 class BudgetProgressRings extends StatelessWidget {
   const BudgetProgressRings({
@@ -24,65 +25,77 @@ class BudgetProgressRings extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final extraScale = (MediaQuery.textScalerOf(context).scale(15) / 15 - 1)
+        .clamp(0, 1)
+        .toDouble();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Budgets', style: AppTypography.h2),
-        const SizedBox(height: AppSpacing.space3),
-        SizedBox(
-          height: 210,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: budgets.length,
-            separatorBuilder: (_, _) =>
-                const SizedBox(width: AppSpacing.space3),
-            itemBuilder: (context, index) {
-              final budget = budgets[index];
-              return SizedBox(
-                width: 164,
-                child: CompactRowCard(
-                  onTap: () => context.push(
-                    budget.isImported
-                        ? '/budgets/imported/${budget.id}'
-                        : '/budgets/${budget.id}',
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _AnimatedProgressRing(
-                        progress: budget.progress.clamp(0, 1),
-                        color: _budgetColor(context, budget.progress),
-                        iconName: budget.icon,
-                        categoryName: budget.name,
-                      ),
-                      Column(
-                        children: [
-                          Text(
-                            budget.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTypography.h3,
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${MoneyFormat.display(budget.spent, currencyCode)} / ${MoneyFormat.display(budget.budgeted, currencyCode)}',
-                            style: AppTypography.mono.copyWith(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w400,
-                              color: context.lootrColors.textSecondary,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
+        DashboardSectionHeader(
+          title: 'Budgets',
+          actionLabel: 'See all budgets',
+          onPressed: () => context.go('/budgets'),
         ),
+        if (budgets.isEmpty)
+          const StandardCard(child: Text('No budgets for this month.'))
+        else
+          SizedBox(
+            height: 160.0 + 64 * extraScale,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: budgets.length,
+              separatorBuilder: (_, _) =>
+                  const SizedBox(width: AppSpacing.space3),
+              itemBuilder: (context, index) {
+                final budget = budgets[index];
+                return SizedBox(
+                  width: 164.0 + 76 * extraScale,
+                  child: CompactRowCard(
+                    onTap: () => context.push(
+                      budget.isImported
+                          ? '/budgets/imported/${budget.id}'
+                          : '/budgets/${budget.id}',
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _AnimatedProgressRing(
+                          progress: budget.progress.clamp(0, 1),
+                          color: _budgetColor(context, budget.progress),
+                          iconName: budget.icon,
+                          categoryName: budget.name,
+                        ),
+                        Column(
+                          children: [
+                            Text(
+                              budget.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.h3,
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 2),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                '${MoneyFormat.display(budget.spent, currencyCode)} / ${MoneyFormat.display(budget.budgeted, currencyCode)}',
+                                style: AppTypography.mono.copyWith(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w400,
+                                  color: context.lootrColors.textSecondary,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
       ],
     );
   }

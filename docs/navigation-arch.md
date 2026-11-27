@@ -70,25 +70,25 @@ Tapping the Add island opens a **Quick Actions Bottom Sheet**:
 
 ```
 ┌─────────────────────────────┐
-│        Add Transaction      │
-│                             │
-│  ┌───────────────────────┐  │
-│  │ mcdo 250 gcash    🎤  │  │  ← NL input with mic toggle
-│  └───────────────────────┘  │
-│                             │
-│  ┌─────────┐ ┌─────────┐   │
-│  │ Manual  │ │  Scan   │   │
-│  └─────────┘ └─────────┘   │
+│ Add transaction           ×│
+│ Description                 │
+│ Coffee ₱180             🎤   │
+│       Review transaction    │
+│  Add manually  Scan receipt │
+│   Transfer │
 └─────────────────────────────┘
 ```
 
 | Action | Icon | Behavior |
 |---|---|---|
-| **Quick Add (NL)** | keyboard | Primary input field. Type natural language → parse → preview card → confirm → save. Tap 🎤 to toggle voice input mode. Sheet stays open for rapid entry. |
+| **Quick Add (NL)** | keyboard | Primary input field. Type a description or dictate it, then tap Review transaction to preview and save. Tap 🎤 to toggle voice input mode. Sheet stays open for rapid entry. |
 | **Manual** | pencil | Opens full transaction form sheet (all fields). Save → close sheet → undo snackbar. |
 | **Scan** | camera | Opens full-screen camera → capture → OCR processing → autofill form sheet → adjust → save. |
+| **Transfer** | arrows | Opens the manual form with Transfer selected. |
 
-**Mic toggle**: Inside the Quick Add input field, a 🎤 microphone icon toggles between text and voice input. In voice mode, tapping the field starts listening → transcribe → parse → preview → confirm → save.
+If Smart Entry Assistance is off, Add manually is the primary action. The Quick entry and Scan receipt actions offer links to Smart Entry settings.
+
+**Mic toggle**: Tap the microphone in the Quick entry field to start or stop voice input. The recognized words appear in the field.
 
 **Undo snackbar**: After every save, a bottom snackbar appears: "Transaction saved · UNDO". Tapping undo reverts the save (deletes the record, restores previous balances). Auto-dismisses after 5 seconds.
 
@@ -102,18 +102,18 @@ The glanceable summary screen. Vertically scannable, emotionally calm. Inspired 
 
 | # | Section | Tap target | Source |
 |---|---|---|---|
-| 1 | Greeting + date | — | product-strategy.md |
-| 2 | **Safe-to-Spend hero card** — one large number showing available cash after budgets & bills | — | Research: PocketGuard "In My Pocket" |
+| 1 | Greeting + date | Customize opens the dashboard layout | product-strategy.md |
+| 2 | **Safe-to-Spend hero card** — one large number showing available cash after budgets & bills | View breakdown shows income and commitments | Research: PocketGuard "In My Pocket" |
 | 3 | Net worth sparkline card (mini line chart, 30 days) | → Reports: Net worth detail | domain-model.md §688 |
-| 4 | Account summary cards (horizontal scroll, 3–4 visible) | → Account detail | domain-model.md §689 |
+| 4 | Account summary cards (horizontal scroll) | Tap a card for account detail or See all for Accounts | domain-model.md §689 |
 | 5 | Income vs expense strip (current month, horizontal bar) | → Reports: Income vs expense | domain-model.md §690 |
-| 6 | Budget progress rings/cards (top 3–4 overspent or closest to limit) | → Budgets tab | domain-model.md §691 |
+| 6 | Budget progress cards | Tap a card for budget detail or See all for Budgets | domain-model.md §691 |
 | 7 | Spending by category donut chart (current month) | → Reports: Spending by category | Research: Copilot/Monarch |
 | 8 | Recent transactions (last 5, with "See all" link) | → Transactions tab | domain-model.md §692 |
 | 9 | Upcoming recurring / bills (next 7 days) | → Recurring list | Research: Monarch bill calendar |
 | 10 | Insights / AI section (future, collapsible) | → Insights detail | domain-model.md §693 |
 
-**Empty state**: If no accounts exist, show a centered illustration (friendly character), text "Let's set up your first account", and a primary CTA "Add Account". Optional secondary link "Try with demo data" that seeds 30 days of sample transactions, accounts, and budgets.
+**Empty state**: If no accounts exist, show a centered illustration (friendly character), text "Let's set up your first account", and a primary action "Add Account" that opens the account form. Optional secondary link "Try with demo data" that seeds 30 days of sample transactions, accounts, and budgets.
 
 ### Top bar elements
 
@@ -136,32 +136,20 @@ The unified transaction list. All transactions in one scrollable list — expens
 
 ```
 ┌─────────────────────────────────┐
-│  🔍 Search...        [🔧]       │
-├─────────────────────────────────┤
-│                                 │
-│  Today                          │
-│  ┌─────────────────────────┐   │
-│  │ 🍔 McDonald's    -₱250  │   │  ← Expense (red)
-│  │    Food · GCash         │   │
-│  └─────────────────────────┘   │
-│  ┌─────────────────────────┐   │
-│  │ 💰 Salary        +₱45k  │   │  ← Income (green)
-│  │    Income · BPI         │   │
-│  └─────────────────────────┘   │
-│  ┌─────────────────────────┐   │
-│  │ ↕️ BPI → GCash   -₱500  │   │  ← Transfer (blue)
-│  │    Transfer · BPI       │   │
-│  └─────────────────────────┘   │
-│                                 │
-│  Yesterday                      │
-│  ┌─────────────────────────┐   │
-│  │ 🚗 Grab           -₱180 │   │
-│  │    Transport · GCash    │   │
-│  └─────────────────────────┘   │
-│                                 │
-│                        ┌────┐  │
-│                        │ +  │  │  ← Add island
-│                        └────┘  │
+│ Transactions        Sort Select │
+│ [ Search              ] Filters │
+│       ‹  November 2026  ›       │
+│ ┌─────────────────────────────┐ │
+│ │ Today ───────────────────── │ │
+│ │ McDonald's         -₱250.00 │ │
+│ │ Food · GCash        9:20 AM │ │
+│ │ ─────────────────────────── │ │
+│ │ Salary          +₱45,000.00 │ │
+│ │ Income · BPI        8:00 AM │ │
+│ │ Yesterday ───────────────── │ │
+│ │ Grab               -₱180.00 │ │
+│ │ Transport · GCash   5:45 PM │ │
+│ └─────────────────────────────┘ │
 └─────────────────────────────────┘
 ```
 
@@ -173,11 +161,11 @@ Persistent search bar at the top left of the Transactions tab. Filters in real-t
 - Amount (exact or range)
 - Note text
 
-Tapping the search bar expands it full-width and shows recent searches.
+Search, Filters, and the current period stay visible while you type. Tap Select to change the category or account of selected transactions or to delete them.
 
 ### Filter button (🔧)
 
-Tapping the filter button (top right, wrench/funnel icon) opens a **Filter Sheet**:
+Tapping Filters next to Search opens a **Filter Sheet**:
 
 ```
 ┌─────────────────────────────────┐
@@ -222,21 +210,15 @@ Multiple filters combine with AND logic. "Clear All" resets to default. "Apply" 
 
 ### Transaction row
 
-Each row shows:
-- **Left**: Category icon or payee initial (circular avatar)
-- **Center**: Payee name (bold), category + account (secondary)
-- **Right**: Amount (bold, color-coded: **red** for expense, **green** for income, **blue** for transfer)
-- **Direction badge**: Small text label or color indicating direction (expense/income/transfer)
+Each row shows an icon, the payee or title, the category, the account, the amount, and the time. Expenses use the main text color and a minus sign. Income uses green and a plus sign. Transfers use blue.
 
-**Swipe actions** (from row):
-- **Swipe left**: Edit (pencil) → opens edit sheet | Delete (trash) → confirmation dialog
-- **Swipe right**: Categorize (tag) → opens category picker sheet | Duplicate → creates copy
+Swipe right to open the edit sheet. Swipe left to open the delete confirmation. Tap a row to open its details. Press and hold to select it.
 
-Tapping a row → **Transaction Detail** (pushed page).
+The title, category, and account wrap when they need more room. When the amount would crowd the title, the amount and time move below it.
 
 ### Grouping
 
-Transactions grouped by date (Today, Yesterday, this week, this month, older). Within each group, sorted by `occurred_at` descending.
+The ledger uses one continuous surface. Rules mark the date groups and separate rows within a group. Sort changes the order of the groups and the transactions within each group.
 
 ### Income deduction rows
 
@@ -268,7 +250,8 @@ Monthly category budgets with progress visualization. Inspired by YNAB's month n
 
 ```
 ┌─────────────────────────────────┐
-│  ◀ June 2026 ▶     Budgets  [+] │
+│  Budgets          [New budget] │
+│           ◀ June 2026 ▶         │
 ├─────────────────────────────────┤
 │                                 │
 │  Spent ₱12,500 of ₱20,000       │  ← Monthly summary
@@ -298,7 +281,7 @@ Monthly category budgets with progress visualization. Inspired by YNAB's month n
 
 ### Month navigation
 
-Swipe left/right or tap arrows to navigate months. State: `month` + `year`. Month label format: "June 2026". Current month is highlighted.
+Tap the previous or next arrow to change the period. Tap the period name to choose a date. In an editable period, New budget opens the budget form, which keeps Save visible while you scroll.
 
 ### Budget row
 
@@ -491,6 +474,8 @@ Add island tap → **Quick Actions Bottom Sheet** (see §2 for layout).
 
 All flows end with: save transaction → update account balance → close sheet → show undo snackbar (5s).
 
+Manual and transfer forms keep Save visible while you scroll. The Quick preview keeps Edit manually and Add Transaction visible.
+
 ### 7.2 Transaction Edit Flow
 
 From Transaction Detail → edit button → **Transaction Edit Sheet** (same form as manual entry, pre-filled).
@@ -502,7 +487,7 @@ Edit rules (from `domain-model.md` §240-252):
 
 ### 7.3 Transfer Creation Flow
 
-From Add island → Manual → direction = transfer. Or from Account Detail → transfer button.
+From Add, tap Transfer. You can also choose Transfer in the manual form.
 
 **Transfer Form Sheet**: source account, destination account, amount, fee (optional), note, date. Save → update both account balances → if fee, create expense transaction → close.
 
@@ -763,7 +748,7 @@ Every screen in the app, mapped to its source requirement.
 | Screen | Left | Center | Right |
 |---|---|---|---|
 | Dashboard | — | Greeting + date | Sync icon, Search icon |
-| Transactions | — | "Transactions" | Filter button (🔧), Search icon |
+| Transactions | — | "Transactions" | Search, Filters, Select, and sort |
 | Budgets | ← / → month nav | "Budgets" | + button |
 | More | — | "More" | — |
 | Pushed screens | ← back | Screen title | Contextual (edit, ⋮) |
@@ -771,7 +756,7 @@ Every screen in the app, mapped to its source requirement.
 
 ### Filter button (Transactions screen)
 
-Tapping the filter button (🔧) opens the **Filter Sheet** (see §4 for full filter options).
+Tapping Filters opens the **Filter Sheet** (see §4 for full filter options).
 
 ### ⋮ menu (pushed screens)
 
